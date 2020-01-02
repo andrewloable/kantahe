@@ -1,0 +1,120 @@
+﻿@page "/songlist"
+@using kantahe.Data
+@using Syncfusion.EJ2.Blazor.Grids
+@using Syncfusion.EJ2.Blazor.Navigations
+@using Syncfusion.EJ2.Blazor.Notifications
+@inject SongService SongService
+@inject QueueService QueueService
+
+<div>
+    <button class="btn btn-primary m-2" @onclick="Play"><span class="oi oi-media-play" aria-hidden="true"></span></button>
+    <button class="btn btn-danger m-2" @onclick="Stop"><span class="oi oi-media-stop" aria-hidden="true"></span></button>
+    <button class="btn btn-warning m-2" @onclick="Next"><span class="oi oi-media-skip-forward" aria-hidden="true"></span></button>
+</div>
+
+<h1>Song List</h1>
+
+@if (songs == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (songs.Count == 0)
+{
+    <p><em>No songs loaded.</em></p>
+}
+else
+{
+    <EjsToast ID="toast_default" @ref="ToastObj" Content="@ToastContent" TimeOut="2000" ShowProgressBar="true">
+        <ToastPosition X="Center" Y="Bottom"></ToastPosition>
+    </EjsToast>
+    <div class="col-lg-12 control-section">
+        <div class="content-wrapper">
+            <div class="row">
+                <EjsGrid @ref="@Grid" DataSource="@songs" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowSelection="true" ContextMenuItems="@contextmenu" Toolbar="@toolbar">
+                    <GridPageSettings PageCount="5" PageSize="10"></GridPageSettings>
+                    <GridSelectionSettings Type="SelectionType.Single" Mode="SelectionMode.Row"></GridSelectionSettings>
+                    <GridEvents ContextMenuItemClicked="OnContextMenuClick" TValue="Song"></GridEvents>
+                    <GridFilterSettings Type="Syncfusion.EJ2.Blazor.Grids.FilterType.Menu"></GridFilterSettings>
+                    <GridColumns>
+                        <GridColumn Field=@nameof(Song.Title) HeaderText="Title"></GridColumn>
+                        <GridColumn Field=@nameof(Song.Artist) HeaderText="Artist"></GridColumn>
+                    </GridColumns>
+                </EjsGrid>
+            </div>
+        </div>
+    </div>
+    <p><em>Drag down to update list.</em></p>
+}
+
+
+@code {
+    EjsGrid<Song> Grid;
+    private List<Song> songs;
+    private List<ContextMenuItemModel> contextmenu;
+    private List<string> toolbar;
+    private EjsToast ToastObj;
+    private string ToastContent = "Song Added To Queue";
+
+    protected override async Task OnInitializedAsync()
+    {
+        //State.Songs = await SongService.GetAllSongsAsync();
+
+        songs = State.Songs;
+
+        toolbar = new List<string>()
+    {
+            "Search"
+        };
+
+        contextmenu = new List<ContextMenuItemModel>()
+    {
+            new ContextMenuItemModel
+            {
+                Text = "Add To Queue",
+                Target = ".e-content",
+                Id = "mnuAddToQueue"
+            },
+            new ContextMenuItemModel
+            {
+                Text = "Add Same Artist Songs To Queue",
+                Target = ".e-content",
+                Id = "mnuAddArtistToQueue"
+            }
+        };
+    }
+
+    public async void OnContextMenuClick(MenuEventArgs args)
+    {
+        var item = await Grid.GetSelectedRecords();
+        if (args.Item.Id == "mnuAddToQueue" && item.Count > 0)
+        {
+            State.Queue.Add(item[0]);
+            await ToastObj.Show();
+        }
+        else if (args.Item.Id == "mnuAddArtistToQueue" && item.Count > 0)
+        {
+            var artistSongs = (from r in State.Songs where r.Artist.Equals(item[0].Artist, StringComparison.OrdinalIgnoreCase) select r).ToList();
+            foreach(var o in artistSongs)
+            {
+                State.Queue.Add(o);
+            }
+            await ToastObj.Show();
+        }
+    }
+
+
+    private async Task Play()
+    {
+        await QueueService.Play();
+    }
+
+    private async Task Stop()
+    {
+        await QueueService.Stop(false);
+    }
+
+    private async Task Next()
+    {
+        await QueueService.NextSong();
+    }
+}
