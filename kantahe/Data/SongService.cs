@@ -27,13 +27,17 @@ namespace kantahe.Data
                 var exist = songs.FirstOrDefault(r => r.ID == o["ID"].ToString());
                 if (exist == null)
                 {
-                    songs.Add(new Song()
+                    var fn = Path.Combine(folder, o["FileName"].ToString());
+                    if (File.Exists(fn))
                     {
-                        Artist = o["Artist"].ToString().ToUpper(),
-                        Title = o["Title"].ToString().ToUpper(),
-                        ID = o["ID"].ToString(),
-                        Filename = Path.Combine(folder, o["FileName"].ToString())
-                    });
+                        songs.Add(new Song()
+                        {
+                            Artist = o["Artist"].ToString().Trim().ToUpper(),
+                            Title = o["Title"].ToString().Trim().ToUpper(),
+                            ID = o["ID"].ToString(),
+                            Filename = fn
+                        });
+                    }                    
                 }                
             }
             return Task.FromResult(songs);

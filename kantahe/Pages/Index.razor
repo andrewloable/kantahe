@@ -27,6 +27,8 @@ else
         <div class="content-wrapper">
             <div class="row">
                 <EjsGrid DataSource="@queues" AllowPaging="true">
+                    <GridPageSettings PageCount="5" PageSize="100"></GridPageSettings>
+                    <GridSelectionSettings Type="SelectionType.Single" Mode="SelectionMode.Row"></GridSelectionSettings>
                     <GridColumns>
                         <GridColumn Field=@nameof(Song.Title) HeaderText="Title"></GridColumn>
                         <GridColumn Field=@nameof(Song.Artist) HeaderText="Artist"></GridColumn>

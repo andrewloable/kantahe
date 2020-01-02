@@ -12,6 +12,8 @@ namespace kantahe.Data
 {
     public class QueueService
     {
+        private Random rnd = new Random();
+
         public async Task Play()
         {
             if (State.Status != PlayState.Playing)
@@ -49,7 +51,10 @@ namespace kantahe.Data
                 State.Status = PlayState.Stopped;                
                 if (State.ContinueNextSong)
                 {
-                    RemoveTopMostSong();
+                    if (!State.IsPlayingRandom)
+                    {
+                        RemoveTopMostSong();
+                    }                    
                     _ = Play();
                 }
             };
@@ -76,9 +81,11 @@ namespace kantahe.Data
         {
             if (State.Queue.Count > 0)
             {
+                State.IsPlayingRandom = false;
                 return State.Queue[0];
             }
-            return null;
+            State.IsPlayingRandom = true;
+            return State.Songs[rnd.Next(State.Songs.Count)];
         }
     }
 }

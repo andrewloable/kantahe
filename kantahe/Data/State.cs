@@ -10,6 +10,7 @@ namespace kantahe.Data
         public static PlayState Status { get; set; }
         public static string VLCPath { get; set; }
         public static bool ContinueNextSong { get; set; }
+        public static bool IsPlayingRandom { get; set; }
     }
 
     public enum PlayState
