@@ -15,7 +15,11 @@ namespace kantahe
     {
         public static void Main(string[] args)
         {
-            Data.TaskbarService.Hide();
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                Data.TaskbarService.Hide();
+            }
+            
             CreateHostBuilder(args).Build().Run();
         }
 
