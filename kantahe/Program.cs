@@ -15,6 +15,7 @@ namespace kantahe
     {
         public static void Main(string[] args)
         {
+            Data.TaskbarService.Hide();
             CreateHostBuilder(args).Build().Run();
         }
 
