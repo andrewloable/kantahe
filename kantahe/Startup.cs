@@ -35,12 +35,13 @@ namespace kantahe
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public async void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             //Register Syncfusion license
             Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("MTkwNTUyQDMxMzcyZTM0MmUzME51RGdLK1J2OHNDWTB3R1JsQnBQNjI5Ynl6cmJEdFhYN3J1czZtNGFmS2M9");
             //Initialize State
-            State.Songs = new List<Song>();
+            var songservice = new SongService(Configuration);
+            State.Songs = await songservice.GetAllSongsAsync();
             State.Queue = new ObservableCollection<Song>();
             State.Status = PlayState.Stopped;
             State.VLCPath = Configuration["VLCPath"];

@@ -31,7 +31,7 @@ else
         <div class="content-wrapper">
             <div class="row">
                 <EjsGrid @ref="@Grid" DataSource="@songs" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowSelection="true" ContextMenuItems="@contextmenu" Toolbar="@toolbar">
-                    <GridPageSettings PageCount="5" PageSize="100"></GridPageSettings>
+                    <GridPageSettings PageCount="5" PageSize="10"></GridPageSettings>
                     <GridSelectionSettings Type="SelectionType.Single" Mode="SelectionMode.Row"></GridSelectionSettings>
                     <GridEvents ContextMenuItemClicked="OnContextMenuClick" TValue="Song"></GridEvents>
                     <GridFilterSettings Type="Syncfusion.EJ2.Blazor.Grids.FilterType.Menu"></GridFilterSettings>
@@ -57,7 +57,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        State.Songs = await SongService.GetAllSongsAsync();
+        //State.Songs = await SongService.GetAllSongsAsync();
 
         songs = State.Songs;
 
@@ -67,12 +67,18 @@ else
         };
 
         contextmenu = new List<ContextMenuItemModel>()
-{
+    {
             new ContextMenuItemModel
             {
                 Text = "Add To Queue",
                 Target = ".e-content",
                 Id = "mnuAddToQueue"
+            },
+            new ContextMenuItemModel
+            {
+                Text = "Add Same Artist Songs To Queue",
+                Target = ".e-content",
+                Id = "mnuAddArtistToQueue"
             }
         };
     }
@@ -83,6 +89,15 @@ else
         if (args.Item.Id == "mnuAddToQueue" && item.Count > 0)
         {
             State.Queue.Add(item[0]);
+            await ToastObj.Show();
+        }
+        else if (args.Item.Id == "mnuAddArtistToQueue" && item.Count > 0)
+        {
+            var artistSongs = (from r in State.Songs where r.Artist.Equals(item[0].Artist, StringComparison.OrdinalIgnoreCase) select r).ToList();
+            foreach(var o in artistSongs)
+            {
+                State.Queue.Add(o);
+            }
             await ToastObj.Show();
         }
     }

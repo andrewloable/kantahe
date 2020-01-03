@@ -85,7 +85,11 @@ namespace kantahe.Data
                 return State.Queue[0];
             }
             State.IsPlayingRandom = true;
-            return State.Songs[rnd.Next(State.Songs.Count)];
+            if (State.Songs.Count > 0)
+            {
+                return State.Songs[rnd.Next(State.Songs.Count)];
+            }
+            return null;
         }
     }
 }
