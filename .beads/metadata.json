@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "kantahe",
+  "project_id": "4a6e705c-5208-4be6-9d56-b7da28d7e3ee"
+}
