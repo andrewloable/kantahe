@@ -8,7 +8,7 @@ gradients wrong) and ImageMagick `magick` (resizing, favicon.ico). Outputs:
 
     branding/*.svg            sources: icon, icon-small (<= 48 px), maskable, mark, lockups, splash
     branding/export/          favicon.ico/.svg, PNG icons, apple-touch-icon, maskable icons,
-                              lockup PNGs, 1920x1080 splash for the Pi kiosk
+                              lockup PNGs, 1920x1080 splash for TV apps
 
 The design: a handheld singing mic whose ball grille is half "sung" (yellow) and half "unsung"
 (white), the same colour wipe the player draws over lyrics, with two music notes. The wordmark colours "kanta" (Tagalog
@@ -22,7 +22,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 OUT = HERE / "export"
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
-# palette from the sample player (videoke-ks100/web/index.html)
+# palette shared with the player UI
 SUNG, UNSUNG, ACCENT, INK = "#ffd23f", "#ffffff", "#4fd1ff", "#0c1230"
 LIGHT_SUNG, LIGHT_INK = "#c98a00", "#1d2550"  # wordmark on white backgrounds
 
