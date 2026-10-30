@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kantahe">
+<title>Kantahe</title>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#2a3592"/><stop offset=".55" stop-color="#141a46"/>
+    <stop offset="1" stop-color="#4a1c6e"/>
+  </linearGradient>
+  <radialGradient id="glow" cx=".5" cy=".42" r=".55">
+    <stop offset="0" stop-color="#4fd1ff" stop-opacity=".22"/>
+    <stop offset="1" stop-color="#4fd1ff" stop-opacity="0"/>
+  </radialGradient></defs>
+<rect width="512" height="512" rx="112" fill="url(#bg)"/>
+<rect width="512" height="512" rx="112" fill="url(#glow)"/>
+  <g transform="translate(-6 -15)">
+    <clipPath id="ball"><circle cx="331" cy="170" r="88"/></clipPath>
+    <g clip-path="url(#ball)">
+      <rect x="243" y="82" width="94" height="176" fill="#ffd23f"/>
+      <rect x="337" y="82" width="88" height="176" fill="#ffffff"/>
+    </g>
+    <g transform="rotate(30 256 300)">
+      <path d="M206 262H306L284 452Q281 470 263 470H249Q231 470 228 452Z" fill="#ffffff"/>
+      <rect x="200" y="232" width="112" height="32" rx="12" fill="#4fd1ff"/>
+    </g>
+    <g fill="#4fd1ff">
+      <ellipse cx="128" cy="236" rx="24" ry="17" transform="rotate(-20 128 236)"/>
+      <ellipse cx="200" cy="214" rx="24" ry="17" transform="rotate(-20 200 214)"/>
+      <path d="M140 232V124H160V232ZM212 210V102H232V210Z"/>
+      <path d="M140 124L226 98V126L140 152Z"/>
+    </g>
+  </g>
+</svg>

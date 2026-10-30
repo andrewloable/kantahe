@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-label="Kantahe">
+<title>Kantahe</title>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#2a3592"/><stop offset=".55" stop-color="#141a46"/>
+    <stop offset="1" stop-color="#4a1c6e"/>
+  </linearGradient>
+  <radialGradient id="glow" cx=".5" cy=".42" r=".55">
+    <stop offset="0" stop-color="#4fd1ff" stop-opacity=".22"/>
+    <stop offset="1" stop-color="#4fd1ff" stop-opacity="0"/>
+  </radialGradient></defs>
+<rect width="1920" height="1080" fill="#0a0e22"/>
+<rect width="1920" height="1080" fill="url(#glow)"/>
+<g transform="translate(810 265) scale(.5859)">
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <g transform="translate(-6 -15)">
+    <clipPath id="ball"><circle cx="331" cy="170" r="88"/></clipPath>
+    <g clip-path="url(#ball)">
+      <rect x="243" y="82" width="94" height="176" fill="#ffd23f"/>
+      <rect x="337" y="82" width="88" height="176" fill="#ffffff"/>
+      <path stroke="#0c1230" stroke-opacity=".16" stroke-width="4" d="M71 50l240 240M591 50l-240 240M99 50l240 240M563 50l-240 240M127 50l240 240M535 50l-240 240M155 50l240 240M507 50l-240 240M183 50l240 240M479 50l-240 240M211 50l240 240M451 50l-240 240M239 50l240 240M423 50l-240 240M267 50l240 240M395 50l-240 240M295 50l240 240M367 50l-240 240M323 50l240 240M339 50l-240 240M351 50l240 240M311 50l-240 240M379 50l240 240M283 50l-240 240M407 50l240 240M255 50l-240 240M435 50l240 240M227 50l-240 240M463 50l240 240M199 50l-240 240M491 50l240 240M171 50l-240 240M519 50l240 240M143 50l-240 240M547 50l240 240M115 50l-240 240M575 50l240 240M87 50l-240 240"/>
+    </g>
+    <g transform="rotate(30 256 300)">
+      <path d="M206 262H306L284 452Q281 470 263 470H249Q231 470 228 452Z" fill="#ffffff"/>
+      <rect x="200" y="232" width="112" height="32" rx="12" fill="#4fd1ff"/>
+      <path d="M256 296V336" stroke="#0c1230" stroke-opacity=".3" stroke-width="10" stroke-linecap="round"/>
+    </g>
+    <g fill="#4fd1ff">
+      <ellipse cx="128" cy="236" rx="24" ry="17" transform="rotate(-20 128 236)"/>
+      <ellipse cx="200" cy="214" rx="24" ry="17" transform="rotate(-20 200 214)"/>
+      <path d="M140 232V124H154V232ZM212 210V102H226V210Z"/>
+      <path d="M140 124L226 98V122L140 148Z"/>
+    </g>
+  </g>
+</g>
+<g transform="translate(521 655)">
+  <g fill="none" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="#ffd23f" d="M10 0V150M72 50L10 112M36 86L74 150
+      M216 100A50 50 0 1 1 116 100A50 50 0 1 1 216 100M216 50V150
+      M260 50V150M260 100A45 45 0 0 1 350 100V150
+      M414 10V125A25 25 0 0 0 439 150M394 50H446
+      M590 100A50 50 0 1 1 490 100A50 50 0 1 1 590 100M590 50V150"/>
+    <path stroke="#ffffff" d="M634 0V150M634 100A45 45 0 0 1 724 100V150
+      M768 100H868A50 50 0 1 0 853.36 135.36"/>
+  </g></g>
+</svg>
