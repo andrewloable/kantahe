@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package kantahe.v1;
+
+import "kantahe/v1/common.proto";
+
+// Read-only library access; any signed-in user (UNAUTHENTICATED otherwise).
+service CatalogService {
+  // Signed-in user. Digits-only query matches the number prefix, otherwise full-text over title and artist (plan 6).
+  rpc SearchSongs(SearchSongsRequest) returns (SearchSongsResponse);
+  // Signed-in user. Artists with their song counts, optionally restricted to a first letter ("#" for non-letters).
+  rpc ListArtists(ListArtistsRequest) returns (ListArtistsResponse);
+  // Signed-in user. Number pad lookup; NOT_FOUND for an unknown number.
+  rpc GetSong(GetSongRequest) returns (GetSongResponse);
+  // Signed-in user. Parsed lyrics for a song; NOT_FOUND for an unknown number or a song without lyrics.
+  rpc GetLyrics(GetLyricsRequest) returns (GetLyricsResponse);
+  // Signed-in user. Signed URLs, lyrics and the MIDI mode resolved for the calling device (plan 4.1); ready=false means retry later.
+  rpc GetPlayback(GetPlaybackRequest) returns (GetPlaybackResponse);
+}
+
+// Result order for SearchSongs.
+enum SongSort {
+  // Relevance when a query is given, number otherwise.
+  SONG_SORT_UNSPECIFIED = 0;
+  SONG_SORT_NUMBER = 1;
+  SONG_SORT_TITLE = 2;
+  SONG_SORT_ARTIST = 3;
+}
+
+// How a song is played on the calling device.
+enum PlaybackKind {
+  PLAYBACK_KIND_UNSPECIFIED = 0;
+  // An audio file (an MP3 or the server-rendered MIDI audio) in audio_url.
+  PLAYBACK_KIND_AUDIO = 1;
+  // MIDI synthesized on the client from midi_url and soundfont_url.
+  PLAYBACK_KIND_MIDI_SYNTH = 2;
+}
+
+// Page size defaults to 50; format and letter are optional filters.
+message SearchSongsRequest {
+  string query = 1;
+  Format format = 2;
+  SongSort sort = 3;
+  string letter = 4;
+  string page_token = 5;
+  int32 page_size = 6;
+}
+
+// One page; next_page_token is empty on the last page.
+message SearchSongsResponse {
+  repeated Song songs = 1;
+  string next_page_token = 2;
+}
+
+// An artist name and how many songs carry it.
+message Artist {
+  string name = 1;
+  int32 song_count = 2;
+}
+
+// Optional first-letter filter and paging.
+message ListArtistsRequest {
+  string letter = 1;
+  string page_token = 2;
+  int32 page_size = 3;
+}
+
+// One page of artists.
+message ListArtistsResponse {
+  repeated Artist artists = 1;
+  string next_page_token = 2;
+}
+
+// The number to look up.
+message GetSongRequest {
+  string number = 1;
+}
+
+// The song.
+message GetSongResponse {
+  Song song = 1;
+}
+
+// The number whose lyrics are wanted.
+message GetLyricsRequest {
+  string number = 1;
+}
+
+// The lyrics.
+message GetLyricsResponse {
+  Lyrics lyrics = 1;
+}
+
+// The number to play; the calling device decides the MIDI mode.
+message GetPlaybackRequest {
+  string number = 1;
+}
+
+// Everything a player needs for one song.
+message Playback {
+  Song song = 1;
+  PlaybackKind kind = 2;
+  string audio_url = 3;
+  string midi_url = 4;
+  string soundfont_url = 5;
+  MidiMode effective_midi_mode = 6;
+  bool ready = 7;
+  int32 retry_after_ms = 8;
+  Lyrics lyrics = 9;
+}
+
+// The playback description.
+message GetPlaybackResponse {
+  Playback playback = 1;
+}

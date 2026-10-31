@@ -1,0 +1,253 @@
+syntax = "proto3";
+
+package kantahe.v1;
+
+import "kantahe/v1/common.proto";
+
+// Per-user playback state; every RPC acts on the calling user only, never on another user's queue (plan 7).
+service SessionService {
+  // Signed-in user. Streams the caller's full State at once and after every change (positions never push).
+  rpc WatchState(WatchStateRequest) returns (stream WatchStateResponse);
+  // Signed-in user. Polling fallback for WatchState.
+  rpc GetState(GetStateRequest) returns (GetStateResponse);
+  // Signed-in user. Appends to the caller's queue and never interrupts the current song; NOT_FOUND for an unknown number.
+  rpc AddToQueue(AddToQueueRequest) returns (AddToQueueResponse);
+  // Signed-in user. Appends a playlist the caller owns; returns how many songs were added.
+  rpc AddPlaylistToQueue(AddPlaylistToQueueRequest) returns (AddPlaylistToQueueResponse);
+  // Signed-in user. Removes one of the caller's queue items; NOT_FOUND for an unknown item.
+  rpc RemoveFromQueue(RemoveFromQueueRequest) returns (RemoveFromQueueResponse);
+  // Signed-in user. Moves one of the caller's queue items to the front; NOT_FOUND for an unknown item.
+  rpc MoveToTop(MoveToTopRequest) returns (MoveToTopResponse);
+  // Signed-in user. PLAY_HERE makes the calling device the player; PLAY resumes on the current player; PAUSE and SKIP act from any device.
+  rpc Control(ControlRequest) returns (ControlResponse);
+  // Signed-in user. Unset optional fields are left unchanged.
+  rpc UpdateUserSettings(UpdateUserSettingsRequest) returns (UpdateUserSettingsResponse);
+  // Current player device only (FAILED_PRECONDITION otherwise): the song is loaded and can start.
+  rpc Ready(ReadyRequest) returns (ReadyResponse);
+  // Current player device only: position in memory, never pushed to watchers.
+  rpc ReportPosition(ReportPositionRequest) returns (ReportPositionResponse);
+  // Current player device only: the song ended on its own; loud_readings drive the microphone score.
+  rpc Ended(EndedRequest) returns (EndedResponse);
+  // Signed-in user. Whether the calling device has a usable microphone.
+  rpc ReportMic(ReportMicRequest) returns (ReportMicResponse);
+  // Signed-in user. Memory and dropouts of the calling device; returns the device with its effective MIDI mode.
+  rpc ReportDevice(ReportDeviceRequest) returns (ReportDeviceResponse);
+  // Signed-in user. Sets the MIDI mode of one of the caller's devices; NOT_FOUND for another user's device.
+  rpc SetMidiMode(SetMidiModeRequest) returns (SetMidiModeResponse);
+}
+
+// Whether the current song is playing or paused.
+enum PlayStatus {
+  PLAY_STATUS_UNSPECIFIED = 0;
+  PLAY_STATUS_PAUSED = 1;
+  PLAY_STATUS_PLAYING = 2;
+}
+
+// Where the current or next song came from.
+enum SongSource {
+  SONG_SOURCE_UNSPECIFIED = 0;
+  SONG_SOURCE_QUEUE = 1;
+  SONG_SOURCE_RANDOM = 2;
+}
+
+// How the end-of-song score is produced.
+enum ScoreMode {
+  SCORE_MODE_UNSPECIFIED = 0;
+  SCORE_MODE_OFF = 1;
+  SCORE_MODE_RANDOM = 2;
+  SCORE_MODE_MICROPHONE = 3;
+}
+
+// Difficulty of the score.
+enum ScoreLevel {
+  SCORE_LEVEL_UNSPECIFIED = 0;
+  SCORE_LEVEL_LOW = 1;
+  SCORE_LEVEL_MIDDLE = 2;
+  SCORE_LEVEL_HIGH = 3;
+}
+
+// What a remote or player can ask the server to do.
+enum ControlAction {
+  CONTROL_ACTION_UNSPECIFIED = 0;
+  CONTROL_ACTION_PLAY = 1;
+  CONTROL_ACTION_PLAY_HERE = 2;
+  CONTROL_ACTION_PAUSE = 3;
+  CONTROL_ACTION_SKIP = 4;
+}
+
+// Asks nothing; the stream belongs to the calling device.
+message WatchStateRequest {}
+
+// One full snapshot of the caller's state.
+message WatchStateResponse {
+  State state = 1;
+}
+
+// Asks nothing.
+message GetStateRequest {}
+
+// The caller's current state.
+message GetStateResponse {
+  State state = 1;
+}
+
+// The number of the song to append.
+message AddToQueueRequest {
+  string number = 1;
+}
+
+// The new queue item.
+message AddToQueueResponse {
+  QueueItem item = 1;
+}
+
+// A playlist owned by the caller.
+message AddPlaylistToQueueRequest {
+  string playlist_id = 1;
+}
+
+// Number of songs appended.
+message AddPlaylistToQueueResponse {
+  int32 added = 1;
+}
+
+// The queue item to remove.
+message RemoveFromQueueRequest {
+  string item_id = 1;
+}
+
+// Empty.
+message RemoveFromQueueResponse {}
+
+// The queue item to move to the front.
+message MoveToTopRequest {
+  string item_id = 1;
+}
+
+// Empty.
+message MoveToTopResponse {}
+
+// The action to perform.
+message ControlRequest {
+  ControlAction action = 1;
+}
+
+// Empty; the new state arrives through WatchState.
+message ControlResponse {}
+
+// Partial update of the caller's score settings.
+message UpdateUserSettingsRequest {
+  optional ScoreMode score_mode = 1;
+  optional ScoreLevel score_level = 2;
+}
+
+// The settings after the update.
+message UpdateUserSettingsResponse {
+  UserSettings settings = 1;
+}
+
+// The song the player has loaded.
+message ReadyRequest {
+  string number = 1;
+}
+
+// Empty.
+message ReadyResponse {}
+
+// Playback position of the song with this number.
+message ReportPositionRequest {
+  string number = 1;
+  int64 position_ms = 2;
+}
+
+// Empty.
+message ReportPositionResponse {}
+
+// The song that ended and how many microphone readings were loud.
+message EndedRequest {
+  string number = 1;
+  int32 loud_readings = 2;
+}
+
+// Empty.
+message EndedResponse {}
+
+// True when the device has a usable microphone.
+message ReportMicRequest {
+  bool available = 1;
+}
+
+// Empty.
+message ReportMicResponse {}
+
+// Device facts: memory in MB and how many audio dropouts were seen.
+message ReportDeviceRequest {
+  int32 memory_mb = 1;
+  int32 dropouts = 2;
+}
+
+// The calling device.
+message ReportDeviceResponse {
+  Device device = 1;
+}
+
+// The device and the mode to set.
+message SetMidiModeRequest {
+  string device_id = 1;
+  MidiMode mode = 2;
+}
+
+// The device after the change.
+message SetMidiModeResponse {
+  Device device = 1;
+}
+
+// One entry of the caller's queue.
+message QueueItem {
+  string id = 1;
+  Song song = 2;
+}
+
+// The current song; remotes extrapolate position from position_at_ms (server clock).
+message NowPlaying {
+  Song song = 1;
+  SongSource source = 2;
+  int64 position_ms = 3;
+  int64 position_at_ms = 4;
+}
+
+// The song that follows the current one, pre-picked when the current one starts.
+message UpNext {
+  Song song = 1;
+  SongSource source = 2;
+}
+
+// The caller's score settings.
+message UserSettings {
+  ScoreMode score_mode = 1;
+  ScoreLevel score_level = 2;
+}
+
+// The score shown after a song until until_ms; fanfare is 0 for none or 1 to 3.
+message Score {
+  string number = 1;
+  bool has_value = 2;
+  int32 value = 3;
+  string comment = 4;
+  int32 fanfare = 5;
+  string reason = 6;
+  int64 until_ms = 7;
+}
+
+// Everything one user's devices need to show; score is unset when no score is showing.
+message State {
+  PlayStatus status = 1;
+  string player_device_id = 2;
+  repeated Device devices = 3;
+  NowPlaying now = 4;
+  repeated QueueItem queue = 5;
+  UpNext up_next = 6;
+  UserSettings settings = 7;
+  Score score = 8;
+  int64 server_time_ms = 9;
+}

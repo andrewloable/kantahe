@@ -1,0 +1,150 @@
+syntax = "proto3";
+
+package kantahe.v1;
+
+import "kantahe/v1/common.proto";
+
+// Administration; every RPC requires the admin role (PERMISSION_DENIED otherwise).
+service AdminService {
+  // Admin only. Lists every user.
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  // Admin only. ALREADY_EXISTS for a duplicate email; the user must change the temporary password.
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  // Admin only. Unset optional fields are left unchanged; the last admin cannot be demoted or disabled.
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+  // Admin only. Sets a temporary password, must_change_password, and revokes the user's devices.
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+  // Admin only. The last admin cannot be deleted.
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+  // Admin only. Signs out every device of the user and returns how many.
+  rpc RevokeUserDevices(RevokeUserDevicesRequest) returns (RevokeUserDevicesResponse);
+  // Admin only. Title and artist edits survive rescans and always win over file metadata.
+  rpc UpdateSong(UpdateSongRequest) returns (UpdateSongResponse);
+  // Admin only. Removes the entry and its file; fails with the reason if the file cannot be deleted.
+  rpc DeleteSong(DeleteSongRequest) returns (DeleteSongResponse);
+  // Admin only. Rescans watched folders and reports the counts.
+  rpc Rescan(RescanRequest) returns (RescanResponse);
+  // Admin only. Reads the server settings.
+  rpc GetServerSettings(GetServerSettingsRequest) returns (GetServerSettingsResponse);
+  // Admin only. Unset optional fields are left unchanged; INVALID_ARGUMENT for out-of-range values.
+  rpc UpdateServerSettings(UpdateServerSettingsRequest) returns (UpdateServerSettingsResponse);
+}
+
+// Asks nothing.
+message ListUsersRequest {}
+
+// All users.
+message ListUsersResponse {
+  repeated User users = 1;
+}
+
+// A new account with a temporary password.
+message CreateUserRequest {
+  string email = 1;
+  string display_name = 2;
+  string temporary_password = 3;
+  bool admin = 4;
+  bool uploader = 5;
+}
+
+// The created user.
+message CreateUserResponse {
+  User user = 1;
+}
+
+// Partial update; only fields that are set change.
+message UpdateUserRequest {
+  string user_id = 1;
+  optional string display_name = 2;
+  optional bool admin = 3;
+  optional bool uploader = 4;
+  optional bool disabled = 5;
+}
+
+// The user after the update.
+message UpdateUserResponse {
+  User user = 1;
+}
+
+// A new temporary password for the user.
+message ResetPasswordRequest {
+  string user_id = 1;
+  string temporary_password = 2;
+}
+
+// Empty.
+message ResetPasswordResponse {}
+
+// The user to delete.
+message DeleteUserRequest {
+  string user_id = 1;
+}
+
+// Empty.
+message DeleteUserResponse {}
+
+// The user whose devices are signed out.
+message RevokeUserDevicesRequest {
+  string user_id = 1;
+}
+
+// Number of devices signed out.
+message RevokeUserDevicesResponse {
+  int32 revoked = 1;
+}
+
+// Partial update of a song's displayed fields.
+message UpdateSongRequest {
+  string number = 1;
+  optional string title = 2;
+  optional string artist = 3;
+}
+
+// The song after the update.
+message UpdateSongResponse {
+  Song song = 1;
+}
+
+// The song to delete.
+message DeleteSongRequest {
+  string number = 1;
+}
+
+// Empty.
+message DeleteSongResponse {}
+
+// Asks nothing.
+message RescanRequest {}
+
+// Counts from the scan.
+message RescanResponse {
+  int32 added = 1;
+  int32 updated = 2;
+  int32 removed = 3;
+  int32 failed = 4;
+}
+
+// Asks nothing.
+message GetServerSettingsRequest {}
+
+// The current settings.
+message GetServerSettingsResponse {
+  ServerSettings settings = 1;
+}
+
+// Server-wide limits: upload size per file and how long the score screen shows.
+message ServerSettings {
+  int64 max_upload_bytes = 1;
+  int32 score_seconds = 2;
+}
+
+// Partial update of the server settings.
+message UpdateServerSettingsRequest {
+  optional int64 max_upload_bytes = 1;
+  optional int32 score_seconds = 2;
+}
+
+// The settings after the update.
+message UpdateServerSettingsResponse {
+  ServerSettings settings = 1;
+}

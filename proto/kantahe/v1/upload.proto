@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package kantahe.v1;
+
+import "kantahe/v1/common.proto";
+
+// Song upload; requires the uploader role (PERMISSION_DENIED otherwise).
+service UploadService {
+  // Uploader or admin. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+  rpc UploadSong(UploadSongRequest) returns (UploadSongResponse);
+}
+
+// Outcome of one upload.
+enum UploadStatus {
+  UPLOAD_STATUS_UNSPECIFIED = 0;
+  UPLOAD_STATUS_ADDED = 1;
+  UPLOAD_STATUS_DUPLICATE = 2;
+  UPLOAD_STATUS_REJECTED = 3;
+}
+
+// The original filename (its leading digits become the song number) and the file bytes (at most the configured limit).
+message UploadSongRequest {
+  string filename = 1;
+  bytes content = 2;
+}
+
+// status ADDED carries the song, REJECTED carries the reason, DUPLICATE carries the existing song.
+message UploadSongResponse {
+  UploadStatus status = 1;
+  Song song = 2;
+  string reason = 3;
+}

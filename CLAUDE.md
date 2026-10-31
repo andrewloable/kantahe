@@ -47,7 +47,8 @@ headless Chrome and ImageMagick only resizes and builds `favicon.ico`.
 ## Architecture (from the plan)
 
 * **ConnectRPC between the server and every frontend (D3, D7)**: connect-go, connect-es (Angular),
-  connect-dart (Flutter); contract in `proto/`, generated code committed. Browsers only get unary and
+  connect-dart (Flutter); contract in `proto/`, generated code committed. The Go side uses connect-go
+  **v1** (`connectrpc.com/connect` v1.21.0, plugin v1.19.1), not v2: the later tasks and `go 1.25` assume the v1 API. Browsers only get unary and
   server-streaming calls, so never design a client-streaming or bidi RPC. `SessionService.WatchState`
   streams the caller's full `State` snapshot at once and after every change. Uploads are ConnectRPC too;
   only media (audio with HTTP Range) is plain HTTP.
@@ -81,6 +82,10 @@ headless Chrome and ImageMagick only resizes and builds `favicon.ico`.
 
 ## Rules specific to this repo
 
+* **Never run `git commit`, `git push` or `bd dolt push`.** Leave changes in the working tree; the
+  owner commits and pushes manually. Beads is set to `dolt.local-only` so it does not push either.
+* Work is tracked in beads: every implementation task has a review task, and downstream tasks are
+  blocked on the upstream review. Start with `bd ready`.
 * **Never commit song files** (`.kar`, `.karmp3`, `.mid`, `.mp3` outside `fanfare/`). Kantahe ships no
   songs. Go tests generate synthetic MIDI/LRC/ZIP fixtures; tests that need a real library read
   `KANTAHE_TEST_LIBRARY` and skip when it is unset.

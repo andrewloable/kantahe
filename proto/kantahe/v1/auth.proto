@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package kantahe.v1;
+
+import "kantahe/v1/common.proto";
+
+// Sign-in, tokens, devices and TV code sign-in (plan 5).
+service AuthService {
+  // Public. Returns the server version and whether the first admin still has to be created.
+  rpc GetServerInfo(GetServerInfoRequest) returns (GetServerInfoResponse);
+  // Public, only while no user exists; FAILED_PRECONDITION once any user exists.
+  rpc Setup(SetupRequest) returns (SetupResponse);
+  // Public. UNAUTHENTICATED for bad credentials, PERMISSION_DENIED for a disabled user, RESOURCE_EXHAUSTED while backed off.
+  rpc Login(LoginRequest) returns (LoginResponse);
+  // Signed-in user; revokes the calling device's token.
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  // Signed-in user (also while must_change_password); PERMISSION_DENIED for a wrong current password, INVALID_ARGUMENT for a weak new one; revokes other devices.
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+  // Signed-in user (also while must_change_password); returns the caller.
+  rpc Me(MeRequest) returns (MeResponse);
+  // Signed-in user; lists only the caller's own devices.
+  rpc ListMyDevices(ListMyDevicesRequest) returns (ListMyDevicesResponse);
+  // Signed-in user; NOT_FOUND for a device that is not the caller's.
+  rpc RevokeDevice(RevokeDeviceRequest) returns (RevokeDeviceResponse);
+  // Public (TV): starts a 5-minute code sign-in; RESOURCE_EXHAUSTED after too many pending codes from one IP.
+  rpc StartCodeLogin(StartCodeLoginRequest) returns (StartCodeLoginResponse);
+  // Public (TV): streams until the code is approved (token) or expires.
+  rpc WaitCodeLogin(WaitCodeLoginRequest) returns (stream WaitCodeLoginResponse);
+  // Signed-in user approves a TV's code; NOT_FOUND for an unknown, used or expired code.
+  rpc ApproveCode(ApproveCodeRequest) returns (ApproveCodeResponse);
+}
+
+// Asks nothing.
+message GetServerInfoRequest {}
+
+// Version string and whether Setup is still allowed.
+message GetServerInfoResponse {
+  string version = 1;
+  bool setup_required = 2;
+}
+
+// Creates the first admin and signs in the calling device.
+message SetupRequest {
+  string email = 1;
+  string password = 2;
+  string display_name = 3;
+  string device_name = 4;
+  DeviceType device_type = 5;
+}
+
+// The new admin's device token.
+message SetupResponse {
+  AuthToken auth = 1;
+}
+
+// Email and password sign-in for one device.
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+  string device_name = 3;
+  DeviceType device_type = 4;
+}
+
+// The device token for the new device.
+message LoginResponse {
+  AuthToken auth = 1;
+}
+
+// Asks nothing; the device is the caller's.
+message LogoutRequest {}
+
+// Empty.
+message LogoutResponse {}
+
+// Both passwords are checked server-side.
+message ChangePasswordRequest {
+  string current_password = 1;
+  string new_password = 2;
+}
+
+// Empty.
+message ChangePasswordResponse {}
+
+// Asks nothing.
+message MeRequest {}
+
+// The calling user.
+message MeResponse {
+  User user = 1;
+}
+
+// Asks nothing.
+message ListMyDevicesRequest {}
+
+// The caller's devices, with is_caller set on one of them.
+message ListMyDevicesResponse {
+  repeated Device devices = 1;
+}
+
+// The device to sign out.
+message RevokeDeviceRequest {
+  string device_id = 1;
+}
+
+// Empty.
+message RevokeDeviceResponse {}
+
+// The TV names itself so the approver can recognise it.
+message StartCodeLoginRequest {
+  string device_name = 1;
+  DeviceType device_type = 2;
+}
+
+// login_id is a secret the TV keeps; code is the 6-character code shown to the user.
+message StartCodeLoginResponse {
+  string login_id = 1;
+  string code = 2;
+  int64 expires_at_unix = 3;
+  string approve_url = 4;
+}
+
+// The secret from StartCodeLogin.
+message WaitCodeLoginRequest {
+  string login_id = 1;
+}
+
+// Exactly one event: approved with the token, or expired.
+message WaitCodeLoginResponse {
+  oneof result {
+    AuthToken approved = 1;
+    bool expired = 2;
+  }
+}
+
+// The code shown on the TV.
+message ApproveCodeRequest {
+  string code = 1;
+}
+
+// The name of the TV that was approved.
+message ApproveCodeResponse {
+  string device_name = 1;
+}

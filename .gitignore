@@ -24,3 +24,9 @@ Icon
 .beads-credential-key
 .beads/proxieddb/
 *.gate.lock*
+
+# Build output
+/server/dist/
+/dist/
+*.test
+/server/kantahe

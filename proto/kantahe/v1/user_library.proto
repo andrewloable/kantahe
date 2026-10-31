@@ -1,0 +1,131 @@
+syntax = "proto3";
+
+package kantahe.v1;
+
+import "kantahe/v1/common.proto";
+
+// Favourites, history and playlists; always the calling user's own data.
+service UserLibraryService {
+  // Signed-in user; NOT_FOUND for an unknown song.
+  rpc SetFavourite(SetFavouriteRequest) returns (SetFavouriteResponse);
+  // Signed-in user; the caller's favourites.
+  rpc ListFavourites(ListFavouritesRequest) returns (ListFavouritesResponse);
+  // Signed-in user; the caller's sung songs.
+  rpc ListHistory(ListHistoryRequest) returns (ListHistoryResponse);
+  // Signed-in user; the caller's playlists.
+  rpc ListPlaylists(ListPlaylistsRequest) returns (ListPlaylistsResponse);
+  // Signed-in user; NOT_FOUND for another user's playlist.
+  rpc GetPlaylist(GetPlaylistRequest) returns (GetPlaylistResponse);
+  // Signed-in user; numbers that do not exist are rejected with INVALID_ARGUMENT.
+  rpc CreatePlaylist(CreatePlaylistRequest) returns (CreatePlaylistResponse);
+  // Signed-in user; NOT_FOUND for another user's playlist; numbers are replaced only when replace_numbers is true.
+  rpc UpdatePlaylist(UpdatePlaylistRequest) returns (UpdatePlaylistResponse);
+  // Signed-in user; NOT_FOUND for another user's playlist.
+  rpc DeletePlaylist(DeletePlaylistRequest) returns (DeletePlaylistResponse);
+}
+
+// Adds or removes a favourite.
+message SetFavouriteRequest {
+  string number = 1;
+  bool favourite = 2;
+}
+
+// Empty.
+message SetFavouriteResponse {}
+
+// Paging only.
+message ListFavouritesRequest {
+  string page_token = 1;
+  int32 page_size = 2;
+}
+
+// One page of favourites.
+message ListFavouritesResponse {
+  repeated Song songs = 1;
+  string next_page_token = 2;
+}
+
+// Paging only.
+message ListHistoryRequest {
+  string page_token = 1;
+  int32 page_size = 2;
+}
+
+// One sung (or skipped) song; has_score is false for skipped songs and when scoring is off.
+message HistoryEntry {
+  Song song = 1;
+  int64 sung_at_unix = 2;
+  bool skipped = 3;
+  bool has_score = 4;
+  int32 score = 5;
+}
+
+// One page of history.
+message ListHistoryResponse {
+  repeated HistoryEntry entries = 1;
+  string next_page_token = 2;
+}
+
+// Asks nothing.
+message ListPlaylistsRequest {}
+
+// A playlist without its songs.
+message PlaylistSummary {
+  string id = 1;
+  string name = 2;
+  int32 song_count = 3;
+}
+
+// The caller's playlists.
+message ListPlaylistsResponse {
+  repeated PlaylistSummary playlists = 1;
+}
+
+// The playlist to read.
+message GetPlaylistRequest {
+  string id = 1;
+}
+
+// A playlist with its songs in order.
+message Playlist {
+  string id = 1;
+  string name = 2;
+  repeated Song songs = 3;
+}
+
+// The playlist.
+message GetPlaylistResponse {
+  Playlist playlist = 1;
+}
+
+// A new playlist with song numbers in order.
+message CreatePlaylistRequest {
+  string name = 1;
+  repeated string numbers = 2;
+}
+
+// The created playlist.
+message CreatePlaylistResponse {
+  Playlist playlist = 1;
+}
+
+// Rename and/or replace the songs.
+message UpdatePlaylistRequest {
+  string id = 1;
+  optional string name = 2;
+  bool replace_numbers = 3;
+  repeated string numbers = 4;
+}
+
+// The playlist after the update.
+message UpdatePlaylistResponse {
+  Playlist playlist = 1;
+}
+
+// The playlist to delete.
+message DeletePlaylistRequest {
+  string id = 1;
+}
+
+// Empty.
+message DeletePlaylistResponse {}

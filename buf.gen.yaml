@@ -1,0 +1,20 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/andrewloable/kantahe/server/gen
+plugins:
+  - remote: buf.build/protocolbuffers/go:v1.36.12
+    out: server/gen
+    opt: paths=source_relative
+  - remote: buf.build/connectrpc/go:v1.19.1
+    out: server/gen
+    opt: paths=source_relative
+  - remote: buf.build/bufbuild/es:v2.16.0
+    out: web/src/gen
+    opt: target=ts
+  - remote: buf.build/protocolbuffers/dart:v25.1.0
+    out: app/lib/gen
+  - remote: buf.build/connectrpc/dart:v2.0.1
+    out: app/lib/gen
