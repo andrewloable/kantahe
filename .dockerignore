@@ -1,0 +1,15 @@
+# Only what the build needs goes into the build context.
+*
+!server
+!web
+!scripts/soundfont.lock
+
+# Host build output must not leak into the image.
+**/node_modules
+web/dist
+web/.angular
+web/test-results
+web/playwright-report
+server/dist
+server/internal/webui/dist/*
+server/internal/assets/soundfont/*.sf2

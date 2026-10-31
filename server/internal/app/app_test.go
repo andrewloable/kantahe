@@ -105,3 +105,40 @@ func TestRunReleasesThePort(t *testing.T) {
 	}
 	_ = ln.Close()
 }
+
+func TestRunEndsLongRequestsOnCancel(t *testing.T) {
+	a := newApp("127.0.0.1:0")
+	started := make(chan struct{})
+	a.Handle("GET /stream", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.(http.Flusher).Flush()
+		close(started)
+		<-r.Context().Done() // a stream that lives until the server stops
+	}))
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- a.Run(ctx) }()
+	var addr string
+	for i := 0; i < 100 && addr == ""; i++ {
+		addr = a.Addr()
+		time.Sleep(10 * time.Millisecond)
+	}
+	go func() {
+		resp, err := http.Get("http://" + addr + "/stream")
+		if err == nil {
+			_, _ = io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+		}
+	}()
+	<-started
+	begin := time.Now()
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil || time.Since(begin) > 3*time.Second {
+			t.Fatalf("Run returned %v after %v: open streams must end when the server stops", err, time.Since(begin))
+		}
+	case <-time.After(8 * time.Second):
+		t.Fatal("Run waited for an open stream")
+	}
+}

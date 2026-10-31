@@ -58,7 +58,8 @@ func (a *App) Run(ctx context.Context) error {
 	a.mu.Unlock()
 
 	// No Read/WriteTimeout: uploads and streaming RPCs are long-lived.
-	srv := &http.Server{Handler: a.mux, ReadHeaderTimeout: 10 * time.Second}
+	// handlers (streams in particular) see ctx being cancelled, so shutdown does not wait for them
+	srv := &http.Server{Handler: a.mux, ReadHeaderTimeout: 10 * time.Second, BaseContext: func(net.Listener) context.Context { return ctx }}
 	errc := make(chan error, 1)
 	go func() { errc <- srv.Serve(ln) }()
 	a.logger.Info("listening", "addr", a.addr)

@@ -1,0 +1,13 @@
+# HTTPS in front of Kantahe with Caddy (certificates are obtained and renewed automatically).
+# Replace the host name; Kantahe listens on 127.0.0.1:8080 (see docs/reverse-proxy.md).
+karaoke.example.com {
+	# Uploads: this must stay above the server's own upload limit (default 50 MiB, at most 1 GiB).
+	request_body {
+		max_size 64MiB
+	}
+
+	reverse_proxy 127.0.0.1:8080 {
+		# Send every chunk of a streaming response (WatchState, WaitCodeLogin) at once instead of buffering.
+		flush_interval -1
+	}
+}

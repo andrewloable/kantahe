@@ -37,6 +37,78 @@ jobs:
       - run: npx ng test --watch=false
       - run: npx ng build
 
+  e2e:
+    # one run of the whole product: the real server with a synthetic library, the web app, a real browser
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npm run e2e
+        working-directory: web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: web/test-results
+
+  release-build:
+    # the release script end to end: web app and SoundFont embedded, six binaries, the linux one started
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: scripts/build-release.sh v0.0.0-test
+      - run: test "$(ls dist | wc -l)" = 7
+      - run: (cd dist && sha256sum -c SHA256SUMS)
+      - run: scripts/smoke-release.sh dist/kantahe-v0.0.0-test-linux-amd64 v0.0.0-test
+      # the embedded files must not show up in the working tree
+      - run: test -z "$(git status --porcelain -- server/internal/webui server/internal/assets)"
+
+  docker:
+    # the image on both architectures (arm64 under emulation): version, non-root user, web app, restart keeps the data
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux/amd64, linux/arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - run: docker buildx build --platform ${{ matrix.platform }} --build-arg VERSION=v0.0.0-test -t kantahe:test --load .
+      - run: scripts/smoke-docker.sh kantahe:test v0.0.0-test ${{ matrix.platform }}
+
+  deploy-files:
+    # the proxy examples are accepted by Caddy and nginx, the systemd unit passes systemd-analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/check-proxy-configs.sh
+      # systemd-analyze verify wants the program, the user and the folder to exist
+      - run: |
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin kantahe
+          sudo install -m 755 /bin/true /usr/local/bin/kantahe
+          sudo install -d /srv/karaoke
+      - run: systemd-analyze verify deploy/systemd/kantahe.service
+
   flutter:
     runs-on: ubuntu-latest
     defaults:

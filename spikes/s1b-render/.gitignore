@@ -1,0 +1,7 @@
+*.sf2
+*.mid
+*.kar
+*.wav
+*.flac
+*.mp3
+/s1b-render

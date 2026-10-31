@@ -7,7 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "e2e": "playwright test"
   },
   "private": true,
   "packageManager": "npm@12.2.1",
@@ -21,7 +22,9 @@
     "@bufbuild/protobuf": "2.16.0",
     "@connectrpc/connect": "2.3.0",
     "@connectrpc/connect-web": "2.3.0",
+    "fflate": "0.8.2",
     "rxjs": "~7.8.0",
+    "spessasynth_lib": "4.4.2",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
@@ -29,6 +32,9 @@
     "@angular/cli": "^22.2.5",
     "@angular/compiler-cli": "^22.2.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.56.1",
+    "@types/node": "24.10.1",
+    "@vitest/coverage-v8": "^5.0.5",
     "angular-eslint": "22.6.0",
     "eslint": "^10.12.0",
     "jsdom": "^30.0.0",

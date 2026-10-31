@@ -1,0 +1,19 @@
+# docker compose -f deploy/compose.yaml up -d
+# Then open http://localhost:8080 and create the first (admin) account.
+services:
+  kantahe:
+    image: ghcr.io/andrewloable/kantahe:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      # database, uploaded songs and settings
+      - kantahe-data:/data
+      # Your karaoke folder. Add ":ro" (/path/to/karaoke:/library:ro) if admins must not be able to
+      # delete songs from it. Uploaded songs are kept in the data volume, not here.
+      - /path/to/karaoke:/library
+    restart: unless-stopped
+    # Behind a reverse proxy, tell the server its public address (shown to TVs as the approval link):
+    # command: ["--data", "/data", "--library", "/library", "--listen", ":8080", "--public-url", "https://karaoke.example.com"]
+
+volumes:
+  kantahe-data:

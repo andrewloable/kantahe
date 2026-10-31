@@ -49,7 +49,7 @@ func Value(r uint32, l Level) int {
 	case LevelHigh:
 		mod, base = 11, 90
 	}
-	return int(r%uint32(mod)) + base
+	return int(int32(r))%mod + base
 }
 
 // Comment is the sentence shown under the score.

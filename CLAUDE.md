@@ -24,7 +24,7 @@ Do not name or compare Kantahe to other media-server products anywhere in the do
 | `proto/kantahe/v1/` | Protobuf contract for ConnectRPC (`buf.yaml`, `buf.gen.yaml` at the root) | planned |
 | `deploy/` | Dockerfile, compose, service files, reverse-proxy examples | planned |
 | `branding/` | Logo: `build.py` writes every SVG and `export/` (favicons, app icons, lockups, splash) | exists |
-| `fanfare/` | Score fanfares: `fanfare1.mp3` (70–80), `fanfare2.mp3` (81–90), `fanfare3.mp3` (91+) | exists |
+| `server/internal/assets/fanfare/` | Score fanfares (embedded in the server): `fanfare1.mp3` (70–80), `fanfare2.mp3` (81–90), `fanfare3.mp3` (91+) | exists |
 
 ## Commands
 
@@ -37,6 +37,7 @@ cd server && go test ./...                        # all Go tests
 cd server && go test ./... -run TestQueueSkip     # one test
 cd server && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./cmd/kantahe   # any OS/arch the same way
 cd web && ng build && ng test
+cd web && npm run e2e                                # the whole product in a real browser (needs: npx playwright install chromium)
 cd app && flutter test
 ```
 
@@ -86,7 +87,7 @@ headless Chrome and ImageMagick only resizes and builds `favicon.ico`.
   owner commits and pushes manually. Beads is set to `dolt.local-only` so it does not push either.
 * Work is tracked in beads: every implementation task has a review task, and downstream tasks are
   blocked on the upstream review. Start with `bd ready`.
-* **Never commit song files** (`.kar`, `.karmp3`, `.mid`, `.mp3` outside `fanfare/`). Kantahe ships no
+* **Never commit song files** (`.kar`, `.karmp3`, `.mid`, `.mp3` outside `server/internal/assets/fanfare/`). Kantahe ships no
   songs. Go tests generate synthetic MIDI/LRC/ZIP fixtures; tests that need a real library read
   `KANTAHE_TEST_LIBRARY` and skip when it is unset.
 * Build order chosen by the owner: Go server → Angular web app → packaging → Flutter Android/iOS →

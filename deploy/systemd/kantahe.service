@@ -1,0 +1,30 @@
+# Install: see docs/install.md. Copy to /etc/systemd/system/kantahe.service, then
+#   sudo systemctl daemon-reload && sudo systemctl enable --now kantahe
+[Unit]
+Description=Kantahe karaoke server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=kantahe
+Group=kantahe
+# Behind a reverse proxy on this machine use instead:
+#   --listen 127.0.0.1:8080 --trusted-proxies 127.0.0.1/32 --public-url https://karaoke.example.com
+ExecStart=/usr/local/bin/kantahe --data /var/lib/kantahe --library /srv/karaoke --listen :8080
+Restart=on-failure
+RestartSec=2
+
+# creates /var/lib/kantahe owned by the service user
+StateDirectory=kantahe
+# the server only writes to its data folder and, to delete songs on request, to the library
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/kantahe -/srv/karaoke
+PrivateTmp=yes
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

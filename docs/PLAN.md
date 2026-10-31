@@ -161,10 +161,23 @@ Three layers, cheapest first; each device ends up on the lightest one it needs:
 2. **Low-power synth mode (per device).** Voice limit 32 (instead of spessasynth's default), reverb and
    chorus off, 22.05 kHz audio context. Roughly halves CPU or better; slightly thinner sound.
 3. **Server render (per device).** The server renders the song's MIDI with the trimmed SoundFont using
-   a pure-Go SoundFont synth (candidate: go-meltysynth; checked in spike S1), encodes it, caches it, and
-   the device plays it like an MP3 entry. Lyrics stay the same (same MIDI timing). Costs server CPU on
-   first play (seconds per song on a normal PC) and cache disk (`--render-cache-gb`, default 5, least
-   recently used evicted). The encoder must also be pure Go (or the output is WAV/FLAC); decided in S1.
+   the pure-Go synth **go-meltysynth** (MIT; spike S1b), encodes it as **16-bit stereo FLAC** with the
+   pure-Go encoder `github.com/mewkiz/flac` (public domain; an MP3 encoder would be LGPL), at 32 kHz by
+   default (44.1 kHz if the listening test asks for it), caches it, and the device plays it like an MP3
+   entry. Lyrics stay the same (same MIDI timing). Costs server CPU on first play (a 4-minute song renders
+   in about 2 s per core on a laptop, ~85x real time; the owner measures the real server) and cache disk
+   (about 16 MB per song, `--render-cache-gb`, default 5, least recently used evicted). Known limits,
+   details in `docs/spikes/s1b-render.md`: go-meltysynth ignores SoundFont modulators, which GeneralUser
+   GS uses for velocity brightness and reverb/chorus sends, so the render sounds slightly flatter than the
+   browser synth; FLAC support on the TV browsers is checked on the devices of S1. Implemented in
+   `server/internal/render`: one render at a time, streamed in blocks with a 1.5 s tail, songs over 20 minutes
+   refused, the cache is evicted least-recently-played first (the file just rendered is never evicted),
+   `--render-cache-gb 0` switches it off (devices then use the low-power synth), and a song that fails to
+   render is played as MIDI by the device. The next song and the up-next song are rendered ahead when the
+   user's player device is in server mode; `GetPlayback` answers `AUDIO` with `/media/rendered/{number}`.
+   The web player picks its engine by the kind of the playback (an `AUDIO` playback of a MIDI song uses the
+   audio engine like an MP3), shows "Preparing" until the render is ready, and applies a changed effective mode
+   (for example after dropouts) only when the next song loads, never by swapping the engine mid-song.
 
 Per-device setting `midiMode`: `auto` (default), `full`, `lowPower`, `server`. `auto` uses the device's
 reported memory (Flutter reads it natively; browsers use `navigator.deviceMemory` where available):
@@ -360,16 +373,37 @@ D-pad focus navigation, large type. Minimum TV model years come from spike S1.
 * **Docker**: multi-arch image (linux/amd64, linux/arm64) on a minimal base;
   `docker run -p 8080:8080 -v kantahe-data:/data -v /path/to/karaoke:/library <image>` (mount the
   library read-only with `:ro` if admins should not be able to delete songs from it); a compose
-  example in `deploy/`.
-* **Service files**: systemd unit, launchd plist, Windows service instructions in the docs.
+  example in `deploy/compose.yaml`. The `Dockerfile` at the repository root builds the web app, fetches
+  and checks the SoundFont (same lock file as the release script) and compiles the binary on the build
+  machine's architecture (no emulation needed to build arm64), then copies it into
+  `gcr.io/distroless/static-debian12:nonroot` (pinned by digest, user 65532, `/data` owned by that user,
+  empty `/library`). CI (`docker` job) builds and runs both architectures with
+  `scripts/smoke-docker.sh`: version, non-root user, health, setup required, web app served, default
+  SoundFont extracted, and an account created before a restart still exists after it. Tags push the
+  image to `ghcr.io/andrewloable/kantahe` (`release.yml`).
+* **Service files**: `deploy/systemd/kantahe.service` (dedicated user, hardened), `deploy/launchd/com.loabletech.kantahe.plist`
+  (login item), and for Windows a scheduled task started with the PC (`docs/install.md`): the server is a plain
+  command-line program, which `sc.exe create` cannot run as a service (error 1053), so a native Windows
+  service mode would need code in the server.
 * **Config**: flags/env only: `--listen :8080`, `--data`, `--library` (repeatable), `--soundfont`,
   `--render-cache-gb` (server-render cache, default 5),
   `--public-url` (for the approval QR shown on TVs).
-* **Reverse proxy**: Caddy and nginx examples in `deploy/` (HTTPS, streaming without buffering for
+* **Reverse proxy**: Caddy and nginx examples in `deploy/proxy/` (explained in `docs/reverse-proxy.md`, checked by
+  `scripts/check-proxy-configs.sh`): HTTPS, streaming without buffering for
   `/kantahe.v1.SessionService/WatchState` and `/kantahe.v1.AuthService/WaitCodeLogin`, request body
-  limit above 50 MB for `/kantahe.v1.UploadService/UploadSong`).
+  limit above 50 MB for `/kantahe.v1.UploadService/UploadSong`.
 * **SoundFont**: GeneralUser GS (licence allows redistribution), fetched at build time from a pinned
   URL with a SHA-256 check and embedded; admins can point `--soundfont` at another file.
+* **Embedding and releases**: `scripts/build-release.sh VERSION` builds the web app, fetches the
+  SoundFont named in `scripts/soundfont.lock` (a URL pinned to a commit of the author's repository,
+  checked against the SHA-256 in the file; a mismatch aborts), embeds both and builds the six
+  binaries plus `dist/SHA256SUMS`. The embedded files are gitignored and removed again when the script
+  ends. The server serves the web app at `/`: a path that is not a file and has no extension gets
+  `index.html` (`Cache-Control: no-cache`), content-hashed files are `immutable`, a missing file with
+  an extension is a 404, and `/kantahe.v1.*`, `/media` and `/healthz` are never answered by the web
+  app. At start the embedded SoundFont is written once to `<data>/soundfont/default.sf2` (rewritten
+  only when its size changes) unless `--soundfont` is set. Pushing a tag `v*` runs
+  `.github/workflows/release.yml`, which also starts the Linux binary with `scripts/smoke-release.sh`.
 
 ## 10. Risks
 
@@ -384,7 +418,7 @@ D-pad focus navigation, large type. Minimum TV model years come from spike S1.
 | Microphone needs HTTPS (browsers) | Microphone score mode missing on plain-HTTP web | Mode offered only where available; Random is the default. |
 | connect-dart maturity (streaming over HTTP/1.1 on Android/iOS) | Flutter cannot use `WatchState` | Spike S2; fallback: polling `GetState`, or a small hand-written Connect JSON client. |
 | Users upload copyrighted songs | Legal exposure for operators | Self-hosted; the project ships no songs; docs say users are responsible for what they upload. |
-| The licence of the three fanfare clips in `fanfare/` is not confirmed | May not be redistributable | Owner confirms their licence before publishing; otherwise replace the three files under the same names (no code change). |
+| The licence of the three fanfare clips in `server/internal/assets/fanfare/` is not confirmed | May not be redistributable | Owner confirms their licence before publishing; otherwise replace the three files under the same names (no code change). |
 
 ## 11. Testing
 
@@ -421,6 +455,9 @@ D-pad focus navigation, large type. Minimum TV model years come from spike S1.
   polling fallback) and one Playwright run against a real server with a synthetic library: setup →
   admin creates a user and uploads → user searches → queues an MP3 and a MIDI entry → both play with
   lyrics → score → random fill → second browser "Play here" takes over → favourite, history, playlist.
+  Run it with `cd web && npm run e2e` (it builds the server and `server/cmd/kantahe-fixtures`, writes a
+  synthetic library and a tiny SoundFont to a temp folder, starts both servers and Chromium; once per
+  machine `npx playwright install chromium`). Nothing is written into the repo.
 * **Flutter**: widget tests; one integration test against the Go binary with the synthetic library
   (sign-in, queue, player WebView plays, remote control of a web player).
 * **Contract**: `buf lint` and `buf generate` in CI; fail if committed generated code differs;
@@ -469,6 +506,6 @@ Decided by the owner:
 | Sign-in tokens | Expire after 90 days unused; revocable any time. |
 | Defaults | GeneralUser GS embedded as the default SoundFont (replaceable); player gone 30 s → paused at the last position, resumable on any device; port 8080; upload limit 50 MB per file. |
 | Build order | Server → Angular web → packaging → Flutter Android/iOS → Android TV → Samsung/LG. |
-| Fanfares | The three clips in `fanfare/`. |
+| Fanfares | The three clips in `server/internal/assets/fanfare/`. |
 
 No open questions remain. Next step: turn this plan into bd tasks.

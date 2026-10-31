@@ -30,3 +30,9 @@ Icon
 /dist/
 *.test
 /server/kantahe
+
+# Embedded at release build time by scripts/build-release.sh; never committed
+/server/internal/webui/dist/*
+!/server/internal/webui/dist/.gitkeep
+!/server/internal/webui/dist/index.html
+/server/internal/assets/soundfont/*.sf2

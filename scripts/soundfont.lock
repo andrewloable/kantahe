@@ -1,0 +1,6 @@
+# The default SoundFont embedded in release builds (GeneralUser GS v2.0.3 by S. Christian Collins).
+# The URL is pinned to a commit of the author's repository, so the file cannot change under it;
+# scripts/build-release.sh aborts if the SHA-256 differs. The licence allows redistribution.
+URL=https://raw.githubusercontent.com/mrbumpy409/GeneralUser-GS/684543d5e5efaef08d02be50dcda8d552478fa60/GeneralUser-GS.sf2
+SHA256=9575028c7a1f589f5770fccc8cff2734566af40cd26ed836944e9a5152688cfe
+LICENSE_URL=https://raw.githubusercontent.com/mrbumpy409/GeneralUser-GS/684543d5e5efaef08d02be50dcda8d552478fa60/documentation/LICENSE.txt

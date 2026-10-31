@@ -11,10 +11,15 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/andrewloable/kantahe/server/internal/api"
 	"github.com/andrewloable/kantahe/server/internal/app"
+	"github.com/andrewloable/kantahe/server/internal/assets"
 	"github.com/andrewloable/kantahe/server/internal/config"
+	"github.com/andrewloable/kantahe/server/internal/library"
 	"github.com/andrewloable/kantahe/server/internal/store"
+	"github.com/andrewloable/kantahe/server/internal/webui"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".
@@ -49,11 +54,44 @@ func run(args []string, stdout io.Writer) int {
 		return 1
 	}
 	defer db.Close()
-	if err := app.New(cfg, logger).Run(ctx); err != nil {
+	soundFont, err := assets.SoundFontPath(cfg.SoundFont, cfg.DataDir)
+	if err != nil {
+		logger.Error("cannot prepare the default SoundFont", "err", err)
+		return 1
+	}
+	imp := library.NewImporter(db, cfg.DataDir, cfg.Libraries, logger)
+	srv := app.New(cfg, logger)
+	mounted, err := api.Mount(srv.Handle, api.Deps{DB: db, Version: version, Now: time.Now, Logger: logger, TrustedProxies: cfg.TrustedProxies,
+		DataDir: cfg.DataDir, Importer: imp, ScoreSeconds: cfg.ScoreSeconds, SoundFont: soundFont, PublicURL: cfg.PublicURL,
+		RenderCacheBytes: int64(cfg.RenderCacheGB) << 30})
+	if err != nil {
+		logger.Error("cannot start the services", "err", err)
+		return 1
+	}
+	defer mounted.Close()
+	mountWebUI(srv)
+	go mounted.Run(ctx)
+	impCtx, stopImporter := context.WithCancel(ctx)
+	impDone := make(chan struct{})
+	go func() { imp.Run(impCtx); close(impDone) }()
+
+	err = srv.Run(ctx)
+	stopImporter()
+	select {
+	case <-impDone:
+	case <-time.After(2 * time.Second):
+		logger.Warn("the library importer did not stop in time")
+	}
+	if err != nil {
 		logger.Error("server stopped", "err", err)
 		return 1
 	}
 	return 0
 }
+
+// mountWebUI serves the embedded web app for every path the API does not claim. The pattern has no
+// method because "GET /" would conflict with the services' method-less prefixes; the handler
+// answers other methods with 405 itself.
+func mountWebUI(srv *app.App) { srv.Handle("/", webui.Handler()) }
 
 func main() { os.Exit(run(os.Args[1:], os.Stdout)) }

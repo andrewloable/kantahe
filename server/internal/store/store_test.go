@@ -348,3 +348,38 @@ func TestWriteTxTakesWriteLockAtBegin(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCatalogMigrationBackfillsDisplayColumns(t *testing.T) {
+	db := rawDB(t)
+	all, err := migrationFiles.ReadDir("migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	upTo := func(last string) fstest.MapFS {
+		m := fstest.MapFS{}
+		for _, f := range all {
+			if f.Name() <= last {
+				body, _ := migrationFiles.ReadFile("migrations/" + f.Name())
+				m[f.Name()] = &fstest.MapFile{Data: body}
+			}
+		}
+		return m
+	}
+	if err := migrateFS(context.Background(), db, upTo("0003_songs_fts.sql")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO songs(number, format, source, path, sha256, size, mtime, original_name, file_title, file_artist, metadata_done, created_at)
+		VALUES ('00001',1,1,'p','h',1,1,'x.kar','Élan','Artist',1,1)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrateFS(context.Background(), db, upTo("9999_x.sql")); err != nil {
+		t.Fatal(err)
+	}
+	var dt, da, tk string
+	if err := db.QueryRow(`SELECT display_title, display_artist, title_key FROM songs`).Scan(&dt, &da, &tk); err != nil {
+		t.Fatal(err)
+	}
+	if dt != "Élan" || da != "Artist" || tk == "" {
+		t.Fatalf("existing rows must not end up with blank titles: %q %q %q", dt, da, tk)
+	}
+}

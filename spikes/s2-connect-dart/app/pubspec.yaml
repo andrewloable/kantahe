@@ -1,0 +1,25 @@
+name: kantahe_s2
+description: "Spike S2: connect-dart unary and server streaming over plain HTTP."
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  connectrpc: ^2.0.1
+  protobuf: ^6.1.0
+  fixnum: ^1.1.1
+  # the generated Dart client of the project
+  kantahe:
+    path: ../../../app
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
