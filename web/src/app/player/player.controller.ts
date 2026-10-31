@@ -69,6 +69,8 @@ export class PlayerController implements OnDestroy {
   private readonly loaded = signal(false);
   private wantPlay = false;
   private finishedNow?: unknown;
+  /** The song that just ended, while the server shows its score screen with that song still as the current one. */
+  private finishedNumber?: string;
   private failures = 0;
   private micOn = false;
   private dropoutReported = false;
@@ -133,7 +135,10 @@ export class PlayerController implements OnDestroy {
       this.stop();
       return;
     }
-    if (this.number === number || now === this.finishedNow) return;
+    // The score screen keeps the finished song as the current one, in a new message each time: it must not be played
+    // again (and reported as ended again) until the score is over.
+    const scoreShowing = !!this.state()?.score;
+    if (this.number === number || now === this.finishedNow || (scoreShowing && number === this.finishedNumber)) return;
     this.begin(number);
   }
 
@@ -335,6 +340,7 @@ export class PlayerController implements OnDestroy {
     const loud = this.micOn ? this.mic.end() : 0;
     this.micOn = false;
     this.finishedNow = this.state()?.now;
+    this.finishedNumber = number;
     this.stop();
     try {
       await this.session.ended({ number, loudReadings: loud });

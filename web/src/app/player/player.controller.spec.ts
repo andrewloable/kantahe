@@ -592,6 +592,22 @@ describe('PlayerController', () => {
       expect(server.calls.ready.length).toBe(2);
     });
 
+    it('regression: the score screen keeps the finished song as "now" (a new object each push): it is not loaded and ended again', async () => {
+      const { server, fake, push } = setup();
+      await push(PLAYING);
+      fake.last().finish();
+      await vi.advanceTimersByTimeAsync(20);
+      // what the server sends while the score shows: the same song, in a fresh message, with the score
+      await push({ ...PLAYING, score: { number: '21628', value: 80 } });
+      await push({ ...PLAYING, score: { number: '21628', value: 80 } });
+      expect(fake.created.length).toBe(1);
+      expect(server.calls.ready.length).toBe(1);
+      expect(server.calls.ended.length).toBe(1);
+      // the score is over and the same song comes round again: that one is played
+      await push(PLAYING);
+      expect(fake.created.length).toBe(2);
+    });
+
     it('goes on to the next song', async () => {
       const { server, fake, push } = setup();
       await push(PLAYING);

@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 import { AuthTokenSchema } from '../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from '../core/api';
@@ -10,7 +11,7 @@ import { device, DeviceType, fakeSession, PlayStatus, stateOf } from './testing'
 async function setup(devices = [device('me', 'Phone', { isCaller: true, type: DeviceType.ANDROID }), device('tv', 'Living room TV', { type: DeviceType.ANDROID_TV, online: false })], player = 'tv') {
   const server = fakeSession();
   localStorage.clear();
-  TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: server.transport }] });
+  TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: TRANSPORT, useValue: server.transport }] });
   TestBed.inject(AuthStore).signIn(create(AuthTokenSchema, { token: 't', deviceId: 'me' }));
   TestBed.tick();
   server.push(stateOf({ devices, player, status: PlayStatus.PLAYING }));
@@ -52,5 +53,11 @@ describe('DevicesComponent', () => {
   it('says so when there are no devices yet', async () => {
     const { el } = await setup([], '');
     expect(el.textContent).toContain('No devices');
+  });
+
+  it('regression: the list is named for what it is here, where to play, and points at the page that manages the devices', async () => {
+    const { el } = await setup([]);
+    expect(el.querySelector('h2')?.textContent?.trim()).toBe('Play on');
+    expect(el.querySelector('a[href="/me/devices"]')?.textContent?.trim()).toBe('Manage devices');
   });
 });

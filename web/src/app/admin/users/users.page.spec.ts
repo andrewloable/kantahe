@@ -50,6 +50,12 @@ describe('UsersPage', () => {
     expect(Array.from(el.querySelectorAll('th')).every((h) => h.getAttribute('scope') === 'col')).toBe(true);
   });
 
+  it('regression: a table wider than a phone scrolls inside the page and does not widen it (the page scrolled sideways at 390 px)', async () => {
+    await setup();
+    const css = Array.from(document.querySelectorAll('style')).map((st) => st.textContent ?? '').join('\n');
+    expect(css).toMatch(/\[_nghost[^\]]*\]\s*\{[^}]*display:\s*block[^}]*overflow-x:\s*auto/);
+  });
+
   it('is a table with column headers, and every checkbox names its user and role', async () => {
     const { el, box } = await setup();
     expect(Array.from(el.querySelectorAll('th')).map((h) => h.textContent?.trim())).toEqual(['Email', 'Name', 'Admin', 'Uploader', 'Disabled', 'Account', 'Actions']);

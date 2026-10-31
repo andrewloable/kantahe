@@ -7,8 +7,8 @@ import { SongsAdminPage } from './songs-admin.page';
 
 const SONGS = [song('00001', 'Alpha', 'Abba', Format.MP3), song('00002', 'Bravo', 'Beatles', Format.MIDI), song('00003', 'Charlie', 'Cher', Format.MIDI)];
 
-async function setup() {
-  const server = fakeAdminSongs({ songs: SONGS });
+async function setup(songs = SONGS, pageSize?: number) {
+  const server = fakeAdminSongs({ songs, pageSize });
   TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: server.transport }] });
   const fixture = TestBed.createComponent(SongsAdminPage);
   const el = fixture.nativeElement as HTMLElement;
@@ -33,13 +33,27 @@ describe('SongsAdminPage', () => {
   afterEach(() => vi.useRealTimers());
 
   it('lists songs page by page with number, title, artist and format', async () => {
-    const { el, settle, button, server } = await setup();
-    expect(Array.from(el.querySelectorAll('tbody tr')).map((r) => r.querySelectorAll('td')[0].textContent?.trim())).toEqual(['00001', '00002']);
-    expect(el.textContent).toContain('MP3');
-    button(el, 'Load more').click();
+    const { el, settle, server } = await setup();
     await settle();
-    expect(el.querySelectorAll('tbody tr').length).toBe(3);
-    expect(server.calls.search.map((c) => c.pageToken)).toEqual(['', '2']);
+    expect(Array.from(el.querySelectorAll('tbody tr')).map((r) => r.querySelectorAll('td')[0].textContent?.trim())).toEqual(['00001', '00002', '00003']);
+    expect(el.textContent).toContain('MP3');
+    expect(server.calls.search.map((c) => c.pageToken)).toEqual(['', '2']); // the second page is read ahead by itself
+  });
+
+  it('regression: 500 songs are 50 table rows, and Next shows the following 50', async () => {
+    const many = Array.from({ length: 500 }, (_, i) => song(String(10000 + i), `Song ${i}`, 'Artist', Format.MP3));
+    const { el, settle, button, fixture } = await setup(many, 50);
+    await settle(10);
+    const rows = () => Array.from(el.querySelectorAll('tbody tr')).map((r) => r.querySelectorAll('td')[1].textContent);
+    expect(rows().length).toBe(50);
+    expect(rows()[0]).toBe('Song 0');
+    button(el, 'Next').click();
+    fixture.detectChanges();
+    expect(rows().length).toBe(50);
+    expect(rows()[0]).toBe('Song 50');
+    button(el, 'Previous').click();
+    fixture.detectChanges();
+    expect(rows()[0]).toBe('Song 0');
   });
 
   it('searches 250 ms after the last key', async () => {
@@ -196,7 +210,7 @@ describe('SongsAdminPage', () => {
     await settle();
     expect(server.calls.rescan).toBe(1);
     expect(el.querySelector('[role="status"]')?.textContent).toContain('Added 3, updated 1, removed 0, failed 2');
-    expect(server.calls.search.length).toBe(1);
+    expect(server.calls.search.map((c) => c.pageToken)).toEqual(['', '2']); // from the first page again, then the page ahead
   });
 
   it('a failed Rescan says so', async () => {

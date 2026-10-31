@@ -41,7 +41,7 @@ export function historyEntry(s: Song, over: Partial<{ sungAtUnix: bigint; skippe
 }
 
 /** An in-memory server for the Me pages: playlists really change, every request is recorded. */
-export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; history?: HistoryEntry[]; devices?: Device[]; catalog?: Song[] } = {}) {
+export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; history?: HistoryEntry[]; devices?: Device[]; catalog?: Song[]; pageSize?: number } = {}) {
   const favourites = [...(seed.favourites ?? [])];
   const playlists = new Map((seed.playlists ?? []).map((p) => [p.id, { ...p, songs: [...p.songs] }]));
   const catalog = new Map((seed.catalog ?? []).map((s) => [s.number, s]));
@@ -75,7 +75,7 @@ export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; 
       listFavourites(req) {
         calls.favourites.push(req.pageToken);
         const all = favourites;
-        const pageSize = 2;
+        const pageSize = seed.pageSize ?? 2;
         const start = req.pageToken ? Number(req.pageToken) : 0;
         const next = start + pageSize < all.length ? String(start + pageSize) : '';
         return create(ListFavouritesResponseSchema, { songs: all.slice(start, start + pageSize), nextPageToken: next });
@@ -83,7 +83,7 @@ export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; 
       listHistory(req) {
         calls.history.push(req.pageToken);
         const all = seed.history ?? [];
-        const pageSize = 2;
+        const pageSize = seed.pageSize ?? 2;
         const start = req.pageToken ? Number(req.pageToken) : 0;
         const next = start + pageSize < all.length ? String(start + pageSize) : '';
         return create(ListHistoryResponseSchema, { entries: all.slice(start, start + pageSize), nextPageToken: next });

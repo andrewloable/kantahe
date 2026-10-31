@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 import { AuthTokenSchema } from '../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from '../core/api';
@@ -23,7 +24,7 @@ const BASE: StateInit = {
 async function setup(initial?: StateInit) {
   const server = fakeSession();
   localStorage.clear();
-  TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: server.transport }] });
+  TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: TRANSPORT, useValue: server.transport }] });
   TestBed.inject(AuthStore).signIn(create(AuthTokenSchema, { token: 't', deviceId: 'me' }));
   TestBed.tick();
   if (initial) server.push(stateOf(initial));

@@ -23,13 +23,24 @@ The *Library* page has three ways in:
 * **Browse**: pick a letter, and then an artist or a title.
 
 Every entry has a number, and a badge that says **MP3** or **MIDI**. The same song can be in the library twice, once
-in each format. A song marked as unplayable cannot be queued. The star makes a song a **favourite**; *Add to playlist…*
-puts it on one of your playlists.
+in each format. A song marked as unplayable cannot be queued. The star makes a song a **favourite**; the **+** button
+puts it on one of your playlists. Browse opens with "Choose a letter": pick a letter to list its songs. Long titles are
+cut to two lines in the list; hold the pointer over one to read all of it.
+
+Lists are shown **50 songs at a time**, however many songs the library has. **Previous** and **Next** under the list move
+between pages, and the page number is shown between them. The next page is read in the background, so Next is usually
+instant. The same goes for Favourites and for the administrator's Songs table.
+
+## Light or dark
+
+The **Theme** choice in the top bar is *Auto (system)*, *Light* or *Dark*. Auto follows your device; the choice is
+remembered in that browser. The player is always dark.
 
 ## Your queue
 
 * Choosing a song adds it to **your queue**. The queue is yours alone, kept on the server, and the same on all your
   devices. A song you add while another plays waits its turn.
+* A slim bar under the menu on every other page says what is playing, on which device, and how many songs are coming up; tap it to open *Queue*.
 * *Queue* shows what is now playing and "Coming up". *Move to top* and *Remove* change the order.
 * When the queue is empty a **random song** plays, and keeps doing so until you add songs. The next one is already
   chosen, so you can see what is coming.
@@ -47,6 +58,11 @@ any device can press Play here to carry on.
 *Player* is the full-screen view: the lyrics, the song, and big buttons. The lyrics have two rows, the line being sung
 bright and the next one dimmed; each word fills in as it is sung, and four dots count you in before a line that comes
 after a long gap. The player makes the sound, so keep it open on the device that is playing.
+
+While a song plays and nothing moves for three seconds, the buttons fade away and the pointer hides; move the mouse,
+touch the screen or press a key and they come back. **Full screen** (where the browser allows it) fills the whole
+screen. **Back to Kantahe** returns to the library (and **Admin** to the admin pages, for administrators); leaving the
+player pauses the song if this device was playing it.
 
 ## Score
 
@@ -84,7 +100,7 @@ TV apps ([Android TV](../app/README.md), [Samsung](tv-samsung.md), [LG](tv-lg.md
 asking for a password:
 
 1. On the TV, type the server address the first time and choose *Connect*.
-2. The TV shows a code. On your phone or computer, signed in, open **Approve a TV** in the menu and enter the code (or
+2. The TV shows a code. On your phone or computer, signed in, open **Me → Approve a TV** and enter the code (or
    scan the QR code, which opens that page).
 3. The TV signs in as you. The code works once and runs out after five minutes: *New code* gets another.
 

@@ -1,5 +1,5 @@
 import { Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
-import { ControlAction, PlayStatus, SessionService, SongSource } from '../../gen/kantahe/v1/session_pb';
+import { ControlAction, PlayStatus, SessionService, SongSource, State } from '../../gen/kantahe/v1/session_pb';
 import { injectClient } from '../core/api';
 import { AuthStore } from '../core/auth.store';
 import { problem } from '../core/errors';
@@ -10,6 +10,19 @@ import { FormatBadgeComponent } from '../library/format-badge.component';
 export function clock(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** Where the song plays, for the now-playing card and the bar of the shell. */
+export function whereText(state: State | undefined, deviceId: string | undefined): string {
+  const id = state?.playerDeviceId ?? '';
+  if (!id) return 'No device is playing';
+  const playing = state?.status === PlayStatus.PLAYING;
+  if (id === deviceId) return playing ? 'Playing on this device' : 'Paused on this device';
+  const device = state?.devices.find((d) => d.id === id);
+  const name = device?.name ?? 'another device';
+  // Play from here takes over when the player has gone away (the server decides the same way)
+  if (device && !device.online) return `${name} is offline`;
+  return playing ? `Playing on ${name}` : `Paused on ${name}`;
 }
 
 @Component({
@@ -94,16 +107,7 @@ export class NowPlayingComponent {
 
   private readonly playerId = computed(() => this.state()?.playerDeviceId ?? '');
   protected readonly isHere = computed(() => this.playerId() !== '' && this.playerId() === this.auth.deviceId());
-  protected readonly where = computed(() => {
-    const id = this.playerId();
-    if (!id) return 'No device is playing';
-    if (this.isHere()) return this.playing() ? 'Playing on this device' : 'Paused on this device';
-    const device = this.state()?.devices.find((d) => d.id === id);
-    const name = device?.name ?? 'another device';
-    // Play from here takes over when the player has gone away (the server decides the same way)
-    if (device && !device.online) return `${name} is offline`;
-    return this.playing() ? `Playing on ${name}` : `Paused on ${name}`;
-  });
+  protected readonly where = computed(() => whereText(this.state(), this.auth.deviceId()));
 
   private readonly visible = signal(document.visibilityState !== 'hidden');
 

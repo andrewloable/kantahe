@@ -52,7 +52,8 @@ them: your edit always wins and survives rescans (empty a field to go back to wh
 
 ## Deleting songs
 
-**Delete** in *Admin → Songs* removes the entry **together with its file**, for uploaded songs and for songs in a watched
+**Delete** in *Admin → Songs*, or the red trash button on a row of the *Library* page (administrators only, after a
+confirmation), removes the entry **together with its file**, for uploaded songs and for songs in a watched
 folder alike. A watched folder must therefore be writable; if the file cannot be deleted (a read-only mount, permissions)
 nothing changes and you are told why. Mount the folder read-only (`:ro` in Docker) if you do not want anyone to be able to
 delete files from it. A file that disappears from a watched folder disappears from the library at the next scan.

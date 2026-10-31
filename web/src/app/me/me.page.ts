@@ -14,6 +14,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
         <a routerLink="/me/devices" routerLinkActive="active" ariaCurrentWhenActive="page">Devices</a>
         <a routerLink="/me/settings" routerLinkActive="active" ariaCurrentWhenActive="page">Score</a>
         <a routerLink="/me/password" routerLinkActive="active" ariaCurrentWhenActive="page">Password</a>
+        <a routerLink="/code" routerLinkActive="active" ariaCurrentWhenActive="page">Approve a TV</a>
       </nav>
       <router-outlet />
     </main>
@@ -32,7 +33,10 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
       border-bottom: 1px solid var(--line);
     }
     nav a {
-      padding: 0.5rem 0;
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.75rem;
+      min-width: 2.75rem;
     }
     nav a.active {
       font-weight: 700;

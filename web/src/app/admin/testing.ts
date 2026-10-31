@@ -120,7 +120,7 @@ export interface UploadReply {
 }
 
 /** An in-memory server for song administration, upload and settings. */
-export function fakeAdminSongs(seed: { songs?: Song[]; maxUploadBytes?: number; scoreSeconds?: number } = {}) {
+export function fakeAdminSongs(seed: { songs?: Song[]; maxUploadBytes?: number; scoreSeconds?: number; pageSize?: number } = {}) {
   const songs = [...(seed.songs ?? [])];
   const calls = {
     search: [] as SearchSongsRequest[],
@@ -168,7 +168,7 @@ export function fakeAdminSongs(seed: { songs?: Song[]; maxUploadBytes?: number; 
         calls.search.push(req);
         const q = req.query.toLowerCase();
         const found = songs.filter((s) => !q || s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q));
-        const pageSize = 2;
+        const pageSize = seed.pageSize ?? 2;
         const start = req.pageToken ? Number(req.pageToken) : 0;
         const next = start + pageSize < found.length ? String(start + pageSize) : '';
         return create(SearchSongsResponseSchema, { songs: found.slice(start, start + pageSize), nextPageToken: next });

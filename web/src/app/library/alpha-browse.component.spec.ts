@@ -34,15 +34,47 @@ describe('AlphaBrowseComponent', () => {
     const letters = Array.from(el.querySelectorAll<HTMLButtonElement>('.letters button'));
     expect(letters.map((b) => b.textContent?.trim()).join('')).toBe('ABCDEFGHIJKLMNOPQRSTUVWXYZ#');
     expect(letters.every((b) => b.hasAttribute('aria-pressed'))).toBe(true);
-    expect(letters[0].getAttribute('aria-pressed')).toBe('true'); // A is where it starts
+    expect(letters.every((b) => b.getAttribute('aria-pressed') === 'false')).toBe(true); // none is chosen at the start
   });
 
-  it('starts with the titles under A, sorted by title', async () => {
-    const { calls } = setup({ searchSongs: () => ({ items: [song('1', 'Abba', 'X')] }) });
-    await vi.waitFor(() => expect(calls.search.length).toBe(1));
+  it('regression: it starts with a prompt, not with the letter A and its "No songs found"', async () => {
+    const { calls, el, fixture } = setup({ searchSongs: () => ({ items: [song('1', 'Abba', 'X')] }) });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Choose a letter');
+    expect(el.textContent).not.toContain('No songs found');
+    expect(calls.search.length).toBe(0);
+    expect(calls.artists.length).toBe(0);
+  });
+
+  it('choosing a letter takes the prompt away and lists that letter by title', async () => {
+    const { calls, el, letter, fixture } = setup({ searchSongs: () => ({ items: [song('1', 'Abba', 'X')] }) });
+    await fixture.whenStable();
+    await letter('A');
     expect(calls.search[0].sort).toBe(SongSort.TITLE);
     expect(calls.search[0].letter).toBe('A');
     expect(calls.search[0].query).toBe('');
+    expect(el.textContent).not.toContain('Choose a letter');
+    expect(el.textContent).toContain('Abba');
+  });
+
+  it('switching between Titles and Artists before choosing a letter asks for nothing', async () => {
+    const { calls, el, mode, fixture } = setup();
+    await fixture.whenStable();
+    await mode('Artists');
+    expect(calls.artists.length).toBe(0);
+    expect(el.textContent).toContain('Choose a letter');
+    await mode('Titles');
+    expect(calls.search.length).toBe(0);
+  });
+
+  it('the chosen letter, mode and the others show their state as a toggle', async () => {
+    const { el, letter, fixture } = setup();
+    await fixture.whenStable();
+    await letter('H');
+    const letters = Array.from(el.querySelectorAll<HTMLButtonElement>('.letters button'));
+    expect(letters.filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.textContent?.trim())).toEqual(['H']);
+    expect([...letters, ...Array.from(el.querySelectorAll<HTMLButtonElement>('.modes button'))].every((b) => b.classList.contains('toggle'))).toBe(true);
   });
 
   it('a letter in Titles mode searches that letter', async () => {
@@ -66,11 +98,12 @@ describe('AlphaBrowseComponent', () => {
   });
 
   it('choosing an artist shows that artist\'s songs by title, and Back returns to the artists', async () => {
-    const { calls, mode, el, fixture } = setup({
+    const { calls, mode, letter, el, fixture } = setup({
       listArtists: () => ({ items: [artist('Adele', 1)] }),
       searchSongs: (r) => ({ items: r.query === 'Adele' ? [song('1', 'Hello', 'Adele', Format.MP3), song('2', 'Hello', 'Adele', Format.MIDI)] : [] }),
     });
     await fixture.whenStable();
+    await letter('A');
     await mode('Artists');
     el.querySelector<HTMLButtonElement>('.artists button')!.click();
     await fixture.whenStable();
@@ -89,6 +122,7 @@ describe('AlphaBrowseComponent', () => {
   it('changing the letter while looking at an artist goes back to the list', async () => {
     const { mode, letter, el, fixture } = setup({ listArtists: () => ({ items: [artist('Adele', 1)] }) });
     await fixture.whenStable();
+    await letter('A');
     await mode('Artists');
     el.querySelector<HTMLButtonElement>('.artists button')!.click();
     await fixture.whenStable();
@@ -98,10 +132,11 @@ describe('AlphaBrowseComponent', () => {
   });
 
   it('Load more pages the artists with the returned token', async () => {
-    const { calls, mode, el, fixture } = setup({
+    const { calls, mode, letter, el, fixture } = setup({
       listArtists: (r) => (r.pageToken === '' ? { items: [artist('Abba', 1)], next: 't2' } : { items: [artist('Adele', 2)] }),
     });
     await fixture.whenStable();
+    await letter('A');
     await mode('Artists');
     Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Load more'))!.click();
     await fixture.whenStable();

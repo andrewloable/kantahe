@@ -10,6 +10,7 @@ import {
   SearchSongsRequest,
   SearchSongsResponseSchema,
 } from '../../gen/kantahe/v1/catalog_pb';
+import { AdminService, DeleteSongRequest, DeleteSongResponseSchema } from '../../gen/kantahe/v1/admin_pb';
 import { Format, Song, SongSchema } from '../../gen/kantahe/v1/common_pb';
 import { AddToQueueRequest, AddToQueueResponseSchema, SessionService } from '../../gen/kantahe/v1/session_pb';
 import { SetFavouriteRequest, SetFavouriteResponseSchema, UserLibraryService } from '../../gen/kantahe/v1/user_library_pb';
@@ -29,6 +30,7 @@ export interface FakeLibrary {
   getSong?: (req: GetSongRequest, signal: AbortSignal) => Song | Promise<Song>;
   addToQueue?: (req: AddToQueueRequest) => void | Promise<void>;
   setFavourite?: (req: SetFavouriteRequest) => void | Promise<void>;
+  deleteSong?: (req: DeleteSongRequest) => void | Promise<void>;
 }
 
 /** An in-memory server for the library pages; every request is recorded in calls. */
@@ -39,6 +41,7 @@ export function fakeLibrary(h: FakeLibrary = {}) {
     get: [] as GetSongRequest[],
     add: [] as AddToQueueRequest[],
     fav: [] as SetFavouriteRequest[],
+    remove: [] as DeleteSongRequest[],
   };
   const transport = createRouterTransport(({ service }) => {
     service(CatalogService, {
@@ -63,6 +66,13 @@ export function fakeLibrary(h: FakeLibrary = {}) {
         calls.add.push(req);
         await h.addToQueue?.(req);
         return create(AddToQueueResponseSchema, {});
+      },
+    });
+    service(AdminService, {
+      async deleteSong(req) {
+        calls.remove.push(req);
+        await h.deleteSong?.(req);
+        return create(DeleteSongResponseSchema, {});
       },
     });
     service(UserLibraryService, {

@@ -13,16 +13,18 @@ const LETTERS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '#'];
   imports: [SongListComponent],
   template: `
     <div class="modes" role="group" aria-label="Browse by">
-      <button type="button" [attr.aria-pressed]="mode() === 'titles'" (click)="setMode('titles')">Titles</button>
-      <button type="button" [attr.aria-pressed]="mode() === 'artists'" (click)="setMode('artists')">Artists</button>
+      <button type="button" class="toggle" [attr.aria-pressed]="mode() === 'titles'" (click)="setMode('titles')">Titles</button>
+      <button type="button" class="toggle" [attr.aria-pressed]="mode() === 'artists'" (click)="setMode('artists')">Artists</button>
     </div>
     <div class="letters" role="group" aria-label="First letter">
       @for (l of letters; track l) {
-        <button type="button" [attr.aria-pressed]="letter() === l" (click)="setLetter(l)">{{ l }}</button>
+        <button type="button" class="toggle" [attr.aria-pressed]="letter() === l" (click)="setLetter(l)">{{ l }}</button>
       }
     </div>
 
-    @if (mode() === 'titles') {
+    @if (!letter()) {
+      <p class="hint">Choose a letter to see its songs.</p>
+    } @else if (mode() === 'titles') {
       @if (titles.error()) {
         <p role="alert">{{ titles.error() }} <button type="button" (click)="titles.retry()">Try again</button></p>
       }
@@ -66,9 +68,6 @@ const LETTERS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '#'];
       gap: 0.25rem;
       margin-bottom: 0.75rem;
     }
-    button[aria-pressed='true'] {
-      outline: 2px solid var(--sung);
-    }
     .letters button {
       min-width: 2.5rem;
       padding: 0.25rem;
@@ -98,7 +97,8 @@ export class AlphaBrowseComponent {
   private readonly actions = inject(LibraryActions);
 
   protected readonly letters = LETTERS;
-  protected readonly letter = signal('A');
+  /** No letter at the start: a prompt, instead of the list of a letter that may have no songs. */
+  protected readonly letter = signal<string | undefined>(undefined);
   protected readonly mode = signal<'titles' | 'artists'>('titles');
   /** The artist whose songs are shown. */
   protected readonly artist = signal<string | undefined>(undefined);
@@ -135,7 +135,6 @@ export class AlphaBrowseComponent {
       this.artists.cancel();
       this.artistSongs.cancel();
     });
-    void this.titles.reset();
   }
 
   protected setLetter(l: string): void {
@@ -148,7 +147,7 @@ export class AlphaBrowseComponent {
     if (m === this.mode()) return;
     this.mode.set(m);
     this.artist.set(undefined);
-    void (m === 'titles' ? this.titles : this.artists).reset();
+    if (this.letter()) void (m === 'titles' ? this.titles : this.artists).reset();
   }
 
   protected choose(a: Artist): void {

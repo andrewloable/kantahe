@@ -33,10 +33,14 @@ const STEPS = 250;
     </div>
   `,
   styles: `
+    :host {
+      display: block;
+      font-size: clamp(1.5rem, 4vw, 3rem);
+    }
     .lyrics {
       overflow: hidden;
       text-align: center;
-      font-size: clamp(1.5rem, 4vw, 3rem);
+      font-size: inherit;
       line-height: 1.4;
     }
     .dots-slot {

@@ -18,10 +18,17 @@ describe('AdminPage', () => {
     expect(Array.from(nav!.querySelectorAll('a')).map((a) => [a.textContent?.trim(), a.getAttribute('href')])).toEqual([
       ['Users', '/admin/users'],
       ['Songs', '/admin/songs'],
-      ['Upload', '/upload'],
       ['Settings', '/admin/settings'],
     ]);
     expect(nav!.querySelector('a[aria-current="page"]')?.textContent?.trim()).toBe('Users');
     expect(el.textContent).toContain('users here');
+  });
+
+  it('regression: Upload is not in this menu too (it is in the main menu: from here it dropped the admin menu)', async () => {
+    TestBed.configureTestingModule({ providers: [provideRouter([{ path: 'admin', component: AdminPage, children: [{ path: 'users', component: Child }] }])] });
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/admin/users', AdminPage);
+    const hrefs = Array.from((harness.fixture.nativeElement as HTMLElement).querySelectorAll('nav a')).map((a) => a.getAttribute('href'));
+    expect(hrefs).not.toContain('/upload');
   });
 });

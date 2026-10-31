@@ -23,6 +23,8 @@ const MAX_DIGITS = 20;
         <p>No song with this number</p>
       } @else if (status() === 'error') {
         <p class="error">{{ message() }}</p>
+      } @else if (digits() === '') {
+        <p class="hint">Type the number of a song on the keys, or on the keyboard.</p>
       } @else if (found(); as s) {
         <p class="found">
           <span class="num">{{ s.number }}</span>

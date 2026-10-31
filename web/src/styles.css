@@ -13,8 +13,9 @@
   color-scheme: light dark;
 }
 
+/* Dark on a dark system, unless Light was chosen; and Dark chosen on a light system: the same tokens twice (theme.spec checks it) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --paper: #0a0e22;
     --panel: #141a46;
     --text: #ffffff;
@@ -25,6 +26,23 @@
     --danger: #ff8a80;
     --line: #2a3592;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #0a0e22;
+  --panel: #141a46;
+  --text: #ffffff;
+  --muted: #aeb4d8;
+  --accent: #4fd1ff;
+  --on-accent: #0c1230;
+  --sung: #ffd23f;
+  --danger: #ff8a80;
+  --line: #2a3592;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 * {
@@ -106,6 +124,18 @@ button {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+/* a toggle (format chips, Browse, letters): outlined while off, filled while on, so the chosen one is not a thin ring only */
+button.toggle {
+  background: transparent;
+  color: var(--accent);
+  border: 2px solid var(--accent);
+}
+
+button.toggle[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 button:disabled {

@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, TitleStrategy } from '@angular/router';
 import { createRouterTransport } from '@connectrpc/connect';
 import { create } from '@bufbuild/protobuf';
 import { AuthTokenSchema } from '../gen/kantahe/v1/common_pb';
 import { SessionService } from '../gen/kantahe/v1/session_pb';
 import { App } from './app';
+import { appConfig } from './app.config';
+import { PageTitleStrategy } from './core/page-title';
 import { TRANSPORT } from './core/api';
 import { AuthStore } from './core/auth.store';
 import { StateStore } from './core/state.store';
@@ -54,5 +56,11 @@ describe('App', () => {
     await fixture.whenStable();
     expect(start).toHaveBeenCalled();
     store.stop();
+  });
+});
+
+describe('appConfig', () => {
+  it('regression: the app sets the page titles with its own strategy (route titles were not shown)', () => {
+    expect(appConfig.providers).toContainEqual({ provide: TitleStrategy, useClass: PageTitleStrategy });
   });
 });

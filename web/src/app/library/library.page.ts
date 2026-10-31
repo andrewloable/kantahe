@@ -50,7 +50,7 @@ const TABS: { id: Tab; label: string }[] = [
             </div>
             <div class="chips" role="group" aria-label="Format">
               @for (c of chips; track c.label) {
-                <button type="button" [attr.aria-pressed]="format() === c.format" (click)="setFormat(c.format)">{{ c.label }}</button>
+                <button type="button" class="toggle" [attr.aria-pressed]="format() === c.format" (click)="setFormat(c.format)">{{ c.label }}</button>
               }
             </div>
             @if (songs.error()) {
@@ -93,9 +93,6 @@ const TABS: { id: Tab; label: string }[] = [
       display: flex;
       gap: 0.25rem;
       margin-bottom: 0.75rem;
-    }
-    .chips button[aria-pressed='true'] {
-      outline: 2px solid var(--sung);
     }
     input[type='search'] {
       width: 100%;

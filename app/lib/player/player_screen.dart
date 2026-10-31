@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart' hide State;
@@ -40,7 +42,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
-    if (_bound) _services.state.removeListener(_onState);
+    if (_bound) {
+      _services.state.removeListener(_onState);
+      // Closing the screen takes the page, and with it the sound, away: a song that played here is paused, so that the
+      // user's other devices do not go on showing "playing" for silence (songs stop only on Pause).
+      final s = _services.state.state;
+      if (s != null && s.status == PlayStatus.PLAY_STATUS_PLAYING && s.playerDeviceId.isNotEmpty && s.playerDeviceId == _services.auth.deviceId) {
+        unawaited(_actions.control(ControlAction.CONTROL_ACTION_PAUSE));
+      }
+    }
     if (_awake) widget.screenAwake.disable();
     super.dispose();
   }

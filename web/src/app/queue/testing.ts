@@ -15,6 +15,7 @@ import {
   QueueItemSchema,
   RemoveFromQueueRequest,
   RemoveFromQueueResponseSchema,
+  ScoreSchema,
   SessionService,
   SongSource,
   State,
@@ -36,6 +37,8 @@ export interface StateInit {
   now?: { song: Song; source?: SongSource; positionMs: number; positionAtMs: number };
   queue?: { id: string; song: Song }[];
   upNext?: { song: Song; source?: SongSource };
+  /** The score screen, which the server shows with the finished song still as `now`. */
+  score?: { number: string; value: number };
   serverTimeMs?: number;
 }
 
@@ -47,6 +50,7 @@ export function stateOf(i: StateInit = {}): State {
     now: i.now && create(NowPlayingSchema, { song: i.now.song, source: i.now.source ?? SongSource.QUEUE, positionMs: BigInt(i.now.positionMs), positionAtMs: BigInt(i.now.positionAtMs) }),
     queue: (i.queue ?? []).map((q) => create(QueueItemSchema, q)),
     upNext: i.upNext && create(UpNextSchema, { song: i.upNext.song, source: i.upNext.source ?? SongSource.QUEUE }),
+    score: i.score && create(ScoreSchema, { number: i.score.number, hasValue: true, value: i.score.value, untilMs: 9000n }),
     serverTimeMs: BigInt(i.serverTimeMs ?? 1000),
   });
 }

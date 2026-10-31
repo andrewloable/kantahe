@@ -1,3 +1,4 @@
+import { RouterLink } from '@angular/router';
 import { Component, computed, inject } from '@angular/core';
 import { DeviceType } from '../../gen/kantahe/v1/common_pb';
 import { StateStore } from '../core/state.store';
@@ -13,9 +14,11 @@ export const TYPES: Record<number, { icon: string; label: string }> = {
 
 @Component({
   selector: 'app-devices',
+  imports: [RouterLink],
   template: `
     <section aria-labelledby="devices-title">
-      <h2 id="devices-title">Devices</h2>
+      <h2 id="devices-title">Play on</h2>
+      <p class="manage"><a routerLink="/me/devices">Manage devices</a></p>
       @if (devices().length === 0) {
         <p>No devices yet.</p>
       } @else {

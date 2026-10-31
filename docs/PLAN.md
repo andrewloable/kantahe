@@ -272,6 +272,7 @@ numbers stay provisional and `auto` follows them.
   entry without score.
 * **Random fill**: when the queue is empty, uniform over all entries not `failed` and not in the
   user's last 100 played. Pre-picked as `upNext` when the current song starts.
+* **Leaving the player**: when the web player page, or the app's player screen, is left while its device plays, the device sends **Pause** (the sound goes with the page, and other devices must not show "playing"). A closed browser tab cannot send it: the next rule applies. The score screen keeps the finished song as `now`; the player must not load or end it again while it shows.
 * **Player gone**: if the player device's stream is closed for more than 30 s, status becomes `paused`
   at the last position; any device can Play here to continue from there.
 * **Position** reports update memory only and never trigger a push; remotes extrapolate from
@@ -337,8 +338,9 @@ secret content), and the static web app (with `/embed/player`).
 | Route | Screen |
 |---|---|
 | `/setup`, `/login`, `/code` | First admin; email + password sign-in; approve a TV code. |
-| `/library` | Search · Number pad · Browse (A–Z, artists), MP3/MIDI badges, format filter, add to queue, favourite. |
+| `/library` | Search · Number pad · Browse (A–Z, artists), MP3/MIDI badges, format filter, add to queue, favourite. Song lists (library, favourites, admin Songs) draw **one page of 50 rows** with Previous / Next; the next page is read ahead, so a library of thousands never becomes thousands of rows (`PageWindow` in `web/src/app/library/page-window.ts`). |
 | `/queue` | Queue (remove, move to top), up next, now playing, **devices** with "Play here" / which one plays, Play/Pause/Skip. |
+| every page but `/queue` and `/player` | A slim **now-playing bar** under the menu (shown once the state has arrived and a song plays or songs wait): title and artist, "Playing on <device>" / "Paused on <device>", how many are coming up; a link to `/queue`. No new RPC and no clock (positions are not pushed). |
 | `/player` | Full-screen player: lyrics with colour wipe and count-in dots, title + badge, progress, Play/Pause/Skip, score screen with fanfare, "preparing…" while the SoundFont loads. |
 | `/embed/player` | The same player without app navigation, for the Flutter WebView. Receives the device token from Flutter through a JavaScript channel (never in the URL). |
 | `/me` | Favourites, history, playlists, my devices, change password, score settings. |

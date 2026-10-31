@@ -77,6 +77,10 @@ type Role = 'admin' | 'uploader' | 'disabled';
     <app-user-form (created)="created($event)" />
   `,
   styles: `
+    :host {
+      display: block;
+      overflow-x: auto;
+    }
     table {
       width: 100%;
       border-collapse: collapse;

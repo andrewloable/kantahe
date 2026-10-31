@@ -155,6 +155,13 @@ describe('NumberPadComponent', () => {
     input.remove();
   });
 
+  it('regression: before the first digit it says what to do, so the page is not a blank above a keypad', () => {
+    const { el, press } = setup();
+    expect(el.textContent).toContain('Type the number of a song');
+    press('7');
+    expect(el.textContent).not.toContain('Type the number of a song');
+  });
+
   it('stops at 20 digits', () => {
     const { press, el } = setup();
     for (let i = 0; i < 25; i++) press('1');

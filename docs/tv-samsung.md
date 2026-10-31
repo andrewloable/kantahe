@@ -57,7 +57,7 @@ Kantahe is then in the TV's app list. To remove it, delete it there, or `tizen u
 
 1. The app asks for the **server address**. Type it with the on-screen keyboard (`http://192.168.1.20:8080`) and choose
    *Connect*. A server that has no account yet is set up in a web browser first.
-2. It shows a **code** and a QR code. On a phone or computer, sign in to Kantahe, open *Approve a TV* in the menu (or
+2. It shows a **code** and a QR code. On a phone or computer, sign in to Kantahe, open *Me → Approve a TV* (or
    scan the QR code), and enter the code. The TV signs in.
 3. Use the arrow keys and OK to search and queue songs, or queue from your phone. *Back* goes back; on the first page it
    leaves the app. "Use another server" on the code screen starts over with another address.

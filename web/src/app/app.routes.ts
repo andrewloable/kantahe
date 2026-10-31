@@ -11,25 +11,25 @@ const signInPage = (env: Environment) =>
 
 const pages = (env: Environment): Routes => [
   { path: '', pathMatch: 'full', redirectTo: 'library' },
-  { path: 'setup', loadComponent: () => import('./auth/setup.page').then((m) => m.SetupPage) },
-  { path: 'login', loadComponent: signInPage(env), canActivate: [setupGuard] },
-  { path: 'code', loadComponent: () => import('./auth/approve-code.page').then((m) => m.ApproveCodePage), canActivate: [authGuard] },
-  { path: 'library', loadComponent: () => import('./library/library.page').then((m) => m.LibraryPage), canActivate: [authGuard] },
-  { path: 'upload', loadComponent: () => import('./admin/songs/upload.page').then((m) => m.UploadPage), canActivate: [authGuard, uploaderGuard] },
-  { path: 'queue', loadComponent: () => import('./queue/queue.page').then((m) => m.QueuePage), canActivate: [authGuard] },
+  { path: 'setup', title: 'Set up', loadComponent: () => import('./auth/setup.page').then((m) => m.SetupPage) },
+  { path: 'login', title: 'Sign in', loadComponent: signInPage(env), canActivate: [setupGuard] },
+  { path: 'code', title: 'Approve a TV', loadComponent: () => import('./auth/approve-code.page').then((m) => m.ApproveCodePage), canActivate: [authGuard] },
+  { path: 'library', title: 'Library', loadComponent: () => import('./library/library.page').then((m) => m.LibraryPage), canActivate: [authGuard] },
+  { path: 'upload', title: 'Upload songs', loadComponent: () => import('./admin/songs/upload.page').then((m) => m.UploadPage), canActivate: [authGuard, uploaderGuard] },
+  { path: 'queue', title: 'Queue', loadComponent: () => import('./queue/queue.page').then((m) => m.QueuePage), canActivate: [authGuard] },
   {
     path: 'me',
     loadComponent: () => import('./me/me.page').then((m) => m.MePage),
     canActivate: [authGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'favourites' },
-      { path: 'favourites', loadComponent: () => import('./me/favourites.component').then((m) => m.FavouritesComponent) },
-      { path: 'history', loadComponent: () => import('./me/history.component').then((m) => m.HistoryComponent) },
-      { path: 'playlists', loadComponent: () => import('./me/playlists.component').then((m) => m.PlaylistsComponent) },
-      { path: 'playlists/:id', loadComponent: () => import('./me/playlist-detail.component').then((m) => m.PlaylistDetailComponent) },
-      { path: 'devices', loadComponent: () => import('./me/my-devices.component').then((m) => m.MyDevicesComponent) },
-      { path: 'settings', loadComponent: () => import('./me/score-settings.component').then((m) => m.ScoreSettingsComponent) },
-      { path: 'password', loadComponent: () => import('./auth/change-password.page').then((m) => m.ChangePasswordPage) },
+      { path: 'favourites', title: 'Favourites', loadComponent: () => import('./me/favourites.component').then((m) => m.FavouritesComponent) },
+      { path: 'history', title: 'History', loadComponent: () => import('./me/history.component').then((m) => m.HistoryComponent) },
+      { path: 'playlists', title: 'Playlists', loadComponent: () => import('./me/playlists.component').then((m) => m.PlaylistsComponent) },
+      { path: 'playlists/:id', title: 'Playlist', loadComponent: () => import('./me/playlist-detail.component').then((m) => m.PlaylistDetailComponent) },
+      { path: 'devices', title: 'Devices', loadComponent: () => import('./me/my-devices.component').then((m) => m.MyDevicesComponent) },
+      { path: 'settings', title: 'Score', loadComponent: () => import('./me/score-settings.component').then((m) => m.ScoreSettingsComponent) },
+      { path: 'password', title: 'Password', loadComponent: () => import('./auth/change-password.page').then((m) => m.ChangePasswordPage) },
     ],
   },
   {
@@ -38,9 +38,9 @@ const pages = (env: Environment): Routes => [
     canActivate: [authGuard, adminGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'users' },
-      { path: 'users', loadComponent: () => import('./admin/users/users.page').then((m) => m.UsersPage) },
-      { path: 'songs', loadComponent: () => import('./admin/songs/songs-admin.page').then((m) => m.SongsAdminPage) },
-      { path: 'settings', loadComponent: () => import('./admin/songs/server-settings.page').then((m) => m.ServerSettingsPage) },
+      { path: 'users', title: 'Users', loadComponent: () => import('./admin/users/users.page').then((m) => m.UsersPage) },
+      { path: 'songs', title: 'Songs', loadComponent: () => import('./admin/songs/songs-admin.page').then((m) => m.SongsAdminPage) },
+      { path: 'settings', title: 'Settings', loadComponent: () => import('./admin/songs/server-settings.page').then((m) => m.ServerSettingsPage) },
     ],
   },
   { path: '**', redirectTo: 'library' },
@@ -50,9 +50,9 @@ const pages = (env: Environment): Routes => [
 export function buildRoutes(env: Environment): Routes {
   return [
   // the address of the server is typed in on a TV before anything else
-  ...(env.isTv ? [{ path: 'server', loadComponent: () => import('./tv/server-address.page').then((m) => m.ServerAddressPage) }] : []),
+  ...(env.isTv ? [{ path: 'server', title: 'Server address', loadComponent: () => import('./tv/server-address.page').then((m) => m.ServerAddressPage) }] : []),
   // the player pages have no frame: they are the whole screen
-  { path: 'player', loadComponent: () => import('./player/player.page').then((m) => m.PlayerPage), canActivate: [serverGuard, authGuard] },
+  { path: 'player', title: 'Player', loadComponent: () => import('./player/player.page').then((m) => m.PlayerPage), canActivate: [serverGuard, authGuard] },
   // the token arrives through window.kantahe.setToken, so there is no guard
   { path: 'embed/player', loadComponent: () => import('./player/embed-player.page').then((m) => m.EmbedPlayerPage) },
   { path: '', component: ShellComponent, canActivateChild: [serverGuard], children: pages(env) },

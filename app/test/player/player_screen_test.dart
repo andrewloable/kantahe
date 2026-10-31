@@ -127,12 +127,26 @@ void main() {
       expect(shows('Could not reach the server'), isTrue);
     });
 
-    testWidgets('Close goes back and leaves playback as it is', (tester) async {
+    testWidgets('regression: Close pauses what was playing here: the page and its sound are gone, other devices must not show "playing"', (tester) async {
       final r = await open(tester);
       await tester.tap(find.text('Close'));
       await tester.pumpAndSettle();
       expect(find.byType(PlayerScreen), findsNothing);
       expect(find.text('base screen'), findsOneWidget);
+      expect(r.q.server.controls, [ControlAction.CONTROL_ACTION_PAUSE]);
+    });
+
+    testWidgets('Close sends nothing while paused', (tester) async {
+      final r = await open(tester, state: playingHere(status: PlayStatus.PLAY_STATUS_PAUSED));
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      expect(r.q.server.controls, isEmpty);
+    });
+
+    testWidgets('Close sends nothing when another device is the player', (tester) async {
+      final r = await open(tester, state: playingHere(player: 'tv'));
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
       expect(r.q.server.controls, isEmpty);
     });
 

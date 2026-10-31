@@ -1,4 +1,6 @@
-import { Component, computed, inject, input, viewChild } from '@angular/core';
+import { Component, computed, DestroyRef, effect, ElementRef, inject, input, signal, untracked, viewChild } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthStore } from '../core/auth.store';
 import { ControlAction } from '../../gen/kantahe/v1/session_pb';
 import { FormatBadgeComponent } from '../library/format-badge.component';
 import { clock } from '../queue/now-playing.component';
@@ -6,13 +8,29 @@ import { PlayerController } from './player.controller';
 import { LyricsViewComponent } from './lyrics-view/lyrics-view.component';
 import { ScoreScreenComponent } from './score/score-screen.component';
 
+/** How long the buttons stay after the last move, touch or key while a song plays. */
+const IDLE_MS = 3000;
+
 /** The full-screen player: lyrics, song, progress and controls; on a device that is not the player, a pointer to the one that is. */
 @Component({
   selector: 'app-player-view',
   imports: [LyricsViewComponent, FormatBadgeComponent, ScoreScreenComponent],
   providers: [PlayerController],
+  // any move, touch or key on the player shows its buttons again
+  host: { '(mousemove)': 'wake()', '(pointerdown)': 'wake(false)', '(touchstart)': 'wake(false)', '(keydown)': 'wake(true)', '(focusin)': 'wake()' },
   template: `
-    <main class="stage" [class.embedded]="embedded()">
+    <main class="stage fill" [class.embedded]="embedded()" [class.idle]="idle()">
+      @if (!embedded()) {
+        <div class="topbar">
+          <button type="button" (click)="leave('/library')">Back to Kantahe</button>
+          @if (isAdmin()) {
+            <button type="button" (click)="leave('/admin')">Admin</button>
+          }
+          @if (canFullscreen) {
+            <button type="button" class="fs" (click)="toggleFullscreen()">{{ fullscreen() ? 'Exit full screen' : 'Full screen' }}</button>
+          }
+        </div>
+      }
       @if (!c.state()) {
         <p role="status">Connecting…</p>
       } @else if (c.isPlayer()) {
@@ -78,11 +96,71 @@ import { ScoreScreenComponent } from './score/score-screen.component';
       --text: #ffffff;
       --muted: #aeb4d8;
       --sung: #ffd23f;
+      position: relative;
       min-height: 100vh;
       padding: 1.5rem 1rem;
       background: #0a0e22;
       color: var(--text);
       text-align: center;
+    }
+    /* the whole window: song at the top, the lyrics filling the middle, time and controls at the bottom */
+    .stage.fill {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+    .player-content {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    app-lyrics-view {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      font-size: clamp(1.75rem, 7vmin, 6rem);
+    }
+    .topbar {
+      position: absolute;
+      top: 0.75rem;
+      left: 0.75rem;
+      right: 0.75rem;
+      /* above the score screen (z-index 10): leaving or going full screen works while a score shows */
+      z-index: 20;
+      display: flex;
+      gap: 0.5rem;
+    }
+    .topbar .fs {
+      margin-left: auto;
+    }
+    .topbar button {
+      white-space: nowrap;
+      padding: 0.5rem 0.75rem;
+      background: transparent;
+      border: 1px solid var(--muted);
+      color: var(--text);
+    }
+    .topbar,
+    .controls {
+      transition: opacity 0.4s;
+    }
+    /* while a song plays and nobody touches anything, the buttons and the pointer get out of the way */
+    .stage.idle {
+      cursor: none;
+    }
+    .stage.idle .topbar,
+    .stage.idle .controls {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .stage.fill:not(.embedded) {
+      padding-top: 3.75rem;
     }
     /* inside the app the native Close sits at the top and the native controls at the bottom, over the page */
     .stage.embedded {
@@ -105,6 +183,7 @@ import { ScoreScreenComponent } from './score/score-screen.component';
       color: var(--muted);
     }
     progress {
+      align-self: center;
       width: min(40rem, 90%);
     }
     .controls {
@@ -130,6 +209,66 @@ export class PlayerViewComponent {
   readonly embedded = input(false);
 
   protected readonly Action = ControlAction;
+  /** The browser can fill the screen with the page (the app's WebView is full screen already). */
+  protected readonly canFullscreen = typeof document !== 'undefined' && document.fullscreenEnabled === true;
+  protected readonly fullscreen = signal(typeof document !== 'undefined' && !!document.fullscreenElement);
+
+  private readonly router = inject(Router);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private readonly auth = inject(AuthStore);
+  protected readonly isAdmin = computed(() => this.auth.user()?.admin === true);
+  /** The buttons are hidden: a song plays and nothing was touched for IDLE_MS. */
+  protected readonly idle = signal(false);
+  private idleTimer?: ReturnType<typeof setTimeout>;
+
+  constructor() {
+    // a song that starts playing starts the count; a pause brings everything back
+    effect(() => {
+      const playing = this.c.playing();
+      untracked(() => (playing ? this.wake() : this.stopIdle()));
+    });
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(this.idleTimer);
+      // Leaving the page ends the sound, so a device that was playing is paused: songs stop only on Pause, and the
+      // other devices must not keep showing "playing" for a screen that is silent. Inside the app (embedded) the
+      // app decides. A closed tab does not get here: the server's 30 second rule pauses it then (PLAN section 7).
+      if (!this.embedded() && this.c.isPlayer() && this.c.playing()) void this.c.control(ControlAction.PAUSE);
+    });
+    const onChange = () => this.fullscreen.set(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    inject(DestroyRef).onDestroy(() => document.removeEventListener('fullscreenchange', onChange));
+  }
+
+  /** The last thing the user did was press a key (not a click or a touch): the focus on a button is theirs to keep in sight. */
+  private keyboard = false;
+
+  /** Any move, touch or key shows the buttons again for IDLE_MS. */
+  protected wake(keyboard = this.keyboard): void {
+    this.keyboard = keyboard;
+    this.idle.set(false);
+    clearTimeout(this.idleTimer);
+    if (this.embedded()) return; // the app has its own buttons
+    this.idleTimer = setTimeout(() => {
+      // a keyboard user resting on a button keeps it in sight; a click or touch leaves focus on a button too, and those fade
+      const f = document.activeElement;
+      if (this.keyboard && f && this.host.contains(f)) return this.wake();
+      if (this.c.playing() && !this.embedded()) this.idle.set(true);
+    }, IDLE_MS);
+  }
+
+  private stopIdle(): void {
+    clearTimeout(this.idleTimer);
+    this.idle.set(false);
+  }
+
+  protected leave(url: string): void {
+    void this.router.navigateByUrl(url);
+  }
+
+  protected toggleFullscreen(): void {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void document.documentElement.requestFullscreen().catch(() => undefined); // refused: the page stays as it is
+  }
   private readonly score = viewChild(ScoreScreenComponent);
   /** While the score covers the screen, nothing behind it can be reached. */
   protected readonly scoreOpen = computed(() => this.score()?.open() ?? false);

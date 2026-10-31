@@ -7,13 +7,15 @@ import { injectClient } from '../../core/api';
 import { fromServer, problem } from '../../core/errors';
 import { fieldValue } from '../../auth/form';
 import { FormatBadgeComponent } from '../../library/format-badge.component';
+import { PageBarComponent } from '../../library/page-bar.component';
 import { Pager } from '../../library/paged';
+import { PageWindow } from '../../library/page-window';
 
 const SEARCH_DELAY_MS = 250;
 
 @Component({
   selector: 'app-songs-admin-page',
-  imports: [FormatBadgeComponent],
+  imports: [FormatBadgeComponent, PageBarComponent],
   template: `
     <h2>Songs</h2>
     <div class="field">
@@ -43,7 +45,7 @@ const SEARCH_DELAY_MS = 250;
         </tr>
       </thead>
       <tbody>
-        @for (s of pager.items(); track s.number) {
+        @for (s of win.rows(); track s.number) {
           <tr>
             <td>{{ s.number }}</td>
             <td>{{ s.title }}</td>
@@ -71,9 +73,7 @@ const SEARCH_DELAY_MS = 250;
     } @else if (pager.loaded() && pager.items().length === 0) {
       <p>No songs found.</p>
     }
-    @if (pager.hasMore()) {
-      <p><button type="button" (click)="pager.more()" [disabled]="pager.loading()">Load more</button></p>
-    }
+    <app-page-bar [win]="win" [hasMore]="pager.hasMore()" />
     @if (editing(); as e) {
       <div class="dialog" role="dialog" aria-modal="true" data-back-closes [attr.aria-label]="'Edit song ' + e.number" (keydown.escape)="editing.set(undefined)">
         <h3>Edit song {{ e.number }}</h3>
@@ -140,6 +140,15 @@ export class SongsAdminPage {
     },
     (s) => s.number,
   );
+
+  /** One page of rows at a time: thousands of songs must not become thousands of table rows. */
+  protected readonly win = new PageWindow<Song>({
+    items: this.pager.items,
+    hasMore: this.pager.hasMore,
+    loading: this.pager.loading,
+    auto: () => !this.pager.error(),
+    more: () => void this.pager.more(),
+  });
 
   protected readonly editing = signal<Song | undefined>(undefined);
   protected readonly title = signal('');

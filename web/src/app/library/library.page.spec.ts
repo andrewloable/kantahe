@@ -92,47 +92,32 @@ describe('LibraryPage', () => {
     });
 
     it('regression: the next page is asked for with the query of the list on screen, not with text typed since', async () => {
+      const hundred = Array.from({ length: 100 }, (_, i) => song(String(i + 1), `S${i}`, 'x'));
       const { el, calls, settle, type } = setup({
-        searchSongs: (req) => (req.pageToken === '' ? { items: [song('1', 'A', 'x')], next: 'P2' } : { items: [] }),
+        searchSongs: (req) => (req.pageToken === '' ? { items: hundred, next: 'P2' } : { items: [] }),
       });
       await settle();
+      expect(calls.search.map((c) => c.pageToken)).toEqual(['']); // two pages are in hand: nothing is read ahead yet
       await type('zzz'); // typed, the 250 ms have not passed
-      Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Load more'))!.click();
+      Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Next')!.click();
       await settle();
       const next = calls.search.find((r) => r.pageToken === 'P2')!;
       expect(next.query).toBe('');
     });
 
     it('regression: a failed next page is not asked for again and again', async () => {
-      // an observer that reports the end of the list as in view as soon as it is watched
-      vi.stubGlobal(
-        'IntersectionObserver',
-        class {
-          constructor(private cb: IntersectionObserverCallback) {}
-          observe(target: Element) {
-            queueMicrotask(() => this.cb([{ isIntersecting: true, target } as IntersectionObserverEntry], this as unknown as IntersectionObserver));
-          }
-          disconnect() {
-            // nothing to release
-          }
+      const { el, calls, settle } = setup({
+        searchSongs: (req) => {
+          if (req.pageToken === 'P2') throw new ConnectError('down', Code.Unavailable);
+          return { items: [song('1', 'A', 'x')], next: 'P2' };
         },
-      );
-      try {
-        const { el, calls, settle } = setup({
-          searchSongs: (req) => {
-            if (req.pageToken === 'P2') throw new ConnectError('down', Code.Unavailable);
-            return { items: [song('1', 'A', 'x')], next: 'P2' };
-          },
-        });
-        await settle(100);
-        const asked = calls.search.length;
-        expect(asked).toBe(2); // the opening page and the one that failed
-        await settle(5000);
-        expect(calls.search.length).toBe(asked);
-        expect(el.textContent).toContain('Try again');
-      } finally {
-        vi.unstubAllGlobals();
-      }
+      });
+      await settle(100);
+      const asked = calls.search.length;
+      expect(asked).toBe(2); // the opening page and the one that failed
+      await settle(5000);
+      expect(calls.search.length).toBe(asked);
+      expect(el.textContent).toContain('Try again');
     });
 
     it('trims the query', async () => {
@@ -171,13 +156,11 @@ describe('LibraryPage', () => {
       expect(calls.search.at(-1)?.query).toBe('hello');
     });
 
-    it('asks for the next page with the returned token and appends', async () => {
+    it('reads the next page ahead with the returned token and appends', async () => {
       const { el, calls, settle } = setup({
         searchSongs: (r) => (r.pageToken === '' ? { items: [song('1', 'First', 'A')], next: 'p2' } : { items: [song('2', 'Second', 'B')] }),
       });
-      await settle();
-      Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Load more'))!.click();
-      await settle();
+      await settle(); // the next page is read ahead by itself
       expect(calls.search.map((c) => c.pageToken)).toEqual(['', 'p2']);
       expect(el.textContent).toContain('First');
       expect(el.textContent).toContain('Second');
@@ -188,7 +171,25 @@ describe('LibraryPage', () => {
       await settle();
       await type('x');
       await settle(300);
-      expect(calls.search.at(-1)?.pageToken).toBe('');
+      expect(calls.search.find((r) => r.query === 'x')?.pageToken).toBe('');
+    });
+
+    it('regression: thousands of songs stay 50 rows in the page; Next reads on', async () => {
+      const all = Array.from({ length: 3000 }, (_, i) => song(String(10000 + i), `Song ${i}`, 'x'));
+      const { el, calls, settle } = setup({
+        searchSongs: (r) => {
+          const from = r.pageToken ? Number(r.pageToken) : 0;
+          return { items: all.slice(from, from + 50), next: from + 50 < all.length ? String(from + 50) : '' };
+        },
+      });
+      await settle();
+      for (let i = 0; i < 20; i++) {
+        Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Next')!.click();
+        await settle();
+      }
+      expect(el.querySelectorAll('li.row').length).toBe(50);
+      expect(el.querySelector('li.row .title')?.textContent).toBe('Song 1000');
+      expect(calls.search.length).toBe(22); // always one page ahead of the one on screen
     });
 
     it('two entries of one song show as two rows with their own badges', async () => {
@@ -276,10 +277,24 @@ describe('LibraryPage', () => {
   });
 
   it('browse sorts by title', async () => {
-    const { tab, settle, calls } = setup();
+    const { el, tab, settle, calls } = setup();
     await settle();
     tab('Browse').click();
     await settle();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.letters button')).find((b) => b.textContent?.trim() === 'A')!.click();
+    await settle();
     expect(calls.search.at(-1)?.sort).toBe(SongSort.TITLE);
+  });
+
+  it('the format chips are toggles: the chosen one has aria-pressed and the toggle class the stylesheet fills', async () => {
+    const { el, chip, settle, fixture } = setup();
+    await settle();
+    const chips = Array.from(el.querySelectorAll<HTMLButtonElement>('.chips button'));
+    expect(chips.map((c) => c.textContent?.trim())).toEqual(['All', 'MP3', 'MIDI']);
+    expect(chips.every((c) => c.classList.contains('toggle'))).toBe(true);
+    expect(chips.map((c) => c.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false']);
+    chip('MP3').click();
+    fixture.detectChanges();
+    expect(chips.map((c) => c.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
   });
 });

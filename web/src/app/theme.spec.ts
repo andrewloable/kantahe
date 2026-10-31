@@ -7,7 +7,9 @@ function tokens(block: string): Record<string, string> {
   return Object.fromEntries([...block.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})\s*;/g)].map((m) => [m[1], m[2].toLowerCase()]));
 }
 
-const dark = css.match(/@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([^}]*)\}/)![1];
+// dark tokens twice: for a system that is dark (unless Light was chosen), and for Dark chosen on a light system
+const dark = css.match(/@media \(prefers-color-scheme: dark\)\s*\{\s*:root:not\(\[data-theme="light"\]\)\s*\{([^}]*)\}/)![1];
+const darkChosen = css.match(/:root\[data-theme="dark"\]\s*\{([^}]*)\}/)![1];
 const light = css.match(/:root\s*\{([^}]*)\}/)![1];
 const themes = { light: tokens(light), dark: { ...tokens(light), ...tokens(dark) } };
 
@@ -26,7 +28,25 @@ const PAIRS: [string, string, number][] = [
   ['sung', 'panel', 3],
 ];
 
+describe('toggle buttons', () => {
+  it('are outlined while off and filled with the accent while on', () => {
+    expect(css).toMatch(/button\.toggle\s*\{[^}]*background:\s*transparent[^}]*border:\s*2px solid var\(--accent\)/);
+    expect(css).toMatch(/button\.toggle\[aria-pressed='true'\]\s*\{[^}]*background:\s*var\(--accent\)[^}]*color:\s*var\(--on-accent\)/);
+  });
+});
+
 describe('theme colours', () => {
+  it('Dark chosen and a dark system use the very same colours', () => {
+    expect(tokens(darkChosen)).toEqual(tokens(dark));
+  });
+
+  it('a chosen Light theme keeps the light tokens on a dark system and says so to the browser', () => {
+    expect(css).toMatch(/:root\[data-theme="light"\]\s*\{[^}]*color-scheme:\s*light/);
+    expect(css).toMatch(/:root\[data-theme="dark"\]\s*\{[^}]*color-scheme:\s*dark/);
+    // the media block must not apply when Light was chosen
+    expect(css).toContain(':root:not([data-theme="light"])');
+  });
+
   for (const [name, t] of Object.entries(themes)) {
     for (const [fg, bg, min] of PAIRS) {
       it(`${name}: ${fg} on ${bg} has a contrast of at least ${min}:1`, () => {

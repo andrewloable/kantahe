@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter, Router, TitleStrategy } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { create } from '@bufbuild/protobuf';
 import { createRouterTransport } from '@connectrpc/connect';
@@ -8,6 +8,7 @@ import { AuthTokenSchema, UserSchema } from '../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from './core/api';
 import { AuthStore } from './core/auth.store';
 import { routes } from './app.routes';
+import { PageTitleStrategy } from './core/page-title';
 
 function setup(opts: { setupRequired?: boolean; admin?: boolean } = {}) {
   localStorage.clear();
@@ -17,7 +18,7 @@ function setup(opts: { setupRequired?: boolean; admin?: boolean } = {}) {
       me: () => create(MeResponseSchema, { user: create(UserSchema, { admin: opts.admin ?? false }) }),
     }),
   );
-  TestBed.configureTestingModule({ providers: [provideRouter(routes), { provide: TRANSPORT, useValue: transport }] });
+  TestBed.configureTestingModule({ providers: [provideRouter(routes), { provide: TitleStrategy, useClass: PageTitleStrategy }, { provide: TRANSPORT, useValue: transport }] });
   return RouterTestingHarness.create();
 }
 
@@ -121,5 +122,33 @@ describe('routes', () => {
     signIn();
     await h.navigateByUrl('/nowhere/at/all');
     expect(TestBed.inject(Router).url).toBe('/library');
+  });
+
+  describe('page titles', () => {
+    const titleAfter = async (h: Awaited<ReturnType<typeof setup>>, url: string) => {
+      await h.navigateByUrl(url);
+      return document.title;
+    };
+
+    it('regression: every page has its own title instead of "Kantahe" everywhere', async () => {
+      const h = await setup({ admin: true });
+      signIn(true);
+      expect(await titleAfter(h, '/library')).toBe('Library · Kantahe');
+      expect(await titleAfter(h, '/queue')).toBe('Queue · Kantahe');
+      expect(await titleAfter(h, '/me/favourites')).toBe('Favourites · Kantahe');
+      expect(await titleAfter(h, '/me/devices')).toBe('Devices · Kantahe');
+      expect(await titleAfter(h, '/code')).toBe('Approve a TV · Kantahe');
+      expect(await titleAfter(h, '/upload')).toBe('Upload songs · Kantahe');
+      expect(await titleAfter(h, '/admin/users')).toBe('Users · Kantahe');
+      expect(await titleAfter(h, '/admin/songs')).toBe('Songs · Kantahe');
+      expect(await titleAfter(h, '/admin/settings')).toBe('Settings · Kantahe');
+      expect(await titleAfter(h, '/player')).toBe('Player · Kantahe');
+    });
+
+    it('the sign-in and set-up pages have titles too', async () => {
+      const h = await setup();
+      expect(await titleAfter(h, '/login')).toBe('Sign in · Kantahe');
+      expect(await titleAfter(h, '/setup')).toBe('Set up · Kantahe');
+    });
   });
 });
