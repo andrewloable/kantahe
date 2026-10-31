@@ -9,6 +9,7 @@ import 'package:kantahe/library/library_actions.dart';
 import 'package:kantahe/library/number_pad.dart';
 import 'package:kantahe/library/pager.dart';
 import 'package:kantahe/library/song_list.dart';
+import 'package:kantahe/tv/dpad_escape.dart';
 
 const _searchDelay = Duration(milliseconds: 250);
 
@@ -137,14 +138,18 @@ class _SearchTabState extends State<_SearchTab> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: TextField(
-            key: const Key('search'),
+          child: DpadEscape(
             controller: _query,
-            onChanged: _onQuery,
-            onSubmitted: (_) => _searchNow(),
-            textInputAction: TextInputAction.search,
-            autocorrect: false,
-            decoration: const InputDecoration(labelText: 'Search songs', prefixIcon: Icon(Icons.search), border: OutlineInputBorder()),
+            builder: (focus) => TextField(
+              focusNode: focus,
+              key: const Key('search'),
+              controller: _query,
+              onChanged: _onQuery,
+              onSubmitted: (_) => _searchNow(),
+              textInputAction: TextInputAction.search,
+              autocorrect: false,
+              decoration: const InputDecoration(labelText: 'Search songs', prefixIcon: Icon(Icons.search), border: OutlineInputBorder()),
+            ),
           ),
         ),
         Padding(

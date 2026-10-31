@@ -227,11 +227,23 @@ void main() {
       expect(find.text('Play here'), findsOneWidget);
     });
 
-    testWidgets('on this device: says so and no Play here button', (tester) async {
+    testWidgets('on this device: says so, and offers Open player instead of Play here', (tester) async {
       await open(tester, playing(player: 'me', devices: [device('me', 'Phone', isCaller: true)]));
       expect(shows('Playing on this device'), isTrue);
       expect(find.text('Play here'), findsNothing);
+      expect(find.text('Open player'), findsOneWidget);
     });
+
+    testWidgets(
+      'regression: the server may already list this device as the player (the app was restarted): Open player opens the player screen and sends no command, so the way into the player is never lost',
+      (tester) async {
+        final r = await open(tester, stateOf(status: PlayStatus.PLAY_STATUS_PAUSED, player: 'me', now: nowPlaying(song('1', 'A', 'B'))));
+        await tester.tap(find.text('Open player'));
+        await settle(tester);
+        expect(r.playHere, 1);
+        expect(r.rig.server.controls, isEmpty);
+      },
+    );
 
     testWidgets('paused on this device', (tester) async {
       await open(tester, stateOf(status: PlayStatus.PLAY_STATUS_PAUSED, player: 'me', now: nowPlaying(song('1', 'A', 'B'))));

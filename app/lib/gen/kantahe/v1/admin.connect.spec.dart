@@ -67,12 +67,20 @@ abstract final class AdminService {
     kantahev1admin.UpdateSongResponse.new,
   );
 
-  /// Admin only. Removes the entry and its file; fails with the reason if the file cannot be deleted.
+  /// Admin only. Removes the entry and, unless keep_file is set, its file; fails with the reason if the file cannot be deleted.
   static const deleteSong = connect.Spec(
     '/$name/DeleteSong',
     connect.StreamType.unary,
     kantahev1admin.DeleteSongRequest.new,
     kantahev1admin.DeleteSongResponse.new,
+  );
+
+  /// Admin only. Removes many songs from the list at once. The song files are never deleted.
+  static const removeSongs = connect.Spec(
+    '/$name/RemoveSongs',
+    connect.StreamType.unary,
+    kantahev1admin.RemoveSongsRequest.new,
+    kantahev1admin.RemoveSongsResponse.new,
   );
 
   /// Admin only. Rescans watched folders and reports the counts.

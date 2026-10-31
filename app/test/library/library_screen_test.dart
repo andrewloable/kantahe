@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:connectrpc/connect.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 import 'package:kantahe/library/library_screen.dart';
@@ -42,6 +43,19 @@ void main() {
   });
 
   group('search', () {
+    testWidgets('regression: on a TV the remote leaves Search songs with Down (the arrow keys were kept by the text field and the focus stuck)', (
+      tester,
+    ) async {
+      await open(tester);
+      await tester.tap(find.byKey(const Key('search')));
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      final focus = FocusManager.instance.primaryFocus;
+      expect(focus?.context?.findAncestorWidgetOfExactType<EditableText>(), isNull);
+      expect(focus?.context?.findAncestorWidgetOfExactType<ChoiceChip>(), isNotNull);
+    });
+
     testWidgets('lists the library on opening', (tester) async {
       final r = Rig();
       r.fake.onSearch = (_) => Reply([song('1', 'Yesterday', 'A'), song('2', 'Tomorrow', 'B')]);

@@ -6,6 +6,7 @@ import 'package:kantahe/auth/form.dart';
 import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/core/errors.dart';
 import 'package:kantahe/gen/kantahe/v1/auth.pb.dart';
+import 'package:kantahe/tv/dpad_escape.dart';
 
 /// Change the password. When the server insists (a temporary password), the app shows only this screen.
 class ChangePasswordScreen extends StatefulWidget {
@@ -76,14 +77,18 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   Widget _field(String key, String label, TextEditingController c, String? error, {TextInputAction action = TextInputAction.next}) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
-    child: TextField(
-      key: Key(key),
+    child: DpadEscape(
       controller: c,
-      obscureText: true,
-      autofillHints: [key == 'current' ? AutofillHints.password : AutofillHints.newPassword],
-      textInputAction: action,
-      onSubmitted: action == TextInputAction.done ? (_) => _submit() : null,
-      decoration: InputDecoration(labelText: label, errorText: error, border: const OutlineInputBorder()),
+      builder: (focus) => TextField(
+        focusNode: focus,
+        key: Key(key),
+        controller: c,
+        obscureText: true,
+        autofillHints: [key == 'current' ? AutofillHints.password : AutofillHints.newPassword],
+        textInputAction: action,
+        onSubmitted: action == TextInputAction.done ? (_) => _submit() : null,
+        decoration: InputDecoration(labelText: label, errorText: error, border: const OutlineInputBorder()),
+      ),
     ),
   );
 

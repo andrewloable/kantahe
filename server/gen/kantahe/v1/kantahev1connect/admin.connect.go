@@ -51,6 +51,9 @@ const (
 	AdminServiceUpdateSongProcedure = "/kantahe.v1.AdminService/UpdateSong"
 	// AdminServiceDeleteSongProcedure is the fully-qualified name of the AdminService's DeleteSong RPC.
 	AdminServiceDeleteSongProcedure = "/kantahe.v1.AdminService/DeleteSong"
+	// AdminServiceRemoveSongsProcedure is the fully-qualified name of the AdminService's RemoveSongs
+	// RPC.
+	AdminServiceRemoveSongsProcedure = "/kantahe.v1.AdminService/RemoveSongs"
 	// AdminServiceRescanProcedure is the fully-qualified name of the AdminService's Rescan RPC.
 	AdminServiceRescanProcedure = "/kantahe.v1.AdminService/Rescan"
 	// AdminServiceGetServerSettingsProcedure is the fully-qualified name of the AdminService's
@@ -77,8 +80,10 @@ type AdminServiceClient interface {
 	RevokeUserDevices(context.Context, *connect.Request[v1.RevokeUserDevicesRequest]) (*connect.Response[v1.RevokeUserDevicesResponse], error)
 	// Admin only. Title and artist edits survive rescans and always win over file metadata.
 	UpdateSong(context.Context, *connect.Request[v1.UpdateSongRequest]) (*connect.Response[v1.UpdateSongResponse], error)
-	// Admin only. Removes the entry and its file; fails with the reason if the file cannot be deleted.
+	// Admin only. Removes the entry and, unless keep_file is set, its file; fails with the reason if the file cannot be deleted.
 	DeleteSong(context.Context, *connect.Request[v1.DeleteSongRequest]) (*connect.Response[v1.DeleteSongResponse], error)
+	// Admin only. Removes many songs from the list at once. The song files are never deleted.
+	RemoveSongs(context.Context, *connect.Request[v1.RemoveSongsRequest]) (*connect.Response[v1.RemoveSongsResponse], error)
 	// Admin only. Rescans watched folders and reports the counts.
 	Rescan(context.Context, *connect.Request[v1.RescanRequest]) (*connect.Response[v1.RescanResponse], error)
 	// Admin only. Reads the server settings.
@@ -146,6 +151,12 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(adminServiceMethods.ByName("DeleteSong")),
 			connect.WithClientOptions(opts...),
 		),
+		removeSongs: connect.NewClient[v1.RemoveSongsRequest, v1.RemoveSongsResponse](
+			httpClient,
+			baseURL+AdminServiceRemoveSongsProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("RemoveSongs")),
+			connect.WithClientOptions(opts...),
+		),
 		rescan: connect.NewClient[v1.RescanRequest, v1.RescanResponse](
 			httpClient,
 			baseURL+AdminServiceRescanProcedure,
@@ -177,6 +188,7 @@ type adminServiceClient struct {
 	revokeUserDevices    *connect.Client[v1.RevokeUserDevicesRequest, v1.RevokeUserDevicesResponse]
 	updateSong           *connect.Client[v1.UpdateSongRequest, v1.UpdateSongResponse]
 	deleteSong           *connect.Client[v1.DeleteSongRequest, v1.DeleteSongResponse]
+	removeSongs          *connect.Client[v1.RemoveSongsRequest, v1.RemoveSongsResponse]
 	rescan               *connect.Client[v1.RescanRequest, v1.RescanResponse]
 	getServerSettings    *connect.Client[v1.GetServerSettingsRequest, v1.GetServerSettingsResponse]
 	updateServerSettings *connect.Client[v1.UpdateServerSettingsRequest, v1.UpdateServerSettingsResponse]
@@ -222,6 +234,11 @@ func (c *adminServiceClient) DeleteSong(ctx context.Context, req *connect.Reques
 	return c.deleteSong.CallUnary(ctx, req)
 }
 
+// RemoveSongs calls kantahe.v1.AdminService.RemoveSongs.
+func (c *adminServiceClient) RemoveSongs(ctx context.Context, req *connect.Request[v1.RemoveSongsRequest]) (*connect.Response[v1.RemoveSongsResponse], error) {
+	return c.removeSongs.CallUnary(ctx, req)
+}
+
 // Rescan calls kantahe.v1.AdminService.Rescan.
 func (c *adminServiceClient) Rescan(ctx context.Context, req *connect.Request[v1.RescanRequest]) (*connect.Response[v1.RescanResponse], error) {
 	return c.rescan.CallUnary(ctx, req)
@@ -253,8 +270,10 @@ type AdminServiceHandler interface {
 	RevokeUserDevices(context.Context, *connect.Request[v1.RevokeUserDevicesRequest]) (*connect.Response[v1.RevokeUserDevicesResponse], error)
 	// Admin only. Title and artist edits survive rescans and always win over file metadata.
 	UpdateSong(context.Context, *connect.Request[v1.UpdateSongRequest]) (*connect.Response[v1.UpdateSongResponse], error)
-	// Admin only. Removes the entry and its file; fails with the reason if the file cannot be deleted.
+	// Admin only. Removes the entry and, unless keep_file is set, its file; fails with the reason if the file cannot be deleted.
 	DeleteSong(context.Context, *connect.Request[v1.DeleteSongRequest]) (*connect.Response[v1.DeleteSongResponse], error)
+	// Admin only. Removes many songs from the list at once. The song files are never deleted.
+	RemoveSongs(context.Context, *connect.Request[v1.RemoveSongsRequest]) (*connect.Response[v1.RemoveSongsResponse], error)
 	// Admin only. Rescans watched folders and reports the counts.
 	Rescan(context.Context, *connect.Request[v1.RescanRequest]) (*connect.Response[v1.RescanResponse], error)
 	// Admin only. Reads the server settings.
@@ -318,6 +337,12 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(adminServiceMethods.ByName("DeleteSong")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminServiceRemoveSongsHandler := connect.NewUnaryHandler(
+		AdminServiceRemoveSongsProcedure,
+		svc.RemoveSongs,
+		connect.WithSchema(adminServiceMethods.ByName("RemoveSongs")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminServiceRescanHandler := connect.NewUnaryHandler(
 		AdminServiceRescanProcedure,
 		svc.Rescan,
@@ -354,6 +379,8 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 			adminServiceUpdateSongHandler.ServeHTTP(w, r)
 		case AdminServiceDeleteSongProcedure:
 			adminServiceDeleteSongHandler.ServeHTTP(w, r)
+		case AdminServiceRemoveSongsProcedure:
+			adminServiceRemoveSongsHandler.ServeHTTP(w, r)
 		case AdminServiceRescanProcedure:
 			adminServiceRescanHandler.ServeHTTP(w, r)
 		case AdminServiceGetServerSettingsProcedure:
@@ -399,6 +426,10 @@ func (UnimplementedAdminServiceHandler) UpdateSong(context.Context, *connect.Req
 
 func (UnimplementedAdminServiceHandler) DeleteSong(context.Context, *connect.Request[v1.DeleteSongRequest]) (*connect.Response[v1.DeleteSongResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.DeleteSong is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) RemoveSongs(context.Context, *connect.Request[v1.RemoveSongsRequest]) (*connect.Response[v1.RemoveSongsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.RemoveSongs is not implemented"))
 }
 
 func (UnimplementedAdminServiceHandler) Rescan(context.Context, *connect.Request[v1.RescanRequest]) (*connect.Response[v1.RescanResponse], error) {

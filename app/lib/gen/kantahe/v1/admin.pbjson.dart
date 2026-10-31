@@ -17,6 +17,21 @@ import 'dart:typed_data' as $typed_data;
 
 import 'common.pbjson.dart' as $0;
 
+@$core.Deprecated('Use removeScopeDescriptor instead')
+const RemoveScope$json = {
+  '1': 'RemoveScope',
+  '2': [
+    {'1': 'REMOVE_SCOPE_UNSPECIFIED', '2': 0},
+    {'1': 'REMOVE_SCOPE_ALL', '2': 1},
+    {'1': 'REMOVE_SCOPE_NO_MUSIC', '2': 2},
+  ],
+};
+
+/// Descriptor for `RemoveScope`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List removeScopeDescriptor = $convert.base64Decode(
+    'CgtSZW1vdmVTY29wZRIcChhSRU1PVkVfU0NPUEVfVU5TUEVDSUZJRUQQABIUChBSRU1PVkVfU0'
+    'NPUEVfQUxMEAESGQoVUkVNT1ZFX1NDT1BFX05PX01VU0lDEAI=');
+
 @$core.Deprecated('Use listUsersRequestDescriptor instead')
 const ListUsersRequest$json = {
   '1': 'ListUsersRequest',
@@ -282,12 +297,47 @@ const DeleteSongRequest$json = {
   '1': 'DeleteSongRequest',
   '2': [
     {'1': 'number', '3': 1, '4': 1, '5': 9, '10': 'number'},
+    {'1': 'keep_file', '3': 2, '4': 1, '5': 8, '10': 'keepFile'},
   ],
 };
 
 /// Descriptor for `DeleteSongRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List deleteSongRequestDescriptor = $convert.base64Decode(
-    'ChFEZWxldGVTb25nUmVxdWVzdBIWCgZudW1iZXIYASABKAlSBm51bWJlcg==');
+    'ChFEZWxldGVTb25nUmVxdWVzdBIWCgZudW1iZXIYASABKAlSBm51bWJlchIbCglrZWVwX2ZpbG'
+    'UYAiABKAhSCGtlZXBGaWxl');
+
+@$core.Deprecated('Use removeSongsRequestDescriptor instead')
+const RemoveSongsRequest$json = {
+  '1': 'RemoveSongsRequest',
+  '2': [
+    {
+      '1': 'scope',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.kantahe.v1.RemoveScope',
+      '10': 'scope'
+    },
+  ],
+};
+
+/// Descriptor for `RemoveSongsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List removeSongsRequestDescriptor = $convert.base64Decode(
+    'ChJSZW1vdmVTb25nc1JlcXVlc3QSLQoFc2NvcGUYASABKA4yFy5rYW50YWhlLnYxLlJlbW92ZV'
+    'Njb3BlUgVzY29wZQ==');
+
+@$core.Deprecated('Use removeSongsResponseDescriptor instead')
+const RemoveSongsResponse$json = {
+  '1': 'RemoveSongsResponse',
+  '2': [
+    {'1': 'removed', '3': 1, '4': 1, '5': 5, '10': 'removed'},
+  ],
+};
+
+/// Descriptor for `RemoveSongsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List removeSongsResponseDescriptor =
+    $convert.base64Decode(
+        'ChNSZW1vdmVTb25nc1Jlc3BvbnNlEhgKB3JlbW92ZWQYASABKAVSB3JlbW92ZWQ=');
 
 @$core.Deprecated('Use deleteSongResponseDescriptor instead')
 const DeleteSongResponse$json = {
@@ -469,6 +519,11 @@ const $core.Map<$core.String, $core.dynamic> AdminServiceBase$json = {
       '3': '.kantahe.v1.DeleteSongResponse'
     },
     {
+      '1': 'RemoveSongs',
+      '2': '.kantahe.v1.RemoveSongsRequest',
+      '3': '.kantahe.v1.RemoveSongsResponse'
+    },
+    {
       '1': 'Rescan',
       '2': '.kantahe.v1.RescanRequest',
       '3': '.kantahe.v1.RescanResponse'
@@ -507,6 +562,8 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.kantahe.v1.Song': $0.Song$json,
   '.kantahe.v1.DeleteSongRequest': DeleteSongRequest$json,
   '.kantahe.v1.DeleteSongResponse': DeleteSongResponse$json,
+  '.kantahe.v1.RemoveSongsRequest': RemoveSongsRequest$json,
+  '.kantahe.v1.RemoveSongsResponse': RemoveSongsResponse$json,
   '.kantahe.v1.RescanRequest': RescanRequest$json,
   '.kantahe.v1.RescanResponse': RescanResponse$json,
   '.kantahe.v1.GetServerSettingsRequest': GetServerSettingsRequest$json,
@@ -529,9 +586,11 @@ final $typed_data.Uint8List adminServiceDescriptor = $convert.base64Decode(
     'a2VVc2VyRGV2aWNlc1JlcXVlc3QaJS5rYW50YWhlLnYxLlJldm9rZVVzZXJEZXZpY2VzUmVzcG'
     '9uc2USSwoKVXBkYXRlU29uZxIdLmthbnRhaGUudjEuVXBkYXRlU29uZ1JlcXVlc3QaHi5rYW50'
     'YWhlLnYxLlVwZGF0ZVNvbmdSZXNwb25zZRJLCgpEZWxldGVTb25nEh0ua2FudGFoZS52MS5EZW'
-    'xldGVTb25nUmVxdWVzdBoeLmthbnRhaGUudjEuRGVsZXRlU29uZ1Jlc3BvbnNlEj8KBlJlc2Nh'
-    'bhIZLmthbnRhaGUudjEuUmVzY2FuUmVxdWVzdBoaLmthbnRhaGUudjEuUmVzY2FuUmVzcG9uc2'
-    'USYAoRR2V0U2VydmVyU2V0dGluZ3MSJC5rYW50YWhlLnYxLkdldFNlcnZlclNldHRpbmdzUmVx'
-    'dWVzdBolLmthbnRhaGUudjEuR2V0U2VydmVyU2V0dGluZ3NSZXNwb25zZRJpChRVcGRhdGVTZX'
-    'J2ZXJTZXR0aW5ncxInLmthbnRhaGUudjEuVXBkYXRlU2VydmVyU2V0dGluZ3NSZXF1ZXN0Gigu'
-    'a2FudGFoZS52MS5VcGRhdGVTZXJ2ZXJTZXR0aW5nc1Jlc3BvbnNl');
+    'xldGVTb25nUmVxdWVzdBoeLmthbnRhaGUudjEuRGVsZXRlU29uZ1Jlc3BvbnNlEk4KC1JlbW92'
+    'ZVNvbmdzEh4ua2FudGFoZS52MS5SZW1vdmVTb25nc1JlcXVlc3QaHy5rYW50YWhlLnYxLlJlbW'
+    '92ZVNvbmdzUmVzcG9uc2USPwoGUmVzY2FuEhkua2FudGFoZS52MS5SZXNjYW5SZXF1ZXN0Ghou'
+    'a2FudGFoZS52MS5SZXNjYW5SZXNwb25zZRJgChFHZXRTZXJ2ZXJTZXR0aW5ncxIkLmthbnRhaG'
+    'UudjEuR2V0U2VydmVyU2V0dGluZ3NSZXF1ZXN0GiUua2FudGFoZS52MS5HZXRTZXJ2ZXJTZXR0'
+    'aW5nc1Jlc3BvbnNlEmkKFFVwZGF0ZVNlcnZlclNldHRpbmdzEicua2FudGFoZS52MS5VcGRhdG'
+    'VTZXJ2ZXJTZXR0aW5nc1JlcXVlc3QaKC5rYW50YWhlLnYxLlVwZGF0ZVNlcnZlclNldHRpbmdz'
+    'UmVzcG9uc2U=');

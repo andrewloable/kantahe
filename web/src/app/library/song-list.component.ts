@@ -41,8 +41,9 @@ import { PlaylistPickerComponent } from './playlist-picker.component';
           }
           @if (deleting() === s.number) {
             <div class="confirm picker-slot" role="alert">
-              <span>Delete "{{ s.title }}" and its file?</span>
-              <button type="button" (click)="remove(s)">Yes, delete</button>
+              <span>Take "{{ s.title }}" off the list, or delete its file too?</span>
+              <button type="button" (click)="remove(s, true)">Remove from list</button>
+              <button type="button" class="danger" (click)="remove(s, false)">Delete file too</button>
               <button type="button" (click)="deleting.set(undefined)">Cancel</button>
             </div>
           }
@@ -140,6 +141,10 @@ import { PlaylistPickerComponent } from './playlist-picker.component';
       background: transparent;
       color: var(--danger);
     }
+    .confirm .danger {
+      background: var(--danger);
+      color: var(--paper);
+    }
     .confirm {
       display: flex;
       flex-wrap: wrap;
@@ -187,11 +192,12 @@ export class SongListComponent {
     more: () => this.more.emit(),
   });
 
-  protected async remove(s: Song): Promise<void> {
+  /** keepFile: only take the song off the list; otherwise its file is deleted too. */
+  protected async remove(s: Song, keepFile: boolean): Promise<void> {
     this.deleteError.update((m) => ({ ...m, [s.number]: '' }));
     try {
-      await this.admins.deleteSong({ number: s.number });
-      this.toasts.show(`Deleted ${s.title}`);
+      await this.admins.deleteSong({ number: s.number, keepFile });
+      this.toasts.show(keepFile ? `Removed ${s.title} from the list` : `Deleted ${s.title} and its file`);
     } catch (e) {
       // already gone (another administrator): the list was out of date, not the delete wrong
       if (ConnectError.from(e).code !== Code.NotFound) {

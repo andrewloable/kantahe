@@ -31,7 +31,8 @@ Two ways, both feeding one shared library:
 
 * **Upload**: users with the uploader role (and admins) use *Upload* to send `.kar` and `.karmp3` files, several at once, or
   ZIP files of them (they are opened in the browser, and each song is sent on its own with a progress count and a report of
-  what was added, what was already there and what was refused and why). The limit is **50 MB per file** by default;
+  what was added, what was already there and what was refused and why; a `.kar` with no audible instrument notes, only
+  lyric timing, is refused with "the file contains no music" before it is stored). The limit is **50 MB per file** by default;
   change it under *Admin → Settings → Largest song file (MB)* (1 to 1024). A proxy in front must allow more than the limit.
 * **Watched folders**: songs in a folder given with `--library` (repeatable) are found when the server starts, every ten
   minutes, and at once when you press **Rescan** in *Admin → Songs*. They are used where they are.
@@ -50,13 +51,28 @@ songbook number. Numbers of deleted songs are not reused.
 Kantahe reads the title and artist from inside each file in the background. In *Admin → Songs* press **Edit** to change
 them: your edit always wins and survives rescans (empty a field to go back to what the file says).
 
-## Deleting songs
+## Removing and deleting songs
 
-**Delete** in *Admin → Songs*, or the red trash button on a row of the *Library* page (administrators only, after a
-confirmation), removes the entry **together with its file**, for uploaded songs and for songs in a watched
-folder alike. A watched folder must therefore be writable; if the file cannot be deleted (a read-only mount, permissions)
-nothing changes and you are told why. Mount the folder read-only (`:ro` in Docker) if you do not want anyone to be able to
-delete files from it. A file that disappears from a watched folder disappears from the library at the next scan.
+Deleting a single song (*Admin → Songs*, or the red trash button on a row of the *Library* page; administrators only) asks
+what you want:
+
+* **Remove from list** takes the song off the list and **keeps its file**.
+* **Delete file too** removes the entry **together with its file**, for uploaded songs and for songs in a watched folder
+  alike. A watched folder must therefore be writable; if the file cannot be deleted (a read-only mount, permissions)
+  nothing changes and you are told why. Mount the folder read-only (`:ro` in Docker) if you do not want anyone to be able
+  to delete files from it.
+
+*Admin → Songs → Remove songs from the list* works on many songs at once, after a confirmation, and **never deletes a
+file**:
+
+* **Remove songs with no music** takes off every MIDI song that has no instrument notes, only lyric timing. Such files
+  play as silence. (New uploads of that kind are refused, and a watched-folder file like that is marked as failed.)
+* **Remove all songs** empties the list.
+
+A song's number is never used again, so a song that is added back later gets a new number. A song in a watched folder is
+added again at the next scan while its file is still in the folder; move the file out, or delete it, to keep it off the
+list. The file of an uploaded song stays in `<data>/songs`, but nothing lists it any more: to get it back, upload it
+again. A file that disappears from a watched folder disappears from the library at the next scan.
 
 ## Settings
 

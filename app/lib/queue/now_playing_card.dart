@@ -19,7 +19,7 @@ class NowPlayingCard extends StatefulWidget {
 
   final QueueActions actions;
 
-  /// Called after Play here was accepted by the server (the app opens the player screen).
+  /// Called after Play here was accepted by the server, and by Open player when this device is the player already (the app opens the player screen).
   final VoidCallback? onPlayHere;
 
   @override
@@ -133,7 +133,11 @@ class _NowPlayingCardState extends State<NowPlayingCard> with SingleTickerProvid
                       else
                         FilledButton(onPressed: () => widget.actions.control(ControlAction.CONTROL_ACTION_PLAY), child: const Text('Play')),
                       OutlinedButton(onPressed: () => widget.actions.control(ControlAction.CONTROL_ACTION_SKIP), child: const Text('Skip')),
-                      if (!isHere) OutlinedButton(onPressed: _playHere, child: const Text('Play here')),
+                      if (!isHere)
+                        OutlinedButton(onPressed: _playHere, child: const Text('Play here'))
+                      else if (widget.onPlayHere != null)
+                        // the server may list this device as the player already (the app was restarted): the way into the player screen must stay
+                        OutlinedButton(onPressed: widget.onPlayHere, child: const Text('Open player')),
                     ],
                   ),
                   if (state != null && state.hasUpNext()) ...[

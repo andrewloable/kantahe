@@ -135,7 +135,7 @@ extension type AdminServiceClient (connect.Transport _transport) {
     );
   }
 
-  /// Admin only. Removes the entry and its file; fails with the reason if the file cannot be deleted.
+  /// Admin only. Removes the entry and, unless keep_file is set, its file; fails with the reason if the file cannot be deleted.
   Future<kantahev1admin.DeleteSongResponse> deleteSong(
     kantahev1admin.DeleteSongRequest input, {
     connect.Headers? headers,
@@ -145,6 +145,24 @@ extension type AdminServiceClient (connect.Transport _transport) {
   }) {
     return connect.Client(_transport).unary(
       specs.AdminService.deleteSong,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
+  /// Admin only. Removes many songs from the list at once. The song files are never deleted.
+  Future<kantahev1admin.RemoveSongsResponse> removeSongs(
+    kantahev1admin.RemoveSongsRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.AdminService.removeSongs,
       input,
       signal: signal,
       headers: headers,

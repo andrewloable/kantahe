@@ -2,8 +2,8 @@
 // @generated from file kantahe/v1/admin.proto (package kantahe.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Song, User } from "./common_pb";
 import { file_kantahe_v1_common } from "./common_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file kantahe/v1/admin.proto.
  */
 export const file_kantahe_v1_admin: GenFile = /*@__PURE__*/
-  fileDesc("ChZrYW50YWhlL3YxL2FkbWluLnByb3RvEgprYW50YWhlLnYxIhIKEExpc3RVc2Vyc1JlcXVlc3QiNAoRTGlzdFVzZXJzUmVzcG9uc2USHwoFdXNlcnMYASADKAsyEC5rYW50YWhlLnYxLlVzZXIidQoRQ3JlYXRlVXNlclJlcXVlc3QSDQoFZW1haWwYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJEhoKEnRlbXBvcmFyeV9wYXNzd29yZBgDIAEoCRINCgVhZG1pbhgEIAEoCBIQCgh1cGxvYWRlchgFIAEoCCI0ChJDcmVhdGVVc2VyUmVzcG9uc2USHgoEdXNlchgBIAEoCzIQLmthbnRhaGUudjEuVXNlciK2AQoRVXBkYXRlVXNlclJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCRIZCgxkaXNwbGF5X25hbWUYAiABKAlIAIgBARISCgVhZG1pbhgDIAEoCEgBiAEBEhUKCHVwbG9hZGVyGAQgASgISAKIAQESFQoIZGlzYWJsZWQYBSABKAhIA4gBAUIPCg1fZGlzcGxheV9uYW1lQggKBl9hZG1pbkILCglfdXBsb2FkZXJCCwoJX2Rpc2FibGVkIjQKElVwZGF0ZVVzZXJSZXNwb25zZRIeCgR1c2VyGAEgASgLMhAua2FudGFoZS52MS5Vc2VyIkMKFFJlc2V0UGFzc3dvcmRSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSGgoSdGVtcG9yYXJ5X3Bhc3N3b3JkGAIgASgJIhcKFVJlc2V0UGFzc3dvcmRSZXNwb25zZSIkChFEZWxldGVVc2VyUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJIhQKEkRlbGV0ZVVzZXJSZXNwb25zZSIrChhSZXZva2VVc2VyRGV2aWNlc1JlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIsChlSZXZva2VVc2VyRGV2aWNlc1Jlc3BvbnNlEg8KB3Jldm9rZWQYASABKAUiYQoRVXBkYXRlU29uZ1JlcXVlc3QSDgoGbnVtYmVyGAEgASgJEhIKBXRpdGxlGAIgASgJSACIAQESEwoGYXJ0aXN0GAMgASgJSAGIAQFCCAoGX3RpdGxlQgkKB19hcnRpc3QiNAoSVXBkYXRlU29uZ1Jlc3BvbnNlEh4KBHNvbmcYASABKAsyEC5rYW50YWhlLnYxLlNvbmciIwoRRGVsZXRlU29uZ1JlcXVlc3QSDgoGbnVtYmVyGAEgASgJIhQKEkRlbGV0ZVNvbmdSZXNwb25zZSIPCg1SZXNjYW5SZXF1ZXN0IlEKDlJlc2NhblJlc3BvbnNlEg0KBWFkZGVkGAEgASgFEg8KB3VwZGF0ZWQYAiABKAUSDwoHcmVtb3ZlZBgDIAEoBRIOCgZmYWlsZWQYBCABKAUiGgoYR2V0U2VydmVyU2V0dGluZ3NSZXF1ZXN0IkkKGUdldFNlcnZlclNldHRpbmdzUmVzcG9uc2USLAoIc2V0dGluZ3MYASABKAsyGi5rYW50YWhlLnYxLlNlcnZlclNldHRpbmdzIkEKDlNlcnZlclNldHRpbmdzEhgKEG1heF91cGxvYWRfYnl0ZXMYASABKAMSFQoNc2NvcmVfc2Vjb25kcxgCIAEoBSJ/ChtVcGRhdGVTZXJ2ZXJTZXR0aW5nc1JlcXVlc3QSHQoQbWF4X3VwbG9hZF9ieXRlcxgBIAEoA0gAiAEBEhoKDXNjb3JlX3NlY29uZHMYAiABKAVIAYgBAUITChFfbWF4X3VwbG9hZF9ieXRlc0IQCg5fc2NvcmVfc2Vjb25kcyJMChxVcGRhdGVTZXJ2ZXJTZXR0aW5nc1Jlc3BvbnNlEiwKCHNldHRpbmdzGAEgASgLMhoua2FudGFoZS52MS5TZXJ2ZXJTZXR0aW5nczKfBwoMQWRtaW5TZXJ2aWNlEkgKCUxpc3RVc2VycxIcLmthbnRhaGUudjEuTGlzdFVzZXJzUmVxdWVzdBodLmthbnRhaGUudjEuTGlzdFVzZXJzUmVzcG9uc2USSwoKQ3JlYXRlVXNlchIdLmthbnRhaGUudjEuQ3JlYXRlVXNlclJlcXVlc3QaHi5rYW50YWhlLnYxLkNyZWF0ZVVzZXJSZXNwb25zZRJLCgpVcGRhdGVVc2VyEh0ua2FudGFoZS52MS5VcGRhdGVVc2VyUmVxdWVzdBoeLmthbnRhaGUudjEuVXBkYXRlVXNlclJlc3BvbnNlElQKDVJlc2V0UGFzc3dvcmQSIC5rYW50YWhlLnYxLlJlc2V0UGFzc3dvcmRSZXF1ZXN0GiEua2FudGFoZS52MS5SZXNldFBhc3N3b3JkUmVzcG9uc2USSwoKRGVsZXRlVXNlchIdLmthbnRhaGUudjEuRGVsZXRlVXNlclJlcXVlc3QaHi5rYW50YWhlLnYxLkRlbGV0ZVVzZXJSZXNwb25zZRJgChFSZXZva2VVc2VyRGV2aWNlcxIkLmthbnRhaGUudjEuUmV2b2tlVXNlckRldmljZXNSZXF1ZXN0GiUua2FudGFoZS52MS5SZXZva2VVc2VyRGV2aWNlc1Jlc3BvbnNlEksKClVwZGF0ZVNvbmcSHS5rYW50YWhlLnYxLlVwZGF0ZVNvbmdSZXF1ZXN0Gh4ua2FudGFoZS52MS5VcGRhdGVTb25nUmVzcG9uc2USSwoKRGVsZXRlU29uZxIdLmthbnRhaGUudjEuRGVsZXRlU29uZ1JlcXVlc3QaHi5rYW50YWhlLnYxLkRlbGV0ZVNvbmdSZXNwb25zZRI/CgZSZXNjYW4SGS5rYW50YWhlLnYxLlJlc2NhblJlcXVlc3QaGi5rYW50YWhlLnYxLlJlc2NhblJlc3BvbnNlEmAKEUdldFNlcnZlclNldHRpbmdzEiQua2FudGFoZS52MS5HZXRTZXJ2ZXJTZXR0aW5nc1JlcXVlc3QaJS5rYW50YWhlLnYxLkdldFNlcnZlclNldHRpbmdzUmVzcG9uc2USaQoUVXBkYXRlU2VydmVyU2V0dGluZ3MSJy5rYW50YWhlLnYxLlVwZGF0ZVNlcnZlclNldHRpbmdzUmVxdWVzdBooLmthbnRhaGUudjEuVXBkYXRlU2VydmVyU2V0dGluZ3NSZXNwb25zZUKmAQoOY29tLmthbnRhaGUudjFCCkFkbWluUHJvdG9QAVo/Z2l0aHViLmNvbS9hbmRyZXdsb2FibGUva2FudGFoZS9zZXJ2ZXIvZ2VuL2thbnRhaGUvdjE7a2FudGFoZXYxogIDS1hYqgIKS2FudGFoZS5WMcoCCkthbnRhaGVcVjHiAhZLYW50YWhlXFYxXEdQQk1ldGFkYXRh6gILS2FudGFoZTo6VjFiBnByb3RvMw", [file_kantahe_v1_common]);
+  fileDesc("ChZrYW50YWhlL3YxL2FkbWluLnByb3RvEgprYW50YWhlLnYxIhIKEExpc3RVc2Vyc1JlcXVlc3QiNAoRTGlzdFVzZXJzUmVzcG9uc2USHwoFdXNlcnMYASADKAsyEC5rYW50YWhlLnYxLlVzZXIidQoRQ3JlYXRlVXNlclJlcXVlc3QSDQoFZW1haWwYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJEhoKEnRlbXBvcmFyeV9wYXNzd29yZBgDIAEoCRINCgVhZG1pbhgEIAEoCBIQCgh1cGxvYWRlchgFIAEoCCI0ChJDcmVhdGVVc2VyUmVzcG9uc2USHgoEdXNlchgBIAEoCzIQLmthbnRhaGUudjEuVXNlciK2AQoRVXBkYXRlVXNlclJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCRIZCgxkaXNwbGF5X25hbWUYAiABKAlIAIgBARISCgVhZG1pbhgDIAEoCEgBiAEBEhUKCHVwbG9hZGVyGAQgASgISAKIAQESFQoIZGlzYWJsZWQYBSABKAhIA4gBAUIPCg1fZGlzcGxheV9uYW1lQggKBl9hZG1pbkILCglfdXBsb2FkZXJCCwoJX2Rpc2FibGVkIjQKElVwZGF0ZVVzZXJSZXNwb25zZRIeCgR1c2VyGAEgASgLMhAua2FudGFoZS52MS5Vc2VyIkMKFFJlc2V0UGFzc3dvcmRSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSGgoSdGVtcG9yYXJ5X3Bhc3N3b3JkGAIgASgJIhcKFVJlc2V0UGFzc3dvcmRSZXNwb25zZSIkChFEZWxldGVVc2VyUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJIhQKEkRlbGV0ZVVzZXJSZXNwb25zZSIrChhSZXZva2VVc2VyRGV2aWNlc1JlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIsChlSZXZva2VVc2VyRGV2aWNlc1Jlc3BvbnNlEg8KB3Jldm9rZWQYASABKAUiYQoRVXBkYXRlU29uZ1JlcXVlc3QSDgoGbnVtYmVyGAEgASgJEhIKBXRpdGxlGAIgASgJSACIAQESEwoGYXJ0aXN0GAMgASgJSAGIAQFCCAoGX3RpdGxlQgkKB19hcnRpc3QiNAoSVXBkYXRlU29uZ1Jlc3BvbnNlEh4KBHNvbmcYASABKAsyEC5rYW50YWhlLnYxLlNvbmciNgoRRGVsZXRlU29uZ1JlcXVlc3QSDgoGbnVtYmVyGAEgASgJEhEKCWtlZXBfZmlsZRgCIAEoCCI8ChJSZW1vdmVTb25nc1JlcXVlc3QSJgoFc2NvcGUYASABKA4yFy5rYW50YWhlLnYxLlJlbW92ZVNjb3BlIiYKE1JlbW92ZVNvbmdzUmVzcG9uc2USDwoHcmVtb3ZlZBgBIAEoBSIUChJEZWxldGVTb25nUmVzcG9uc2UiDwoNUmVzY2FuUmVxdWVzdCJRCg5SZXNjYW5SZXNwb25zZRINCgVhZGRlZBgBIAEoBRIPCgd1cGRhdGVkGAIgASgFEg8KB3JlbW92ZWQYAyABKAUSDgoGZmFpbGVkGAQgASgFIhoKGEdldFNlcnZlclNldHRpbmdzUmVxdWVzdCJJChlHZXRTZXJ2ZXJTZXR0aW5nc1Jlc3BvbnNlEiwKCHNldHRpbmdzGAEgASgLMhoua2FudGFoZS52MS5TZXJ2ZXJTZXR0aW5ncyJBCg5TZXJ2ZXJTZXR0aW5ncxIYChBtYXhfdXBsb2FkX2J5dGVzGAEgASgDEhUKDXNjb3JlX3NlY29uZHMYAiABKAUifwobVXBkYXRlU2VydmVyU2V0dGluZ3NSZXF1ZXN0Eh0KEG1heF91cGxvYWRfYnl0ZXMYASABKANIAIgBARIaCg1zY29yZV9zZWNvbmRzGAIgASgFSAGIAQFCEwoRX21heF91cGxvYWRfYnl0ZXNCEAoOX3Njb3JlX3NlY29uZHMiTAocVXBkYXRlU2VydmVyU2V0dGluZ3NSZXNwb25zZRIsCghzZXR0aW5ncxgBIAEoCzIaLmthbnRhaGUudjEuU2VydmVyU2V0dGluZ3MqXAoLUmVtb3ZlU2NvcGUSHAoYUkVNT1ZFX1NDT1BFX1VOU1BFQ0lGSUVEEAASFAoQUkVNT1ZFX1NDT1BFX0FMTBABEhkKFVJFTU9WRV9TQ09QRV9OT19NVVNJQxACMu8HCgxBZG1pblNlcnZpY2USSAoJTGlzdFVzZXJzEhwua2FudGFoZS52MS5MaXN0VXNlcnNSZXF1ZXN0Gh0ua2FudGFoZS52MS5MaXN0VXNlcnNSZXNwb25zZRJLCgpDcmVhdGVVc2VyEh0ua2FudGFoZS52MS5DcmVhdGVVc2VyUmVxdWVzdBoeLmthbnRhaGUudjEuQ3JlYXRlVXNlclJlc3BvbnNlEksKClVwZGF0ZVVzZXISHS5rYW50YWhlLnYxLlVwZGF0ZVVzZXJSZXF1ZXN0Gh4ua2FudGFoZS52MS5VcGRhdGVVc2VyUmVzcG9uc2USVAoNUmVzZXRQYXNzd29yZBIgLmthbnRhaGUudjEuUmVzZXRQYXNzd29yZFJlcXVlc3QaIS5rYW50YWhlLnYxLlJlc2V0UGFzc3dvcmRSZXNwb25zZRJLCgpEZWxldGVVc2VyEh0ua2FudGFoZS52MS5EZWxldGVVc2VyUmVxdWVzdBoeLmthbnRhaGUudjEuRGVsZXRlVXNlclJlc3BvbnNlEmAKEVJldm9rZVVzZXJEZXZpY2VzEiQua2FudGFoZS52MS5SZXZva2VVc2VyRGV2aWNlc1JlcXVlc3QaJS5rYW50YWhlLnYxLlJldm9rZVVzZXJEZXZpY2VzUmVzcG9uc2USSwoKVXBkYXRlU29uZxIdLmthbnRhaGUudjEuVXBkYXRlU29uZ1JlcXVlc3QaHi5rYW50YWhlLnYxLlVwZGF0ZVNvbmdSZXNwb25zZRJLCgpEZWxldGVTb25nEh0ua2FudGFoZS52MS5EZWxldGVTb25nUmVxdWVzdBoeLmthbnRhaGUudjEuRGVsZXRlU29uZ1Jlc3BvbnNlEk4KC1JlbW92ZVNvbmdzEh4ua2FudGFoZS52MS5SZW1vdmVTb25nc1JlcXVlc3QaHy5rYW50YWhlLnYxLlJlbW92ZVNvbmdzUmVzcG9uc2USPwoGUmVzY2FuEhkua2FudGFoZS52MS5SZXNjYW5SZXF1ZXN0Ghoua2FudGFoZS52MS5SZXNjYW5SZXNwb25zZRJgChFHZXRTZXJ2ZXJTZXR0aW5ncxIkLmthbnRhaGUudjEuR2V0U2VydmVyU2V0dGluZ3NSZXF1ZXN0GiUua2FudGFoZS52MS5HZXRTZXJ2ZXJTZXR0aW5nc1Jlc3BvbnNlEmkKFFVwZGF0ZVNlcnZlclNldHRpbmdzEicua2FudGFoZS52MS5VcGRhdGVTZXJ2ZXJTZXR0aW5nc1JlcXVlc3QaKC5rYW50YWhlLnYxLlVwZGF0ZVNlcnZlclNldHRpbmdzUmVzcG9uc2VCpgEKDmNvbS5rYW50YWhlLnYxQgpBZG1pblByb3RvUAFaP2dpdGh1Yi5jb20vYW5kcmV3bG9hYmxlL2thbnRhaGUvc2VydmVyL2dlbi9rYW50YWhlL3YxO2thbnRhaGV2MaICA0tYWKoCCkthbnRhaGUuVjHKAgpLYW50YWhlXFYx4gIWS2FudGFoZVxWMVxHUEJNZXRhZGF0YeoCC0thbnRhaGU6OlYxYgZwcm90bzM", [file_kantahe_v1_common]);
 
 /**
  * Asks nothing.
@@ -333,6 +333,13 @@ export type DeleteSongRequest = Message<"kantahe.v1.DeleteSongRequest"> & {
    * @generated from field: string number = 1;
    */
   number: string;
+
+  /**
+   * Only take the song off the list; the file stays where it is. False (the default) deletes the file too.
+   *
+   * @generated from field: bool keep_file = 2;
+   */
+  keepFile: boolean;
 };
 
 /**
@@ -341,6 +348,44 @@ export type DeleteSongRequest = Message<"kantahe.v1.DeleteSongRequest"> & {
  */
 export const DeleteSongRequestSchema: GenMessage<DeleteSongRequest> = /*@__PURE__*/
   messageDesc(file_kantahe_v1_admin, 14);
+
+/**
+ * What to remove from the list.
+ *
+ * @generated from message kantahe.v1.RemoveSongsRequest
+ */
+export type RemoveSongsRequest = Message<"kantahe.v1.RemoveSongsRequest"> & {
+  /**
+   * @generated from field: kantahe.v1.RemoveScope scope = 1;
+   */
+  scope: RemoveScope;
+};
+
+/**
+ * Describes the message kantahe.v1.RemoveSongsRequest.
+ * Use `create(RemoveSongsRequestSchema)` to create a new message.
+ */
+export const RemoveSongsRequestSchema: GenMessage<RemoveSongsRequest> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_admin, 15);
+
+/**
+ * How many songs left the list.
+ *
+ * @generated from message kantahe.v1.RemoveSongsResponse
+ */
+export type RemoveSongsResponse = Message<"kantahe.v1.RemoveSongsResponse"> & {
+  /**
+   * @generated from field: int32 removed = 1;
+   */
+  removed: number;
+};
+
+/**
+ * Describes the message kantahe.v1.RemoveSongsResponse.
+ * Use `create(RemoveSongsResponseSchema)` to create a new message.
+ */
+export const RemoveSongsResponseSchema: GenMessage<RemoveSongsResponse> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_admin, 16);
 
 /**
  * Empty.
@@ -355,7 +400,7 @@ export type DeleteSongResponse = Message<"kantahe.v1.DeleteSongResponse"> & {
  * Use `create(DeleteSongResponseSchema)` to create a new message.
  */
 export const DeleteSongResponseSchema: GenMessage<DeleteSongResponse> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_admin, 15);
+  messageDesc(file_kantahe_v1_admin, 17);
 
 /**
  * Asks nothing.
@@ -370,7 +415,7 @@ export type RescanRequest = Message<"kantahe.v1.RescanRequest"> & {
  * Use `create(RescanRequestSchema)` to create a new message.
  */
 export const RescanRequestSchema: GenMessage<RescanRequest> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_admin, 16);
+  messageDesc(file_kantahe_v1_admin, 18);
 
 /**
  * Counts from the scan.
@@ -404,7 +449,7 @@ export type RescanResponse = Message<"kantahe.v1.RescanResponse"> & {
  * Use `create(RescanResponseSchema)` to create a new message.
  */
 export const RescanResponseSchema: GenMessage<RescanResponse> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_admin, 17);
+  messageDesc(file_kantahe_v1_admin, 19);
 
 /**
  * Asks nothing.
@@ -419,7 +464,7 @@ export type GetServerSettingsRequest = Message<"kantahe.v1.GetServerSettingsRequ
  * Use `create(GetServerSettingsRequestSchema)` to create a new message.
  */
 export const GetServerSettingsRequestSchema: GenMessage<GetServerSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_admin, 18);
+  messageDesc(file_kantahe_v1_admin, 20);
 
 /**
  * The current settings.
@@ -438,7 +483,7 @@ export type GetServerSettingsResponse = Message<"kantahe.v1.GetServerSettingsRes
  * Use `create(GetServerSettingsResponseSchema)` to create a new message.
  */
 export const GetServerSettingsResponseSchema: GenMessage<GetServerSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_admin, 19);
+  messageDesc(file_kantahe_v1_admin, 21);
 
 /**
  * Server-wide limits: upload size per file and how long the score screen shows.
@@ -462,7 +507,7 @@ export type ServerSettings = Message<"kantahe.v1.ServerSettings"> & {
  * Use `create(ServerSettingsSchema)` to create a new message.
  */
 export const ServerSettingsSchema: GenMessage<ServerSettings> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_admin, 20);
+  messageDesc(file_kantahe_v1_admin, 22);
 
 /**
  * Partial update of the server settings.
@@ -486,7 +531,7 @@ export type UpdateServerSettingsRequest = Message<"kantahe.v1.UpdateServerSettin
  * Use `create(UpdateServerSettingsRequestSchema)` to create a new message.
  */
 export const UpdateServerSettingsRequestSchema: GenMessage<UpdateServerSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_admin, 21);
+  messageDesc(file_kantahe_v1_admin, 23);
 
 /**
  * The settings after the update.
@@ -505,7 +550,39 @@ export type UpdateServerSettingsResponse = Message<"kantahe.v1.UpdateServerSetti
  * Use `create(UpdateServerSettingsResponseSchema)` to create a new message.
  */
 export const UpdateServerSettingsResponseSchema: GenMessage<UpdateServerSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_admin, 22);
+  messageDesc(file_kantahe_v1_admin, 24);
+
+/**
+ * Which songs RemoveSongs takes off the list.
+ *
+ * @generated from enum kantahe.v1.RemoveScope
+ */
+export enum RemoveScope {
+  /**
+   * @generated from enum value: REMOVE_SCOPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Every song.
+   *
+   * @generated from enum value: REMOVE_SCOPE_ALL = 1;
+   */
+  ALL = 1,
+
+  /**
+   * MIDI songs whose file has no audible instrument notes (only lyric timing); they play as silence.
+   *
+   * @generated from enum value: REMOVE_SCOPE_NO_MUSIC = 2;
+   */
+  NO_MUSIC = 2,
+}
+
+/**
+ * Describes the enum kantahe.v1.RemoveScope.
+ */
+export const RemoveScopeSchema: GenEnum<RemoveScope> = /*@__PURE__*/
+  enumDesc(file_kantahe_v1_admin, 0);
 
 /**
  * Administration; every RPC requires the admin role (PERMISSION_DENIED otherwise).
@@ -584,7 +661,7 @@ export const AdminService: GenService<{
     output: typeof UpdateSongResponseSchema;
   },
   /**
-   * Admin only. Removes the entry and its file; fails with the reason if the file cannot be deleted.
+   * Admin only. Removes the entry and, unless keep_file is set, its file; fails with the reason if the file cannot be deleted.
    *
    * @generated from rpc kantahe.v1.AdminService.DeleteSong
    */
@@ -592,6 +669,16 @@ export const AdminService: GenService<{
     methodKind: "unary";
     input: typeof DeleteSongRequestSchema;
     output: typeof DeleteSongResponseSchema;
+  },
+  /**
+   * Admin only. Removes many songs from the list at once. The song files are never deleted.
+   *
+   * @generated from rpc kantahe.v1.AdminService.RemoveSongs
+   */
+  removeSongs: {
+    methodKind: "unary";
+    input: typeof RemoveSongsRequestSchema;
+    output: typeof RemoveSongsResponseSchema;
   },
   /**
    * Admin only. Rescans watched folders and reports the counts.

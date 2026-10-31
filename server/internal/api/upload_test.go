@@ -195,6 +195,23 @@ func TestUploadNoMusic(t *testing.T) {
 	}
 }
 
+// A song from a karaoke card can hold only lyric timing cues and a velocity-1 pitch guide on channel 16: it has no
+// instrument, so it is refused before anything is stored.
+func TestUploadGuideOnlyIsRefused(t *testing.T) {
+	a := newAdminEnv(t)
+	cues := testfix.MIDI{Format: 0, Division: 480, Tracks: []testfix.Track{{Events: []testfix.Event{
+		{Data: testfix.Text("@TCues")}, {Data: testfix.Text("la")},
+		{Delta: 10, Data: testfix.NoteOn(15, 0, 64)}, {Delta: 10, Data: testfix.NoteOn(15, 14, 1)}, {Delta: 10, Data: testfix.NoteOn(15, 74, 1)},
+	}}}}.Bytes()
+	res, err := a.uploadAs(a.admin.Token, "c.kar", cues)
+	if err != nil || res.Status != kantahev1.UploadStatus_UPLOAD_STATUS_REJECTED || res.Reason != "the file contains no music" || res.Song != nil {
+		t.Fatalf("%+v %v", res, err)
+	}
+	if a.songRows(t) != 0 || len(a.songFiles(t)) != 0 {
+		t.Fatalf("a refused upload leaves nothing behind: rows %d files %v", a.songRows(t), a.songFiles(t))
+	}
+}
+
 func TestUploadBadKARMP3Contents(t *testing.T) {
 	a := newAdminEnv(t)
 	body := testfix.KARMP3("x", bytes.Repeat([]byte{1}, 3000), "", "") // a zip whose .mp3 is not audio

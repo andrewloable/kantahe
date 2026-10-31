@@ -3,6 +3,7 @@ import 'package:kantahe/auth/approve_code_screen.dart';
 import 'package:kantahe/auth/change_password_screen.dart';
 import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/gen/kantahe/v1/auth.pb.dart';
+import 'package:kantahe/me/appearance_screen.dart';
 import 'package:kantahe/me/favourites_screen.dart';
 import 'package:kantahe/me/history_screen.dart';
 import 'package:kantahe/me/my_devices_screen.dart';
@@ -44,6 +45,7 @@ class MeScreen extends StatelessWidget {
               tile('History', Icons.history, () => _open(context, const HistoryScreen())),
               tile('Playlists', Icons.queue_music, () => _open(context, const PlaylistsScreen())),
               tile('My devices', Icons.devices, () => _open(context, const MyDevicesScreen())),
+              tile('Appearance', Icons.brightness_6_outlined, () => _open(context, const AppearanceScreen())),
               tile('Score', Icons.emoji_events_outlined, () => _open(context, const ScoreSettingsScreen())),
               tile('Change password', Icons.password, () => _open(context, const ChangePasswordScreen())),
               tile('Approve a TV', Icons.tv, () => _open(context, const ApproveCodeScreen())),

@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/andrewloable/kantahe/server/internal/song/kar"
 )
 
 // RemoveError means a song's file could not be deleted, so the song was kept.
@@ -83,6 +85,17 @@ func (im *Importer) managed(path string) bool {
 // files alike). The row is kept, marked deleted, so that its number is never
 // reused. If the file cannot be removed, nothing changes and a *RemoveError is returned.
 func (im *Importer) DeleteSong(ctx context.Context, number string) error {
+	return im.remove(ctx, number, true)
+}
+
+// RemoveFromList takes a song off the list and leaves its file where it is. The
+// derived files (the extracted MP3, the cached SoundFont and audio) are removed. A
+// song in a watched folder is listed again by the next scan, under a new number.
+func (im *Importer) RemoveFromList(ctx context.Context, number string) error {
+	return im.remove(ctx, number, false)
+}
+
+func (im *Importer) remove(ctx context.Context, number string, deleteFile bool) error {
 	var sha, media string
 	err := im.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		var path string
@@ -94,7 +107,7 @@ func (im *Importer) DeleteSong(ctx context.Context, number string) error {
 		if err != nil {
 			return err
 		}
-		if !im.managed(path) {
+		if deleteFile && !im.managed(path) {
 			return ErrOutsideManaged
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE songs SET deleted = 1, path = path || '#deleted-' || number, media_path = '' WHERE number = ?`, number); err != nil {
@@ -104,8 +117,10 @@ func (im *Importer) DeleteSong(ctx context.Context, number string) error {
 			return err
 		}
 		// the file goes before the commit: if it cannot be removed the whole change is rolled back
-		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return &RemoveError{Err: err}
+		if deleteFile {
+			if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return &RemoveError{Err: err}
+			}
 		}
 		return nil
 	})
@@ -117,6 +132,124 @@ func (im *Importer) DeleteSong(ctx context.Context, number string) error {
 	im.removeCacheFiles(filepath.Join(im.dataDir, "cache", "render"), sha)
 	return nil
 }
+
+// RemoveScope picks the songs RemoveSongs takes off the list.
+type RemoveScope int
+
+// Scopes of RemoveSongs.
+const (
+	ScopeAll     RemoveScope = iota + 1 // every song
+	ScopeNoMusic                        // MIDI songs whose file has no audible notes
+)
+
+type goneSong struct{ number, sha, media string }
+
+// RemoveSongs takes many songs off the list in one go and returns how many it
+// removed. It never deletes a song file; the derived files go as with RemoveFromList.
+func (im *Importer) RemoveSongs(ctx context.Context, scope RemoveScope) (int, error) {
+	if scope != ScopeAll && scope != ScopeNoMusic {
+		return 0, fmt.Errorf("library: unknown remove scope %d", scope)
+	}
+	candidates, err := im.removeCandidates(ctx, scope)
+	if err != nil {
+		return 0, err
+	}
+	var gone []goneSong
+	err = im.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		gone = gone[:0]
+		for _, c := range candidates {
+			res, err := tx.ExecContext(ctx, `UPDATE songs SET deleted = 1, path = path || '#deleted-' || number, media_path = ''
+				WHERE number = ? AND sha256 = ? AND deleted = 0`, c.number, c.sha)
+			if err != nil {
+				return err
+			}
+			if n, _ := res.RowsAffected(); n == 0 {
+				continue // changed or removed meanwhile
+			}
+			if err := deleteFTS(ctx, tx, c.number); err != nil {
+				return err
+			}
+			gone = append(gone, c)
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	shas := make(map[string]bool, len(gone))
+	for _, g := range gone {
+		shas[g.sha] = true
+		im.removeMediaIfUnused(ctx, g.media)
+	}
+	im.removeCachedFilesOf(filepath.Join(im.dataDir, "cache", "sf2"), shas)
+	im.removeCachedFilesOf(filepath.Join(im.dataDir, "cache", "render"), shas)
+	return len(gone), nil
+}
+
+// removeCandidates lists the live songs a scope covers. For no-music it reads
+// each MIDI file; one that cannot be read is left alone.
+func (im *Importer) removeCandidates(ctx context.Context, scope RemoveScope) ([]goneSong, error) {
+	query := `SELECT number, sha256, media_path, path FROM songs WHERE deleted = 0`
+	if scope == ScopeNoMusic {
+		query += ` AND format = ` + fmt.Sprint(int(FormatMIDI))
+	}
+	rows, err := im.db.QueryContext(ctx, query+` ORDER BY number`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []goneSong
+	for rows.Next() {
+		var g goneSong
+		var path string
+		if err := rows.Scan(&g.number, &g.sha, &g.media, &path); err != nil {
+			return nil, err
+		}
+		if scope == ScopeNoMusic {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			if !silentMIDI(path) {
+				continue
+			}
+		}
+		out = append(out, g)
+	}
+	return out, rows.Err()
+}
+
+// silentMIDI reports whether the MIDI file at path can be read and has no audible note.
+func silentMIDI(path string) bool {
+	st, err := os.Stat(path)
+	if err != nil || st.Size() > maxMIDIBytes {
+		return false
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	music, err := kar.HasAudibleNotes(body)
+	return err == nil && !music
+}
+
+// removeCachedFilesOf deletes the files of dir named after one of the songs (their
+// names start with the SHA-256): one pass over the directory, whatever the number of songs.
+func (im *Importer) removeCachedFilesOf(dir string, shas map[string]bool) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return // no cache yet
+	}
+	for _, e := range entries {
+		if e.IsDir() || len(e.Name()) < sha256HexLen || !shas[e.Name()[:sha256HexLen]] {
+			continue
+		}
+		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil && !errors.Is(err, os.ErrNotExist) {
+			im.logger.Warn("cannot remove a cache file of a removed song", "err", err)
+		}
+	}
+}
+
+const sha256HexLen = 64
 
 // FailedCount is the number of live songs marked failed.
 func (im *Importer) FailedCount(ctx context.Context) (int, error) {

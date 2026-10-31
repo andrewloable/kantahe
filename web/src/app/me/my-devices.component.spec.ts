@@ -151,4 +151,22 @@ describe('MyDevicesComponent', () => {
     expect(tv.querySelector('select')?.getAttribute('aria-label')).toBe('MIDI mode of Living room TV');
     expect(Array.from(tv.querySelectorAll('button')).map((b) => b.getAttribute('aria-label'))).toContain('Sign out Living room TV');
   });
+
+  describe('layout', () => {
+    const css = () => Array.from(document.querySelectorAll('style')).map((st) => st.textContent ?? '').join('\n');
+
+    it('regression: the sign-out question keeps its text and its two buttons apart and wraps on a narrow screen (they touched, with no space between)', async () => {
+      await setup();
+      // the rule of the question must make it a wrapping row with a gap between its parts
+      expect(css()).toMatch(/\.ask[^{]*\{[^}]*display:\s*flex/);
+      expect(css()).toMatch(/\.ask[^{]*\{[^}]*flex-wrap:\s*wrap/);
+      expect(css()).toMatch(/\.ask[^{]*\{[^}]*gap:\s*[0-9.]+rem/);
+    });
+
+    it('regression: the parts of a device (name, setting, explanation, button) have room between them', async () => {
+      await setup();
+      expect(css()).toMatch(/\bli[^{]*\{[^}]*gap:\s*(0\.[7-9]|[1-9])[0-9.]*rem/);
+      expect(css()).toMatch(/\.mode[^{]*\{[^}]*gap:\s*0\.[5-9][0-9.]*rem/);
+    });
+  });
 });

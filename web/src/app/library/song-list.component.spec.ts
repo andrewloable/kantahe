@@ -158,7 +158,7 @@ describe('SongListComponent', () => {
       fixture.detectChanges();
       el.querySelectorAll<HTMLButtonElement>('button.delete')[3].click();
       fixture.detectChanges();
-      btn(el, 'Yes, delete').click();
+      btn(el, 'Delete file too').click();
       await fixture.whenStable();
       fixture.detectChanges();
       expect(f.calls.remove.map((c) => c.number)).toEqual(['1053']);
@@ -305,11 +305,11 @@ describe('SongListComponent', () => {
       expect(del.getAttribute('title')).toBe('Delete');
     });
 
-    it('asks first: it says the file goes too, and nothing is sent until it is confirmed', async () => {
+    it('asks first: remove from the list or delete the file too, and nothing is sent until one is chosen', async () => {
       const { fixture, el, calls } = adminSetup();
       deleteButtons(el)[0].click();
       fixture.detectChanges();
-      expect(el.textContent).toContain('Delete "Hello" and its file?');
+      expect(el.textContent).toContain('Take "Hello" off the list, or delete its file too?');
       expect(calls.remove.length).toBe(0);
     });
 
@@ -326,21 +326,33 @@ describe('SongListComponent', () => {
       fixture.detectChanges();
       button(el, 'Cancel')!.click();
       fixture.detectChanges();
-      expect(el.textContent).not.toContain('and its file?');
+      expect(el.textContent).not.toContain('off the list, or delete');
       expect(calls.remove.length).toBe(0);
       expect(el.querySelectorAll('li').length).toBe(2);
     });
 
-    it('Yes, delete removes the song on the server and from the list, and says so', async () => {
+    it('Delete file too deletes the file on the server, takes the song off the list, and says so', async () => {
       const { fixture, el, calls, toasts } = adminSetup();
       deleteButtons(el)[0].click();
       fixture.detectChanges();
-      button(el, 'Yes, delete')!.click();
-      await vi.waitFor(() => expect(calls.remove.map((c) => c.number)).toEqual(['1']));
+      button(el, 'Delete file too')!.click();
+      await vi.waitFor(() => expect(calls.remove.map((c) => [c.number, c.keepFile])).toEqual([['1', false]]));
       await fixture.whenStable();
       fixture.detectChanges();
       expect(Array.from(el.querySelectorAll('li')).map((r) => r.textContent)).toEqual([expect.stringContaining('Skyfall')]);
-      expect(toasts.toasts().map((t) => t.message)).toEqual(['Deleted Hello']);
+      expect(toasts.toasts().map((t) => t.message)).toEqual(['Deleted Hello and its file']);
+    });
+
+    it('Remove from list keeps the file: the request says so, the song leaves the list, and it is said in the toast', async () => {
+      const { fixture, el, calls, toasts } = adminSetup();
+      deleteButtons(el)[1].click();
+      fixture.detectChanges();
+      button(el, 'Remove from list')!.click();
+      await vi.waitFor(() => expect(calls.remove.map((c) => [c.number, c.keepFile])).toEqual([['2', true]]));
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(Array.from(el.querySelectorAll('li')).map((r) => r.textContent)).toEqual([expect.stringContaining('Hello')]);
+      expect(toasts.toasts().map((t) => t.message)).toEqual(['Removed Skyfall from the list']);
     });
 
     it('a song that is already gone (another administrator) just leaves the list', async () => {
@@ -351,7 +363,7 @@ describe('SongListComponent', () => {
       });
       deleteButtons(el)[0].click();
       fixture.detectChanges();
-      button(el, 'Yes, delete')!.click();
+      button(el, 'Delete file too')!.click();
       await vi.waitFor(() => expect(el.querySelectorAll('li').length).toBe(1));
       expect(el.querySelector('[role="alert"]')).toBeNull();
     });
@@ -364,7 +376,7 @@ describe('SongListComponent', () => {
       });
       deleteButtons(el)[0].click();
       fixture.detectChanges();
-      button(el, 'Yes, delete')!.click();
+      button(el, 'Delete file too')!.click();
       await vi.waitFor(() => {
         fixture.detectChanges();
         expect(el.querySelector('.error[role="alert"]')?.textContent).toContain('the library folder is read-only');

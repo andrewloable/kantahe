@@ -1,6 +1,6 @@
 import { Component, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
 import { Code, ConnectError } from '@connectrpc/connect';
-import { AdminService } from '../../../gen/kantahe/v1/admin_pb';
+import { AdminService, RemoveScope } from '../../../gen/kantahe/v1/admin_pb';
 import { CatalogService } from '../../../gen/kantahe/v1/catalog_pb';
 import { Song } from '../../../gen/kantahe/v1/common_pb';
 import { injectClient } from '../../core/api';
@@ -31,6 +31,33 @@ const SEARCH_DELAY_MS = 250;
         <span class="error" role="alert">{{ scanError() }}</span>
       }
     </p>
+    <section class="bulk" aria-labelledby="bulk-title">
+      <h3 id="bulk-title">Remove songs from the list</h3>
+      <p class="hint">The song files are never deleted.</p>
+      @if (bulkAsk(); as ask) {
+        <div class="confirm" role="alert">
+          <span>
+            @if (ask === 'all') {
+              Take every song off the list?
+            } @else {
+              Take every MIDI song that has no instruments, only lyric timing, off the list?
+            }
+            The files stay where they are.
+          </span>
+          <button type="button" (click)="removeSongs(ask)" [disabled]="bulkBusy()">Remove</button>
+          <button type="button" (click)="bulkAsk.set(undefined)" [disabled]="bulkBusy()">Cancel</button>
+        </div>
+      } @else {
+        <button type="button" (click)="bulkAsk.set('noMusic')">Remove songs with no music</button>
+        <button type="button" (click)="bulkAsk.set('all')">Remove all songs</button>
+      }
+      @if (bulkResult()) {
+        <p role="status">{{ bulkResult() }}</p>
+      }
+      @if (bulkError()) {
+        <p class="error" role="alert">{{ bulkError() }}</p>
+      }
+    </section>
     @if (pager.error()) {
       <p class="error" role="alert">{{ pager.error() }} <button type="button" (click)="pager.retry()">Try again</button></p>
     }
@@ -53,8 +80,9 @@ const SEARCH_DELAY_MS = 250;
             <td><app-format-badge [format]="s.format" /></td>
             <td class="actions">
               @if (deleting() === s.number) {
-                <span>Delete "{{ s.title }}" and its file?</span>
-                <button type="button" (click)="remove(s)">Yes, delete</button>
+                <span>Take "{{ s.title }}" off the list, or delete its file too?</span>
+                <button type="button" (click)="remove(s, true)">Remove from list</button>
+                <button type="button" (click)="remove(s, false)">Delete file too</button>
                 <button type="button" (click)="deleting.set(undefined)">Cancel</button>
               } @else {
                 <button type="button" [attr.aria-label]="'Edit ' + s.title" (click)="edit(s)">Edit</button>
@@ -122,6 +150,18 @@ const SEARCH_DELAY_MS = 250;
       background: var(--panel);
       box-shadow: 0 8px 30px rgb(0 0 0 / 0.4);
     }
+    .bulk {
+      margin: 1rem 0;
+    }
+    .bulk h3 {
+      margin: 0;
+    }
+    .confirm {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
     .hint {
       color: var(--muted);
       font-size: 0.875rem;
@@ -157,6 +197,10 @@ export class SongsAdminPage {
   protected readonly saving = signal(false);
   protected readonly deleting = signal<string | undefined>(undefined);
   protected readonly rowError = signal<Record<string, string>>({});
+  protected readonly bulkAsk = signal<'all' | 'noMusic' | undefined>(undefined);
+  protected readonly bulkBusy = signal(false);
+  protected readonly bulkResult = signal('');
+  protected readonly bulkError = signal('');
   protected readonly scanning = signal(false);
   protected readonly scanResult = signal('');
   protected readonly scanError = signal('');
@@ -213,10 +257,11 @@ export class SongsAdminPage {
     }
   }
 
-  protected async remove(s: Song): Promise<void> {
+  /** keepFile: only take the song off the list; otherwise its file is deleted too. */
+  protected async remove(s: Song, keepFile: boolean): Promise<void> {
     this.rowError.update((m) => ({ ...m, [s.number]: '' }));
     try {
-      await this.admins.deleteSong({ number: s.number });
+      await this.admins.deleteSong({ number: s.number, keepFile });
       this.pager.items.update((all) => all.filter((x) => x.number !== s.number));
       this.deleting.set(undefined);
     } catch (e) {
@@ -227,6 +272,23 @@ export class SongsAdminPage {
         return;
       }
       this.rowError.update((m) => ({ ...m, [s.number]: problem(e, { [Code.FailedPrecondition]: fromServer }) }));
+    }
+  }
+
+  /** Takes many songs off the list; the server never deletes a song file for this. */
+  protected async removeSongs(which: 'all' | 'noMusic'): Promise<void> {
+    this.bulkBusy.set(true);
+    this.bulkResult.set('');
+    this.bulkError.set('');
+    try {
+      const r = await this.admins.removeSongs({ scope: which === 'all' ? RemoveScope.ALL : RemoveScope.NO_MUSIC });
+      this.bulkResult.set(r.removed === 1 ? 'Removed 1 song from the list. Its file was kept.' : `Removed ${r.removed} songs from the list. Their files were kept.`);
+      this.bulkAsk.set(undefined);
+      void this.pager.reset();
+    } catch (e) {
+      this.bulkError.set(problem(e, {}));
+    } finally {
+      this.bulkBusy.set(false);
     }
   }
 

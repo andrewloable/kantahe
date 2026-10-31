@@ -170,6 +170,55 @@ func TestNoMusic(t *testing.T) {
 	}
 }
 
+// onlyNotes is a one-track file with the given note-ons (channel, key, velocity) and no program changes.
+func onlyNotes(notes ...[3]byte) []byte {
+	ev := []testfix.Event{{Delta: 0, Data: testfix.Text("la")}}
+	for _, n := range notes {
+		ev = append(ev, testfix.Event{Delta: 10, Data: testfix.NoteOn(n[0], n[1], n[2])})
+	}
+	return testfix.MIDI{Format: 0, Division: 480, Tracks: []testfix.Track{{Events: ev}}}.Bytes()
+}
+
+// The karaoke cards carry lyric timing on channel 16 (key 14 at velocity 1, key 0) and a pitch guide at velocity 1:
+// a file with only those has no instrument, and plays as silence.
+func TestGuideNotesAreNotMusic(t *testing.T) {
+	cases := []struct {
+		name  string
+		notes [][3]byte
+		want  bool
+	}{
+		{"lyric cues and a pitch guide only", [][3]byte{{15, 0, 64}, {15, 14, 1}, {15, 14, 1}, {15, 74, 1}, {15, 71, 1}}, false},
+		{"velocity 7 is too quiet", [][3]byte{{0, 60, 7}}, false},
+		{"velocity 8 is heard", [][3]byte{{0, 60, 8}}, true},
+		{"key 11 is below the audible range", [][3]byte{{0, 11, 100}}, false},
+		{"key 12 is the lowest heard", [][3]byte{{0, 12, 100}}, true},
+		{"one real note among the cues is music", [][3]byte{{15, 14, 1}, {0, 60, 90}, {15, 14, 1}}, true},
+		{"drums count", [][3]byte{{9, 36, 100}}, true},
+	}
+	for _, c := range cases {
+		s, err := Parse(onlyNotes(c.notes...))
+		if err != nil || s.HasMusic != c.want {
+			t.Errorf("%s: HasMusic = %v, err %v; want %v", c.name, s != nil && s.HasMusic, err, c.want)
+		}
+	}
+}
+
+// HasAudibleNotes answers the same question as Parse, without laying out the lyrics: the library asks it of
+// thousands of files at once.
+func TestHasAudibleNotesAgreesWithParse(t *testing.T) {
+	for _, notes := range [][][3]byte{{{15, 14, 1}, {15, 74, 1}}, {{0, 60, 90}}, {{0, 60, 7}}, nil} {
+		body := onlyNotes(notes...)
+		s, err := Parse(body)
+		got, gerr := HasAudibleNotes(body)
+		if err != nil || gerr != nil || got != s.HasMusic {
+			t.Errorf("%v: HasAudibleNotes = %v (%v), Parse says %v (%v)", notes, got, gerr, s.HasMusic, err)
+		}
+	}
+	if _, err := HasAudibleNotes([]byte("not midi")); err == nil {
+		t.Error("a file that is not MIDI is an error")
+	}
+}
+
 func TestDuration(t *testing.T) {
 	m := testfix.MIDI{Format: 1, Division: 480, Tracks: []testfix.Track{
 		{Events: []testfix.Event{{Delta: 0, Data: testfix.Tempo(500000)}}},

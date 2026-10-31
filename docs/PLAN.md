@@ -110,6 +110,10 @@ follows a gap of 5 s or more; dot *n* is lit while fewer than *n* whole seconds 
 `.karmp3` files, every `.karmp3` number also present as a `.kar`), some filenames contain damaged
 characters (for example `Bisrock�pÏ`), which is why in-file metadata and admin edits matter, and a
 few `.kar` files under 3 KB contain no music (they must be marked `failed`, not crash the player).
+About one in five `.kar` files of that set (4,712 of 21,124) carry only lyric timing cues and a velocity-1 pitch guide on
+channel 16 and no instrument at all: they play as silence. A note counts as music when its velocity is at least 8 and its
+key at least 12 (`kar.MinAudibleVelocity`, `kar.MinAudibleKey`); a `.kar` with no such note is refused at upload,
+before anything is stored ("the file contains no music"), and a watched-folder file is marked `failed`.
 
 ## 4. Architecture
 
@@ -298,7 +302,8 @@ service AuthService {
 service AdminService {        // admin only
   rpc ListUsers / CreateUser / UpdateUser / ResetPassword / DeleteUser / RevokeUserDevices;
   rpc UpdateSong(UpdateSongRequest) returns (Song);                // title, artist
-  rpc DeleteSong(DeleteSongRequest) returns (DeleteSongResponse);
+  rpc DeleteSong(DeleteSongRequest) returns (DeleteSongResponse);  // keep_file: only take it off the list, the file stays
+  rpc RemoveSongs(RemoveSongsRequest) returns (RemoveSongsResponse);  // scope ALL or NO_MUSIC; never deletes a song file
   rpc Rescan(RescanRequest) returns (RescanResponse);
   rpc GetSettings / UpdateSettings;                                // upload limits, score seconds, SoundFont
 }
@@ -410,6 +415,15 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
   `tvTheme`); the first song of the library has the focus at the start and the arrow keys move it row by
   row, OK queues the song. The player screen keeps its Play/Pause button focused and the WebView out of the
   focus tree.
+  **A TV opens in the player**: once, as soon as the server's state is known, the player screen is pushed (it
+  sends no command, so nothing starts playing by itself); Close leaves it for Library/Queue/Me and it is not
+  opened again until the next start. While a song plays here and no key is pressed for 4 seconds the native Close,
+  Play/Pause, Skip and Play here buttons fade out; any key (or touch) brings them back and is used up doing so, so
+  a hidden button is never pressed. Play here is a native button of the player screen while this device is not
+  the player, and the queue card has Open player when the server already lists this device as the player (after
+  an app restart). The arrow keys leave a text field (`DpadEscape`: Up and Down always, Left at the start of the
+  text, Right at its end). Appearance (Me): Auto (system), Light or Dark, applied at once and kept on the device
+  (`ThemeSetting`), also on a TV.
 * Dart client generated from the protos (connect-dart, checked in spike S2). Tokens in the platform
   keystore (`flutter_secure_storage`).
 * iOS: App Transport Security exceptions for plain-HTTP servers on the local network
@@ -562,7 +576,7 @@ Decided by the owner:
 | Database | SQLite only. |
 | Offline | Not in the MVP. |
 | API | ConnectRPC (connect-go, connect-es, connect-dart) between the server and every frontend, including uploads (one file per call, ZIPs unpacked on the client); only audio media is plain HTTP. |
-| Deleting songs | Removes the entry and its file, also in watched folders. |
+| Deleting songs | Asks: remove from the list (the file stays) or delete the file too, also in watched folders. Bulk: all songs, or MIDI songs with no music, never deleting files. |
 | Sign-in tokens | Expire after 90 days unused; revocable any time. |
 | Defaults | GeneralUser GS embedded as the default SoundFont (replaceable); player gone 30 s → paused at the last position, resumable on any device; port 8080; upload limit 50 MB per file. |
 | Build order | Server → Angular web → packaging → Flutter Android/iOS → Android TV → Samsung/LG. |

@@ -16,9 +16,12 @@ import 'dart:core' as $core;
 import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
 
+import 'admin.pbenum.dart';
 import 'common.pb.dart' as $0;
 
 export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
+
+export 'admin.pbenum.dart';
 
 /// Asks nothing.
 class ListUsersRequest extends $pb.GeneratedMessage {
@@ -934,9 +937,11 @@ class UpdateSongResponse extends $pb.GeneratedMessage {
 class DeleteSongRequest extends $pb.GeneratedMessage {
   factory DeleteSongRequest({
     $core.String? number,
+    $core.bool? keepFile,
   }) {
     final result = DeleteSongRequest._();
     if (number != null) result.number = number;
+    if (keepFile != null) result.keepFile = keepFile;
     return result;
   }
 
@@ -954,6 +959,7 @@ class DeleteSongRequest extends $pb.GeneratedMessage {
       package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
       createEmptyInstance: DeleteSongRequest.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'number')
+    ..aOB(2, _omitFieldNames ? '' : 'keepFile')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -986,6 +992,134 @@ class DeleteSongRequest extends $pb.GeneratedMessage {
   $core.bool hasNumber() => $_has(0);
   @$pb.TagNumber(1)
   void clearNumber() => $_clearField(1);
+
+  /// Only take the song off the list; the file stays where it is. False (the default) deletes the file too.
+  @$pb.TagNumber(2)
+  $core.bool get keepFile => $_getBF(1);
+  @$pb.TagNumber(2)
+  set keepFile($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasKeepFile() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearKeepFile() => $_clearField(2);
+}
+
+/// What to remove from the list.
+class RemoveSongsRequest extends $pb.GeneratedMessage {
+  factory RemoveSongsRequest({
+    RemoveScope? scope,
+  }) {
+    final result = RemoveSongsRequest._();
+    if (scope != null) result.scope = scope;
+    return result;
+  }
+
+  RemoveSongsRequest._();
+
+  factory RemoveSongsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RemoveSongsRequest()..mergeFromBuffer(data, registry);
+  factory RemoveSongsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RemoveSongsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RemoveSongsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: RemoveSongsRequest.$_createMessage)
+    ..aE<RemoveScope>(1, _omitFieldNames ? '' : 'scope',
+        enumValues: RemoveScope.values)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveSongsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveSongsRequest copyWith(void Function(RemoveSongsRequest) updates) =>
+      super.copyWith((message) => updates(message as RemoveSongsRequest))
+          as RemoveSongsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use RemoveSongsRequest() / RemoveSongsRequest.new instead')
+  static RemoveSongsRequest create() => RemoveSongsRequest._();
+  static $pb.GeneratedMessage $_createMessage() => RemoveSongsRequest._();
+  @$core.override
+  RemoveSongsRequest createEmptyInstance() => RemoveSongsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static RemoveSongsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RemoveSongsRequest>(
+          RemoveSongsRequest.$_createMessage);
+  static RemoveSongsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  RemoveScope get scope => $_getN(0);
+  @$pb.TagNumber(1)
+  set scope(RemoveScope value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasScope() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearScope() => $_clearField(1);
+}
+
+/// How many songs left the list.
+class RemoveSongsResponse extends $pb.GeneratedMessage {
+  factory RemoveSongsResponse({
+    $core.int? removed,
+  }) {
+    final result = RemoveSongsResponse._();
+    if (removed != null) result.removed = removed;
+    return result;
+  }
+
+  RemoveSongsResponse._();
+
+  factory RemoveSongsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RemoveSongsResponse()..mergeFromBuffer(data, registry);
+  factory RemoveSongsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RemoveSongsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RemoveSongsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: RemoveSongsResponse.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'removed')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveSongsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveSongsResponse copyWith(void Function(RemoveSongsResponse) updates) =>
+      super.copyWith((message) => updates(message as RemoveSongsResponse))
+          as RemoveSongsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use RemoveSongsResponse() / RemoveSongsResponse.new instead')
+  static RemoveSongsResponse create() => RemoveSongsResponse._();
+  static $pb.GeneratedMessage $_createMessage() => RemoveSongsResponse._();
+  @$core.override
+  RemoveSongsResponse createEmptyInstance() => RemoveSongsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static RemoveSongsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RemoveSongsResponse>(
+          RemoveSongsResponse.$_createMessage);
+  static RemoveSongsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get removed => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set removed($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRemoved() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRemoved() => $_clearField(1);
 }
 
 /// Empty.
@@ -1537,11 +1671,17 @@ class AdminServiceApi {
       _client.invoke<UpdateSongResponse>(
           ctx, 'AdminService', 'UpdateSong', request, UpdateSongResponse());
 
-  /// Admin only. Removes the entry and its file; fails with the reason if the file cannot be deleted.
+  /// Admin only. Removes the entry and, unless keep_file is set, its file; fails with the reason if the file cannot be deleted.
   $async.Future<DeleteSongResponse> deleteSong(
           $pb.ClientContext? ctx, DeleteSongRequest request) =>
       _client.invoke<DeleteSongResponse>(
           ctx, 'AdminService', 'DeleteSong', request, DeleteSongResponse());
+
+  /// Admin only. Removes many songs from the list at once. The song files are never deleted.
+  $async.Future<RemoveSongsResponse> removeSongs(
+          $pb.ClientContext? ctx, RemoveSongsRequest request) =>
+      _client.invoke<RemoveSongsResponse>(
+          ctx, 'AdminService', 'RemoveSongs', request, RemoveSongsResponse());
 
   /// Admin only. Rescans watched folders and reports the counts.
   $async.Future<RescanResponse> rescan(

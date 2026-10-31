@@ -7,6 +7,7 @@ import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/core/errors.dart';
 import 'package:kantahe/gen/kantahe/v1/auth.pb.dart';
 import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
+import 'package:kantahe/tv/dpad_escape.dart';
 
 /// Email and password; the device gets a name that shows in the user's device list.
 class SignInScreen extends StatefulWidget {
@@ -105,32 +106,44 @@ class _SignInScreenState extends State<SignInScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextField(
-                key: const Key('email'),
+              DpadEscape(
                 controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                autofillHints: const [AutofillHints.username],
-                autocorrect: false,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(labelText: 'Email', errorText: _emailError, border: const OutlineInputBorder()),
+                builder: (focus) => TextField(
+                  focusNode: focus,
+                  key: const Key('email'),
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.username],
+                  autocorrect: false,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(labelText: 'Email', errorText: _emailError, border: const OutlineInputBorder()),
+                ),
               ),
               const SizedBox(height: 12),
-              TextField(
-                key: const Key('password'),
+              DpadEscape(
                 controller: _password,
-                obscureText: true,
-                autofillHints: const [AutofillHints.password],
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(labelText: 'Password', errorText: _passwordError, border: const OutlineInputBorder()),
+                builder: (focus) => TextField(
+                  focusNode: focus,
+                  key: const Key('password'),
+                  controller: _password,
+                  obscureText: true,
+                  autofillHints: const [AutofillHints.password],
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(labelText: 'Password', errorText: _passwordError, border: const OutlineInputBorder()),
+                ),
               ),
               const SizedBox(height: 12),
-              TextField(
-                key: const Key('device-name'),
+              DpadEscape(
                 controller: _device,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _submit(),
-                maxLength: 100,
-                decoration: InputDecoration(labelText: 'Device name', errorText: _deviceError, counterText: '', border: const OutlineInputBorder()),
+                builder: (focus) => TextField(
+                  focusNode: focus,
+                  key: const Key('device-name'),
+                  controller: _device,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _submit(),
+                  maxLength: 100,
+                  decoration: InputDecoration(labelText: 'Device name', errorText: _deviceError, counterText: '', border: const OutlineInputBorder()),
+                ),
               ),
             ],
           ),

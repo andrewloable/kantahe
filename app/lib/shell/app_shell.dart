@@ -3,10 +3,14 @@ import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/library/library_screen.dart';
 import 'package:kantahe/me/me_screen.dart';
 import 'package:kantahe/player/player_screen.dart';
+import 'package:kantahe/core/state_store.dart';
 import 'package:kantahe/queue/queue_screen.dart';
 
 /// What the app shows once signed in: Library, Queue and Me behind a navigation bar. The screens are kept
 /// while another one is shown (what was typed or scrolled stays). Play here on the queue opens the player.
+/// A TV opens in the player (it is the screen that plays), once, as soon as the server's state is known;
+/// Close leaves it for the library, and it is not opened again until the next start. Opening it sends no
+/// command: nothing starts playing by itself.
 class AppShell extends StatefulWidget {
   const AppShell({super.key, this.playerBuilder = _player});
 
@@ -21,12 +25,39 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _index = 0;
+  StateStore? _watching;
 
   static const _destinations = [
     (icon: Icons.library_music_outlined, selected: Icons.library_music, label: 'Library'),
     (icon: Icons.queue_music_outlined, selected: Icons.queue_music, label: 'Queue'),
     (icon: Icons.person_outline, selected: Icons.person, label: 'Me'),
   ];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final services = AppScope.of(context);
+    if (_watching != null || !services.isTv) return;
+    _watching = services.state;
+    _watching!.addListener(_openPlayerOnTv);
+    _openPlayerOnTv();
+  }
+
+  @override
+  void dispose() {
+    _watching?.removeListener(_openPlayerOnTv);
+    super.dispose();
+  }
+
+  void _openPlayerOnTv() {
+    final store = _watching;
+    if (store == null || store.state == null) return; // the server has not answered yet
+    store.removeListener(_openPlayerOnTv);
+    _watching = null; // once per start
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).push(MaterialPageRoute<void>(builder: widget.playerBuilder));
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

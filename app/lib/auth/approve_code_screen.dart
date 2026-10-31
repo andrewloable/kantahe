@@ -5,6 +5,7 @@ import 'package:kantahe/auth/auth_page.dart';
 import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/core/errors.dart';
 import 'package:kantahe/gen/kantahe/v1/auth.pb.dart';
+import 'package:kantahe/tv/dpad_escape.dart';
 
 const _codeLength = 6;
 
@@ -76,22 +77,26 @@ class _ApproveCodeScreenState extends State<ApproveCodeScreen> {
       children: [
         const Text('Enter the code shown on the TV to sign it in with your account.'),
         const SizedBox(height: 16),
-        TextField(
-          key: const Key('code'),
+        DpadEscape(
           controller: _code,
-          maxLength: _codeLength,
-          autocorrect: false,
-          enableSuggestions: false,
-          textCapitalization: TextCapitalization.characters,
-          inputFormatters: [_capitals],
-          style: const TextStyle(fontFamily: 'monospace', fontSize: 24, letterSpacing: 4),
-          onSubmitted: (_) => _approve(),
-          decoration: const InputDecoration(
-            labelText: 'Code',
-            counterText: '',
-            helperText: 'Six characters: letters and the digits 2 to 9. A code never has 0, 1, I or O.',
-            helperMaxLines: 2,
-            border: OutlineInputBorder(),
+          builder: (focus) => TextField(
+            focusNode: focus,
+            key: const Key('code'),
+            controller: _code,
+            maxLength: _codeLength,
+            autocorrect: false,
+            enableSuggestions: false,
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: [_capitals],
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 24, letterSpacing: 4),
+            onSubmitted: (_) => _approve(),
+            decoration: const InputDecoration(
+              labelText: 'Code',
+              counterText: '',
+              helperText: 'Six characters: letters and the digits 2 to 9. A code never has 0, 1, I or O.',
+              helperMaxLines: 2,
+              border: OutlineInputBorder(),
+            ),
           ),
         ),
         if (_failure.isNotEmpty) MessageLine(_failure),

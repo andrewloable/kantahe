@@ -4,6 +4,7 @@ import 'package:kantahe/core/errors.dart';
 import 'package:kantahe/core/messages.dart';
 import 'package:kantahe/gen/kantahe/v1/user_library.pb.dart';
 import 'package:kantahe/me/playlist_detail_screen.dart';
+import 'package:kantahe/tv/dpad_escape.dart';
 
 /// The user's playlists: create, rename, delete (after asking), open.
 class PlaylistsScreen extends StatefulWidget {
@@ -84,12 +85,16 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Rename ${p.name}'),
-        content: TextField(
-          key: const Key('rename'),
+        content: DpadEscape(
           controller: controller,
-          maxLength: 100,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'New name'),
+          builder: (focus) => TextField(
+            focusNode: focus,
+            key: const Key('rename'),
+            controller: controller,
+            maxLength: 100,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'New name'),
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
@@ -134,12 +139,20 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: TextField(
-                  key: const Key('new-playlist'),
+                child: DpadEscape(
                   controller: _draft,
-                  maxLength: 100,
-                  decoration: InputDecoration(labelText: 'New playlist', errorText: _nameError.isEmpty ? null : _nameError, border: const OutlineInputBorder()),
-                  onSubmitted: (_) => _create(),
+                  builder: (focus) => TextField(
+                    focusNode: focus,
+                    key: const Key('new-playlist'),
+                    controller: _draft,
+                    maxLength: 100,
+                    decoration: InputDecoration(
+                      labelText: 'New playlist',
+                      errorText: _nameError.isEmpty ? null : _nameError,
+                      border: const OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) => _create(),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

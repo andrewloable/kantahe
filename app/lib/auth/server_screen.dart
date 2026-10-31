@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kantahe/auth/auth_page.dart';
 import 'package:kantahe/core/app_scope.dart';
+import 'package:kantahe/tv/dpad_escape.dart';
 
 /// First screen: the address of the server. A server that has no account yet is set up in a web browser.
 class ServerScreen extends StatefulWidget {
@@ -55,15 +56,19 @@ class _ServerScreenState extends State<ServerScreen> {
       children: [
         const Text('Enter the address of your Kantahe server, for example http://192.168.1.20:8080.'),
         const SizedBox(height: 16),
-        TextField(
-          key: const Key('server-url'),
+        DpadEscape(
           controller: _url,
-          keyboardType: TextInputType.url,
-          autocorrect: false,
-          enableSuggestions: false,
-          textInputAction: TextInputAction.go,
-          onSubmitted: (_) => _connect(),
-          decoration: const InputDecoration(labelText: 'Server address', border: OutlineInputBorder()),
+          builder: (focus) => TextField(
+            focusNode: focus,
+            key: const Key('server-url'),
+            controller: _url,
+            keyboardType: TextInputType.url,
+            autocorrect: false,
+            enableSuggestions: false,
+            textInputAction: TextInputAction.go,
+            onSubmitted: (_) => _connect(),
+            decoration: const InputDecoration(labelText: 'Server address', border: OutlineInputBorder()),
+          ),
         ),
         if (_failure.isNotEmpty) MessageLine(_failure),
         if (_needsSetup)

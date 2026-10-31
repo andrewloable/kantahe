@@ -107,6 +107,12 @@ asking for a password:
 On the TV use the arrow keys and OK. Back goes back, and leaves the app from the first page. You can also queue songs from
 your phone while the TV plays.
 
+The **Android TV app opens in the player**, the screen that plays. Its buttons (Close, Play/Pause, Skip, and Play here when
+another device is the player) fade out after four seconds while a song plays; press any key on the remote to bring them
+back. *Close* leaves the player for the Library, Queue and Me; the player is opened again the next time the app starts, or
+with *Open player* on the Queue page. In a text box the arrow keys move the cursor, and Up and Down (or Left at the start,
+Right at the end) move on to the next control. *Me → Appearance* chooses *Auto (system)*, *Light* or *Dark*.
+
 ## When something is wrong
 
 * *"Reconnecting…"* means the screen lost its link to the server and shows the last known state; it comes back by itself.

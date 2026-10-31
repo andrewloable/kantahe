@@ -20,8 +20,10 @@ service AdminService {
   rpc RevokeUserDevices(RevokeUserDevicesRequest) returns (RevokeUserDevicesResponse);
   // Admin only. Title and artist edits survive rescans and always win over file metadata.
   rpc UpdateSong(UpdateSongRequest) returns (UpdateSongResponse);
-  // Admin only. Removes the entry and its file; fails with the reason if the file cannot be deleted.
+  // Admin only. Removes the entry and, unless keep_file is set, its file; fails with the reason if the file cannot be deleted.
   rpc DeleteSong(DeleteSongRequest) returns (DeleteSongResponse);
+  // Admin only. Removes many songs from the list at once. The song files are never deleted.
+  rpc RemoveSongs(RemoveSongsRequest) returns (RemoveSongsResponse);
   // Admin only. Rescans watched folders and reports the counts.
   rpc Rescan(RescanRequest) returns (RescanResponse);
   // Admin only. Reads the server settings.
@@ -108,6 +110,27 @@ message UpdateSongResponse {
 // The song to delete.
 message DeleteSongRequest {
   string number = 1;
+  // Only take the song off the list; the file stays where it is. False (the default) deletes the file too.
+  bool keep_file = 2;
+}
+
+// Which songs RemoveSongs takes off the list.
+enum RemoveScope {
+  REMOVE_SCOPE_UNSPECIFIED = 0;
+  // Every song.
+  REMOVE_SCOPE_ALL = 1;
+  // MIDI songs whose file has no audible instrument notes (only lyric timing); they play as silence.
+  REMOVE_SCOPE_NO_MUSIC = 2;
+}
+
+// What to remove from the list.
+message RemoveSongsRequest {
+  RemoveScope scope = 1;
+}
+
+// How many songs left the list.
+message RemoveSongsResponse {
+  int32 removed = 1;
 }
 
 // Empty.

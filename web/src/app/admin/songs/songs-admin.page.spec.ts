@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { Format } from '../../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from '../../core/api';
-import { fakeAdminSongs, song } from '../testing';
+import { fakeAdminSongs, RemoveScope, song } from '../testing';
 import { SongsAdminPage } from './songs-admin.page';
 
 const SONGS = [song('00001', 'Alpha', 'Abba', Format.MP3), song('00002', 'Bravo', 'Beatles', Format.MIDI), song('00003', 'Charlie', 'Cher', Format.MIDI)];
@@ -136,15 +136,27 @@ describe('SongsAdminPage', () => {
     expect(el.querySelector('[role="dialog"] [role="alert"]')?.textContent).toContain('title is too long');
   });
 
-  it('Delete asks first; confirming deletes the song from the list', async () => {
+  it('Delete asks first; Delete file too deletes the song and its file', async () => {
     const { row, button, settle, server, el } = await setup();
     button(row('00002'), 'Delete').click();
     await settle();
-    expect(row('00002').textContent).toContain('Delete "Bravo" and its file?');
+    expect(row('00002').textContent).toContain('Take "Bravo" off the list, or delete its file too?');
     expect(server.calls.remove).toEqual([]);
-    button(row('00002'), 'Yes, delete').click();
+    button(row('00002'), 'Delete file too').click();
     await settle();
     expect(server.calls.remove).toEqual(['00002']);
+    expect(server.calls.removeKeep).toEqual([false]);
+    expect(el.textContent).not.toContain('Bravo');
+  });
+
+  it('Remove from list takes the song off the list and keeps its file (keepFile is sent)', async () => {
+    const { row, button, settle, server, el } = await setup();
+    button(row('00002'), 'Delete').click();
+    await settle();
+    button(row('00002'), 'Remove from list').click();
+    await settle();
+    expect(server.calls.remove).toEqual(['00002']);
+    expect(server.calls.removeKeep).toEqual([true]);
     expect(el.textContent).not.toContain('Bravo');
   });
 
@@ -155,7 +167,7 @@ describe('SongsAdminPage', () => {
     button(row('00002'), 'Cancel').click();
     await settle();
     expect(server.calls.remove).toEqual([]);
-    expect(row('00002').textContent).not.toContain('Yes, delete');
+    expect(row('00002').textContent).not.toContain('Delete file too');
   });
 
   it('a refused delete shows the server\'s message, for example a read-only folder', async () => {
@@ -163,7 +175,7 @@ describe('SongsAdminPage', () => {
     server.failNext(new ConnectError("the song's file could not be deleted: read-only file system", Code.FailedPrecondition));
     button(row('00002'), 'Delete').click();
     await settle();
-    button(row('00002'), 'Yes, delete').click();
+    button(row('00002'), 'Delete file too').click();
     await settle();
     expect(row('00002').querySelector('[role="alert"]')?.textContent).toContain('read-only file system');
     expect(row('00002')).toBeDefined();
@@ -175,7 +187,7 @@ describe('SongsAdminPage', () => {
     server.failNext(new ConnectError('song not found', Code.NotFound));
     button(row('00002'), 'Delete').click();
     await settle();
-    button(row('00002'), 'Yes, delete').click();
+    button(row('00002'), 'Delete file too').click();
     await settle();
     expect(el.textContent).not.toContain('Bravo');
   });
@@ -211,6 +223,57 @@ describe('SongsAdminPage', () => {
     expect(server.calls.rescan).toBe(1);
     expect(el.querySelector('[role="status"]')?.textContent).toContain('Added 3, updated 1, removed 0, failed 2');
     expect(server.calls.search.map((c) => c.pageToken)).toEqual(['', '2']); // from the first page again, then the page ahead
+  });
+
+  describe('removing many songs from the list', () => {
+    const askFor = async (label: string) => {
+      const env = await setup();
+      env.button(env.el, label).click();
+      await env.settle();
+      return env;
+    };
+
+    it('asks first, says the files stay, and sends nothing until it is confirmed', async () => {
+      const { el, server } = await askFor('Remove songs with no music');
+      expect(el.querySelector('.bulk [role="alert"]')?.textContent).toContain('The files stay where they are');
+      expect(server.calls.removeSongs).toEqual([]);
+    });
+
+    it('Cancel closes the question and sends nothing', async () => {
+      const { el, server, button, settle } = await askFor('Remove all songs');
+      button(el.querySelector('.bulk')!, 'Cancel').click();
+      await settle();
+      expect(el.querySelector('.bulk [role="alert"]')).toBeNull();
+      expect(server.calls.removeSongs).toEqual([]);
+    });
+
+    it('songs with no music: the scope is NO_MUSIC, the result is shown and the list is read again', async () => {
+      const { el, server, button, settle } = await askFor('Remove songs with no music');
+      server.calls.search.length = 0;
+      button(el.querySelector('.bulk')!, 'Remove').click();
+      await settle();
+      expect(server.calls.removeSongs).toEqual([RemoveScope.NO_MUSIC]);
+      expect(el.querySelector('.bulk [role="status"]')?.textContent).toContain('Removed 5 songs from the list. Their files were kept.');
+      expect(server.calls.search.length).toBeGreaterThan(0);
+    });
+
+    it('all songs: the scope is ALL; one song is said in the singular', async () => {
+      const { el, server, button, settle } = await askFor('Remove all songs');
+      expect(el.querySelector('.bulk [role="alert"]')?.textContent).toContain('every song');
+      server.handlers.removeSongs.removed = 1;
+      button(el.querySelector('.bulk')!, 'Remove').click();
+      await settle();
+      expect(server.calls.removeSongs).toEqual([RemoveScope.ALL]);
+      expect(el.querySelector('.bulk [role="status"]')?.textContent).toContain('Removed 1 song from the list. Its file was kept.');
+    });
+
+    it('a failure is shown and nothing else changes', async () => {
+      const { el, server, button, settle } = await askFor('Remove all songs');
+      server.failNext(new ConnectError('boom', Code.Internal));
+      button(el.querySelector('.bulk')!, 'Remove').click();
+      await settle();
+      expect(el.querySelector('.bulk .error')?.textContent).toBeTruthy();
+    });
   });
 
   it('a failed Rescan says so', async () => {

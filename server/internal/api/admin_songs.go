@@ -76,7 +76,7 @@ func (s *AdminServer) UpdateSong(ctx context.Context, req *connect.Request[kanta
 	return connect.NewResponse(&kantahev1.UpdateSongResponse{Song: song}), nil
 }
 
-// DeleteSong removes a song and its file.
+// DeleteSong removes a song and, unless keep_file is set, its file.
 func (s *AdminServer) DeleteSong(ctx context.Context, req *connect.Request[kantahev1.DeleteSongRequest]) (*connect.Response[kantahev1.DeleteSongResponse], error) {
 	if _, err := requireAdmin(ctx); err != nil {
 		return nil, err
@@ -85,10 +85,35 @@ func (s *AdminServer) DeleteSong(ctx context.Context, req *connect.Request[kanta
 	if err != nil {
 		return nil, err
 	}
-	if err := s.d.Importer.DeleteSong(ctx, number); err != nil {
+	remove := s.d.Importer.DeleteSong
+	if req.Msg.KeepFile {
+		remove = s.d.Importer.RemoveFromList
+	}
+	if err := remove(ctx, number); err != nil {
 		return nil, s.songErr("DeleteSong", err)
 	}
 	return connect.NewResponse(&kantahev1.DeleteSongResponse{}), nil
+}
+
+// RemoveSongs takes many songs off the list; their files are never deleted.
+func (s *AdminServer) RemoveSongs(ctx context.Context, req *connect.Request[kantahev1.RemoveSongsRequest]) (*connect.Response[kantahev1.RemoveSongsResponse], error) {
+	if _, err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	var scope library.RemoveScope
+	switch req.Msg.Scope {
+	case kantahev1.RemoveScope_REMOVE_SCOPE_ALL:
+		scope = library.ScopeAll
+	case kantahev1.RemoveScope_REMOVE_SCOPE_NO_MUSIC:
+		scope = library.ScopeNoMusic
+	default:
+		return nil, invalidArgument("choose which songs to remove")
+	}
+	n, err := s.d.Importer.RemoveSongs(ctx, scope)
+	if err != nil {
+		return nil, internalErr(s.d.Logger, "RemoveSongs", err)
+	}
+	return connect.NewResponse(&kantahev1.RemoveSongsResponse{Removed: int32(n)}), nil
 }
 
 // Rescan scans the watched folders now and reports the counts.

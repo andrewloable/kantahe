@@ -371,6 +371,19 @@ func TestKARNoMusicFailed(t *testing.T) {
 	}
 }
 
+func TestKARGuideOnlyFailed(t *testing.T) {
+	e := newEnv(t)
+	e.put(t, "g.kar", testfix.MIDI{Format: 0, Division: 480, Tracks: []testfix.Track{{Events: []testfix.Event{
+		{Data: testfix.Text("@TCues")}, {Data: testfix.Text("la")},
+		{Delta: 10, Data: testfix.NoteOn(15, 14, 1)}, {Delta: 10, Data: testfix.NoteOn(15, 74, 1)},
+	}}}}.Bytes())
+	e.scan(t)
+	e.process(t)
+	if r := e.row(t, "00001"); !r.Failed || r.Reason != "the file contains no music" {
+		t.Fatalf("%+v", r)
+	}
+}
+
 func TestKARMP3Extracted(t *testing.T) {
 	e := newEnv(t)
 	mp3 := testfix.MP3Frames(300)

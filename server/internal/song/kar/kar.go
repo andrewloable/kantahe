@@ -10,13 +10,45 @@ import (
 	"github.com/andrewloable/kantahe/server/internal/song/lyrics"
 )
 
+// A note is heard when it is at least this loud and this high. The karaoke cards keep lyric timing (key 14 at
+// velocity 1, key 0) and a pitch guide (velocity 1) on channel 16: a file with only those plays as silence.
+const (
+	MinAudibleVelocity = 8
+	MinAudibleKey      = 12
+)
+
 // Song is everything the library needs from a .kar file.
 type Song struct {
 	Title, Artist string
 	DurationMs    int64
-	HasMusic      bool // at least one note-on with velocity > 0
+	HasMusic      bool // at least one audible note-on (see MinAudibleVelocity, MinAudibleKey)
 	Lines         []lyrics.Line
 	Presets       []Preset
+}
+
+func audible(e Event) bool {
+	return e.Status&0xF0 == 0x90 && e.Status < 0xF0 && len(e.Data) == 2 && e.Data[1] >= MinAudibleVelocity && e.Data[0] >= MinAudibleKey
+}
+
+func hasAudible(smf *SMF) bool {
+	for _, tr := range smf.Tracks {
+		for _, e := range tr {
+			if audible(e) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// HasAudibleNotes reports whether a .kar has at least one audible note, as Song.HasMusic does, without
+// reading its lyrics, title or tempo: it is cheap enough to ask of every file of a large library.
+func HasAudibleNotes(b []byte) (bool, error) {
+	smf, err := ParseSMF(b)
+	if err != nil {
+		return false, err
+	}
+	return hasAudible(smf), nil
 }
 
 // Parse reads a .kar file. A file with no lyrics is not an error.
@@ -32,11 +64,9 @@ func Parse(b []byte) (*Song, error) {
 	for _, tr := range smf.Tracks {
 		for _, e := range tr {
 			last = max(last, e.Tick)
-			if e.Status&0xF0 == 0x90 && e.Status < 0xF0 && len(e.Data) == 2 && e.Data[1] > 0 {
-				s.HasMusic = true
-			}
 		}
 	}
+	s.HasMusic = hasAudible(smf)
 	s.DurationMs = tm.TickToMs(last)
 	s.Title, s.Artist = metadata(smf)
 	s.Lines = lyrics.Layout(syllables(smf, tm))

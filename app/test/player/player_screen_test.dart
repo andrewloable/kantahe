@@ -1,5 +1,6 @@
 import 'package:connectrpc/connect.dart';
 import 'package:flutter/material.dart' hide State;
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart';
 import 'package:kantahe/player/platform.dart';
@@ -119,6 +120,24 @@ void main() {
       expect(r.q.server.controls.last, ControlAction.CONTROL_ACTION_SKIP);
     });
 
+    testWidgets('Play here is offered while this device is not the player (the page cannot take the D-pad), and sends PLAY_HERE', (tester) async {
+      final r = await open(tester, state: playingHere(player: 'tv'));
+      expect(find.text('Play here'), findsOneWidget);
+      await tester.tap(find.text('Play here'));
+      await settle(tester);
+      expect(r.q.server.controls, [ControlAction.CONTROL_ACTION_PLAY_HERE]);
+    });
+
+    testWidgets('Play here is offered while no device is the player', (tester) async {
+      await open(tester, state: playingHere(player: ''));
+      expect(find.text('Play here'), findsOneWidget);
+    });
+
+    testWidgets('no Play here while this device is the player', (tester) async {
+      await open(tester);
+      expect(find.text('Play here'), findsNothing);
+    });
+
     testWidgets('a failed command is shown', (tester) async {
       final r = await open(tester);
       r.q.server.onControl = (_) => throw ConnectException(Code.unavailable, 'down');
@@ -161,6 +180,111 @@ void main() {
       for (final b in tester.widgetList<ButtonStyleButton>(find.byType(ButtonStyleButton))) {
         expect(b.child, isA<Text>());
       }
+    });
+  });
+
+  group('auto-hide', () {
+    double controlsOpacity(WidgetTester tester) => tester.widget<AnimatedOpacity>(find.byKey(const Key('player-controls'))).opacity;
+    bool focusExcluded(WidgetTester tester) =>
+        tester.widget<ExcludeFocus>(find.ancestor(of: find.byKey(const Key('player-controls')), matching: find.byType(ExcludeFocus)).first).excluding;
+    Future<void> idleFor(WidgetTester tester, int seconds) async {
+      await tester.pump(Duration(seconds: seconds));
+      await tester.pump(const Duration(milliseconds: 400)); // the fade
+    }
+
+    testWidgets('the buttons fade away after 4 seconds without input while a song plays here', (tester) async {
+      await open(tester);
+      expect(controlsOpacity(tester), 1);
+      await tester.pump(const Duration(seconds: 3));
+      expect(controlsOpacity(tester), 1);
+      await idleFor(tester, 2);
+      expect(controlsOpacity(tester), 0);
+      expect(focusExcluded(tester), isTrue);
+    });
+
+    testWidgets('a key press brings them back and does nothing else: a hidden Pause is not pressed by the same key', (tester) async {
+      final r = await open(tester);
+      await idleFor(tester, 5);
+      expect(controlsOpacity(tester), 0);
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(controlsOpacity(tester), 1);
+      expect(r.q.server.controls, isEmpty);
+      // and the D-pad is ready on Pause: the next Select pauses
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await settle(tester);
+      expect(r.q.server.controls, [ControlAction.CONTROL_ACTION_PAUSE]);
+    });
+
+    testWidgets('any arrow key brings them back', (tester) async {
+      await open(tester);
+      await idleFor(tester, 5);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(controlsOpacity(tester), 1);
+      expect(focusExcluded(tester), isFalse);
+    });
+
+    testWidgets('a key press while they are shown starts the 4 seconds again', (tester) async {
+      await open(tester);
+      await tester.pump(const Duration(seconds: 3));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump(const Duration(seconds: 3));
+      expect(controlsOpacity(tester), 1); // 6 s after the start, 3 s after the key
+      await idleFor(tester, 2);
+      expect(controlsOpacity(tester), 0);
+    });
+
+    testWidgets('a touch brings them back, and the touch does not press the button under it', (tester) async {
+      final r = await open(tester);
+      final pause = tester.getCenter(find.text('Pause'));
+      await idleFor(tester, 5);
+      expect(controlsOpacity(tester), 0);
+      await tester.tapAt(pause); // exactly where the hidden Pause is
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(controlsOpacity(tester), 1);
+      await settle(tester);
+      expect(r.q.server.controls, isEmpty);
+    });
+
+    testWidgets('while paused they stay', (tester) async {
+      await open(tester, state: playingHere(status: PlayStatus.PLAY_STATUS_PAUSED));
+      await idleFor(tester, 30);
+      expect(controlsOpacity(tester), 1);
+    });
+
+    testWidgets('while another device is the player they stay', (tester) async {
+      await open(tester, state: playingHere(player: 'tv'));
+      await idleFor(tester, 30);
+      expect(controlsOpacity(tester), 1);
+    });
+
+    testWidgets('pausing from elsewhere while they are hidden shows them', (tester) async {
+      final r = await open(tester);
+      await idleFor(tester, 5);
+      expect(controlsOpacity(tester), 0);
+      r.q.setState(playingHere(status: PlayStatus.PLAY_STATUS_PAUSED));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(controlsOpacity(tester), 1);
+      await idleFor(tester, 30);
+      expect(controlsOpacity(tester), 1);
+    });
+
+    testWidgets('playing again hides them again after 4 seconds', (tester) async {
+      final r = await open(tester, state: playingHere(status: PlayStatus.PLAY_STATUS_PAUSED));
+      r.q.setState(playingHere());
+      await tester.pump();
+      await idleFor(tester, 5);
+      expect(controlsOpacity(tester), 0);
+    });
+
+    testWidgets('a page that does not load keeps its Try again in view', (tester) async {
+      final r = await open(tester);
+      r.config!.onError('net::ERR');
+      await tester.pump();
+      await idleFor(tester, 30);
+      expect(find.text('Try again'), findsOneWidget);
+      expect(controlsOpacity(tester), 1);
     });
   });
 

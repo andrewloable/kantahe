@@ -13,8 +13,18 @@ Future<QueueRig> open(WidgetTester tester, {bool tv = true}) async {
   await r.services.serverUrl.set('http://srv:1');
   await r.signIn('me');
   r.setState(stateOf());
-  await tester.pumpWidget(AppRoot(services: r.services, child: const KantaheApp()));
-  await tester.pump();
+  await tester.pumpWidget(
+    AppRoot(
+      services: r.services,
+      child: KantaheApp(playerBuilder: (_) => const Scaffold(body: Text('PLAYER SCREEN'))),
+    ),
+  );
+  await tester.pumpAndSettle();
+  // a TV opens in the player: leave it, as Close does, to reach the screens behind
+  if (tv && find.text('PLAYER SCREEN').evaluate().isNotEmpty) {
+    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await tester.pumpAndSettle();
+  }
   return r;
 }
 

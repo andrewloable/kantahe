@@ -17,6 +17,12 @@ import (
 
 const maxReasonLen = 200
 
+// maxMIDIBytes is the largest .kar file that is read.
+const maxMIDIBytes = 10 << 20
+
+// noMusicReason is the failed reason of a MIDI file without audible notes.
+const noMusicReason = "the file contains no music"
+
 // metadata is what the metadata step learned about one file.
 type metadata struct {
 	title, artist string
@@ -42,7 +48,7 @@ func parseFile(path string, format Format) metadata {
 		if err != nil {
 			return metadata{failedReason: "file cannot be read"}
 		}
-		if st.Size() > 10<<20 {
+		if st.Size() > maxMIDIBytes {
 			return metadata{failedReason: "file is too large"}
 		}
 		body, err := os.ReadFile(path)
@@ -71,7 +77,7 @@ func parseMIDI(body []byte) metadata {
 	}
 	md := metadata{title: song.Title, artist: song.Artist, durationMs: song.DurationMs}
 	if !song.HasMusic {
-		md.failedReason = "the file contains no music"
+		md.failedReason = noMusicReason
 	}
 	return md
 }

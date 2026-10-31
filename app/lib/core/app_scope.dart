@@ -6,12 +6,14 @@ import 'package:kantahe/core/auth_store.dart';
 import 'package:kantahe/core/server_url.dart';
 import 'package:kantahe/core/state_store.dart';
 import 'package:kantahe/core/storage.dart';
+import 'package:kantahe/core/theme_setting.dart';
 import 'package:kantahe/gen/kantahe/v1/auth.pb.dart';
 import 'package:kantahe/tv/tv_detect.dart';
 
 /// The services every screen uses, created once at start-up.
 class AppServices {
-  AppServices({required this.serverUrl, required this.auth, required this.api, required this.state, this.isTv = false}) {
+  AppServices({required this.serverUrl, required this.auth, required this.api, required this.state, this.isTv = false, ThemeSetting? theme})
+    : theme = theme ?? ThemeSetting(MemoryStore()) {
     // A token belongs to one server: a different address ends the session.
     var address = serverUrl.value;
     serverUrl.addListener(() {
@@ -38,6 +40,9 @@ class AppServices {
   final Api api;
   final StateStore state;
 
+  /// Light, dark or Auto.
+  final ThemeSetting theme;
+
   /// An Android TV: signs in with a code and is driven with a remote.
   final bool isTv;
 
@@ -47,7 +52,8 @@ class AppServices {
     final isTv = await detectTv();
     final serverUrl = ServerUrl(PrefsStore(), makeTransport: httpTransportFactory(const []));
     final auth = AuthStore(SecureStore());
-    await Future.wait([serverUrl.load(), auth.load()]);
+    final theme = ThemeSetting(PrefsStore());
+    await Future.wait([serverUrl.load(), auth.load(), theme.load()]);
     final handlers = ApiHandlers(
       token: () => auth.token,
       // the app shows the sign-in screen whenever auth.signedIn is false, the password screen when
@@ -62,6 +68,7 @@ class AppServices {
       api: api,
       state: StateStore(client: api.session, auth: auth),
       isTv: isTv,
+      theme: theme,
     );
     unawaited(services.loadUser()); // the app does not wait for it
     return services;

@@ -64,10 +64,18 @@ const modeLabel = (m: MidiMode) => MODES.find((x) => x.value === m)?.label ?? 'A
     li {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem;
+      gap: 0.75rem;
       align-items: center;
-      padding: 0.75rem 0;
+      padding: 1rem 0;
       border-bottom: 1px solid var(--line);
+    }
+    /* the question before a sign-out: its words and its two buttons are a row that wraps, with room between them */
+    .ask {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.75rem;
+      flex-basis: 100%;
     }
     .name {
       font-weight: 600;
@@ -81,7 +89,7 @@ const modeLabel = (m: MidiMode) => MODES.find((x) => x.value === m)?.label ?? 'A
     .mode {
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
+      gap: 0.5rem;
       flex-basis: 100%;
     }
     select {

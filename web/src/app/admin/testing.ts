@@ -100,6 +100,8 @@ import { CatalogService, SearchSongsRequest, SearchSongsResponseSchema } from '.
 import {
   DeleteSongResponseSchema,
   GetServerSettingsResponseSchema,
+  RemoveScope,
+  RemoveSongsResponseSchema,
   RescanResponseSchema,
   ServerSettingsSchema,
   UpdateServerSettingsRequest,
@@ -127,6 +129,9 @@ export function fakeAdminSongs(seed: { songs?: Song[]; maxUploadBytes?: number; 
     upload: [] as UploadSongRequest[],
     update: [] as UpdateSongRequest[],
     remove: [] as string[],
+    /** keepFile of each DeleteSong, in the order of remove. */
+    removeKeep: [] as boolean[],
+    removeSongs: [] as RemoveScope[],
     rescan: 0,
     settings: [] as UpdateServerSettingsRequest[],
     getSettings: 0,
@@ -146,6 +151,7 @@ export function fakeAdminSongs(seed: { songs?: Song[]; maxUploadBytes?: number; 
       index: number,
     ) => UploadReply | Promise<UploadReply>,
     rescan: { added: 3, updated: 1, removed: 0, failed: 2 },
+    removeSongs: { removed: 5 },
   };
   const transport = createRouterTransport(({ service }) => {
     service(UploadService, {
@@ -185,10 +191,16 @@ export function fakeAdminSongs(seed: { songs?: Song[]; maxUploadBytes?: number; 
       },
       deleteSong(req) {
         calls.remove.push(req.number);
+        calls.removeKeep.push(req.keepFile);
         maybeFail();
         const i = songs.findIndex((s) => s.number === req.number);
         if (i >= 0) songs.splice(i, 1);
         return create(DeleteSongResponseSchema, {});
+      },
+      removeSongs(req) {
+        calls.removeSongs.push(req.scope);
+        maybeFail();
+        return create(RemoveSongsResponseSchema, handlers.removeSongs);
       },
       rescan() {
         calls.rescan++;
@@ -220,4 +232,4 @@ export function fakeAdminSongs(seed: { songs?: Song[]; maxUploadBytes?: number; 
   };
 }
 
-export { UploadStatus };
+export { RemoveScope, UploadStatus };
