@@ -1,0 +1,12 @@
+{
+  "id": "com.loabletech.kantahe",
+  "version": "1.0.0",
+  "vendor": "Loable Tech",
+  "type": "web",
+  "main": "index.html",
+  "title": "Kantahe",
+  "icon": "icon-80.png",
+  "largeIcon": "icon-130.png",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": false
+}

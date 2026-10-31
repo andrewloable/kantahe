@@ -9,7 +9,7 @@ import { StateStore } from '../core/state.store';
 import { ToastService } from '../core/toast';
 import { deviceMemoryMb } from './device-report';
 import { DropoutMonitor } from './dropouts';
-import { CAN_PLAY_FLAC, Engine, ENGINES, MidiOptions } from './engines/engine';
+import { CAN_PLAY_FLAC, CAN_SYNTHESIZE, Engine, ENGINES, MidiOptions } from './engines/engine';
 import { MIC_METER } from './mic';
 
 const REPORT_POSITION_MS = 1000;
@@ -28,12 +28,16 @@ export type PlayerPhase = 'idle' | 'preparing' | 'loading' | 'ready' | 'error';
  * right engine, follows play/pause from the state and reports position, end, memory, dropouts and
  * microphone to the server. Provide it where it is used (one per player page).
  */
+/** Shown when a MIDI song reaches a page that cannot run the synthesizer and the server has no rendered audio for it. */
+const NO_SYNTH = 'This page cannot play MIDI songs: they need HTTPS, or a server that renders audio.';
+
 @Injectable()
 export class PlayerController implements OnDestroy {
   private readonly store = inject(StateStore);
   private readonly auth = inject(AuthStore);
   private readonly engines = inject(ENGINES);
   private readonly canPlayFlac = inject(CAN_PLAY_FLAC);
+  private readonly canSynthesize = inject(CAN_SYNTHESIZE);
   private readonly mic = inject(MIC_METER);
   private readonly toast = inject(ToastService);
   private readonly catalog = injectClient(CatalogService);
@@ -73,6 +77,8 @@ export class PlayerController implements OnDestroy {
   private capableReported = false;
   /** The song for which this device was already switched to the synthesizer (once per song). */
   private synthFallbackFor?: string;
+  /** The song for which this device was already switched to server-rendered audio (once per song, no loop). */
+  private renderFallbackFor?: string;
 
   private reportTimer?: ReturnType<typeof setInterval>;
   private skipTimer?: ReturnType<typeof setTimeout>;
@@ -151,6 +157,10 @@ export class PlayerController implements OnDestroy {
             await this.leaveRender(number);
             continue;
           }
+          if (this.mustUseRender(number, res)) {
+            await this.useRender(number);
+            continue;
+          }
           playback = res;
           break;
         }
@@ -175,6 +185,24 @@ export class PlayerController implements OnDestroy {
     );
   }
 
+  /** A MIDI song for the synthesizer on a page that has none (no AudioWorklet: plain HTTP from a LAN address). */
+  private mustUseRender(number: string, playback: Playback): boolean {
+    return playback.kind === PlaybackKind.MIDI_SYNTH && !this.canSynthesize() && this.renderFallbackFor !== number;
+  }
+
+  /** Switches this device to server-rendered audio, so that the next GetPlayback comes as audio (when the server can render). */
+  private async useRender(number: string): Promise<void> {
+    this.renderFallbackFor = number;
+    const deviceId = this.auth.deviceId();
+    if (!deviceId) return;
+    try {
+      await this.session.setMidiMode({ deviceId, mode: MidiMode.SERVER });
+    } catch {
+      return; // nothing was changed: the song ends in the clear error below
+    }
+    this.toast.show('This page cannot run the synthesizer (it needs HTTPS). Switched to server-rendered audio.');
+  }
+
   /** Switches this device to the built-in synthesizer, so that the next GetPlayback comes as MIDI. */
   private async leaveRender(number: string): Promise<void> {
     this.synthFallbackFor = number;
@@ -190,6 +218,10 @@ export class PlayerController implements OnDestroy {
 
   private async load(number: string, mine: number, playback: Playback): Promise<void> {
     this.playback.set(playback);
+    if (playback.kind === PlaybackKind.MIDI_SYNTH && !this.canSynthesize()) {
+      this.fail(NO_SYNTH); // nothing can play it here: the synthesizer is not even tried
+      return;
+    }
     this.phase.set('loading');
     const engine = this.makeEngine(playback);
     this.engine = engine; // from here on stop() can dispose it, even while it loads
@@ -311,13 +343,13 @@ export class PlayerController implements OnDestroy {
     }
   }
 
-  private fail(): void {
+  private fail(message = 'This song could not be played.'): void {
     this.disposeEngine();
     this.stopTimers();
     this.loaded.set(false);
     this.wantPlay = false;
     this.phase.set('error');
-    this.error.set('This song could not be played.');
+    this.error.set(message);
     if (++this.failures <= MAX_AUTO_SKIPS) {
       this.skipTimer = setTimeout(() => void this.session.control({ action: ControlAction.SKIP }).catch(() => undefined), SKIP_AFTER_ERROR_MS);
     }

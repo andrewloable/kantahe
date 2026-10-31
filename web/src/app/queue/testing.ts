@@ -62,6 +62,7 @@ export function fakeSession() {
   const pending: State[] = [];
   let wake: (() => void) | undefined;
   let fail: ((req: unknown) => Error | undefined) | undefined;
+  let hold: Promise<void> | undefined;
   const transport = createRouterTransport(({ service }) =>
     service(SessionService, {
       async *watchState(_req, ctx) {
@@ -72,8 +73,9 @@ export function fakeSession() {
         }
       },
       getState: () => create(GetStateResponseSchema, {}),
-      control(req) {
+      async control(req) {
         calls.control.push(req);
+        await hold; // a command that is slow to answer
         const e = fail?.(req);
         if (e) throw e;
         return create(ControlResponseSchema, {});
@@ -101,6 +103,10 @@ export function fakeSession() {
     },
     failControl(e: (req: unknown) => Error | undefined) {
       fail = e;
+    },
+    /** Control commands do not answer until this promise settles. */
+    holdControl(p: Promise<void>) {
+      hold = p;
     },
   };
 }

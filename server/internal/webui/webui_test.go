@@ -19,6 +19,7 @@ func testFS() fstest.MapFS {
 		"chunk-9n-1avh3.js":            {Data: []byte("lazy")},
 		"assets/long-name-ABCDEFGH.js": {Data: []byte("unhashed asset in a folder")},
 		"favicon.ico":                  {Data: []byte("ico")},
+		"manifest.webmanifest":         {Data: []byte(`{"name":"Kantahe"}`)},
 		"assets/logo.svg":              {Data: []byte("<svg/>")},
 		"assets/sub/deep/file.txt":     {Data: []byte("deep")},
 		"assets/sub/deep/index.html":   {Data: []byte("not the app")},
@@ -165,5 +166,16 @@ func TestRegression_MixedCaseChunkHashesAreImmutable(t *testing.T) {
 	// only the root-level build output is hashed; a file in a folder keeps being revalidated
 	if cc := get(h, "GET", "/assets/long-name-ABCDEFGH.js").Header().Get("Cache-Control"); cc != "no-cache" {
 		t.Errorf("assets file: Cache-Control %q, want no-cache", cc)
+	}
+}
+
+func TestRegression_ManifestHasItsOwnMediaType(t *testing.T) {
+	// Go has no built-in type for .webmanifest, and a container without a MIME table would send it as text/plain
+	rec := get(NewHandler(testFS()), "GET", "/manifest.webmanifest")
+	if rec.Code != 200 {
+		t.Fatalf("status %d", rec.Code)
+	}
+	if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "application/manifest+json") {
+		t.Fatalf("Content-Type = %q, want application/manifest+json", got)
 	}
 }

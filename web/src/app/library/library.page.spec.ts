@@ -91,6 +91,50 @@ describe('LibraryPage', () => {
       expect(calls.search.map((c) => c.query)).toEqual(['het']);
     });
 
+    it('regression: the next page is asked for with the query of the list on screen, not with text typed since', async () => {
+      const { el, calls, settle, type } = setup({
+        searchSongs: (req) => (req.pageToken === '' ? { items: [song('1', 'A', 'x')], next: 'P2' } : { items: [] }),
+      });
+      await settle();
+      await type('zzz'); // typed, the 250 ms have not passed
+      Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Load more'))!.click();
+      await settle();
+      const next = calls.search.find((r) => r.pageToken === 'P2')!;
+      expect(next.query).toBe('');
+    });
+
+    it('regression: a failed next page is not asked for again and again', async () => {
+      // an observer that reports the end of the list as in view as soon as it is watched
+      vi.stubGlobal(
+        'IntersectionObserver',
+        class {
+          constructor(private cb: IntersectionObserverCallback) {}
+          observe(target: Element) {
+            queueMicrotask(() => this.cb([{ isIntersecting: true, target } as IntersectionObserverEntry], this as unknown as IntersectionObserver));
+          }
+          disconnect() {
+            // nothing to release
+          }
+        },
+      );
+      try {
+        const { el, calls, settle } = setup({
+          searchSongs: (req) => {
+            if (req.pageToken === 'P2') throw new ConnectError('down', Code.Unavailable);
+            return { items: [song('1', 'A', 'x')], next: 'P2' };
+          },
+        });
+        await settle(100);
+        const asked = calls.search.length;
+        expect(asked).toBe(2); // the opening page and the one that failed
+        await settle(5000);
+        expect(calls.search.length).toBe(asked);
+        expect(el.textContent).toContain('Try again');
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
     it('trims the query', async () => {
       const { calls, settle, type } = setup();
       await settle();

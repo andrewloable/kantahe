@@ -145,3 +145,71 @@ func TestWebAppAndAPIShareOneMux(t *testing.T) {
 		t.Errorf("media: %d, want the media handler's refusal", code)
 	}
 }
+
+func TestAPIAndMediaAnswerCORSButTheWebAppDoesNot(t *testing.T) {
+	dir := t.TempDir()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	db, err := store.Open(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	srv := app.New(config.Config{}, logger)
+	// the same function run() uses to register the services
+	mounted, err := mountServices(srv, api.Deps{DB: db, Version: "t", Now: time.Now, Logger: logger, DataDir: dir, Importer: library.NewImporter(db, dir, nil, logger)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mounted.Close()
+	mountWebUI(srv)
+	ts := httptest.NewServer(srv.Mux())
+	defer ts.Close()
+
+	preflight := func(path, method, headers string) *http.Response {
+		req, _ := http.NewRequest(http.MethodOptions, ts.URL+path, nil)
+		req.Header.Set("Origin", "null") // a packaged TV app
+		req.Header.Set("Access-Control-Request-Method", method)
+		req.Header.Set("Access-Control-Request-Headers", headers)
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res
+	}
+	for _, c := range []struct{ path, method, headers string }{
+		{"/kantahe.v1.AuthService/GetServerInfo", "POST", "authorization,connect-protocol-version,content-type"},
+		{"/kantahe.v1.SessionService/WatchState", "POST", "authorization,connect-protocol-version,content-type"},
+	} {
+		res := preflight(c.path, c.method, c.headers)
+		if res.StatusCode != http.StatusNoContent || res.Header.Get("Access-Control-Allow-Origin") != "*" {
+			t.Errorf("preflight %s: %d, allow-origin %q, want 204 and *", c.path, res.StatusCode, res.Header.Get("Access-Control-Allow-Origin"))
+		}
+	}
+	// media is read with simple GET requests (no preflight, the routes are GET only): the answer, even a refusal, carries
+	// the headers that let the page read it
+	mreq, _ := http.NewRequest(http.MethodGet, ts.URL+"/media/song/00001", nil)
+	mreq.Header.Set("Origin", "null")
+	mres, err := http.DefaultClient.Do(mreq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mres.Body.Close()
+	if got := mres.Header.Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Errorf("GET /media: allow-origin %q (status %d), want *", got, mres.StatusCode)
+	}
+	if got := strings.ToLower(mres.Header.Get("Access-Control-Expose-Headers")); !strings.Contains(got, "content-range") {
+		t.Errorf("GET /media: expose-headers %q, want Content-Range", got)
+	}
+	// the page is served to the browser that asked for the server's address: no cross-origin reading of it
+	req, _ := http.NewRequest(http.MethodGet, ts.URL+"/", nil)
+	req.Header.Set("Origin", "null")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if got := res.Header.Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("the web app answered CORS (%q): only the API and media do", got)
+	}
+}

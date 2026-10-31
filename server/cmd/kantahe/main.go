@@ -25,7 +25,15 @@ import (
 // version is set at build time with -ldflags "-X main.version=...".
 var version = "dev"
 
+// run is the server as a console program: Ctrl+C or SIGTERM stops it.
 func run(args []string, stdout io.Writer) int {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return runContext(ctx, args, stdout)
+}
+
+// runContext is the server until ctx is cancelled (a console run cancels it on a signal, a Windows service on Stop).
+func runContext(ctx context.Context, args []string, stdout io.Writer) int {
 	for _, a := range args {
 		if a == "--version" || a == "-version" {
 			fmt.Fprintf(stdout, "kantahe %s\n", version)
@@ -45,8 +53,6 @@ func run(args []string, stdout io.Writer) int {
 		fmt.Fprintf(stdout, "kantahe: cannot create the data directory: %v\n", err)
 		return 1
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	db, err := store.Open(ctx, cfg.DataDir)
 	if err != nil {
@@ -61,7 +67,7 @@ func run(args []string, stdout io.Writer) int {
 	}
 	imp := library.NewImporter(db, cfg.DataDir, cfg.Libraries, logger)
 	srv := app.New(cfg, logger)
-	mounted, err := api.Mount(srv.Handle, api.Deps{DB: db, Version: version, Now: time.Now, Logger: logger, TrustedProxies: cfg.TrustedProxies,
+	mounted, err := mountServices(srv, api.Deps{DB: db, Version: version, Now: time.Now, Logger: logger, TrustedProxies: cfg.TrustedProxies,
 		DataDir: cfg.DataDir, Importer: imp, ScoreSeconds: cfg.ScoreSeconds, SoundFont: soundFont, PublicURL: cfg.PublicURL,
 		RenderCacheBytes: int64(cfg.RenderCacheGB) << 30})
 	if err != nil {
@@ -89,9 +95,21 @@ func run(args []string, stdout io.Writer) int {
 	return 0
 }
 
+// mountServices registers the API and the media routes, which answer cross-origin requests (packaged TV apps
+// load from the device and call the server from another origin).
+func mountServices(srv *app.App, d api.Deps) (*api.Mounted, error) {
+	return api.Mount(srv.HandleAPI, d)
+}
+
 // mountWebUI serves the embedded web app for every path the API does not claim. The pattern has no
 // method because "GET /" would conflict with the services' method-less prefixes; the handler
 // answers other methods with 405 itself.
 func mountWebUI(srv *app.App) { srv.Handle("/", webui.Handler()) }
 
-func main() { os.Exit(run(os.Args[1:], os.Stdout)) }
+func main() {
+	// started by the Windows service manager, the program must speak its protocol; everywhere else this is a no-op
+	if code, ok := runAsService(os.Args[1:], os.Stdout); ok {
+		os.Exit(code)
+	}
+	os.Exit(run(os.Args[1:], os.Stdout))
+}

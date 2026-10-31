@@ -6,7 +6,7 @@ import { TRANSPORT } from '../core/api';
 import { AuthStore } from '../core/auth.store';
 import { StateStore } from '../core/state.store';
 import { device, song, stateOf, StateInit } from '../queue/testing';
-import { ENGINES } from './engines/engine';
+import { CAN_SYNTHESIZE, ENGINES } from './engines/engine';
 import { MIC_METER } from './mic';
 import { PlayerViewComponent } from './player-view.component';
 import { asMic, fakeEngines, FakeMic, fakePlayerServer, playbackOf } from './testing';
@@ -25,7 +25,12 @@ function setup() {
   const fake = fakeEngines();
   localStorage.clear();
   TestBed.configureTestingModule({
-    providers: [{ provide: TRANSPORT, useValue: server.transport }, { provide: ENGINES, useValue: fake.engines }, { provide: MIC_METER, useValue: asMic(new FakeMic()) }],
+    providers: [
+      { provide: TRANSPORT, useValue: server.transport },
+      { provide: ENGINES, useValue: fake.engines },
+      { provide: CAN_SYNTHESIZE, useValue: () => true }, // the test browser has no AudioContext: the engines are fakes
+      { provide: MIC_METER, useValue: asMic(new FakeMic()) },
+    ],
   });
   TestBed.inject(AuthStore).signIn(create(AuthTokenSchema, { token: 't', deviceId: ME }));
   TestBed.inject(StateStore);
@@ -67,6 +72,17 @@ describe('PlayerViewComponent', () => {
     expect(el.textContent).toContain('MIDI');
     expect(el.querySelector('app-lyrics-view')).not.toBeNull();
     expect(el.querySelector('progress')).toBeNull(); // the length is not known for this fake song
+  });
+
+  it('regression: inside the app (embedded) the page has no Pause, Play or Skip of its own: the app has native ones', async () => {
+    const { fixture, el, push, button } = setup();
+    fixture.componentRef.setInput('embedded', true);
+    await push(PLAYING);
+    expect(el.textContent).toContain('Hello'); // the song and the lyrics are still there
+    expect(el.querySelector('app-lyrics-view')).not.toBeNull();
+    expect(button('Pause')).toBeUndefined();
+    expect(button('Play')).toBeUndefined();
+    expect(button('Skip')).toBeUndefined();
   });
 
   it('Pause while playing, Play while paused, Skip; each sends its command', async () => {

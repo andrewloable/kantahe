@@ -48,6 +48,15 @@ export const CAN_PLAY_FLAC = new InjectionToken<() => boolean>('kantahe can play
   factory: () => () => document.createElement('audio').canPlayType('audio/flac') !== '',
 });
 
+/**
+ * Whether this page can run the MIDI synthesizer. It needs an AudioWorklet, which browsers offer only in a secure
+ * context (HTTPS, localhost): on plain HTTP from a LAN address there is none. Tests replace it.
+ */
+export const CAN_SYNTHESIZE = new InjectionToken<() => boolean>('kantahe can synthesize', {
+  providedIn: 'root',
+  factory: () => () => typeof AudioContext !== 'undefined' && 'audioWorklet' in AudioContext.prototype,
+});
+
 /** A media address from the server: a path is put behind the server's base address. */
 export function mediaUrl(base: string, url: string): string {
   if (/^https?:\/\//i.test(url)) return url;

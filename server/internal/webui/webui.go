@@ -4,11 +4,17 @@ package webui
 import (
 	"embed"
 	"io/fs"
+	"mime"
 	"net/http"
 	"path"
 	"regexp"
 	"strings"
 )
+
+func init() {
+	// Go has no built-in type for the web app manifest, and a container without a MIME table would send it as text/plain
+	_ = mime.AddExtensionType(".webmanifest", "application/manifest+json")
+}
 
 // dist holds the Angular build. The checked-in placeholder keeps go build working before the web
 // app has been built; scripts/build-release.sh fills it for releases.

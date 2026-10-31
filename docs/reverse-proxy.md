@@ -1,7 +1,8 @@
 # HTTPS with a reverse proxy
 
-Kantahe speaks plain HTTP. For use outside your home network, and for microphone scoring in browsers
-(which only allow the microphone on HTTPS pages), put a reverse proxy in front of it. The examples in
+Kantahe speaks plain HTTP. For use outside your home network, for microphone scoring in browsers (which only
+allow the microphone on HTTPS pages) and for the in-page MIDI synthesizer (an AudioWorklet is also HTTPS only;
+on plain HTTP the server renders MIDI songs instead), put a reverse proxy in front of it. The examples in
 [deploy/proxy/](../deploy/proxy/) are complete: `Caddyfile` (certificates automatic) and `nginx.conf`
 (bring your own certificate, for example from certbot).
 

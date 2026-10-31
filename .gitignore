@@ -36,3 +36,16 @@ Icon
 !/server/internal/webui/dist/.gitkeep
 !/server/internal/webui/dist/index.html
 /server/internal/assets/soundfont/*.sf2
+
+# TV packages (scripts/build-tizen.sh, scripts/build-webos.sh)
+/build/
+__pycache__/
+# Samsung certificates and profiles are the owner's, never the repository's
+*.p12
+*.pwd
+/tv/tizen/profiles.xml
+# webOS device keys and passphrases are the owner's, never the repository's
+*.pem
+*.key
+ssh_key*
+id_rsa*

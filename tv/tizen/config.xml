@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Kantahe for Samsung TV (Tizen web app). Packaged by scripts/build-tizen.sh, see docs/tv-samsung.md. -->
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://github.com/andrewloable/kantahe" version="1.0.0" viewmodes="maximized">
+  <!-- package: ten letters and digits; the application id is the package, a dot and the name -->
+  <tizen:application id="KantaheApp.Kantahe" package="KantaheApp" required_version="5.0"/>
+  <content src="index.html"/>
+  <feature name="http://tizen.org/feature/screen.size.all"/>
+  <icon src="icon.png"/>
+  <name>Kantahe</name>
+  <!-- internet: the server is on the network; tv.inputdevice: the Back and media keys of the remote -->
+  <tizen:privilege name="http://tizen.org/privilege/internet"/>
+  <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+  <tizen:profile name="tv"/>
+  <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto"/>
+  <!-- the address of the server is typed in by the user, so any origin may be reached -->
+  <access origin="*" subdomains="true"/>
+</widget>

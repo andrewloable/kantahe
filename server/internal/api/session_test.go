@@ -727,11 +727,11 @@ func TestRegression_ListMyDevicesShowsWhichDevicesAreOnline(t *testing.T) {
 func TestWatchStateKeepAliveRepeatsTheSnapshotOnAnIdleStream(t *testing.T) {
 	old := keepAlive
 	keepAlive = 80 * time.Millisecond
-	defer func() { keepAlive = old }()
 	a := newAdminEnv(t)
 	n := a.seed(t, "One.kar", "One", "X", true)
 	a.addToQueue(t, a.admin.Token, n)
 	w := a.watch(t, a.admin.Token)
+	defer func() { w.stop(); keepAlive = old }()
 	first := w.next(t, 2*time.Second)
 	// nothing changes, yet a client gets a message every keepAlive: it can tell a quiet server from a dead link
 	for i := 0; i < 2; i++ {
@@ -745,10 +745,10 @@ func TestWatchStateKeepAliveRepeatsTheSnapshotOnAnIdleStream(t *testing.T) {
 func TestWatchStateKeepAliveWaitsWhileMessagesKeepComing(t *testing.T) {
 	old := keepAlive
 	keepAlive = 400 * time.Millisecond
-	defer func() { keepAlive = old }()
 	a := newAdminEnv(t)
 	n := a.seed(t, "One.kar", "One", "X", true)
 	w := a.watch(t, a.admin.Token)
+	defer func() { w.stop(); keepAlive = old }()
 	w.next(t, 2*time.Second)
 	// a change every 150 ms for about a second: each one is sent, and no repeat is added between them
 	changes := 0
@@ -770,4 +770,6 @@ drain:
 	if got != changes {
 		t.Fatalf("%d messages for %d changes: the keep-alive fired while messages were coming", got, changes)
 	}
+	// and once the changes stop, the keep-alive starts again
+	w.next(t, 2*time.Second)
 }

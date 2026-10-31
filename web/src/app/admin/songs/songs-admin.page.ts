@@ -75,7 +75,7 @@ const SEARCH_DELAY_MS = 250;
       <p><button type="button" (click)="pager.more()" [disabled]="pager.loading()">Load more</button></p>
     }
     @if (editing(); as e) {
-      <div class="dialog" role="dialog" aria-modal="true" [attr.aria-label]="'Edit song ' + e.number" (keydown.escape)="editing.set(undefined)">
+      <div class="dialog" role="dialog" aria-modal="true" data-back-closes [attr.aria-label]="'Edit song ' + e.number" (keydown.escape)="editing.set(undefined)">
         <h3>Edit song {{ e.number }}</h3>
         <div class="field">
           <label for="edit-title">Title</label>

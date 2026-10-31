@@ -134,7 +134,7 @@ describe('StateStore', () => {
     const h = setup([fail, fail, fail, fail, fail, fail, fail, hold()]);
     const t0 = Date.now();
     h.store.start();
-    await vi.advanceTimersByTimeAsync(200_000);
+    await vi.advanceTimersByTimeAsync(100_000); // the last attempt opens at 91 s; its 60 s of silence has not passed yet
     const gaps = h.attempts.slice(1).map((t, i) => t - h.attempts[i]);
     expect(gaps).toEqual([1000, 2000, 4000, 8000, 16_000, 30_000, 30_000]);
     expect(h.attempts[0]).toBe(t0);
@@ -216,6 +216,68 @@ describe('StateStore', () => {
     await vi.advanceTimersByTimeAsync(1500);
     expect(h.attempts.length).toBe(2);
     expect(h.store.state()?.playerDeviceId).toBe('d2');
+  });
+
+  describe('silence', () => {
+    it('a stream that says nothing for 60 s is closed and opened again', async () => {
+      const h = setup([hold(st('d1')), hold(st('d2'))]);
+      const t0 = Date.now();
+      h.store.start();
+      await vi.advanceTimersByTimeAsync(59_000);
+      expect(h.attempts.length).toBe(1);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(h.aborted()).toBe(1);
+      await vi.advanceTimersByTimeAsync(1500); // the first retry wait is 1 s
+      expect(h.attempts.map((t) => t - t0)).toEqual([0, 61_000]);
+      expect(h.store.state()?.playerDeviceId).toBe('d2');
+    });
+
+    it('a stream that keeps delivering is left alone', async () => {
+      let send!: (s: State) => void;
+      const h = setup([
+        async function* (ctx) {
+          const queue: State[] = [];
+          let wake: (() => void) | undefined;
+          send = (s) => {
+            queue.push(s);
+            wake?.();
+          };
+          while (!ctx.signal.aborted) {
+            const next = queue.shift();
+            if (next) yield { state: next };
+            else await new Promise<void>((r) => ((wake = r), ctx.signal.addEventListener('abort', () => r())));
+          }
+        },
+      ]);
+      h.store.start();
+      await vi.advanceTimersByTimeAsync(10);
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(40_000); // each gap is shorter than 60 s: 200 s in all
+        send(st('d' + i));
+        await vi.advanceTimersByTimeAsync(10);
+      }
+      expect(h.attempts.length).toBe(1);
+      expect(h.store.connected()).toBe(true);
+    });
+
+    it('a stream that never delivers its first message is also given up after 60 s', async () => {
+      const h = setup([hold(), hold(st('d1'))]);
+      h.store.start();
+      await vi.advanceTimersByTimeAsync(62_500);
+      expect(h.attempts.length).toBe(2);
+      expect(h.store.state()?.playerDeviceId).toBe('d1');
+    });
+
+    it('stop cancels the silence timer too', async () => {
+      const h = setup([hold(st('d1'))]);
+      h.store.start();
+      await vi.advanceTimersByTimeAsync(10);
+      h.store.stop();
+      await vi.advanceTimersByTimeAsync(10);
+      expect(vi.getTimerCount()).toBe(0); // nothing is left to fire later
+      await vi.advanceTimersByTimeAsync(120_000);
+      expect(h.attempts.length).toBe(1);
+    });
   });
 
   it('stop aborts the stream and every timer, and clears the state', async () => {

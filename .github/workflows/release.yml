@@ -1,6 +1,7 @@
 name: release
 
-# Pushing a tag such as v0.1.0 builds the binaries and attaches them to a GitHub release.
+# Pushing a tag such as v0.1.0 runs the checks of ci.yml, then builds the binaries and attaches them to a
+# GitHub release. This is the only automatic run; nothing builds on ordinary pushes or pull requests.
 on:
   push:
     tags: ['v*']
@@ -9,7 +10,11 @@ permissions:
   contents: write
 
 jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
   release:
+    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +34,7 @@ jobs:
 
   image:
     # the multi-arch image on ghcr.io; "latest" only moves for versions without a pre-release suffix
+    needs: checks
     runs-on: ubuntu-latest
     permissions:
       contents: read

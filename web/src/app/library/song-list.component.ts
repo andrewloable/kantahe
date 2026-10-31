@@ -117,6 +117,11 @@ export class SongListComponent {
   readonly songs = input.required<Song[]>();
   readonly hasMore = input(false);
   readonly loading = input(false);
+  /**
+   * Ask for the next page by itself when the end comes into view. Off while the list shows an error, so that a
+   * dead link is not asked again and again: Load more and Try again are then the way on.
+   */
+  readonly autoMore = input(true);
   readonly emptyText = input('No songs found.');
   /** The end of the list is in view (or Load more was pressed). */
   readonly more = output<void>();
@@ -131,7 +136,7 @@ export class SongListComponent {
     effect((onCleanup) => {
       this.songs(); // look again after every page: an end that is still in view must ask again
       const el = this.sentinel()?.nativeElement;
-      if (!el || !this.hasMore() || this.loading() || typeof IntersectionObserver === 'undefined') return;
+      if (!el || !this.hasMore() || this.loading() || !this.autoMore() || typeof IntersectionObserver === 'undefined') return;
       const observer = new IntersectionObserver((entries) => {
         if (entries.some((e) => e.isIntersecting)) this.more.emit();
       });

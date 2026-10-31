@@ -4,6 +4,8 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { AuthService } from '../../gen/kantahe/v1/auth_pb';
 import { injectClient } from './api';
 import { AuthStore } from './auth.store';
+import { ENVIRONMENT } from './environment';
+import { ServerUrl } from './server-url';
 
 /** Loads the signed-in user after a page reload; 'refused' when the server no longer accepts the token. */
 async function ensureUser(auth: AuthStore, load: () => Promise<void>): Promise<'ok' | 'refused' | 'unknown'> {
@@ -68,4 +70,10 @@ export const uploaderGuard: CanActivateFn = async (_route, state): Promise<boole
   if ((await ensureUser(auth, load)) === 'refused') return toLogin(router, state);
   const u = auth.user();
   return u?.uploader || u?.admin ? true : router.parseUrl('/library');
+};
+
+/** A packaged TV app has no server of its own: until its address is typed in, every page is the address page. */
+export const serverGuard: CanActivateFn = (_route, state): boolean | UrlTree => {
+  if (!inject(ENVIRONMENT).isTv || inject(ServerUrl).hasAddress()) return true;
+  return inject(Router).createUrlTree(['/server'], { queryParams: { returnUrl: state.url } });
 };

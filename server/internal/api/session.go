@@ -20,6 +20,10 @@ import (
 // deviceRecheck is how often an open stream checks that its device is still signed in.
 var deviceRecheck = 30 * time.Second
 
+// keepAlive is how long an open stream may stay silent before it repeats the current state. A client
+// cannot tell a quiet server from a dead link otherwise, and treats a longer silence as a dead stream.
+var keepAlive = 25 * time.Second
+
 // SessionServer implements the per-user playback RPCs of SessionService. Device
 // settings and playlists are added by their own tasks (the embedded handler).
 type SessionServer struct {
@@ -161,6 +165,15 @@ func (s *SessionServer) WatchState(ctx context.Context, _ *connect.Request[kanta
 	}
 	recheck := time.NewTicker(deviceRecheck)
 	defer recheck.Stop()
+	quiet := keepAlive           // read once: a stream that is already open keeps its interval
+	idle := time.NewTimer(quiet) // restarted by every message
+	defer idle.Stop()
+	sent := func(err error) error {
+		if err == nil {
+			idle.Reset(quiet) // the timer is only reset after it fired or was drained
+		}
+		return err
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -173,7 +186,24 @@ func (s *SessionServer) WatchState(ctx context.Context, _ *connect.Request[kanta
 			if err := active(); err != nil {
 				return err
 			}
-			if err := send(snap); err != nil {
+			if !idle.Stop() {
+				select {
+				case <-idle.C:
+				default:
+				}
+			}
+			if err := sent(send(snap)); err != nil {
+				return err
+			}
+		case <-idle.C:
+			snap, err := s.svc.Do(ctx, id.UserID, nil)
+			if err != nil {
+				return s.fail("WatchState", err)
+			}
+			if err := active(); err != nil {
+				return err
+			}
+			if err := sent(send(snap)); err != nil {
 				return err
 			}
 		}

@@ -134,11 +134,18 @@ export class NowPlayingComponent {
     });
   }
 
+  /** Commands on their way: the same one pressed again meanwhile (a double tap on Skip) is dropped. */
+  private readonly sending = new Set<ControlAction>();
+
   protected async send(action: ControlAction): Promise<void> {
+    if (this.sending.has(action)) return;
+    this.sending.add(action);
     try {
       await this.client.control({ action });
     } catch (e) {
       this.toast.show(problem(e, {}), 'error');
+    } finally {
+      this.sending.delete(action);
     }
   }
 }

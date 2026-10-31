@@ -56,7 +56,7 @@ const TABS: { id: Tab; label: string }[] = [
             @if (songs.error()) {
               <p class="error" role="alert">{{ songs.error() }} <button type="button" (click)="songs.retry()">Try again</button></p>
             }
-            <app-song-list [songs]="songs.items()" [hasMore]="songs.hasMore()" [loading]="songs.loading()" (more)="songs.more()" />
+            <app-song-list [songs]="songs.items()" [hasMore]="songs.hasMore()" [loading]="songs.loading()" [autoMore]="!songs.error()" (more)="songs.more()" />
           }
           @case ('number') {
             <app-number-pad />
@@ -124,9 +124,16 @@ export class LibraryPage {
     { label: 'MIDI', format: Format.MIDI },
   ];
 
+  /**
+   * The query and format of the list on screen. A page token only fits the search it came from, so the text
+   * typed since (before the delay has passed) must not reach the next page's request.
+   */
+  private activeQuery = '';
+  private activeFormat = Format.UNSPECIFIED;
+
   protected readonly songs = new Pager<Song>(
     async (pageToken, signal) => {
-      const r = await this.catalog.searchSongs({ query: this.query().trim(), format: this.format(), pageToken }, { signal });
+      const r = await this.catalog.searchSongs({ query: this.activeQuery, format: this.activeFormat, pageToken }, { signal });
       this.actions.adopt(r.songs);
       return { items: r.songs, next: r.nextPageToken };
     },
@@ -160,12 +167,19 @@ export class LibraryPage {
   protected onQuery(e: Event): void {
     this.query.set(fieldValue(e));
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => void this.songs.reset(), SEARCH_DELAY_MS);
+    this.timer = setTimeout(() => this.searchNow(), SEARCH_DELAY_MS);
   }
 
   protected setFormat(f: Format): void {
     this.format.set(f);
+    this.searchNow();
+  }
+
+  /** Starts a new search with what is typed and chosen now. */
+  private searchNow(): void {
     clearTimeout(this.timer);
+    this.activeQuery = this.query().trim();
+    this.activeFormat = this.format();
     void this.songs.reset();
   }
 }

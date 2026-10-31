@@ -9,7 +9,7 @@ import { AuthStore } from '../core/auth.store';
 import { StateStore } from '../core/state.store';
 import { ToastService } from '../core/toast';
 import { device, song, stateOf, StateInit } from '../queue/testing';
-import { CAN_PLAY_FLAC, ENGINES } from './engines/engine';
+import { CAN_PLAY_FLAC, CAN_SYNTHESIZE, ENGINES } from './engines/engine';
 import { MIC_METER } from './mic';
 import { PlayerController } from './player.controller';
 import { asMic, FakeEngine, FakeMic, fakeEngines, fakePlayerServer, playbackOf } from './testing';
@@ -25,7 +25,7 @@ const PLAYING: StateInit = {
   serverTimeMs: 1000,
 };
 
-function setup(opts: { memory?: number; secure?: boolean; flac?: boolean } = {}) {
+function setup(opts: { memory?: number; secure?: boolean; flac?: boolean; synth?: boolean } = {}) {
   const server = fakePlayerServer();
   const fake = fakeEngines();
   const mic = new FakeMic();
@@ -36,6 +36,7 @@ function setup(opts: { memory?: number; secure?: boolean; flac?: boolean } = {})
       { provide: TRANSPORT, useValue: server.transport },
       { provide: ENGINES, useValue: fake.engines },
       { provide: CAN_PLAY_FLAC, useValue: () => opts.flac ?? true },
+      { provide: CAN_SYNTHESIZE, useValue: () => opts.synth ?? true },
       { provide: MIC_METER, useValue: asMic(mic) },
       PlayerController,
     ],
@@ -383,6 +384,83 @@ describe('PlayerController', () => {
         expect(server.calls.mode).toHaveLength(1);
         expect(fake.created.map((c) => c.kind)).toEqual(['mp3']);
         expect(TestBed.inject(ToastService).toasts()).toEqual([]);
+      });
+    });
+
+    describe('a page that cannot run the synthesizer (not a secure context: plain HTTP from a LAN address)', () => {
+      const MIDI_SONG = song('21629', 'Skyfall', 'Adele', Format.MIDI);
+      const MIDI_PLAYING: StateInit = { ...PLAYING, now: { song: MIDI_SONG, positionMs: 0, positionAtMs: 1000 } };
+      const render = () => playbackOf({ kind: PlaybackKind.AUDIO, mode: MidiMode.SERVER, audioUrl: '/media/rendered/21629?sig=r', song: MIDI_SONG });
+      const synth = () => playbackOf({ kind: PlaybackKind.MIDI_SYNTH, mode: MidiMode.FULL, song: MIDI_SONG });
+      const NO_SYNTH = 'This page cannot play MIDI songs: they need HTTPS, or a server that renders audio.';
+
+      it('regression: switches this device to server audio once, tells the user, and plays the rendered song', async () => {
+        const { server, fake, push, flush } = setup({ synth: false });
+        let switched = false;
+        server.handlers.setMidiMode = () => void (switched = true);
+        server.handlers.playback = () => (switched ? render() : synth());
+        await push(MIDI_PLAYING);
+        await flush(100);
+        expect(server.calls.mode).toHaveLength(1);
+        expect(server.calls.mode[0]).toMatchObject({ deviceId: ME, mode: MidiMode.SERVER });
+        expect(server.calls.playback).toHaveLength(2);
+        expect(fake.created.map((c) => c.kind)).toEqual(['mp3']);
+        expect(TestBed.inject(ToastService).toasts().map((t) => t.message)).toEqual([
+          'This page cannot run the synthesizer (it needs HTTPS). Switched to server-rendered audio.',
+        ]);
+      });
+
+      it('regression: without server rendering it switches once, then says so clearly and does not loop', async () => {
+        const { server, fake, player, push, flush } = setup({ synth: false });
+        server.handlers.playback = () => synth(); // the server cannot render and keeps answering with MIDI
+        await push(MIDI_PLAYING);
+        await flush(5000);
+        expect(server.calls.mode).toHaveLength(1);
+        expect(server.calls.playback).toHaveLength(2);
+        expect(fake.created).toEqual([]); // the synthesizer is not even tried
+        expect(player.error()).toBe(NO_SYNTH);
+      });
+
+      it('says so clearly when the switch itself fails', async () => {
+        const { server, fake, player, push, flush } = setup({ synth: false });
+        server.handlers.setMidiMode = () => {
+          throw new ConnectError('down', Code.Unavailable);
+        };
+        server.handlers.playback = () => synth();
+        await push(MIDI_PLAYING);
+        await flush(100);
+        expect(server.calls.mode).toHaveLength(1);
+        expect(fake.created).toEqual([]);
+        expect(player.error()).toBe(NO_SYNTH);
+        expect(TestBed.inject(ToastService).toasts()).toEqual([]);
+      });
+
+      it('a page that can run the synthesizer is untouched', async () => {
+        const { server, fake, push } = setup({ synth: true });
+        server.handlers.playback = () => synth();
+        await push(MIDI_PLAYING);
+        expect(server.calls.mode).toEqual([]);
+        expect(fake.created.map((c) => c.kind)).toEqual(['midi']);
+      });
+
+      it('MP3 songs are unaffected', async () => {
+        const { server, fake, push } = setup({ synth: false });
+        server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, song: SONG });
+        await push(PLAYING);
+        expect(server.calls.mode).toEqual([]);
+        expect(fake.created.map((c) => c.kind)).toEqual(['mp3']);
+      });
+
+      it('a browser that has neither the synthesizer nor FLAC ends with the clear error, not a loop', async () => {
+        const { server, fake, player, push, flush } = setup({ synth: false, flac: false });
+        let mode = MidiMode.FULL;
+        server.handlers.setMidiMode = (req) => void (mode = req.mode);
+        server.handlers.playback = () => (mode === MidiMode.SERVER ? render() : synth());
+        await push(MIDI_PLAYING);
+        await flush(5000);
+        expect(server.calls.mode.map((c) => c.mode)).toEqual([MidiMode.SERVER, MidiMode.LOW_POWER]);
+        expect(fake.created).toEqual([]);
+        expect(player.error()).toBe(NO_SYNTH);
       });
     });
 

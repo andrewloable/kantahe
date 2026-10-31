@@ -151,6 +151,22 @@ describe('NowPlayingComponent', () => {
     expect(server.calls.control.map((c) => c.action)).toEqual([ControlAction.SKIP]);
   });
 
+  it('regression: pressing Skip twice while the first command is on its way sends one command', async () => {
+    const { button, server, settle } = await setup();
+    let release!: () => void;
+    server.holdControl(new Promise<void>((resolve) => (release = resolve)));
+    button('Skip')!.click();
+    await settle(10);
+    button('Skip')!.click();
+    await settle(10);
+    expect(server.calls.control.map((c) => c.action)).toEqual([ControlAction.SKIP]);
+    release();
+    await settle(10);
+    button('Skip')!.click(); // once it has finished, Skip works again
+    await settle(10);
+    expect(server.calls.control.length).toBe(2);
+  });
+
   it('another device plays: says which one and offers Play here', async () => {
     const { el, button, server, settle } = await setup({
       ...PLAYING_AT_41S,

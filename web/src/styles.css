@@ -123,3 +123,20 @@ button:disabled {
   color: var(--muted);
   font-size: 0.875rem;
 }
+
+/* A TV is read from a sofa: larger type, and a focus ring that shows from across the room */
+html.tv {
+  font-size: 150%;
+}
+
+html.tv :focus-visible,
+html.tv :focus {
+  outline: 0.25rem solid var(--accent);
+  outline-offset: 0.2rem;
+}
+
+html.tv button,
+html.tv input {
+  font-size: 1rem;
+  min-height: 2.75rem;
+}

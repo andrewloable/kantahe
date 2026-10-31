@@ -1,0 +1,7 @@
+# the tester brings these; none is ever committed
+*.sf2
+*.sf3
+*.mid
+*.kar
+*.karmp3
+node_modules/

@@ -133,14 +133,14 @@ few `.kar` files under 3 KB contain no music (they must be marked `failed`, not 
 |---|---|---|---|
 | D1 | **Server parses lyrics.** `.kar` lyric events and `.karmp3` `.lrc`/`.nfo` become one `Lyrics` message (lines → words with `startMs`/`endMs`). | Written and tested once in Go; no parser in TS or Dart. | Parser per client. |
 | D2 | **MIDI is synthesized on the client** (owner) by **one web player**: spessasynth + a SoundFont served by the server. Browsers and TV apps run it directly; the Flutter apps embed the same player in a WebView. To make it fit cheap Android TV boxes and TVs (section 4.1): **per-song trimmed SoundFonts**, a per-device **low-power synth mode**, and a per-device **server-render fallback**. | One synth and one lyrics renderer for every platform; the server stays pure Go with no external programs. | Server-side rendering for everyone; a native synth plugin per Flutter platform; Android's built-in MIDI player (poor sound, second clock for lyrics). |
-| D3 | **ConnectRPC** for all client–server calls: connect-go, connect-es (Angular), connect-dart (Flutter). Unary and server-streaming only (browsers cannot do more). `WatchState` streams the user's full state snapshot at once and after every change. **Uploads are ConnectRPC too** (owner): one unary call per file (browsers cannot stream uploads), 50 MB limit; ZIPs are unpacked on the client and sent file by file. **Only media is plain HTTP** (audio needs HTTP Range so `<audio>` can seek). | Typed contract on three platforms; push without a hand-made WebSocket protocol; one API style for everything but audio. | REST + WebSocket; multipart upload endpoint. |
+| D3 | **ConnectRPC** for all client–server calls: connect-go, connect-es (Angular), connect-dart (Flutter). Unary and server-streaming only (browsers cannot do more). `WatchState` streams the user's full state snapshot at once and after every change. When nothing changes it repeats the snapshot every 25 s, and clients treat 60 s of silence as a dead stream and reconnect. **Uploads are ConnectRPC too** (owner): one unary call per file (browsers cannot stream uploads), 50 MB limit; ZIPs are unpacked on the client and sent file by file. **Only media is plain HTTP** (audio needs HTTP Range so `<audio>` can seek). | Typed contract on three platforms; push without a hand-made WebSocket protocol; one API style for everything but audio. | REST + WebSocket; multipart upload endpoint. |
 | D4 | **Bearer tokens per device**, opaque, stored hashed. Sent in the `Authorization` header. Media URLs are **short-lived signed URLs** issued by the server, because `<audio src>` cannot send headers. No cookies, so no CSRF. | Same scheme for same-origin web, packaged TV apps (different origin) and Flutter. | Cookies (break for packaged TV apps). |
 | D5 | **Playback ownership by device.** Player reports (`Ready`, `ReportPosition`, `Ended`) are accepted only from the user's current player device. Commands (Play/Pause/Skip, queue) are accepted from any of the user's devices. | "One device plays at a time" enforced in one place. | Trusting clients. |
 | D6 | **SQLite, pure Go (`modernc.org/sqlite`), WAL, FTS5.** | Zero setup on every OS and in Docker; cross-compiles without cgo. | PostgreSQL. |
 | D7 | **Protobuf contract** in `proto/kantahe/v1/`, `buf generate` into `server/gen/` (Go), `web/src/gen/` (TS) and `app/lib/gen/` (Dart); generated code is committed. | One source of truth for three codebases. | Hand-written clients. |
 | D8 | **The player device is the playback clock.** It reports position about once a second (kept in memory, saved every ~30 s and on Pause); the server advances the queue on `Ended`/Skip. If the server restarts, the player keeps playing and resynchronises when its stream reconnects. | Lyrics and sound are on one device; no clock sync. | Server-side clock. |
 | D9 | **Single Angular app** with a separate **`/embed/player`** route (player only, no navigation) for the Flutter WebView; TV packages are build configurations of the same app. | One web codebase. | Separate player project. |
-| D10 | **HTTP only; HTTPS by reverse proxy.** Documented Caddy and nginx examples (no response buffering and long timeouts for `WatchState`, large upload size). | Users already run proxies; no certificate code in the server. | Built-in Let's Encrypt. |
+| D10 | **HTTP only; HTTPS by reverse proxy.** Documented Caddy and nginx examples (no response buffering and long timeouts for `WatchState`, large upload size). On plain HTTP from a LAN address the browser gives the page neither an AudioWorklet nor the microphone (secure contexts only; measured in an Android WebView, spike S3 and review of 6y6.9): the player then switches that device to server-rendered audio for MIDI songs (kantahe-4oc) and Microphone scoring is not offered. | Users already run proxies; no certificate code in the server. | Built-in Let's Encrypt. |
 
 ### 4.1 MIDI on weak devices (cheap Android TV boxes, TVs, old phones)
 
@@ -187,6 +187,10 @@ falling behind real time by more than 100 ms). Users can override it in the devi
 
 Published minimum spec (from spike S1 numbers): MP3 songs on any supported device; MIDI songs per
 mode, for example "full synth needs ~2 GB RAM; anything else uses server render".
+
+The thresholds above are the plan's own estimates: spike S1 (`docs/spikes/s1-web-player.md`) has the page and the
+procedure, and the real-device rows (the cheap box, phones, Tizen, webOS) are filled in by the owner; until then the
+numbers stay provisional and `auto` follows them.
 
 ## 5. Accounts and sign-in
 
@@ -350,6 +354,37 @@ current playback time in both cases. Microphone loudness readings as in the samp
 **Samsung Tizen / LG webOS** (phase 6): build configurations of the same Angular app, packaged as a
 Tizen `.wgt` and a webOS `.ipk`. Differences: first-run "server address" screen, code sign-in,
 D-pad focus navigation, large type. Minimum TV model years come from spike S1.
+`ng build --configuration tizen` and `--configuration webos` write `web/dist/tizen` and `web/dist/webos` (the package
+root: `index.html` at the top), swapping `environment.ts` for `environment.tizen.ts` / `environment.webos.ts`
+(`isTv: true` and the device type that code sign-in reports). What a TV build does differently (`web/src/app/tv/`):
+* **Hash routing and `<base href="./index.html">`**: a packaged app is opened from a `file:` address, so the router
+  keeps its path after a `#`, and the base is the page itself (a base that is a directory makes the router's fragment
+  URLs refer to the directory, which Chromium refuses to write to the history on `file:`).
+* **Server address**: there is no server at the page's own origin, so until an address is stored every page goes to
+  `/server` (type the address, `GetServerInfo` checks it within 5 seconds, a server with no account yet is set up in a
+  browser instead). A new address ends the old session. "Use another server" on the code screen forgets both.
+* **Code sign-in** replaces the password form at `/login`: `StartCodeLogin` (type TIZEN or WEBOS), the code in large
+  type and a QR of `approve_url` (`qrcode-generator`, pinned), `WaitCodeLogin` kept open and reopened with the same
+  secret when the link drops; approved signs in and replaces the code screen in the history (so Back from the library
+  does not open a new code), expired or an unknown login offers New code, a refused account shows the server's text.
+* **Remote**: the arrow keys move the focus to the nearest focusable element in that direction (its centre must lie
+  ahead, within a 60 degree cone; the distance to the side is the gap between the two boxes, 0 when they overlap, so a
+  wide field is reachable from a narrow button and the other way round; going straight beats going diagonally; a
+  container marked `data-nav-group` is searched first; text fields keep the keys that move their caret), Enter activates what a browser does not activate itself, Back (Tizen 10009, webOS 461) closes an element
+  marked `data-back-closes` first, else goes back, and from the first page leaves the app; the Tizen media keys are
+  registered. The page gets the class `tv` (150 % type, a thick focus ring).
+* **Samsung package** (`tv/tizen/`, `scripts/build-tizen.sh`, `docs/tv-samsung.md`): `config.xml` (TV profile, package
+  `KantaheApp`, application id `KantaheApp.Kantahe`, Tizen 5.0, privileges `internet` and `tv.inputdevice`, any origin
+  reachable), the 512 px brand icon, and a script that builds the `tizen` configuration, assembles `build/tizen/` and
+  signs it with the owner's certificate profile through the Tizen CLI (`--stage-only` skips the CLI). Certificates are
+  never in the repository.
+* **LG package** (`tv/webos/`, `scripts/build-webos.sh`, `scripts/check-webos-appinfo.py`, `docs/tv-lg.md`):
+  `appinfo.json` (id `com.loabletech.kantahe`, type web, 1920x1080, `disableBackHistoryAPI` false so webOS handles Back
+  through the app's history and exits from the first page), the brand icon at 80 and 130 px, a checker for the file and
+  its icons, and a script that builds the `webos` configuration, assembles and checks `build/webos/` and runs
+  `ares-package` (`--stage-only` skips the CLI). Device keys are never in the repository.
+* **Server**: the Connect and media routes answer CORS for any origin without credentials (`internal/app/cors.go`);
+  a packaged app sends `Origin: null`. Media is read with plain GET requests, so only the API needs preflights.
 
 **Flutter app** (`app/`: Android, iOS, Android TV):
 
@@ -361,6 +396,18 @@ D-pad focus navigation, large type. Minimum TV model years come from spike S1.
   embedded player reacts to the state stream like any other player. On Android TV the D-pad drives
   the native controls; the WebView never needs focus. WebView settings: media playback without a user
   gesture; microphone permission forwarded for Microphone score mode.
+* **Android TV** (same app, `app/lib/tv/`): the app is a TV when the system reports the `leanback`
+  feature (a platform channel in `MainActivity`; other platforms are never a TV). The manifest has a
+  `LEANBACK_LAUNCHER` entry with a 320x180 banner (`branding/export/tv-banner-320x180.png`, installed as
+  `drawable-xhdpi/tv_banner.png`) and does not require a touch screen or a microphone. A TV with no session
+  shows the **code sign-in** screen: `StartCodeLogin` (device type `ANDROID_TV`), the code in large type with
+  a QR of `approve_url`, and `WaitCodeLogin` kept open (reopened with the same secret when the link drops);
+  approved signs in, expired offers a New code button. Server address entry is the same screen as on a phone
+  (typed with the on-screen keyboard). After sign-in the destinations are a left **navigation rail** instead
+  of a bottom bar, text is 1.25 times larger, and every focusable thing shows a thick ring (`FocusRing`,
+  `tvTheme`); the first song of the library has the focus at the start and the arrow keys move it row by
+  row, OK queues the song. The player screen keeps its Play/Pause button focused and the WebView out of the
+  focus tree.
 * Dart client generated from the protos (connect-dart, checked in spike S2). Tokens in the platform
   keystore (`flutter_secure_storage`).
 * iOS: App Transport Security exceptions for plain-HTTP servers on the local network
@@ -382,9 +429,12 @@ D-pad focus navigation, large type. Minimum TV model years come from spike S1.
   SoundFont extracted, and an account created before a restart still exists after it. Tags push the
   image to `ghcr.io/andrewloable/kantahe` (`release.yml`).
 * **Service files**: `deploy/systemd/kantahe.service` (dedicated user, hardened), `deploy/launchd/com.loabletech.kantahe.plist`
-  (login item), and for Windows a scheduled task started with the PC (`docs/install.md`): the server is a plain
-  command-line program, which `sc.exe create` cannot run as a service (error 1053), so a native Windows
-  service mode would need code in the server.
+  (login item), and for Windows a real service (`sc.exe create Kantahe ... start= auto`, `docs/install.md`): when the
+  Windows service manager starts the program (`svc.IsWindowsService`), `main` runs it under `golang.org/x/sys/windows/svc`
+  (`server/cmd/kantahe/service_windows.go`). The Stop and Shutdown requests cancel the context the server runs in
+  (`runContext`) and the service reports StopPending until the server has finished; if the server fails its exit code
+  is the service-specific exit code. The loop itself (`service_core.go`) is free of Windows types and tested on every OS.
+  From a console nothing changes (Ctrl+C). A scheduled task remains documented as an alternative and for older versions.
 * **Config**: flags/env only: `--listen :8080`, `--data`, `--library` (repeatable), `--soundfont`,
   `--render-cache-gb` (server-render cache, default 5),
   `--public-url` (for the approval QR shown on TVs).
@@ -415,10 +465,11 @@ D-pad focus navigation, large type. Minimum TV model years come from spike S1.
 | Lyrics drift from spessasynth playback | Words lit at the wrong time on MIDI songs | Server and player use the same MIDI tempo map; S1 measures it; the player can follow the sequencer's own clock. |
 | App Store review of an app whose player is a WebView | iOS release delayed | Native screens for everything except the player (owner's choice for this reason). |
 | Server exposed to the internet | Account takeover, abuse | Sign-in back-off, argon2id, device revocation, HTTPS by proxy (documented as required for internet use), upload permission and limits, short-lived signed media URLs. |
+| The API answers CORS for every origin (packaged TV apps have no fixed origin) | A web page elsewhere can call the public RPCs (sign-in, code sign-in) of a server it can reach | Tokens travel in the `Authorization` header and never in cookies, and credentials are never allowed, so a foreign page has nothing ambient to use; the sign-in back-off counts by client address as before. A server on the internet is behind a proxy that can restrict origins if the owner wants. |
 | Microphone needs HTTPS (browsers) | Microphone score mode missing on plain-HTTP web | Mode offered only where available; Random is the default. |
 | connect-dart maturity (streaming over HTTP/1.1 on Android/iOS) | Flutter cannot use `WatchState` | Spike S2; fallback: polling `GetState`, or a small hand-written Connect JSON client. |
 | Users upload copyrighted songs | Legal exposure for operators | Self-hosted; the project ships no songs; docs say users are responsible for what they upload. |
-| The licence of the three fanfare clips in `server/internal/assets/fanfare/` is not confirmed | May not be redistributable | Owner confirms their licence before publishing; otherwise replace the three files under the same names (no code change). |
+| The licence of the three fanfare clips in `server/internal/assets/fanfare/` is not confirmed | May not be redistributable | Owner confirms their licence before publishing; otherwise replace the three files under the same names (no code change). **Decision: open, the owner's to make** (recorded in kantahe-cd1.1). Until then `THIRD_PARTY_NOTICES.md` lists the clips as "UNCONFIRMED" and `scripts/licenses.sh` prints a warning for them. When decided, write it here ("confirmed: <licence and source>" or "replaced on <date>") and update the entry in `scripts/licenses.py` (`EXTRAS`). |
 
 ## 11. Testing
 
@@ -458,8 +509,15 @@ D-pad focus navigation, large type. Minimum TV model years come from spike S1.
   Run it with `cd web && npm run e2e` (it builds the server and `server/cmd/kantahe-fixtures`, writes a
   synthetic library and a tiny SoundFont to a temp folder, starts both servers and Chromium; once per
   machine `npx playwright install chromium`). Nothing is written into the repo.
-* **Flutter**: widget tests; one integration test against the Go binary with the synthetic library
-  (sign-in, queue, player WebView plays, remote control of a web player).
+* **Flutter**: widget tests with fake services (`cd app && flutter test`); integration tests in
+  `app/integration_test/` against the real Go binary with the web app embedded and the synthetic library,
+  run by `scripts/flutter-integration.sh <device>` on an Android emulator (`10.0.2.2`) or an iOS simulator
+  (`--host 127.0.0.1`): `flow_test.dart` (server address, sign-in, search, queue an MP3 and a MIDI song, a connected
+  TV is the player, Play here takes over and opens the player, the real web player in the WebView, the
+  state on the server) plus one test per area (sign-in, library, queue, player, Me and upload). CI builds the
+  Android debug APK and the iOS simulator app (`flutter-android`, `flutter-ios`); the integration tests are run by
+  hand. Owner checks on real hardware: an Android phone and an iPhone run the flow; a phone controls a web
+  player and the other way round; the Local Network prompt on iOS.
 * **Contract**: `buf lint` and `buf generate` in CI; fail if committed generated code differs;
   `buf breaking` after the first release.
 * **Packaging**: CI starts the Docker image (amd64 and arm64) and each native binary and checks that the
@@ -478,7 +536,7 @@ Phases 0–3 are the **MVP** (server + web). Each phase has an exit check.
 | **4 Flutter Android + iOS** | Native screens, Dart client, player WebView, upload, phone as remote. | The same flow from both apps; a phone controls a web player and vice versa. |
 | **5 Server render + Android TV** | Server-render fallback (pure-Go synth, encoding, render cache, `/media/rendered`, `auto` step-down to server); Flutter Android TV: D-pad navigation, code sign-in, TV layout. | On the owner's cheap box: sign in with a code, queue from a phone, sing MP3 and MIDI songs without dropouts (in whatever mode `auto` picks). |
 | **6 Samsung Tizen + LG webOS** | Package the Angular app; server address screen, code sign-in, D-pad. | Installs and plays MP3 and MIDI songs on one Samsung and one LG TV. |
-| **7 Polish** | User guide, store listings, licence notices (GeneralUser GS, spessasynth, fanfares), app icons and splash from `branding/`. | A stranger installs the server and an app from the docs alone. |
+| **7 Polish** | README, user and admin guides, store listings, licence notices (`THIRD_PARTY_NOTICES.md`, generated and checked by `scripts/licenses.sh`; links checked by `scripts/check-links.py`) (GeneralUser GS, spessasynth, fanfares), app icons and splash from `branding/`. | A stranger installs the server and an app from the docs alone. |
 | **Later** | Offline downloads, email password reset, single sign-on, shared/party queues, guests, LAN discovery, volume, key/tempo, real pitch scoring. | — |
 
 ## 13. Decisions recorded and open items

@@ -8,11 +8,14 @@ const FIRST_RETRY_MS = 1000;
 const MAX_RETRY_MS = 30_000;
 const POLL_MS = 2000;
 const FAILURES_BEFORE_POLLING = 2;
+/** The server repeats the state every 25 s when nothing changes; a stream silent for longer is dead. */
+const SILENCE_MS = 60_000;
 
 /**
  * Keeps SessionService.WatchState open and exposes the latest State.
  * A failed attempt is retried after 1 s, 2 s, 4 s ... at most 30 s; the wait starts over after a
  * message. After two failed attempts in a row GetState is polled every 2 s until the stream is back.
+ * A stream that delivers nothing for 60 s (a dead link does not close by itself) is closed and reopened.
  */
 @Injectable({ providedIn: 'root' })
 export class StateStore {
@@ -77,15 +80,25 @@ export class StateStore {
     let failures = 0;
     let delay = FIRST_RETRY_MS;
     while (!signal.aborted) {
+      // this attempt ends when the app stops or when the stream has been silent for too long
+      const attempt = new AbortController();
+      const stop = () => attempt.abort();
+      signal.addEventListener('abort', stop);
+      let watchdog = setTimeout(stop, SILENCE_MS);
       try {
-        for await (const msg of this.client.watchState({}, { signal })) {
+        for await (const msg of this.client.watchState({}, { signal: attempt.signal })) {
           if (signal.aborted) return;
+          clearTimeout(watchdog);
+          watchdog = setTimeout(stop, SILENCE_MS);
           this.apply(msg.state, true);
           failures = 0;
           delay = FIRST_RETRY_MS;
         }
       } catch {
         // an error and a stream that simply ends are handled alike: wait, then reconnect
+      } finally {
+        clearTimeout(watchdog);
+        signal.removeEventListener('abort', stop);
       }
       if (signal.aborted) return;
       this.connected.set(false);

@@ -53,14 +53,16 @@ import { ScoreScreenComponent } from './score/score-screen.component';
           @if (c.needsGesture()) {
             <button type="button" class="big" (click)="c.unlock()">Tap to start the sound</button>
           }
-          <div class="controls">
-            @if (c.playing()) {
-              <button type="button" (click)="c.control(Action.PAUSE)">Pause</button>
-            } @else {
-              <button type="button" (click)="c.control(Action.PLAY)">Play</button>
-            }
-            <button type="button" (click)="c.control(Action.SKIP)">Skip</button>
-          </div>
+          @if (!embedded()) {
+            <div class="controls">
+              @if (c.playing()) {
+                <button type="button" (click)="c.control(Action.PAUSE)">Pause</button>
+              } @else {
+                <button type="button" (click)="c.control(Action.PLAY)">Play</button>
+              }
+              <button type="button" (click)="c.control(Action.SKIP)">Skip</button>
+            </div>
+          }
         </div>
       } @else {
         <p class="elsewhere">
@@ -81,6 +83,11 @@ import { ScoreScreenComponent } from './score/score-screen.component';
       background: #0a0e22;
       color: var(--text);
       text-align: center;
+    }
+    /* inside the app the native Close sits at the top and the native controls at the bottom, over the page */
+    .stage.embedded {
+      padding-top: 4.5rem;
+      padding-bottom: 6rem;
     }
     h1 {
       margin: 0;

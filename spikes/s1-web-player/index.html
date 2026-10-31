@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kantahe S1 synth measurement</title>
+<style>
+  body { font: 18px/1.4 sans-serif; margin: 16px; background: #fff; color: #111; }
+  fieldset { margin: 8px 0; }
+  label { display: block; margin: 4px 0; }
+  input[type=text] { width: 90%; font-size: 16px; }
+  button { font-size: 18px; padding: 8px 14px; margin: 4px 4px 4px 0; }
+  pre { background: #eee; padding: 8px; white-space: pre-wrap; }
+  #status { font-weight: bold; }
+</style>
+<script type="importmap">
+{ "imports": {
+    "spessasynth_lib": "./node_modules/spessasynth_lib/dist/index.js",
+    "spessasynth_core": "./node_modules/spessasynth_core/dist/index.js",
+    "fflate": "./node_modules/fflate/esm/browser.js",
+    "stb-vorbis": "./node_modules/stb-vorbis/dist/index.js"
+} }
+</script>
+</head>
+<body>
+<h1>S1: MIDI synth measurement</h1>
+<p>Load a SoundFont and a MIDI/KAR file (from the device, or by address), pick the mode, press Load, then Play and
+let it run for the whole song. Press "Copy results" at the end. See README.md.</p>
+
+<fieldset><legend>SoundFont</legend>
+  <label>File <input type="file" id="sfFile" accept=".sf2,.sf3"></label>
+  <label>or address <input type="text" id="sfUrl" placeholder="http://192.168.1.20:8099/full.sf2"></label>
+</fieldset>
+<fieldset><legend>Song</legend>
+  <label>File <input type="file" id="midiFile" accept=".mid,.midi,.kar"></label>
+  <label>or address <input type="text" id="midiUrl" placeholder="http://192.168.1.20:8099/song.kar"></label>
+</fieldset>
+<fieldset><legend>Mode</legend>
+  <label><input type="radio" name="mode" value="normal" checked> Normal (default voices, effects on, device sample rate)</label>
+  <label><input type="radio" name="mode" value="lowPower"> Low power (32 voices, reverb and chorus off, 22.05 kHz)</label>
+</fieldset>
+
+<button id="load">Load</button>
+<button id="play" disabled>Play</button>
+<button id="pause" disabled>Pause</button>
+<button id="autoplay">Autoplay test</button>
+<button id="mic">Microphone test</button>
+<button id="copy">Copy results</button>
+
+<p id="status">Idle.</p>
+<pre id="stats"></pre>
+<textarea id="json" rows="6" style="width:95%;display:none"></textarea>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -6,9 +6,9 @@
 Needs Google Chrome (renders the SVGs; ImageMagick's own SVG renderer gets clip paths and
 gradients wrong) and ImageMagick `magick` (resizing, favicon.ico). Outputs:
 
-    branding/*.svg            sources: icon, icon-small (<= 48 px), maskable, mark, lockups, splash
-    branding/export/          favicon.ico/.svg, PNG icons, apple-touch-icon, maskable icons,
-                              lockup PNGs, 1920x1080 splash for TV apps
+    branding/*.svg            sources: icon, icon-small (<= 48 px), maskable, icon-ios, mark, lockups, splash, tv-banner
+    branding/export/          favicon.ico/.svg, PNG icons, apple-touch-icon, maskable icons, icon-ios-1024 (no alpha),
+                              lockup PNGs, 1920x1080 splash and 320x180 launcher banner for TV apps
 
 The design: a handheld singing mic whose ball grille is half "sung" (yellow) and half "unsung"
 (white), the same colour wipe the player draws over lyrics, with two music notes. The wordmark colours "kanta" (Tagalog
@@ -104,14 +104,33 @@ def maskable():
 <g transform="translate(256 256) scale(.74) translate(-256 -256)">{mark()}</g>""", "Kantahe")
 
 
-def lockup(sung, rest):
-    return svg(936, 200, f"""
+def icon_ios():
+    # iOS draws its own rounded corners and wants a full square without alpha: the icon artwork on its own background
+    return svg(512, 512, f"""
 <defs>{BG_DEFS}</defs>
+<rect width="512" height="512" fill="url(#bg)"/><rect width="512" height="512" fill="url(#glow)"/>{mark()}""", "Kantahe")
+
+
+def lockup_shapes(sung, rest):
+    return f"""
 <g transform="translate(20 20) scale(.3125)">
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
   <rect width="512" height="512" rx="112" fill="url(#glow)"/>{mark()}
 </g>
-<g transform="translate(212 40) scale(.8)">{wordmark(sung, rest)}</g>""", "Kantahe")
+<g transform="translate(212 40) scale(.8)">{wordmark(sung, rest)}</g>"""
+
+
+def lockup(sung, rest):
+    return svg(936, 200, f"\n<defs>{BG_DEFS}</defs>{lockup_shapes(sung, rest)}", "Kantahe")
+
+
+def tv_banner():
+    # the Android TV launcher banner, 320x180: the lockup (which carries the name) on the dark splash colour
+    return svg(320, 180, f"""
+<defs>{BG_DEFS}</defs>
+<rect width="320" height="180" fill="#0a0e22"/>
+<rect width="320" height="180" fill="url(#glow)"/>
+<g transform="translate(20 60) scale(.2991)">{lockup_shapes(SUNG, UNSUNG)}</g>""", "Kantahe")
 
 
 def splash():
@@ -129,10 +148,12 @@ SOURCES = {
     "kantahe-icon.svg": icon(),
     "kantahe-icon-small.svg": icon(small=True),
     "kantahe-maskable.svg": maskable(),
+    "kantahe-icon-ios.svg": icon_ios(),
     "kantahe-mark.svg": svg(512, 512, mark(), "Kantahe"),
     "kantahe-lockup-dark.svg": lockup(SUNG, UNSUNG),
     "kantahe-lockup-light.svg": lockup(LIGHT_SUNG, LIGHT_INK),
     "kantahe-splash.svg": splash(),
+    "kantahe-tv-banner.svg": tv_banner(),
 }
 
 
@@ -158,16 +179,17 @@ def main():
 
     big = {}
     for name, (w, h) in {"kantahe-icon.svg": (1024, 1024), "kantahe-icon-small.svg": (512, 512),
-                         "kantahe-maskable.svg": (1024, 1024), "kantahe-mark.svg": (1024, 1024)}.items():
+                         "kantahe-maskable.svg": (1024, 1024), "kantahe-icon-ios.svg": (1024, 1024), "kantahe-mark.svg": (1024, 1024)}.items():
         big[name] = OUT / f"_{name}.png"
         render(HERE / name, big[name], w, h)
 
     for size in (16, 32, 48):
         resize(big["kantahe-icon-small.svg"], OUT / f"icon-{size}.png", size)
-    for size in (64, 128, 192, 256, 512, 1024):
+    for size in (64, 80, 128, 130, 192, 256, 512, 1024):  # 80 and 130: the webOS app icons
         resize(big["kantahe-icon.svg"], OUT / f"icon-{size}.png", size)
-    for size in (192, 512):
+    for size in (192, 512, 1024):  # 1024: the iOS app icon, which must be a full square without alpha
         resize(big["kantahe-maskable.svg"], OUT / f"maskable-{size}.png", size)
+    subprocess.run(["magick", str(big["kantahe-icon-ios.svg"]), "-alpha", "off", "-strip", str(OUT / "icon-ios-1024.png")], check=True)  # no alpha channel
     resize(big["kantahe-maskable.svg"], OUT / "apple-touch-icon.png", 180)  # iOS masks it itself
     resize(big["kantahe-mark.svg"], OUT / "mark-512.png", 512)
     subprocess.run(["magick", *(str(OUT / f"icon-{s}.png") for s in (16, 32, 48)),
@@ -177,6 +199,11 @@ def main():
     render(HERE / "kantahe-lockup-dark.svg", OUT / "lockup-dark.png", 1872, 400)
     render(HERE / "kantahe-lockup-light.svg", OUT / "lockup-light.png", 1872, 400)
     render(HERE / "kantahe-splash.svg", OUT / "splash-1920x1080.png", 1920, 1080)
+    # headless Chrome will not make a window this small: render at 4x and scale down
+    render(HERE / "kantahe-tv-banner.svg", OUT / "_banner.png", 1280, 720)
+    subprocess.run(["magick", str(OUT / "_banner.png"), "-filter", "Lanczos", "-resize", "320x180", "-strip",
+                    str(OUT / "tv-banner-320x180.png")], check=True)
+    (OUT / "_banner.png").unlink()
     for p in big.values():
         p.unlink()
 

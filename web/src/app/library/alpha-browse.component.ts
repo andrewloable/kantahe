@@ -26,14 +26,14 @@ const LETTERS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '#'];
       @if (titles.error()) {
         <p role="alert">{{ titles.error() }} <button type="button" (click)="titles.retry()">Try again</button></p>
       }
-      <app-song-list [songs]="titles.items()" [hasMore]="titles.hasMore()" [loading]="titles.loading()" (more)="titles.more()" />
+      <app-song-list [songs]="titles.items()" [hasMore]="titles.hasMore()" [loading]="titles.loading()" [autoMore]="!titles.error()" (more)="titles.more()" />
     } @else if (artist(); as name) {
       <p><button type="button" (click)="back()">← Back to artists</button></p>
       <h2>{{ name }}</h2>
       @if (artistSongs.error()) {
         <p role="alert">{{ artistSongs.error() }} <button type="button" (click)="artistSongs.retry()">Try again</button></p>
       }
-      <app-song-list [songs]="artistSongs.items()" [hasMore]="artistSongs.hasMore()" [loading]="artistSongs.loading()" (more)="artistSongs.more()" />
+      <app-song-list [songs]="artistSongs.items()" [hasMore]="artistSongs.hasMore()" [loading]="artistSongs.loading()" [autoMore]="!artistSongs.error()" (more)="artistSongs.more()" />
     } @else {
       @if (artists.error()) {
         <p role="alert">{{ artists.error() }} <button type="button" (click)="artists.retry()">Try again</button></p>

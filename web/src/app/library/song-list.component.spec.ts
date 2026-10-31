@@ -138,6 +138,14 @@ describe('SongListComponent', () => {
     expect(FakeObserver.all.filter((o) => o.observed.length > 0 && !o.disconnected)).toEqual([]);
   });
 
+  it('does not watch the end of the list while autoMore is off (after a failure), but Load more still works', () => {
+    const { fixture, el, more } = setup({ songs: [song('1', 'a', 'b')], hasMore: true, autoMore: false });
+    fixture.detectChanges();
+    expect(FakeObserver.all.filter((o) => o.observed.length > 0 && !o.disconnected)).toEqual([]);
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Load more'))!.click();
+    expect(more).toHaveBeenCalledTimes(1);
+  });
+
   it('also offers a Load more button, for keyboards and for browsers without the observer', () => {
     vi.unstubAllGlobals();
     vi.stubGlobal('IntersectionObserver', undefined);

@@ -1,8 +1,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- release builds need this too: flutter create adds it to the debug manifest only (spike S2) -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- the microphone score mode: asked at run time, and only when the user chose that mode -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- Android TV: a launcher entry with a banner, and no touch screen or microphone required -->
+    <uses-feature android:name="android.software.leanback" android:required="false"/>
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+    <uses-feature android:name="android.hardware.microphone" android:required="false"/>
+    <!-- the server speaks plain http on the local network (decision D10) -->
+    <!-- no cloud backup: the keystore-protected token must not be restored onto another device -->
     <application
-        android:label="kantahe"
+        android:usesCleartextTraffic="true"
+        android:allowBackup="false"
+        android:label="Kantahe"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:banner="@drawable/tv_banner">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -23,6 +36,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

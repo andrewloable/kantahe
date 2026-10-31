@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S3 test page</title>
+<style>
+  body { font: 16px/1.4 sans-serif; margin: 0; padding: 12px; background: #101820; color: #eee; }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  dt { color: #8ab; margin-top: 6px; }
+  dd { margin: 0; font-family: monospace; word-break: break-all; }
+  button { font-size: 18px; padding: 8px 14px; }
+</style>
+</head>
+<body>
+<h1>S3: player page in a WebView</h1>
+<dl>
+  <dt>page address</dt><dd id="href"></dd>
+  <dt>WebAudio</dt><dd id="webaudio">starting</dd>
+  <dt>audio element</dt><dd id="audioel">starting</dd>
+  <dt>token</dt><dd id="token">not received</dd>
+  <dt>microphone</dt><dd id="mic">not asked</dd>
+</dl>
+<button id="micbtn" type="button">Ask for the microphone</button>
+<script>
+'use strict';
+// Results go to the page and, when Flutter provides the channel (named Kantahe, as the real
+// /embed/player page expects), to Flutter as JSON text. The bare text KantaheReady means "send the token".
+function report(key, value) {
+  document.getElementById(key).textContent = value;
+  if (window.Kantahe) window.Kantahe.postMessage(JSON.stringify({ key: key, value: value }));
+}
+
+document.getElementById('href').textContent = location.href;
+if (window.Kantahe) window.Kantahe.postMessage(JSON.stringify({ key: 'href', value: location.href }));
+
+// 1. WebAudio, started at load with no gesture: a 1 s tone.
+(function () {
+  try {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    var ctx = new Ctx();
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    gain.gain.value = 0.05;
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 1);
+    var t0 = ctx.currentTime;
+    // The clock only moves when the context is really running.
+    setTimeout(function () {
+      report('webaudio', 'state=' + ctx.state + ' clock moved ' + (ctx.currentTime - t0).toFixed(2) + ' s');
+    }, 700);
+  } catch (e) {
+    report('webaudio', 'error ' + e);
+  }
+})();
+
+// 2. An audio element with a generated WAV (1 s, 8 kHz, 8 bit, 440 Hz), started at load.
+function wavDataUrl() {
+  var rate = 8000, n = rate, bytes = new Uint8Array(44 + n);
+  var dv = new DataView(bytes.buffer);
+  function str(o, s) { for (var i = 0; i < s.length; i++) bytes[o + i] = s.charCodeAt(i); }
+  str(0, 'RIFF'); dv.setUint32(4, 36 + n, true); str(8, 'WAVEfmt ');
+  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+  dv.setUint32(24, rate, true); dv.setUint32(28, rate, true); dv.setUint16(32, 1, true); dv.setUint16(34, 8, true);
+  str(36, 'data'); dv.setUint32(40, n, true);
+  for (var i = 0; i < n; i++) bytes[44 + i] = 128 + Math.round(20 * Math.sin(2 * Math.PI * 440 * i / rate));
+  var bin = ''; for (var j = 0; j < bytes.length; j++) bin += String.fromCharCode(bytes[j]);
+  return 'data:audio/wav;base64,' + btoa(bin);
+}
+(function () {
+  var a = new Audio(wavDataUrl());
+  a.volume = 0.3;
+  var p = a.play();
+  Promise.resolve(p).then(function () {
+    setTimeout(function () {
+      report('audioel', 'play() ok, currentTime ' + a.currentTime.toFixed(2) + ' s, paused=' + a.paused);
+    }, 700);
+  }, function (e) {
+    report('audioel', 'play() refused: ' + e.name);
+  });
+})();
+
+// 3. The token arrives from Flutter after load, never in the address.
+window.kantahe = {
+  setToken: function (token, deviceId, serverUrl) {
+    window.kantahe._token = token;
+    report('token', 'received, ' + token.length + ' characters' +
+      ', device=' + deviceId + ', server=' + serverUrl + ', in address=' + (location.href.indexOf(token) >= 0));
+  },
+  requestMic: function () {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      report('mic', 'no getUserMedia (secure context=' + window.isSecureContext + ')');
+      return;
+    }
+    report('mic', 'asking (secure context=' + window.isSecureContext + ')');
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      var t = stream.getAudioTracks()[0];
+      report('mic', 'granted, track ' + (t ? t.readyState : 'none'));
+      stream.getTracks().forEach(function (x) { x.stop(); });
+    }, function (e) {
+      report('mic', 'refused: ' + e.name);
+    });
+  }
+};
+document.getElementById('micbtn').addEventListener('click', function () { window.kantahe.requestMic(); });
+// The bridge exists now: tell the app, as the real page does.
+if (window.Kantahe) window.Kantahe.postMessage('KantaheReady');
+</script>
+</body>
+</html>

@@ -4,6 +4,13 @@ Kantahe is one program with its web app inside. It listens on port 8080 over pla
 internet (and for microphone scoring in browsers, which needs HTTPS) put a reverse proxy in front of it,
 see [reverse-proxy.md](reverse-proxy.md).
 
+**What plain HTTP cannot do.** Browsers (and the apps' embedded player) give some features only to HTTPS pages
+and to `localhost`: the microphone, and the MIDI synthesizer of the web player (it needs an AudioWorklet). On a
+plain `http://192.168.x.y:8080` address MP3 songs play as usual; for MIDI songs the player switches that device
+to the server's rendered audio by itself (it says so once), and microphone scoring is not offered. With the
+server's audio rendering switched off (`--render-cache-gb 0`) MIDI songs then cannot play on that device: use
+HTTPS through a reverse proxy.
+
 You need two folders:
 
 * a **data folder** for the database, uploaded songs and settings (Kantahe creates it);
@@ -77,20 +84,32 @@ Copy `kantahe-VERSION-windows-amd64.exe` (or `arm64`) to `C:\Kantahe\kantahe.exe
 C:\Kantahe\kantahe.exe --data C:\Kantahe\data --library D:\Karaoke
 ```
 
-To start it when the PC starts, use the built-in Task Scheduler (run in an administrator terminal):
+To have it start with the PC, install it as a **Windows service** (run in an administrator terminal; use full paths, a
+service does not start in your folder):
+
+```bat
+sc.exe create Kantahe binPath= "\"C:\Kantahe\kantahe.exe\" --data C:\Kantahe\data --library D:\Karaoke" start= auto
+sc.exe description Kantahe "Kantahe karaoke server"
+sc.exe start Kantahe
+netsh advfirewall firewall add rule name="Kantahe" dir=in action=allow protocol=TCP localport=8080
+```
+
+The program speaks the Windows service protocol when the service manager starts it, so `sc.exe stop Kantahe` stops it
+cleanly (within a few seconds) and `sc.exe delete Kantahe` removes the service; started from a terminal it is the same
+console program as before. A service runs as the SYSTEM account by default, so the library folder must be readable (and
+writable, if admins may delete songs) for it; `sc.exe config Kantahe obj= ...` sets another account. A service has no
+console, so its log lines are not kept: if it will not start, `sc.exe query Kantahe` shows the exit code, and running the
+same command line in a terminal shows the message. Versions before this one are plain console programs and cannot be a
+service (Windows reports error 1053 after thirty seconds): use the scheduled task below with them.
+
+**Alternative: a scheduled task** (also works with every version):
 
 ```bat
 schtasks /Create /TN Kantahe /SC ONSTART /RU SYSTEM /RL HIGHEST /TR "\"C:\Kantahe\kantahe.exe\" --data C:\Kantahe\data --library D:\Karaoke"
 schtasks /Run /TN Kantahe
-netsh advfirewall firewall add rule name="Kantahe" dir=in action=allow protocol=TCP localport=8080
 ```
 
-Stop it with `schtasks /End /TN Kantahe`. The task runs as SYSTEM, so the library folder must be
-readable (and writable, if admins may delete songs) for that account.
-
-`sc.exe create` does not work with this program: Windows only keeps a service running if the program
-speaks the service protocol, and Kantahe (a plain command-line program) does not, so the service fails
-with error 1053 after thirty seconds. Use the scheduled task above.
+Stop it with `schtasks /End /TN Kantahe`. The task runs as SYSTEM too.
 
 ## First start
 

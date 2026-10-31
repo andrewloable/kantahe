@@ -1,0 +1,13 @@
+{
+  "name": "kantahe-spike-s1-web-player",
+  "private": true,
+  "description": "Throwaway page that measures the browser MIDI synthesizer on real devices (spike S1)",
+  "type": "module",
+  "scripts": {
+    "test": "node --test measure.test.mjs",
+    "serve": "npx http-server . -p 8099 -c-1"
+  },
+  "dependencies": {
+    "spessasynth_lib": "4.4.2"
+  }
+}
