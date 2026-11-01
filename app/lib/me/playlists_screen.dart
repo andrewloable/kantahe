@@ -88,8 +88,9 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
         title: Text('Rename ${p.name}'),
         content: DpadEscape(
           controller: controller,
-          builder: (focus) => TextField(
+          builder: (focus, readOnly) => TextField(
             focusNode: focus,
+            readOnly: readOnly,
             key: const Key('rename'),
             controller: controller,
             maxLength: 100,
@@ -142,8 +143,9 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
               Expanded(
                 child: DpadEscape(
                   controller: _draft,
-                  builder: (focus) => TextField(
+                  builder: (focus, readOnly) => TextField(
                     focusNode: focus,
+                    readOnly: readOnly,
                     key: const Key('new-playlist'),
                     controller: _draft,
                     maxLength: 100,
@@ -165,24 +167,33 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
           ),
           if (_loaded && _playlists.isEmpty) const Padding(padding: EdgeInsets.all(8), child: Text('No playlists yet.')),
           for (final p in _playlists)
-            FocusRing(
-              radius: 0,
-              child: ListTile(
-                title: Text(p.name),
-                subtitle: Text(p.songCount == 1 ? '1 song' : '${p.songCount} songs'),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => PlaylistDetailScreen(id: p.id, name: p.name),
+            // The icons are siblings of the tile, not inside it: an arrow key only moves the focus to something outside the focused widget, so icons
+            // inside the tile's rectangle could never be reached with the remote.
+            Row(
+              children: [
+                Expanded(
+                  child: FocusRing(
+                    radius: 0,
+                    child: ListTile(
+                      title: Text(p.name),
+                      subtitle: Text(p.songCount == 1 ? '1 song' : '${p.songCount} songs'),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => PlaylistDetailScreen(id: p.id, name: p.name),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(tooltip: 'Rename ${p.name}', icon: const Icon(Icons.edit_outlined), onPressed: () => _rename(p)),
-                    IconButton(tooltip: 'Delete ${p.name}', icon: const Icon(Icons.delete_outline), onPressed: () => _delete(p)),
-                  ],
+                FocusRing(
+                  radius: 20,
+                  child: IconButton(tooltip: 'Rename ${p.name}', icon: const Icon(Icons.edit_outlined), onPressed: () => _rename(p)),
                 ),
-              ),
+                FocusRing(
+                  radius: 20,
+                  child: IconButton(tooltip: 'Delete ${p.name}', icon: const Icon(Icons.delete_outline), onPressed: () => _delete(p)),
+                ),
+              ],
             ),
         ],
       ),

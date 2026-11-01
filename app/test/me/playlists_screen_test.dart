@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:connectrpc/connect.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantahe/gen/kantahe/v1/user_library.pb.dart';
 import 'package:kantahe/me/playlist_detail_screen.dart';
@@ -182,5 +183,68 @@ void main() {
     final entry = find.widgetWithText(ListTile, 'Party');
     await expectNoRingWhenNotFocused(tester, entry);
     await expectRingOnFocus(tester, entry);
+  });
+
+  group('remote control', () {
+    /// The focus node of the playlist row itself (the one with the rectangle of the tile): the helper focusNodeInside would return an icon, which sits inside the tile.
+    FocusNode rowNode(WidgetTester tester) {
+      final tile = find.byType(ListTile).first;
+      final top = tester.getTopLeft(tile);
+      final size = tester.getSize(tile);
+      return FocusManager.instance.rootScope.descendants.firstWhere(
+        (n) => n.canRequestFocus && !n.skipTraversal && n.context != null && n.rect.topLeft == top && n.rect.size == size,
+      );
+    }
+
+    testWidgets('REGRESSION: RIGHT from a playlist row reaches Rename, then Delete, and LEFT goes back', (tester) async {
+      await open(tester, rig: withPlaylists());
+      final row = rowNode(tester);
+      final rename = focusNodeInside(tester, find.byTooltip('Rename Party'));
+      final delete = focusNodeInside(tester, find.byTooltip('Delete Party'));
+      row.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus, same(rename), reason: 'RIGHT from the row');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus, same(delete), reason: 'RIGHT again');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus, same(row), reason: 'LEFT twice');
+    });
+
+    testWidgets('REGRESSION: Select on Delete and on Rename opens their dialogs with the remote only', (tester) async {
+      await open(tester, rig: withPlaylists());
+      rowNode(tester).requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget, reason: 'Rename');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      focusNodeInside(tester, find.byTooltip('Rename Party')).requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget, reason: 'Delete');
+    });
+
+    testWidgets('Select on the row itself still opens the playlist', (tester) async {
+      final r = withPlaylists();
+      r.server.onGetPlaylist = (id) => Playlist(id: id, name: 'Party', songs: [song('1', 'Opening song', 'A')]);
+      await open(tester, rig: r);
+      rowNode(tester).requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(find.byType(PlaylistDetailScreen), findsOneWidget);
+    });
   });
 }

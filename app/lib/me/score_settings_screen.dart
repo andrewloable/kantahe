@@ -62,6 +62,22 @@ class _ScoreSettingsScreenState extends State<ScoreSettingsScreen> {
     }
   }
 
+  /// One radio-style option. Not a RadioListTile in a RadioGroup: with a remote the group's arrow keys select the option they move to and wrap around
+  /// inside the group, so a setting changed by passing it and the options below could not be reached. A tile here only moves the focus; OK chooses.
+  Widget _option(String label, String hint, {required bool selected, required VoidCallback onTap}) => FocusRing(
+    radius: 0,
+    child: Semantics(
+      inMutuallyExclusiveGroup: true,
+      checked: selected,
+      child: ListTile(
+        leading: Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+        title: Text(label),
+        subtitle: Text(hint),
+        onTap: onTap,
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,19 +88,13 @@ class _ScoreSettingsScreenState extends State<ScoreSettingsScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             Text('Score', style: Theme.of(context).textTheme.titleMedium),
-            RadioGroup<ScoreMode>(
-              groupValue: _mode,
-              onChanged: (m) => _choose(mode: m),
-              child: Column(
-                children: [
-                  for (final m in _modes)
-                    FocusRing(
-                      radius: 0,
-                      child: RadioListTile<ScoreMode>(value: m.value, title: Text(m.label), subtitle: Text(m.hint)),
-                    ),
-                ],
+            for (final m in _modes)
+              _option(
+                m.label,
+                m.hint,
+                selected: m.value == _mode,
+                onTap: () => _choose(mode: m.value),
               ),
-            ),
             if (!_canListen)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
@@ -92,19 +102,13 @@ class _ScoreSettingsScreenState extends State<ScoreSettingsScreen> {
               ),
             const SizedBox(height: 16),
             Text('Level', style: Theme.of(context).textTheme.titleMedium),
-            RadioGroup<ScoreLevel>(
-              groupValue: _level,
-              onChanged: (l) => _choose(level: l),
-              child: Column(
-                children: [
-                  for (final l in _levels)
-                    FocusRing(
-                      radius: 0,
-                      child: RadioListTile<ScoreLevel>(value: l.value, title: Text(l.label), subtitle: Text(l.hint)),
-                    ),
-                ],
+            for (final l in _levels)
+              _option(
+                l.label,
+                l.hint,
+                selected: l.value == _level,
+                onTap: () => _choose(level: l.value),
               ),
-            ),
           ],
         ),
       ),

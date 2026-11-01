@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:kantahe/auth/change_password_screen.dart';
 import 'package:kantahe/auth/server_screen.dart';
@@ -22,7 +24,17 @@ class AuthGate extends StatelessWidget {
     return ListenableBuilder(
       listenable: Listenable.merge([services.serverUrl, services.auth]),
       builder: (context, _) {
-        if (services.serverUrl.value == null) return const ServerScreen();
+        if (services.serverUrl.value == null) {
+          // Reached with "Use another server": Back returns to the server that was set, instead of leaving the app. First run: Back leaves as before.
+          final previous = services.serverUrl.previous;
+          return PopScope(
+            canPop: previous == null,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) unawaited(services.serverUrl.restorePrevious());
+            },
+            child: const ServerScreen(),
+          );
+        }
         if (!services.auth.signedIn) return services.isTv ? CodeSignInScreen(deviceName: deviceName) : SignInScreen(deviceName: deviceName);
         if (services.auth.passwordChangeRequired) return const ChangePasswordScreen();
         return signedIn(context);

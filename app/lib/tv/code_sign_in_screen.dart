@@ -227,7 +227,13 @@ class _CodeSignInScreenState extends State<CodeSignInScreen> {
                   const SizedBox(height: 16),
                   ...body,
                   const SizedBox(height: 16),
-                  TextButton(onPressed: () => _services.serverUrl.clear(), child: const Text('Use another server')),
+                  // the only control while the code is shown, so it takes the focus and the remote works at once; in the other phases the button above it (earlier in the tree) wins the autofocus
+                  TextButton(
+                    key: ValueKey(_phase), // a new button per phase: the old one that had the focus is gone, so the phase's own button can take the focus
+                    autofocus: true,
+                    onPressed: () => _services.serverUrl.clear(),
+                    child: const Text('Use another server'),
+                  ),
                 ],
               ),
             ),

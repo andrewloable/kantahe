@@ -51,15 +51,22 @@ class WebEmbed extends StatefulWidget {
 }
 
 class _Host implements EmbedHost {
-  _Host(this._controller);
+  _Host(this._controller, this._url);
 
   final WebViewController _controller;
+  final Uri _url;
 
   @override
   Future<void> runJavaScript(String script) => _controller.runJavaScript(script);
 
   @override
   Future<void> reload() => _controller.reload();
+
+  @override
+  Future<void> unload() => _controller.loadRequest(Uri.parse('about:blank'));
+
+  @override
+  Future<void> load() => _controller.loadRequest(_url);
 
   @override
   Future<String?> currentUrl() => _controller.currentUrl();
@@ -110,7 +117,7 @@ class _WebEmbedState extends State<WebEmbed> {
       // Android: playback without a user gesture.
       platform.setMediaPlaybackRequiresUserGesture(false);
     }
-    widget.config.onHost(_Host(_controller));
+    widget.config.onHost(_Host(_controller, widget.config.url));
     _controller.loadRequest(widget.config.url);
   }
 

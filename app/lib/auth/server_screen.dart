@@ -148,6 +148,7 @@ class _ServerScreenState extends State<ServerScreen> {
       case _Phase.searching:
         return AuthPage(
           title: 'Connect to your server',
+          centered: true,
           children: [
             const Center(child: CircularProgressIndicator()),
             const SizedBox(height: 16),
@@ -157,6 +158,7 @@ class _ServerScreenState extends State<ServerScreen> {
       case _Phase.connecting:
         return AuthPage(
           title: 'Connect to your server',
+          centered: true,
           children: [Semantics(liveRegion: true, child: Text('Connecting to $_connectingTo...', textAlign: TextAlign.center))],
         );
       case _Phase.list:
@@ -178,8 +180,9 @@ class _ServerScreenState extends State<ServerScreen> {
             const SizedBox(height: 16),
             DpadEscape(
               controller: _url,
-              builder: (focus) => TextField(
+              builder: (focus, readOnly) => TextField(
                 focusNode: focus,
+                readOnly: readOnly,
                 key: const Key('server-url'),
                 controller: _url,
                 keyboardType: TextInputType.url,

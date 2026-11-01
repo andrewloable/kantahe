@@ -108,8 +108,9 @@ class _SignInScreenState extends State<SignInScreen> {
             children: [
               DpadEscape(
                 controller: _email,
-                builder: (focus) => TextField(
+                builder: (focus, readOnly) => TextField(
                   focusNode: focus,
+                  readOnly: readOnly,
                   key: const Key('email'),
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
@@ -122,8 +123,9 @@ class _SignInScreenState extends State<SignInScreen> {
               const SizedBox(height: 12),
               DpadEscape(
                 controller: _password,
-                builder: (focus) => TextField(
+                builder: (focus, readOnly) => TextField(
                   focusNode: focus,
+                  readOnly: readOnly,
                   key: const Key('password'),
                   controller: _password,
                   obscureText: true,
@@ -135,8 +137,9 @@ class _SignInScreenState extends State<SignInScreen> {
               const SizedBox(height: 12),
               DpadEscape(
                 controller: _device,
-                builder: (focus) => TextField(
+                builder: (focus, readOnly) => TextField(
                   focusNode: focus,
+                  readOnly: readOnly,
                   key: const Key('device-name'),
                   controller: _device,
                   textInputAction: TextInputAction.done,

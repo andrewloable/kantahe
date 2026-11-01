@@ -56,6 +56,12 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
         title: const Text('Library'),
         bottom: TabBar(
           controller: _tabs,
+          // On a TV the remote's place must be visible across a room: the focus overlay of a Material tab is only 10 percent opaque, which is invisible there.
+          overlayColor: AppScope.isTvOf(context)
+              ? WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.focused) ? Theme.of(context).colorScheme.inverseSurface.withValues(alpha: 0.4) : null,
+                )
+              : null,
           tabs: const [
             Tab(text: 'Search'),
             Tab(text: 'Number'),
@@ -141,8 +147,9 @@ class _SearchTabState extends State<_SearchTab> {
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
           child: DpadEscape(
             controller: _query,
-            builder: (focus) => TextField(
+            builder: (focus, readOnly) => TextField(
               focusNode: focus,
+              readOnly: readOnly,
               key: const Key('search'),
               controller: _query,
               onChanged: _onQuery,

@@ -39,6 +39,12 @@ abstract interface class EmbedHost {
   Future<void> runJavaScript(String script);
   Future<void> reload();
 
+  /// Ends the page: shows an empty one, so that its script, synthesizer and video decoders stop and free their memory.
+  Future<void> unload();
+
+  /// Loads the player page again after [unload].
+  Future<void> load();
+
   /// The address the page shows now (null when there is none yet).
   Future<String?> currentUrl();
 }

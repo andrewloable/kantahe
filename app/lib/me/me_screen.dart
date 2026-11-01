@@ -9,6 +9,7 @@ import 'package:kantahe/me/history_screen.dart';
 import 'package:kantahe/me/my_devices_screen.dart';
 import 'package:kantahe/me/playlists_screen.dart';
 import 'package:kantahe/me/score_settings_screen.dart';
+import 'package:kantahe/tv/entry_focus.dart';
 import 'package:kantahe/tv/focus.dart';
 import 'package:kantahe/upload/upload_screen.dart';
 
@@ -16,7 +17,7 @@ import 'package:kantahe/upload/upload_screen.dart';
 class MeScreen extends StatelessWidget {
   const MeScreen({super.key});
 
-  void _open(BuildContext context, Widget page) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+  void _open(BuildContext context, Widget page) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TvEntryFocus(child: page)));
 
   /// Signs this device out on the server, then here; here even when the server cannot be reached.
   Future<void> _signOut(AppServices services) async {

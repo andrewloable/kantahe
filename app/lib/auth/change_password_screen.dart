@@ -79,8 +79,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     padding: const EdgeInsets.only(bottom: 12),
     child: DpadEscape(
       controller: c,
-      builder: (focus) => TextField(
+      builder: (focus, readOnly) => TextField(
         focusNode: focus,
+        readOnly: readOnly,
         key: Key(key),
         controller: c,
         obscureText: true,

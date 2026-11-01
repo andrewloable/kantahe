@@ -38,11 +38,15 @@ class ServerUrl extends ChangeNotifier {
   final Transport Function(String baseUrl)? _makeTransport;
   String? _value;
   bool _autoConnect = true;
+  String? _previous;
 
   /// Whether a single server found on the network may be connected to without asking. Off after [clear] for the rest
   /// of the run (a person who chose "Use another server" would otherwise be sent straight back); never stored, so a
   /// new start has it on again.
   bool get autoConnect => _autoConnect;
+
+  /// The address that [clear] removed, until another one is set: Back from the server list returns to it.
+  String? get previous => _previous;
 
   /// The stored address, without a trailing slash; null until one is set.
   String? get value => _value;
@@ -85,6 +89,7 @@ class ServerUrl extends ChangeNotifier {
     final n = normalize(url);
     if (n == null) throw ArgumentError.value(url, 'url', 'The server address must be an http(s) address');
     _value = n;
+    _previous = null;
     notifyListeners();
     try {
       await _store.write(_key, n);
@@ -93,7 +98,14 @@ class ServerUrl extends ChangeNotifier {
     }
   }
 
+  /// Back from the server list: the address that [clear] removed is set again (nothing happens without one).
+  Future<void> restorePrevious() async {
+    final p = _previous;
+    if (p != null) await set(p);
+  }
+
   Future<void> clear() async {
+    _previous = _value;
     _autoConnect = false;
     _value = null;
     notifyListeners();

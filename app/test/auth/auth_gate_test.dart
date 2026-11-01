@@ -148,4 +148,46 @@ void main() {
     expect(find.text('Choose your server'), findsOneWidget);
     expect(h.serverUrl.value, isNull);
   });
+
+  testWidgets('REGRESSION: Back from the server list (reached with Use another server) shows the sign-in again, with the old server set', (tester) async {
+    final h = Harness();
+    h.find = (_) async => [
+      const ServerCandidate('Den', ['http://10.0.0.5:8080']),
+    ];
+    await h.pump(tester, gate());
+    await tester.pumpAndSettle();
+    final before = h.serverUrl.value;
+    expect(before, isNotNull);
+    await tapText(tester, 'Use another server');
+    expect(find.text('Choose your server'), findsOneWidget);
+    final handled = await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(handled, isTrue, reason: 'Back is taken by the app, not by the system (which would leave it)');
+    expect(find.byType(SignInScreen), findsOneWidget);
+    expect(h.serverUrl.value, before);
+  });
+
+  testWidgets('with no server at all Back is not taken: the app may leave', (tester) async {
+    final h = Harness(server: null);
+    h.find = (_) async => [];
+    await h.pump(tester, gate());
+    await tester.pumpAndSettle();
+    expect(h.serverUrl.value, isNull);
+    final handled = await tester.binding.handlePopRoute();
+    expect(handled, isFalse);
+  });
+
+  testWidgets('choosing another server forgets the old one: Back after that does not bring it back', (tester) async {
+    final h = Harness();
+    h.find = (_) async => [
+      const ServerCandidate('Den', ['http://10.0.0.5:8080']),
+    ];
+    await h.pump(tester, gate());
+    await tester.pumpAndSettle();
+    await tapText(tester, 'Use another server');
+    expect(h.serverUrl.previous, isNotNull, reason: 'the old address is kept for Back');
+    await h.serverUrl.set('http://10.0.0.9:8080');
+    await tester.pumpAndSettle();
+    expect(h.serverUrl.previous, isNull);
+  });
 }

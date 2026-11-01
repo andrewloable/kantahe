@@ -178,7 +178,7 @@ Three layers, cheapest first; each device ends up on the lightest one it needs:
    details in `docs/spikes/s1b-render.md`: go-meltysynth ignores SoundFont modulators, which GeneralUser
    GS uses for velocity brightness and reverb/chorus sends, so the render sounds slightly flatter than the
    browser synth; FLAC support on the TV browsers is checked on the devices of S1. Implemented in
-   `server/internal/render`: one render at a time, streamed in blocks with a 1.5 s tail, songs over 20 minutes
+   `server/internal/render`: one render at a time, the song asked for most recently first (songs a user skipped must not hold up the one that plays; a waiting song asked for again moves to the front and, when more than 64 wait, the one asked for longest ago is dropped), streamed in blocks with a 1.5 s tail, songs over 20 minutes
    refused, the cache is evicted least-recently-played first (the file just rendered is never evicted),
    `--render-cache-gb 0` switches it off (devices then use the low-power synth), and a song that fails to
    render is played as MIDI by the device. The next song and the up-next song are rendered ahead when the

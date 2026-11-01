@@ -421,6 +421,35 @@ describe('PlayerController', () => {
         expect(player.error()).toBe(NO_SYNTH);
       });
 
+      it('regression: without server rendering no "Switched to server-rendered audio" toast is shown (nothing was switched to)', async () => {
+        const { server, player, push, flush } = setup({ synth: false });
+        server.handlers.playback = () => synth(); // the server cannot render and keeps answering with MIDI
+        await push(MIDI_PLAYING);
+        await flush(100); // short: a toast goes away by itself after a few seconds
+        expect(player.error()).toBe(NO_SYNTH);
+        expect(TestBed.inject(ToastService).toasts()).toEqual([]);
+      });
+
+      it('regression: a device that is already in Server mode is not switched again, and gets no toast, when the server still answers with MIDI', async () => {
+        const { server, player, push, flush } = setup({ synth: false });
+        server.handlers.playback = () => synth();
+        await push({ ...MIDI_PLAYING, devices: [device(ME, 'This browser', { isCaller: true, midiMode: MidiMode.SERVER }), device('tv', 'Living room TV')] });
+        await flush(100);
+        expect(server.calls.mode).toEqual([]);
+        expect(player.error()).toBe(NO_SYNTH);
+        expect(TestBed.inject(ToastService).toasts()).toEqual([]);
+      });
+
+      it('a device that was already in Server mode is not told it switched when the server renders', async () => {
+        const { server, fake, push, flush } = setup({ synth: false });
+        server.handlers.playback = () => render();
+        await push({ ...MIDI_PLAYING, devices: [device(ME, 'This browser', { isCaller: true, midiMode: MidiMode.SERVER }), device('tv', 'Living room TV')] });
+        await flush(100);
+        expect(server.calls.mode).toEqual([]);
+        expect(fake.created.map((c) => c.kind)).toEqual(['mp3']);
+        expect(TestBed.inject(ToastService).toasts()).toEqual([]);
+      });
+
       it('says so clearly when the switch itself fails', async () => {
         const { server, fake, player, push, flush } = setup({ synth: false });
         server.handlers.setMidiMode = () => {

@@ -65,6 +65,53 @@ void main() {
     expect(find.text('Coming up'), findsOneWidget);
   });
 
+  group('the rail keeps UP and DOWN to itself', () {
+    FocusNode railNode(WidgetTester tester, String label) =>
+        Focus.of(tester.element(find.descendant(of: find.byType(NavigationRail), matching: find.text(label))));
+    bool inRail(WidgetTester tester) {
+      final context = FocusManager.instance.primaryFocus?.context;
+      return context != null &&
+          find.descendant(of: find.byType(NavigationRail), matching: find.byElementPredicate((e) => identical(e, context))).evaluate().isNotEmpty;
+    }
+
+    testWidgets('REGRESSION: DOWN on the last item (Me) stays on it, and UP on the first item (Library) stays on it', (tester) async {
+      await open(tester);
+      final me = railNode(tester, 'Me');
+      me.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus, same(me), reason: 'DOWN on Me must not leave the rail');
+      final library = railNode(tester, 'Library');
+      library.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus, same(library), reason: 'UP on Library must not leave the rail');
+    });
+
+    testWidgets('UP and DOWN between the items still work, RIGHT enters the content and LEFT comes back to the rail', (tester) async {
+      await open(tester);
+      railNode(tester, 'Library').requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus, same(railNode(tester, 'Queue')));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus, same(railNode(tester, 'Me')));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus, same(railNode(tester, 'Queue')));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(inRail(tester), isFalse, reason: 'RIGHT enters the content');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(inRail(tester), isTrue, reason: 'LEFT comes back to the rail');
+    });
+  });
+
   testWidgets('text is larger on a TV, viewed from a sofa', (tester) async {
     await open(tester);
     final scale = MediaQuery.textScalerOf(tester.element(find.byType(AppShell))).scale(10);

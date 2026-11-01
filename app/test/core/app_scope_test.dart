@@ -46,6 +46,37 @@ void main() {
     expect(seen, same(services));
   });
 
+  group('focus highlight', () {
+    AppServices services({required bool isTv}) {
+      final a = AuthStore(MemoryStore());
+      final api = Api(FakeSessionServer().build());
+      return AppServices(
+        serverUrl: ServerUrl(MemoryStore()),
+        auth: a,
+        api: api,
+        state: StateStore(client: api.session, auth: a),
+        isTv: isTv,
+      );
+    }
+
+    tearDown(() => FocusManager.instance.highlightStrategy = FocusHighlightStrategy.automatic);
+
+    testWidgets('REGRESSION: on a TV the Material focus highlight is always shown (the default mode follows touch events, which a remote never sends)', (
+      tester,
+    ) async {
+      FocusManager.instance.highlightStrategy = FocusHighlightStrategy.automatic;
+      await tester.pumpWidget(AppRoot(services: services(isTv: true), child: const SizedBox()));
+      expect(FocusManager.instance.highlightStrategy, FocusHighlightStrategy.alwaysTraditional);
+      expect(FocusManager.instance.highlightMode, FocusHighlightMode.traditional);
+    });
+
+    testWidgets('a phone or tablet keeps the automatic strategy', (tester) async {
+      FocusManager.instance.highlightStrategy = FocusHighlightStrategy.automatic;
+      await tester.pumpWidget(AppRoot(services: services(isTv: false), child: const SizedBox()));
+      expect(FocusManager.instance.highlightStrategy, FocusHighlightStrategy.automatic);
+    });
+  });
+
   testWidgets('without an AppScope above, of() says so', (tester) async {
     await tester.pumpWidget(
       Builder(

@@ -79,8 +79,9 @@ class _ApproveCodeScreenState extends State<ApproveCodeScreen> {
         const SizedBox(height: 16),
         DpadEscape(
           controller: _code,
-          builder: (focus) => TextField(
+          builder: (focus, readOnly) => TextField(
             focusNode: focus,
+            readOnly: readOnly,
             key: const Key('code'),
             controller: _code,
             maxLength: _codeLength,

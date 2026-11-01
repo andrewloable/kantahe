@@ -47,14 +47,14 @@ State playingHere({ScoreMode? mode, String player = 'me', PlayStatus status = Pl
   now: nowPlaying(song('1', 'A', 'B')),
 );
 
-Future<Rig> open(WidgetTester tester, {State? state, String? server = 'http://srv:1'}) async {
+Future<Rig> open(WidgetTester tester, {State? state, String? server = 'http://srv:1', Widget base = const Text('base screen')}) async {
   final q = QueueRig();
   // the address first: a new address ends the session
   if (server != null) await q.services.serverUrl.set(server);
   await q.signIn('me');
   q.setState(state ?? playingHere());
   final r = Rig(q);
-  await q.pump(tester, const Scaffold(body: Text('base screen')));
+  await q.pump(tester, Scaffold(body: base));
   // pushed on top of another screen, as in the app (so that Close has somewhere to go back to)
   tester
       .state<NavigatorState>(find.byType(Navigator))
@@ -316,6 +316,288 @@ void main() {
       await idleFor(tester, 30);
       expect(find.text('Try again'), findsOneWidget);
       expect(controlsOpacity(tester), 1);
+    });
+  });
+
+  group('remote focus', () {
+    String focusLabel() => FocusManager.instance.primaryFocus?.debugLabel ?? '';
+    // the invisible node around the whole screen: no key can leave it, so the directional focus must never land on it
+    const wake = 'receives the key that wakes';
+    bool buttonHasFocus(String label) => find
+        .descendant(
+          of: find.widgetWithText(OutlinedButton, label),
+          matching: find.byElementPredicate((e) => identical(e, FocusManager.instance.primaryFocus?.context)),
+        )
+        .evaluate()
+        .isNotEmpty;
+
+    testWidgets('REGRESSION: Up from Pause never lands on the wake node of the whole screen (no key can leave it)', (tester) async {
+      await open(tester);
+      await tester.pump();
+      expect(focusLabel(), 'player: Play/Pause');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(focusLabel(), isNot(contains(wake)));
+    });
+
+    testWidgets('REGRESSION: the remote reaches Close from Pause, and Select on it closes the player', (tester) async {
+      await open(tester);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      if (!buttonHasFocus('Close')) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+        await tester.pump();
+      }
+      expect(buttonHasFocus('Close'), isTrue, reason: 'the focus is on "${focusLabel()}"');
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(find.byType(PlayerScreen), findsNothing);
+      expect(find.text('base screen'), findsOneWidget);
+    });
+
+    testWidgets('REGRESSION: no arrow key moves the focus out of the player to the screen behind it (a hidden text field popped up the keyboard)', (
+      tester,
+    ) async {
+      await open(
+        tester,
+        base: const Column(
+          children: [
+            TextField(),
+            ElevatedButton(onPressed: null, child: Text('behind')),
+          ],
+        ),
+      );
+      await tester.pump();
+      final keys = [
+        LogicalKeyboardKey.arrowUp,
+        LogicalKeyboardKey.arrowUp,
+        LogicalKeyboardKey.arrowDown,
+        LogicalKeyboardKey.arrowDown,
+        LogicalKeyboardKey.arrowDown,
+        LogicalKeyboardKey.arrowLeft,
+        LogicalKeyboardKey.arrowLeft,
+        LogicalKeyboardKey.arrowRight,
+        LogicalKeyboardKey.arrowRight,
+        LogicalKeyboardKey.arrowRight,
+        LogicalKeyboardKey.arrowUp,
+      ];
+      for (final key in keys) {
+        await tester.sendKeyEvent(key);
+        await tester.pump();
+        final context = FocusManager.instance.primaryFocus?.context;
+        final inPlayer = find.ancestor(of: find.byElementPredicate((e) => identical(e, context)), matching: find.byType(PlayerScreen)).evaluate().isNotEmpty;
+        expect(inPlayer, isTrue, reason: 'after ${key.keyLabel} the focus is on "${focusLabel()}", outside the player');
+      }
+    });
+
+    testWidgets('REGRESSION (a9v.9): when the screen behind the player takes the focus, it goes back to the player', (tester) async {
+      final behind = FocusNode(debugLabel: 'behind the player');
+      addTearDown(behind.dispose);
+      await open(
+        tester,
+        base: Focus(focusNode: behind, child: const Text('behind')),
+      );
+      await tester.pump();
+      expect(focusLabel(), 'player: Play/Pause');
+      behind.requestFocus(); // as the library's own autofocus does when it lands after the player was pushed
+      await tester.pump();
+      await tester.pump();
+      expect(focusLabel(), 'player: Play/Pause');
+    });
+
+    testWidgets('while another screen is on top of the player, the player leaves the focus to it', (tester) async {
+      await open(tester);
+      final top = FocusNode(debugLabel: 'on top of the player');
+      addTearDown(top.dispose);
+      tester
+          .state<NavigatorState>(find.byType(Navigator))
+          .push(
+            MaterialPageRoute<void>(
+              builder: (_) => Scaffold(
+                body: Focus(focusNode: top, autofocus: true, child: const Text('top')),
+              ),
+            ),
+          );
+      await tester.pumpAndSettle();
+      expect(focusLabel(), 'on top of the player');
+      top.requestFocus();
+      await tester.pump();
+      await tester.pump();
+      expect(focusLabel(), 'on top of the player');
+    });
+
+    testWidgets('review: the arrows reach Close, Pause, Skip and Play here, and Select presses the one that has the focus', (tester) async {
+      final r = await open(tester, state: playingHere(player: 'tv')); // another device plays: Close, Pause, Skip, Play here
+      await tester.pump();
+      expect(buttonHasFocus('Pause'), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(buttonHasFocus('Skip'), isTrue, reason: 'the focus is on "${focusLabel()}"');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(buttonHasFocus('Play here'), isTrue, reason: 'the focus is on "${focusLabel()}"');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(buttonHasFocus('Pause'), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(buttonHasFocus('Close'), isTrue, reason: 'the focus is on "${focusLabel()}"');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(buttonHasFocus('Play here'), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await settle(tester);
+      expect(r.q.server.controls, [ControlAction.CONTROL_ACTION_PLAY_HERE]);
+    });
+
+    testWidgets('opened while paused the buttons are shown and a button has the focus, not the wake node', (tester) async {
+      await open(tester, state: playingHere(status: PlayStatus.PLAY_STATUS_PAUSED));
+      await tester.pump();
+      expect(find.widgetWithText(OutlinedButton, 'Play'), findsOneWidget);
+      expect(focusLabel(), isNot(contains(wake)));
+      expect(focusLabel(), isNotEmpty);
+    });
+  });
+
+  group('foreground only', () {
+    Future<void> goToBackground(WidgetTester tester) async {
+      for (final s in [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused]) {
+        tester.binding.handleAppLifecycleStateChanged(s);
+        await tester.pump();
+      }
+      await settle(tester);
+    }
+
+    Future<void> comeBack(WidgetTester tester) async {
+      for (final s in [AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+        tester.binding.handleAppLifecycleStateChanged(s);
+        await tester.pump();
+      }
+      await settle(tester);
+    }
+
+    testWidgets('REGRESSION: going to the background pauses the song that plays here and unloads the page', (tester) async {
+      final r = await open(tester);
+      await goToBackground(tester);
+      expect(r.q.server.controls, [ControlAction.CONTROL_ACTION_PAUSE]);
+      expect(r.host.unloads, 1);
+    });
+
+    testWidgets('coming back loads the page again and does not press Play', (tester) async {
+      final r = await open(tester);
+      await goToBackground(tester);
+      await comeBack(tester);
+      expect(r.host.loads, 1);
+      expect(r.host.unloads, 1);
+      expect(r.q.server.controls, [ControlAction.CONTROL_ACTION_PAUSE]);
+    });
+
+    testWidgets('the screen is allowed to sleep while the app is in the background', (tester) async {
+      final r = await open(tester);
+      expect(r.awake.log.last, isTrue);
+      await goToBackground(tester);
+      expect(r.awake.log.last, isFalse);
+    });
+
+    testWidgets('a state that arrives while the app is in the background does not take the wake lock again', (tester) async {
+      final r = await open(tester);
+      await goToBackground(tester);
+      expect(r.awake.log.last, isFalse);
+      r.q.setState(playingHere()); // the last known state still says "playing here"
+      await settle(tester);
+      expect(r.awake.log.last, isFalse);
+      await comeBack(tester);
+      r.q.setState(playingHere(status: PlayStatus.PLAY_STATUS_PAUSED));
+      await settle(tester);
+      expect(r.awake.log.last, isFalse);
+    });
+
+    testWidgets('nothing is sent while the song is paused or another device plays, but the page is still unloaded', (tester) async {
+      for (final state in [playingHere(status: PlayStatus.PLAY_STATUS_PAUSED), playingHere(player: 'tv')]) {
+        final r = await open(tester, state: state);
+        await goToBackground(tester);
+        expect(r.q.server.controls, isEmpty);
+        expect(r.host.unloads, 1);
+        await tester.pumpWidget(const SizedBox());
+      }
+    });
+
+    testWidgets('inactive alone (a system sheet) does nothing', (tester) async {
+      final r = await open(tester);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await settle(tester);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await settle(tester);
+      expect(r.host.unloads, 0);
+      expect(r.host.loads, 0);
+      expect(r.q.server.controls, isEmpty);
+    });
+
+    testWidgets('hidden and then paused unload the page once', (tester) async {
+      final r = await open(tester);
+      await goToBackground(tester);
+      expect(r.host.unloads, 1);
+      expect(r.q.server.controls, hasLength(1));
+    });
+
+    testWidgets('review: two trips to the background unload and load twice, and pause only a song that plays', (tester) async {
+      final r = await open(tester);
+      await goToBackground(tester);
+      await comeBack(tester);
+      await goToBackground(tester);
+      await comeBack(tester);
+      expect(r.host.unloads, 2);
+      expect(r.host.loads, 2);
+      // the second trip found the stale state "playing here" again, as in the app until the stream answers
+      expect(r.q.server.controls.every((c) => c == ControlAction.CONTROL_ACTION_PAUSE), isTrue);
+    });
+
+    testWidgets('review: after the player is closed, trips to the background do nothing to the page that is gone', (tester) async {
+      final r = await open(tester);
+      tester.state<NavigatorState>(find.byType(Navigator)).pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(PlayerScreen), findsNothing);
+      await goToBackground(tester);
+      await comeBack(tester);
+      expect(tester.takeException(), isNull);
+      expect(r.host.unloads, 0);
+      expect(r.host.loads, 0);
+    });
+
+    testWidgets('review: the token goes only to a page that is loaded: not to about:blank, again after coming back', (tester) async {
+      final r = await open(tester);
+      await goToBackground(tester);
+      r.config!.onMessage('KantaheReady');
+      await settle(tester);
+      expect(r.host.scripts, isEmpty, reason: 'the page is about:blank');
+      await comeBack(tester);
+      r.config!.onMessage('KantaheReady');
+      await settle(tester);
+      expect(r.host.scripts, hasLength(1));
+      expect(r.host.scripts.single, contains('setToken'));
+    });
+
+    testWidgets('review: the wake lock is taken again only when the state says playing here after coming back', (tester) async {
+      final r = await open(tester);
+      await goToBackground(tester);
+      await comeBack(tester);
+      expect(r.awake.log.last, isFalse, reason: 'the song was paused by the trip');
+      r.q.setState(playingHere());
+      await settle(tester);
+      expect(r.awake.log.last, isTrue);
+    });
+
+    testWidgets('about:blank is the only extra address the page may go to', (tester) async {
+      final r = await open(tester);
+      final allow = r.config!.allowNavigation;
+      expect(allow(Uri.parse('about:blank')), isTrue);
+      expect(allow(Uri.parse('http://srv:1/embed/player')), isTrue);
+      expect(allow(Uri.parse('http://evil.example/')), isFalse);
+      expect(allow(Uri.parse('about:srcdoc')), isFalse);
     });
   });
 

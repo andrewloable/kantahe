@@ -100,6 +100,34 @@ void main() {
       expect(rig.server.adds, ['00002']);
     });
 
+    testWidgets('REGRESSION: the Removed snack bar goes away by itself after its time', (tester) async {
+      await open(tester, state: twoSongs());
+      await tester.tap(find.byTooltip('Remove Second from the queue'));
+      await settle(tester);
+      expect(find.text('Removed Second'), findsOneWidget);
+      expect(find.text('Undo'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 500)); // slides in
+      await tester.pump(); // the rebuild after the slide-in starts the timer
+      await tester.pump(const Duration(seconds: 9));
+      await tester.pump(const Duration(milliseconds: 500)); // the exit animation
+      await tester.pump();
+      expect(find.text('Removed Second'), findsNothing);
+      expect(find.text('Undo'), findsNothing);
+    });
+
+    testWidgets('Undo still works a few seconds in', (tester) async {
+      final rig = await open(tester, state: twoSongs());
+      await tester.tap(find.byTooltip('Remove Second from the queue'));
+      await settle(tester);
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(milliseconds: 500)); // an exit animation would have ended by now
+      await tester.tap(find.text('Undo'));
+      await settle(tester);
+      expect(rig.server.adds, ['00002']);
+    });
+
     testWidgets('Move to top sends MoveToTop, and the first row has none', (tester) async {
       final rig = await open(tester, state: twoSongs());
       expect(find.byTooltip('Move First to the top of the queue'), findsNothing);

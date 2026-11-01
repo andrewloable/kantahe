@@ -43,6 +43,40 @@ void main() {
     });
   });
 
+  group('tabs on a TV', () {
+    Future<InkWell> tabInk(WidgetTester tester, String label) async {
+      await pumpScreen(tester, await FakeLibrary().services(isTv: true), const LibraryScreen());
+      await settle(tester);
+      return tester.widget<InkWell>(find.ancestor(of: find.widgetWithText(Tab, label), matching: find.byType(InkWell)).first);
+    }
+
+    testWidgets('REGRESSION: a focused tab shows a strong highlight (the default Material one is too faint to see across a room)', (tester) async {
+      for (final label in ['Search', 'Number', 'Browse']) {
+        final ink = await tabInk(tester, label);
+        final focused = ink.overlayColor?.resolve({WidgetState.focused});
+        expect(focused, isNotNull, reason: '$label has a focus colour');
+        expect(focused!.a, greaterThanOrEqualTo(0.3), reason: '$label: the focus colour must be strong enough to see');
+      }
+    });
+
+    testWidgets('a tab that does not have the focus shows no highlight', (tester) async {
+      final ink = await tabInk(tester, 'Number');
+      final idle = ink.overlayColor?.resolve(<WidgetState>{});
+      expect(idle == null || idle.a == 0, isTrue);
+    });
+
+    testWidgets('the remote still moves between the tabs and selects one', (tester) async {
+      await pumpScreen(tester, await FakeLibrary().services(isTv: true), const LibraryScreen());
+      await settle(tester);
+      final browse = focusNodeInside(tester, find.ancestor(of: find.widgetWithText(Tab, 'Browse'), matching: find.byType(InkWell)).first);
+      browse.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await settle(tester, 400);
+      expect(find.text('Titles'), findsOneWidget);
+    });
+  });
+
   group('search', () {
     testWidgets('regression: on a TV the remote leaves Search songs with Down (the arrow keys were kept by the text field and the focus stuck)', (
       tester,

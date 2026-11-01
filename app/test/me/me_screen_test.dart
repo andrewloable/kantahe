@@ -83,4 +83,29 @@ void main() {
     await expectNoRingWhenNotFocused(tester, entry);
     await expectRingOnFocus(tester, entry);
   });
+
+  group('on a TV', () {
+    tearDown(() => FocusManager.instance.highlightStrategy = FocusHighlightStrategy.automatic);
+
+    for (final label in ['Favourites', 'History', 'Playlists', 'My devices', 'Appearance', 'Score', 'Change password', 'Approve a TV']) {
+      testWidgets('REGRESSION: $label opens with a control focused (not with the page itself, nor the menu behind it)', (tester) async {
+        final r = MeRig(isTv: true);
+        await r.pump(tester, const MeScreen());
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+        final focus = FocusManager.instance.primaryFocus;
+        expect(focus, isNotNull);
+        expect(focus, isNot(isA<FocusScopeNode>()), reason: 'the focus is on the route itself: nothing shows a ring');
+        expect(focus!.context!.findAncestorWidgetOfExactType<MeScreen>(), isNull, reason: 'the focus stayed in the menu behind the page');
+      });
+    }
+
+    testWidgets('on a phone the page is left alone (no focus is forced)', (tester) async {
+      final r = MeRig();
+      await r.pump(tester, const MeScreen());
+      await tester.tap(find.text('Appearance'));
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus is FocusScopeNode || FocusManager.instance.primaryFocus == null, isTrue);
+    });
+  });
 }

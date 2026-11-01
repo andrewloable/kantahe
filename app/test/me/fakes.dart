@@ -137,11 +137,11 @@ class FakeMeServer {
 
 /// Services over the fake server, signed in as device [deviceId]; the state is set by hand.
 class MeRig {
-  MeRig({String deviceId = 'me', bool uploader = false, bool admin = false}) {
+  MeRig({String deviceId = 'me', bool uploader = false, bool admin = false, bool isTv = false}) {
     auth = AuthStore(MemoryStore());
     api = Api(server.build());
     store = StateStore(client: api.session, auth: AuthStore(MemoryStore()), monotonicMs: () => 0);
-    services = AppServices(serverUrl: ServerUrl(MemoryStore()), auth: auth, api: api, state: store);
+    services = AppServices(serverUrl: ServerUrl(MemoryStore()), auth: auth, api: api, state: store, isTv: isTv);
     _signedIn = auth.signIn(
       AuthToken(
         token: 't',

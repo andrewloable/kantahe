@@ -10,6 +10,8 @@ import 'package:kantahe/player/embed_bridge.dart';
 class FakeHost implements EmbedHost {
   final scripts = <String>[];
   int reloads = 0;
+  int unloads = 0;
+  int loads = 0;
 
   /// The address the page shows now.
   String? url = 'http://srv:1/embed/player';
@@ -22,6 +24,18 @@ class FakeHost implements EmbedHost {
 
   @override
   Future<void> reload() async => reloads++;
+
+  @override
+  Future<void> unload() async {
+    unloads++;
+    url = 'about:blank';
+  }
+
+  @override
+  Future<void> load() async {
+    loads++;
+    url = 'http://srv:1/embed/player';
+  }
 }
 
 List<Object?> argsOf(String script) => jsonDecode('[${script.substring(script.indexOf('(') + 1, script.lastIndexOf(')'))}]') as List<Object?>;

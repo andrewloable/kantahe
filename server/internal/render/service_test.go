@@ -3,10 +3,12 @@ package render
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -23,16 +25,57 @@ type fakeFonts struct {
 	err      error
 	notReady atomic.Int32
 	prepares atomic.Int32
+	hold     chan struct{} // when set, Path blocks until it is closed: a render that is "in progress"
+	entered  chan string   // when set, Path reports each song it is asked for (buffered)
+
+	mu    sync.Mutex
+	order []string // the songs whose render got their SoundFont, in the order the renders began
 }
 
-func (f *fakeFonts) Path(_ context.Context, _ string) (string, error) {
+func (f *fakeFonts) Path(ctx context.Context, number string) (string, error) {
+	if f.entered != nil {
+		select {
+		case f.entered <- number:
+		default:
+		}
+	}
+	if f.hold != nil {
+		select {
+		case <-f.hold:
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	}
 	if f.notReady.Add(-1) >= 0 {
 		return "", media.ErrNotReady
 	}
 	if f.err != nil {
 		return "", f.err
 	}
+	f.mu.Lock()
+	f.order = append(f.order, number)
+	f.mu.Unlock()
 	return f.path, nil
+}
+
+// rendered lists the songs in the order their renders began.
+func (f *fakeFonts) rendered() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.order)
+}
+
+// waitEntered blocks until a render has asked for the SoundFont of number (it is then inside hold).
+func (f *fakeFonts) waitEntered(t *testing.T, number string) {
+	t.Helper()
+	select {
+	case got := <-f.entered:
+		if got != number {
+			t.Fatalf("the worker started %s, want %s", got, number)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatalf("the render of %s never began", number)
+	}
 }
 
 func (f *fakeFonts) Prepare(string) { f.prepares.Add(1) }
@@ -353,4 +396,99 @@ func TestRenderedFileIsPlayable(t *testing.T) {
 	if !bytes.Equal(b, direct.Bytes()) {
 		t.Error("the cached file differs from rendering the song directly (with the tail)")
 	}
+}
+
+// A user who skips many songs leaves the renders queued for them behind; the song that plays now must not wait for them.
+func TestNewestRequestIsRenderedFirst(t *testing.T) {
+	e := newEnv(t, 1<<30)
+	e.fonts.hold = make(chan struct{})
+	e.fonts.entered = make(chan string, 16)
+	nums := []string{"00001", "00002", "00003", "00004", "00005"}
+	for _, n := range nums {
+		e.addSong(t, n, library.FormatMIDI, noteSong(1))
+	}
+	e.run(t)
+	e.svc.Prepare("00001")
+	e.fonts.waitEntered(t, "00001") // the worker is inside the first render
+	for _, n := range nums[1:] {    // three songs that were skipped, then the one that plays now
+		e.svc.Prepare(n)
+	}
+	close(e.fonts.hold)
+	for _, n := range nums {
+		e.waitReady(t, n)
+	}
+	want := []string{"00001", "00005", "00004", "00003", "00002"}
+	if got := e.fonts.rendered(); !slices.Equal(got, want) {
+		t.Errorf("render order = %v, want %v (the newest request first)", got, want)
+	}
+}
+
+// A device that is still waiting asks again every second (GetPlayback): that must bring its song to the front.
+func TestRepeatedRequestMovesASongToTheFront(t *testing.T) {
+	e := newEnv(t, 1<<30)
+	e.fonts.hold = make(chan struct{})
+	e.fonts.entered = make(chan string, 16)
+	nums := []string{"00001", "00002", "00003", "00004"}
+	for _, n := range nums {
+		e.addSong(t, n, library.FormatMIDI, noteSong(1))
+	}
+	e.run(t)
+	e.svc.Prepare("00001")
+	e.fonts.waitEntered(t, "00001")
+	for _, n := range nums[1:] {
+		e.svc.Prepare(n)
+	}
+	e.svc.Prepare("00002") // asked for again: it moves to the front
+	close(e.fonts.hold)
+	for _, n := range nums {
+		e.waitReady(t, n)
+	}
+	want := []string{"00001", "00002", "00004", "00003"}
+	if got := e.fonts.rendered(); !slices.Equal(got, want) {
+		t.Errorf("render order = %v, want %v", got, want)
+	}
+	if got := e.svc.renders.Load(); got != 4 {
+		t.Errorf("renders = %d, want 4 (00002 once, although asked for twice)", got)
+	}
+}
+
+// When more renders are asked for than fit, the one asked for longest ago goes (the newest are the wanted ones).
+func TestFullQueueDropsTheOldestRequest(t *testing.T) {
+	e := newEnv(t, 1<<30)
+	e.fonts.hold = make(chan struct{})
+	e.fonts.entered = make(chan string, 16)
+	total := queueSize + 10 // waiting songs, on top of the one that is rendering
+	numbers := make([]string, total+1)
+	for i := range numbers {
+		numbers[i] = fmt.Sprintf("%05d", i+1)
+		e.addSong(t, numbers[i], library.FormatMIDI, noteSong(1))
+	}
+	e.run(t)
+	e.svc.Prepare(numbers[0])
+	e.fonts.waitEntered(t, numbers[0])
+	for _, n := range numbers[1:] {
+		e.svc.Prepare(n)
+	}
+	waiting := func(sha string) bool {
+		e.svc.mu.Lock()
+		defer e.svc.mu.Unlock()
+		return slices.ContainsFunc(e.svc.pending, func(j job) bool { return j.sha == sha })
+	}
+	e.svc.mu.Lock()
+	n, oldestInflight := len(e.svc.pending), e.svc.inflight["sha"+numbers[1]]
+	e.svc.mu.Unlock()
+	if n != queueSize {
+		t.Fatalf("%d renders wait, want %d", n, queueSize)
+	}
+	if waiting("sha"+numbers[1]) || oldestInflight {
+		t.Errorf("the request asked for longest ago (%s) is still waiting", numbers[1])
+	}
+	if !waiting("sha" + numbers[total]) {
+		t.Errorf("the newest request (%s) is not waiting", numbers[total])
+	}
+	e.svc.Prepare(numbers[1]) // a dropped song can be asked for again
+	if !waiting("sha" + numbers[1]) {
+		t.Errorf("%s was not queued again", numbers[1])
+	}
+	close(e.fonts.hold)
 }

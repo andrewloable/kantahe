@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -22,7 +23,7 @@ import (
 var ErrUnavailable = errors.New("render: rendering is not available")
 
 const (
-	queueSize       = 64
+	queueSize       = 64               // waiting renders; when more are asked for, the one asked for longest ago is dropped
 	failureMemory   = 10 * time.Minute // a failed song is not tried again for this long
 	cleanupInterval = 24 * time.Hour
 	fontWait        = 30 * time.Second // how long a render waits for the song's trimmed SoundFont
@@ -61,10 +62,10 @@ type Service struct {
 	now    func() time.Time
 	cache  *Cache // nil when rendering is not available
 
-	queue chan job
-
 	mu       sync.Mutex
-	inflight map[string]bool    // song sha -> queued or rendering
+	pending  []job              // waiting renders, the most recently asked for last (it renders first)
+	wake     chan struct{}      // tells Run that pending is not empty
+	inflight map[string]bool    // song sha -> waiting or rendering
 	failed   map[string]failure // song sha -> when the last render failed
 
 	renders   atomic.Int64 // tests count renders and the most that ran at once
@@ -80,7 +81,7 @@ type failure struct{ at time.Time }
 func New(c Config) (*Service, error) {
 	s := &Service{
 		db: c.DB, fonts: c.Fonts, bank: c.FullBank, tag: c.Tag, logger: c.Logger, now: c.Now,
-		queue: make(chan job, queueSize), inflight: map[string]bool{}, failed: map[string]failure{},
+		wake: make(chan struct{}, 1), inflight: map[string]bool{}, failed: map[string]failure{},
 	}
 	if s.now == nil {
 		s.now = time.Now
@@ -182,8 +183,11 @@ func (s *Service) Touch(path string) {
 	}
 }
 
-// Prepare queues a render unless the song is cached, queued, rendering or recently failed.
-// It never blocks; a full queue drops the request (the next request asks again).
+// Prepare asks for a render unless the song is cached, rendering or recently failed. It never blocks.
+// The most recently asked-for song renders first: a user who skips many songs leaves renders behind that
+// nobody wants any more, and the song that plays now must not wait for them. Asking again for a song that
+// is waiting moves it to the front, so a device that keeps asking is served next. When more than queueSize
+// renders wait, the one asked for longest ago is dropped (the next request asks again).
 func (s *Service) Prepare(number string) {
 	if s.cache == nil {
 		return
@@ -193,23 +197,43 @@ func (s *Service) Prepare(number string) {
 		return
 	}
 	s.mu.Lock()
-	if s.inflight[j.sha] || s.hasFailed(j.sha) {
-		s.mu.Unlock()
+	defer s.mu.Unlock()
+	if s.hasFailed(j.sha) {
 		return
 	}
+	if s.inflight[j.sha] {
+		if i := slices.IndexFunc(s.pending, func(p job) bool { return p.sha == j.sha }); i >= 0 {
+			s.pending = append(slices.Delete(s.pending, i, i+1), j)
+		}
+		return // otherwise it is rendering now
+	}
 	s.inflight[j.sha] = true
-	s.mu.Unlock()
+	s.pending = append(s.pending, j)
+	if len(s.pending) > queueSize {
+		delete(s.inflight, s.pending[0].sha)
+		s.pending = s.pending[1:]
+	}
 	select {
-	case s.queue <- j:
+	case s.wake <- struct{}{}:
 	default:
-		s.mu.Lock()
-		delete(s.inflight, j.sha)
-		s.mu.Unlock()
 	}
 }
 
-// Run renders queued songs one at a time until ctx is cancelled, and removes leftovers of
-// interrupted renders at start and then daily.
+// next takes the most recently asked-for render off the list.
+func (s *Service) next() (job, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n := len(s.pending)
+	if n == 0 {
+		return job{}, false
+	}
+	j := s.pending[n-1]
+	s.pending = s.pending[:n-1]
+	return j, true
+}
+
+// Run renders waiting songs one at a time, newest request first, until ctx is cancelled, and removes
+// leftovers of interrupted renders at start and then daily.
 func (s *Service) Run(ctx context.Context) {
 	if s.cache == nil {
 		return
@@ -223,15 +247,21 @@ func (s *Service) Run(ctx context.Context) {
 			return
 		case <-t.C:
 			s.cache.Cleanup()
-		case j := <-s.queue:
-			err := s.render(ctx, j)
-			s.mu.Lock()
-			delete(s.inflight, j.sha)
-			if err != nil && ctx.Err() == nil {
-				s.failed[j.sha] = failure{s.now()}
-				s.logger.Warn("cannot render a song", "song", j.number, "err", err)
+		case <-s.wake:
+			for ctx.Err() == nil {
+				j, ok := s.next()
+				if !ok {
+					break
+				}
+				err := s.render(ctx, j)
+				s.mu.Lock()
+				delete(s.inflight, j.sha)
+				if err != nil && ctx.Err() == nil {
+					s.failed[j.sha] = failure{s.now()}
+					s.logger.Warn("cannot render a song", "song", j.number, "err", err)
+				}
+				s.mu.Unlock()
 			}
-			s.mu.Unlock()
 		}
 	}
 }

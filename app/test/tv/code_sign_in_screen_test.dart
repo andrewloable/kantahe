@@ -99,6 +99,8 @@ Future<void> settle(WidgetTester tester, [int ms = 0]) async {
 
 bool shows(String text) => find.textContaining(text).evaluate().isNotEmpty;
 
+bool focusOn(WidgetTester tester, String label) => Focus.of(tester.element(find.text(label))).hasFocus;
+
 CodeSignInScreen screen() => CodeSignInScreen(deviceName: () async => 'Living room TV');
 
 void main() {
@@ -262,6 +264,35 @@ void main() {
     await settle(tester);
     final button = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'New code'));
     expect(button.autofocus, isTrue);
+  });
+
+  testWidgets('REGRESSION: arrives with "Use another server" focused while the code is shown, so the remote works at once', (tester) async {
+    final r = Rig();
+    await r.pump(tester, screen());
+    expect(find.text('ABCD21'), findsOneWidget);
+    expect(focusOn(tester, 'Use another server'), isTrue);
+  });
+
+  testWidgets('REGRESSION: the focus is on "Use another server" before the code arrives and stays there after', (tester) async {
+    final r = Rig();
+    final release = Completer<void>();
+    r.onStart = () => release.future;
+    await r.pump(tester, screen());
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(focusOn(tester, 'Use another server'), isTrue);
+    release.complete();
+    await settle(tester);
+    expect(find.text('ABCD21'), findsOneWidget);
+    expect(focusOn(tester, 'Use another server'), isTrue);
+  });
+
+  testWidgets('an expired code hands the focus to "New code", not to "Use another server"', (tester) async {
+    final r = Rig();
+    await r.pump(tester, screen());
+    r.send(WaitCodeLoginResponse(expired: true));
+    await settle(tester);
+    expect(focusOn(tester, 'New code'), isTrue);
+    expect(focusOn(tester, 'Use another server'), isFalse);
   });
 
   testWidgets('"Use another server" forgets the address', (tester) async {

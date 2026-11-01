@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/library/library_screen.dart';
 import 'package:kantahe/me/me_screen.dart';
@@ -60,6 +61,18 @@ class _AppShellState extends State<AppShell> {
     });
   }
 
+  /// DOWN on the last destination and UP on the first one stay where they are. Without this the default directional traversal leaves the rail
+  /// for whatever lies lower or higher in the content (from Me into the middle of the Me list), skipping the entries in between.
+  KeyEventResult _keepUpDownInRail(FocusNode rail, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final down = event.logicalKey == LogicalKeyboardKey.arrowDown;
+    if (!down && event.logicalKey != LogicalKeyboardKey.arrowUp) return KeyEventResult.ignored;
+    final items = rail.traversalDescendants.toList()..sort((a, b) => a.rect.top.compareTo(b.rect.top));
+    if (items.isEmpty) return KeyEventResult.ignored;
+    final atEdge = identical(FocusManager.instance.primaryFocus, down ? items.last : items.first);
+    return atEdge ? KeyEventResult.handled : KeyEventResult.ignored;
+  }
+
   @override
   Widget build(BuildContext context) {
     final screens = IndexedStack(
@@ -76,14 +89,19 @@ class _AppShellState extends State<AppShell> {
         body: SafeArea(
           child: Row(
             children: [
-              NavigationRail(
-                selectedIndex: _index,
-                onDestinationSelected: (i) => setState(() => _index = i),
-                labelType: NavigationRailLabelType.all,
-                destinations: [
-                  for (final d in _destinations)
-                    NavigationRailDestination(icon: _RailIcon(d.icon), selectedIcon: _RailIcon(d.selected), label: _RailLabel(d.label)),
-                ],
+              Focus(
+                canRequestFocus: false,
+                skipTraversal: true,
+                onKeyEvent: _keepUpDownInRail,
+                child: NavigationRail(
+                  selectedIndex: _index,
+                  onDestinationSelected: (i) => setState(() => _index = i),
+                  labelType: NavigationRailLabelType.all,
+                  destinations: [
+                    for (final d in _destinations)
+                      NavigationRailDestination(icon: _RailIcon(d.icon), selectedIcon: _RailIcon(d.selected), label: _RailLabel(d.label)),
+                  ],
+                ),
               ),
               const VerticalDivider(width: 1),
               Expanded(child: screens),

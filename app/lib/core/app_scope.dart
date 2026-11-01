@@ -122,6 +122,9 @@ class _AppRootState extends State<AppRoot> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Flutter on Android starts in "touch" mode and hides the focus highlight of Material controls (tabs, dropdown items, list tiles) until a
+    // keyboard-like event arrives; a TV remote's focus must always be visible.
+    if (widget.services.isTv) FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTraditional;
   }
 
   @override

@@ -81,6 +81,8 @@ export class PlayerController implements OnDestroy {
   private synthFallbackFor?: string;
   /** The song for which this device was already switched to server-rendered audio (once per song, no loop). */
   private renderFallbackFor?: string;
+  /** The song for which this device was just switched to server-rendered audio and the user has not been told yet. */
+  private renderSwitchedFor?: string;
 
   private reportTimer?: ReturnType<typeof setInterval>;
   private skipTimer?: ReturnType<typeof setTimeout>;
@@ -166,6 +168,11 @@ export class PlayerController implements OnDestroy {
             await this.useRender(number);
             continue;
           }
+          if (res.kind === PlaybackKind.AUDIO && this.renderSwitchedFor === number) {
+            // the server really renders: only now is "switched" true
+            this.renderSwitchedFor = undefined;
+            this.toast.show('This page cannot run the synthesizer (it needs HTTPS). Switched to server-rendered audio.');
+          }
           playback = res;
           break;
         }
@@ -192,7 +199,13 @@ export class PlayerController implements OnDestroy {
 
   /** A MIDI song for the synthesizer on a page that has none (no AudioWorklet: plain HTTP from a LAN address). */
   private mustUseRender(number: string, playback: Playback): boolean {
-    return playback.kind === PlaybackKind.MIDI_SYNTH && !this.canSynthesize() && this.renderFallbackFor !== number;
+    // a device that is already in Server mode and still gets MIDI has a server that cannot render: switching again changes nothing
+    return playback.kind === PlaybackKind.MIDI_SYNTH && !this.canSynthesize() && this.renderFallbackFor !== number && !this.inServerMode();
+  }
+
+  private inServerMode(): boolean {
+    const id = this.auth.deviceId();
+    return this.state()?.devices.find((d) => d.id === id)?.midiMode === MidiMode.SERVER;
   }
 
   /** Switches this device to server-rendered audio, so that the next GetPlayback comes as audio (when the server can render). */
@@ -205,7 +218,7 @@ export class PlayerController implements OnDestroy {
     } catch {
       return; // nothing was changed: the song ends in the clear error below
     }
-    this.toast.show('This page cannot run the synthesizer (it needs HTTPS). Switched to server-rendered audio.');
+    this.renderSwitchedFor = number; // told to the user when the rendered audio arrives (prepare)
   }
 
   /** Switches this device to the built-in synthesizer, so that the next GetPlayback comes as MIDI. */

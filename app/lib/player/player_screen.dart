@@ -27,16 +27,20 @@ class PlayerScreen extends StatefulWidget {
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> {
+class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver {
   late final AppServices _services = AppScope.of(context);
   late final EmbedBridge _bridge = EmbedBridge(auth: _services.auth, serverUrl: _services.serverUrl);
   late final QueueActions _actions = QueueActions(api: _services.api, notify: _notify);
   static const _hideAfter = Duration(seconds: 4);
-  final FocusNode _wakeNode = FocusNode(debugLabel: 'player: receives the key that wakes the buttons');
+  // It wraps the whole screen, so the arrow keys must never move the focus onto it (from there none reaches a button): it takes the
+  // focus only by code, in _hide.
+  final FocusNode _wakeNode = FocusNode(debugLabel: 'player: receives the key that wakes the buttons', skipTraversal: true);
   final FocusNode _pauseNode = FocusNode(debugLabel: 'player: Play/Pause');
   Timer? _hideTimer;
   bool _idle = false;
+  bool _suspended = false; // the app is in the background: the song is paused and the page ended
   bool _bound = false;
+  ModalRoute<void>? _route;
   bool _awake = false;
   String _loadError = '';
 
@@ -45,13 +49,25 @@ class _PlayerScreenState extends State<PlayerScreen> {
     super.didChangeDependencies();
     if (_bound) return;
     _bound = true;
+    _route = ModalRoute.of(context) as ModalRoute<void>?;
+    FocusManager.instance.addListener(_keepFocus);
+    WidgetsBinding.instance.addObserver(this);
     _services.state.addListener(_onState);
     _onState();
+  }
+
+  // The screen behind the player (the library, when the TV opens the player by itself) can take the focus after the player was pushed, and
+  // then the remote drives a screen nobody can see: while the player is the current route, the focus is brought back to it.
+  void _keepFocus() {
+    if (!mounted || _wakeNode.hasFocus || !(_route?.isCurrent ?? true)) return;
+    (_idle ? _wakeNode : _pauseNode).requestFocus();
   }
 
   @override
   void dispose() {
     if (_bound) {
+      FocusManager.instance.removeListener(_keepFocus);
+      WidgetsBinding.instance.removeObserver(this);
       _services.state.removeListener(_onState);
       // Closing the screen takes the page, and with it the sound, away: a song that played here is paused, so that the
       // user's other devices do not go on showing "playing" for silence (songs stop only on Pause).
@@ -102,8 +118,45 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return wasIdle ? KeyEventResult.handled : KeyEventResult.ignored;
   }
 
+  // The player runs only while it is on screen: when the app goes to the background (Home, another app) the song is paused and the page ended,
+  // so that its synthesizer, timers and video decoders stop and free their memory; coming back loads the page again and the song waits for
+  // Play. "inactive" is a short interruption (a system sheet): nothing changes.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+        _suspend();
+      case AppLifecycleState.resumed:
+        _resume();
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  void _suspend() {
+    if (_suspended) return;
+    _suspended = true;
+    _hideTimer?.cancel();
+    if (_playingHere) unawaited(_actions.control(ControlAction.CONTROL_ACTION_PAUSE));
+    if (_awake) {
+      _awake = false;
+      widget.screenAwake.disable();
+    }
+    unawaited(_bridge.host?.unload());
+  }
+
+  void _resume() {
+    if (!_suspended) return;
+    _suspended = false;
+    if (_loadError.isNotEmpty) setState(() => _loadError = '');
+    unawaited(_bridge.host?.load()); // the page announces itself and is given the token again
+  }
+
   // The screen stays on while a song plays on this device.
   void _onState() {
+    if (_suspended) return; // the state is stale while the app is in the background
     final shouldBeAwake = _playingHere;
     if (!shouldBeAwake) {
       // paused, or not the player: the buttons are needed, so they stay (or come back)
@@ -175,7 +228,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           setState(() => _loadError = description);
                           _wake(); // "Try again" must be in view
                         },
-                        allowNavigation: (to) => sameOrigin(to.toString(), server),
+                        allowNavigation: (to) => to.toString() == 'about:blank' || sameOrigin(to.toString(), server),
                       ),
                     ),
                   ),

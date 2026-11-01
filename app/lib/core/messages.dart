@@ -10,6 +10,9 @@ void showMessage(BuildContext context, String message, {bool error = false, Stri
       content: Text(message),
       backgroundColor: error ? Theme.of(context).colorScheme.error : null,
       action: actionLabel == null ? null : SnackBarAction(label: actionLabel, onPressed: onAction ?? () {}),
+      // A SnackBar with an action stays until the action is used unless told otherwise, and a remote cannot dismiss it: it goes away by itself.
+      persist: false,
+      duration: actionLabel == null ? const Duration(seconds: 4) : const Duration(seconds: 8),
     ),
   );
 }

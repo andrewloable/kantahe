@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 
 /// The frame of the sign-in screens: a centred column that scrolls when the keyboard is up.
 class AuthPage extends StatelessWidget {
-  const AuthPage({super.key, required this.title, required this.children});
+  const AuthPage({super.key, required this.title, required this.children, this.centered = false});
 
   final String title;
   final List<Widget> children;
+
+  /// For a status screen whose lines are centred: the title is centred over them (a form keeps its left-aligned title over its fields).
+  final bool centered;
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +23,7 @@ class AuthPage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(title, style: Theme.of(context).textTheme.headlineMedium),
+                  Text(title, textAlign: centered ? TextAlign.center : null, style: Theme.of(context).textTheme.headlineMedium),
                   const SizedBox(height: 16),
                   ...children,
                 ],

@@ -119,6 +119,29 @@ void main() {
       expect(find.byKey(const Key('server-url')), findsOneWidget);
     });
 
+    testWidgets('REGRESSION: the title is centred over the centred status, not left of it', (tester) async {
+      final h = Harness(server: null);
+      final gate = Completer<List<ServerCandidate>>();
+      h.find = (_) => gate.future;
+      await h.pump(tester, const ServerScreen());
+      await tester.pump();
+      expect(tester.widget<Text>(find.text('Connect to your server')).textAlign, TextAlign.center);
+      gate.complete(const []);
+      await tester.pumpAndSettle();
+      // the form that follows keeps its left-aligned title over the left-aligned field
+      expect(tester.widget<Text>(find.text('Connect to your server')).textAlign, isNot(TextAlign.center));
+    });
+
+    testWidgets('REGRESSION: while it connects the title is centred over the centred "Connecting to" line', (tester) async {
+      final h = Harness(server: null);
+      h.find = (_) async => [
+        ServerCandidate('Den', ['http://a:8080']),
+      ];
+      await open(tester, h);
+      expect(shows('Connecting to'), isTrue);
+      expect(tester.widget<Text>(find.text('Connect to your server')).textAlign, TextAlign.center);
+    });
+
     testWidgets('asks for the search window the plan says: three seconds', (tester) async {
       final h = Harness(server: null);
       Duration? asked;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kantahe/core/app_scope.dart';
+import 'package:kantahe/core/messages.dart';
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart' hide State;
 import 'package:kantahe/library/format_badge.dart';
 import 'package:kantahe/queue/devices_list.dart';
@@ -29,15 +30,7 @@ class _QueueScreenState extends State<QueueScreen> {
 
   void _notify(String message, {bool error = false, String? actionLabel, VoidCallback? onAction}) {
     if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: error ? Theme.of(context).colorScheme.error : null,
-        action: actionLabel == null ? null : SnackBarAction(label: actionLabel, onPressed: onAction ?? () {}),
-      ),
-    );
+    showMessage(context, message, error: error, actionLabel: actionLabel, onAction: onAction);
   }
 
   void _openPlayer() {
