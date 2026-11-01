@@ -98,4 +98,22 @@ extension type CatalogServiceClient (connect.Transport _transport) {
       onTrailer: onTrailer,
     );
   }
+
+  /// Signed-in user. The enabled background videos in loop order with signed URLs (6 hours); empty when the admin has switched the background off.
+  Future<kantahev1catalog.GetBackgroundResponse> getBackground(
+    kantahev1catalog.GetBackgroundRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.CatalogService.getBackground,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
 }

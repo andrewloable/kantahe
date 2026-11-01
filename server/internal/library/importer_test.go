@@ -16,6 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/andrewloable/kantahe/server/internal/fsutil"
 	"github.com/andrewloable/kantahe/server/internal/store"
 	"github.com/andrewloable/kantahe/server/internal/testfix"
 )
@@ -30,7 +31,7 @@ type testEnv struct {
 func newEnv(t *testing.T) *testEnv {
 	t.Helper()
 	data, lib := t.TempDir(), t.TempDir()
-	lib, _ = filepath.EvalSymlinks(lib) // the importer stores resolved paths (macOS temp dirs are symlinks)
+	lib, _ = fsutil.Canonical(lib) // the importer stores canonical paths: links resolved (macOS temp dirs are symlinks), real case, no 8.3 names (Windows temp dirs have them)
 	db, err := store.Open(context.Background(), data)
 	if err != nil {
 		t.Fatal(err)
@@ -528,7 +529,7 @@ func TestSymlinkOutsideIgnored(t *testing.T) {
 	_ = os.Symlink(outside, filepath.Join(e.lib, "linkdir"))
 	e.put(t, "real.kar", karBytes("Real", "X"))
 	res := e.scan(t)
-	if res.Added != 1 || e.count(t, "path LIKE '%/secret.kar' OR path LIKE '%/link.kar' OR path LIKE '%/linkdir/%'") != 0 {
+	if res.Added != 1 || e.count(t, "path LIKE ? OR path LIKE ? OR path LIKE ?", "%"+string(filepath.Separator)+"secret.kar", "%"+string(filepath.Separator)+"link.kar", "%"+string(filepath.Separator)+"linkdir"+string(filepath.Separator)+"%") != 0 {
 		t.Fatalf("symlinks were followed: %+v", res)
 	}
 }
@@ -863,7 +864,7 @@ func TestRegression_RemovingOneOfTwoIdenticalFilesPromotesTheOther(t *testing.T)
 	e := newEnv(t)
 	body := karBytes("Twin", "X")
 	a := e.put(t, "a/one.kar", body)
-	e.put(t, "b/two.kar", body)
+	two := e.put(t, "b/two.kar", body)
 	if res := e.scan(t); res.Added != 1 {
 		t.Fatalf("%+v", res)
 	}
@@ -879,7 +880,7 @@ func TestRegression_RemovingOneOfTwoIdenticalFilesPromotesTheOther(t *testing.T)
 	if live != 1 {
 		t.Fatalf("live entries = %d, want 1 (the copy must stay in the library)", live)
 	}
-	if got := e.count(t, "path LIKE '%/b/two.kar'"); got != 1 {
+	if got := e.count(t, "path = ? AND deleted = 0", two); got != 1 {
 		t.Fatalf("the surviving file is not in the library")
 	}
 }
@@ -1132,9 +1133,13 @@ func TestDeleteSongAndManagedPaths(t *testing.T) {
 
 func TestRegression_CacheCleanupWorksInDataDirsWithGlobCharacters(t *testing.T) {
 	base := t.TempDir()
-	data := filepath.Join(base, "my [music] *data*")
+	name := "my [music] *data*"
+	if runtime.GOOS == "windows" {
+		name = "my [music] data" // "*" and "?" cannot be in a Windows file name; "[" and "]" are glob characters too
+	}
+	data := filepath.Join(base, name)
 	lib := t.TempDir()
-	lib, _ = filepath.EvalSymlinks(lib)
+	lib, _ = fsutil.Canonical(lib)
 	if err := os.MkdirAll(data, 0o750); err != nil {
 		t.Fatal(err)
 	}

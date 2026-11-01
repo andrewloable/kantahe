@@ -27,14 +27,19 @@ class RemoveScope extends $pb.ProtobufEnum {
   static const RemoveScope REMOVE_SCOPE_NO_MUSIC =
       RemoveScope._(2, _omitEnumNames ? '' : 'REMOVE_SCOPE_NO_MUSIC');
 
+  /// Every live song that is marked broken (by CheckLibrary or at import).
+  static const RemoveScope REMOVE_SCOPE_BROKEN =
+      RemoveScope._(3, _omitEnumNames ? '' : 'REMOVE_SCOPE_BROKEN');
+
   static const $core.List<RemoveScope> values = <RemoveScope>[
     REMOVE_SCOPE_UNSPECIFIED,
     REMOVE_SCOPE_ALL,
     REMOVE_SCOPE_NO_MUSIC,
+    REMOVE_SCOPE_BROKEN,
   ];
 
   static final $core.List<RemoveScope?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 2);
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
   static RemoveScope? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 

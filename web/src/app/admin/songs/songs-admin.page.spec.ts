@@ -56,6 +56,14 @@ describe('SongsAdminPage', () => {
     expect(rows()[0]).toBe('Song 0');
   });
 
+  it('has the section "Check the library" above the removal buttons', async () => {
+    const { el, settle } = await setup();
+    await settle();
+    const headings = Array.from(el.querySelectorAll('h3')).map((h) => h.textContent?.trim());
+    expect(headings.indexOf('Check the library')).toBeGreaterThanOrEqual(0);
+    expect(headings.indexOf('Check the library')).toBeLessThan(headings.indexOf('Remove songs from the list'));
+  });
+
   it('searches 250 ms after the last key', async () => {
     const { server, settle, type } = await setup();
     server.calls.search.length = 0;

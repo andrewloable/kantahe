@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/andrewloable/kantahe/server/internal/fsutil"
 	"github.com/andrewloable/kantahe/server/internal/song/kar"
 )
 
@@ -17,6 +18,23 @@ type RemoveError struct{ Err error }
 
 func (e *RemoveError) Error() string { return e.Err.Error() }
 func (e *RemoveError) Unwrap() error { return e.Err }
+
+// inUseError is what the admin sees when a song's file stays busy: on Windows a player streaming the song or a virus scanner
+// holds the file for a moment.
+type inUseError struct{ cause error }
+
+func (e *inUseError) Error() string {
+	return "the song's file is in use (a player or a virus scanner may have it open); try again in a moment"
+}
+func (e *inUseError) Unwrap() error { return e.cause }
+
+// describeRemoveError turns a busy failure into the message above; any other error (a permission, say) keeps its own text.
+func describeRemoveError(err error) error {
+	if fsutil.IsBusy(err) {
+		return &inUseError{cause: err}
+	}
+	return err
+}
 
 // ErrOutsideManaged means a song's file is not inside the data directory or a
 // watched folder, so it will not be deleted.
@@ -63,18 +81,19 @@ func (im *Importer) SetEdit(ctx context.Context, number string, title, artist *s
 // managed reports whether path lies inside the data directory or a watched
 // folder, with symlinks in the directory part resolved.
 func (im *Importer) managed(path string) bool {
-	dir, err := filepath.EvalSymlinks(filepath.Dir(path))
+	dir, err := fsutil.Canonical(filepath.Dir(path))
 	if err != nil {
-		return false
+		return false // a path that cannot be resolved is not managed
 	}
 	full := filepath.Join(dir, filepath.Base(path))
 	roots := append([]string{im.dataDir}, im.libraries...)
 	for _, r := range roots {
-		resolved, err := filepath.EvalSymlinks(r)
+		resolved, err := fsutil.Canonical(r)
 		if err != nil {
 			continue
 		}
-		if abs, err := filepath.Abs(resolved); err == nil && under(full, abs) {
+		// both sides come from Canonical: the real case of every element, so the elements are compared exactly
+		if fsutil.IsUnderCanonical(full, resolved) {
 			return true
 		}
 	}
@@ -118,8 +137,9 @@ func (im *Importer) remove(ctx context.Context, number string, deleteFile bool) 
 		}
 		// the file goes before the commit: if it cannot be removed the whole change is rolled back
 		if deleteFile {
-			if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-				return &RemoveError{Err: err}
+			// a file in use on Windows is waited for, but under store.BusyTimeout: this transaction holds the write lock
+			if err := fsutil.Remove(ctx, path, fsutil.DeleteBudget); err != nil {
+				return &RemoveError{Err: describeRemoveError(err)}
 			}
 		}
 		return nil
@@ -140,19 +160,38 @@ type RemoveScope int
 const (
 	ScopeAll     RemoveScope = iota + 1 // every song
 	ScopeNoMusic                        // MIDI songs whose file has no audible notes
+	ScopeBroken                         // every song marked failed
 )
 
-type goneSong struct{ number, sha, media string }
+type goneSong struct{ number, sha, media, path string }
+
+// RemoveResult is what RemoveSongsFiles did.
+type RemoveResult struct {
+	Removed      int // songs taken off the list
+	FilesDeleted int // song files deleted (only with deleteFiles)
+	FilesFailed  int // song files that were not deleted: outside the managed folders, or in use; their songs are off the list all the same
+}
 
 // RemoveSongs takes many songs off the list in one go and returns how many it
 // removed. It never deletes a song file; the derived files go as with RemoveFromList.
 func (im *Importer) RemoveSongs(ctx context.Context, scope RemoveScope) (int, error) {
-	if scope != ScopeAll && scope != ScopeNoMusic {
-		return 0, fmt.Errorf("library: unknown remove scope %d", scope)
+	res, err := im.RemoveSongsFiles(ctx, scope, false)
+	return res.Removed, err
+}
+
+// RemoveSongsFiles is RemoveSongs with the choice about the files: with deleteFiles (only for ScopeBroken) the song file of every
+// removed song is deleted too, but only inside the data directory and the watched folders (an outside file is left and counted in
+// FilesFailed). The files go after the songs left the list, outside the transaction, so that one file in use cannot hold the others.
+func (im *Importer) RemoveSongsFiles(ctx context.Context, scope RemoveScope, deleteFiles bool) (RemoveResult, error) {
+	if scope != ScopeAll && scope != ScopeNoMusic && scope != ScopeBroken {
+		return RemoveResult{}, fmt.Errorf("library: unknown remove scope %d", scope)
+	}
+	if deleteFiles && scope != ScopeBroken {
+		return RemoveResult{}, errors.New("library: files are deleted only with the scope broken")
 	}
 	candidates, err := im.removeCandidates(ctx, scope)
 	if err != nil {
-		return 0, err
+		return RemoveResult{}, err
 	}
 	var gone []goneSong
 	err = im.db.WriteTx(ctx, func(tx *sql.Tx) error {
@@ -174,24 +213,40 @@ func (im *Importer) RemoveSongs(ctx context.Context, scope RemoveScope) (int, er
 		return nil
 	})
 	if err != nil {
-		return 0, err
+		return RemoveResult{}, err
 	}
+	res := RemoveResult{Removed: len(gone)}
 	shas := make(map[string]bool, len(gone))
 	for _, g := range gone {
 		shas[g.sha] = true
 		im.removeMediaIfUnused(ctx, g.media)
+		if !deleteFiles {
+			continue
+		}
+		if !im.managed(g.path) {
+			res.FilesFailed++
+			continue
+		}
+		if err := fsutil.Remove(ctx, g.path, fsutil.DeleteBudget); err != nil {
+			res.FilesFailed++
+			continue
+		}
+		res.FilesDeleted++
 	}
 	im.removeCachedFilesOf(filepath.Join(im.dataDir, "cache", "sf2"), shas)
 	im.removeCachedFilesOf(filepath.Join(im.dataDir, "cache", "render"), shas)
-	return len(gone), nil
+	return res, nil
 }
 
 // removeCandidates lists the live songs a scope covers. For no-music it reads
 // each MIDI file; one that cannot be read is left alone.
 func (im *Importer) removeCandidates(ctx context.Context, scope RemoveScope) ([]goneSong, error) {
 	query := `SELECT number, sha256, media_path, path FROM songs WHERE deleted = 0`
-	if scope == ScopeNoMusic {
+	switch scope {
+	case ScopeNoMusic:
 		query += ` AND format = ` + fmt.Sprint(int(FormatMIDI))
+	case ScopeBroken:
+		query += ` AND failed <> 0`
 	}
 	rows, err := im.db.QueryContext(ctx, query+` ORDER BY number`)
 	if err != nil {
@@ -201,15 +256,14 @@ func (im *Importer) removeCandidates(ctx context.Context, scope RemoveScope) ([]
 	var out []goneSong
 	for rows.Next() {
 		var g goneSong
-		var path string
-		if err := rows.Scan(&g.number, &g.sha, &g.media, &path); err != nil {
+		if err := rows.Scan(&g.number, &g.sha, &g.media, &g.path); err != nil {
 			return nil, err
 		}
 		if scope == ScopeNoMusic {
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			if !silentMIDI(path) {
+			if !silentMIDI(g.path) {
 				continue
 			}
 		}
@@ -243,9 +297,7 @@ func (im *Importer) removeCachedFilesOf(dir string, shas map[string]bool) {
 		if e.IsDir() || len(e.Name()) < sha256HexLen || !shas[e.Name()[:sha256HexLen]] {
 			continue
 		}
-		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil && !errors.Is(err, os.ErrNotExist) {
-			im.logger.Warn("cannot remove a cache file of a removed song", "err", err)
-		}
+		im.removeDerived(filepath.Join(dir, e.Name()), removeCache)
 	}
 }
 
@@ -273,8 +325,6 @@ func (im *Importer) removeCacheFiles(dir, prefix string) {
 		if e.IsDir() || !strings.HasPrefix(e.Name(), prefix) {
 			continue
 		}
-		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil && !errors.Is(err, os.ErrNotExist) {
-			im.logger.Warn("cannot remove a cache file of a deleted song", "err", err)
-		}
+		im.removeDerived(filepath.Join(dir, e.Name()), removeCache)
 	}
 }

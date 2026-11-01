@@ -61,7 +61,9 @@ export interface CreatedUser {
       margin-bottom: 1rem;
     }
     .roles label {
-      display: inline;
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.75rem;
       margin: 0 1rem 0 0;
     }
   `,

@@ -19,6 +19,8 @@ const MAX_TOASTS = 4;
 @Injectable({ providedIn: 'root' })
 export class ToastService {
   readonly toasts = signal<Toast[]>([]);
+  /** The page frame (the shell) shows the toasts in its own flow; the root of the app then shows none. */
+  readonly inShell = signal(false);
   private next = 1;
 
   show(message: string, kind: Toast['kind'] = 'info', action?: ToastAction): void {

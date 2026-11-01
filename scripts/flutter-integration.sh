@@ -8,7 +8,8 @@
 # iOS simulator. --bind is the address the server listens on (default 127.0.0.1, which both an emulator and a
 # simulator reach); a real phone needs the LAN address of this machine here and in --host, which opens the
 # throwaway server (test passwords) to your network for the length of the run. --test picks another file of
-# app/integration_test (default flow_test.dart).
+# app/integration_test (default flow_test.dart). The app is started with KANTAHE_NO_DISCOVERY and the server with
+# --discovery=false: a device on the same network would otherwise find your real server and skip the address form.
 #
 # It builds the web app into the server binary (the embedded files are removed again on exit), starts the
 # server on a temporary data folder with the synthetic library of kantahe-fixtures, creates a user with curl,
@@ -55,7 +56,7 @@ cp -R "$repo/web/dist/web/browser/." "$webdist/"
 restore
 
 "$work/fixtures" -out "$work/library" -mp3 3 -midi 4 -sf2 "$work/test.sf2" >/dev/null
-"$work/kantahe" --listen "$bind:$port" --data "$work/data" --library "$work/library" --soundfont "$work/test.sf2" --score-seconds 3 >"$work/server.log" 2>&1 </dev/null &
+"$work/kantahe" --listen "$bind:$port" --data "$work/data" --library "$work/library" --soundfont "$work/test.sf2" --score-seconds 3 --discovery=false >"$work/server.log" 2>&1 </dev/null &
 server_pid=$!
 base="http://$bind:$port"
 for _ in $(seq 1 60); do
@@ -80,4 +81,5 @@ cd "$repo/app"
 flutter test "integration_test/$test_file" -d "$device" \
   --dart-define="SERVER_URL=http://$host:$port" \
   --dart-define="USER_EMAIL=user@example.test" \
-  --dart-define="USER_PASSWORD=$user_pw-ok"
+  --dart-define="USER_PASSWORD=$user_pw-ok" \
+  --dart-define="KANTAHE_NO_DISCOVERY=true"

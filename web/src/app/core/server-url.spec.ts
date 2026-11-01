@@ -132,4 +132,26 @@ describe('normalizeServerUrl', () => {
       expect(normalizeServerUrl(bad), bad).toBeUndefined();
     }
   });
+  describe('auto-connect', () => {
+    it('is on for a new run', () => {
+      expect(TestBed.inject(ServerUrl).autoConnect()).toBe(true);
+    });
+
+    it('clear() turns it off for the rest of the run: Use another server must not reconnect at once', () => {
+      const s = TestBed.inject(ServerUrl);
+      s.set('http://a.example');
+      s.clear();
+      expect(s.autoConnect()).toBe(false);
+      s.set('http://b.example');
+      expect(s.autoConnect()).toBe(false);
+    });
+
+    it('is not stored: a new run starts with it on', () => {
+      const s = TestBed.inject(ServerUrl);
+      s.set('http://a.example');
+      s.clear();
+      TestBed.resetTestingModule();
+      expect(TestBed.inject(ServerUrl).autoConnect()).toBe(true);
+    });
+  });
 });

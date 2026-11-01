@@ -49,6 +49,8 @@ abstract class SessionServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $1.ReportDeviceRequest request);
   $async.Future<$1.SetMidiModeResponse> setMidiMode(
       $pb.ServerContext ctx, $1.SetMidiModeRequest request);
+  $async.Future<$1.SetBackgroundModeResponse> setBackgroundMode(
+      $pb.ServerContext ctx, $1.SetBackgroundModeRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
@@ -80,6 +82,8 @@ abstract class SessionServiceBase extends $pb.GeneratedService {
         return $1.ReportDeviceRequest();
       case 'SetMidiMode':
         return $1.SetMidiModeRequest();
+      case 'SetBackgroundMode':
+        return $1.SetBackgroundModeRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -116,6 +120,8 @@ abstract class SessionServiceBase extends $pb.GeneratedService {
         return reportDevice(ctx, request as $1.ReportDeviceRequest);
       case 'SetMidiMode':
         return setMidiMode(ctx, request as $1.SetMidiModeRequest);
+      case 'SetBackgroundMode':
+        return setBackgroundMode(ctx, request as $1.SetBackgroundModeRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }

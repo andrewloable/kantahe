@@ -10,6 +10,7 @@ import 'package:kantahe/library/number_pad.dart';
 import 'package:kantahe/library/pager.dart';
 import 'package:kantahe/library/song_list.dart';
 import 'package:kantahe/tv/dpad_escape.dart';
+import 'package:kantahe/tv/focus.dart';
 
 const _searchDelay = Duration(milliseconds: 250);
 
@@ -158,7 +159,10 @@ class _SearchTabState extends State<_SearchTab> {
             spacing: 8,
             children: [
               for (final (label, f) in [('All', Format.FORMAT_UNSPECIFIED), ('MP3', Format.FORMAT_MP3), ('MIDI', Format.FORMAT_MIDI)])
-                ChoiceChip(label: Text(label), selected: _format == f, onSelected: (_) => _setFormat(f)),
+                FocusRing(
+                  radius: 8,
+                  child: ChoiceChip(label: Text(label), selected: _format == f, onSelected: (_) => _setFormat(f)),
+                ),
             ],
           ),
         ),

@@ -55,8 +55,12 @@ Kantahe is then in the TV's app list. To remove it, delete it there, or `tizen u
 
 ## 5. First start
 
-1. The app asks for the **server address**. Type it with the on-screen keyboard (`http://192.168.1.20:8080`) and choose
-   *Connect*. A server that has no account yet is set up in a web browser first.
+1. The app **looks for your server on the network** (a few seconds). With one server it connects by itself; with
+   several it lists them by name, and you choose one with the arrow keys and OK. It finds servers that listen on port
+   8080 (the default) or 80 on the same network as the TV, looking first at the addresses nearest the TV's own. Only
+   when it finds none does it ask for the **server address**; if it says none was found *yet*, *Search again* looks at
+   more addresses. Or type the address with the on-screen keyboard (`http://192.168.1.20:8080`, with the port if it is
+   another one) and choose *Connect*. A server that has no account yet is set up in a web browser first.
 2. It shows a **code** and a QR code. On a phone or computer, sign in to Kantahe, open *Me → Approve a TV* (or
    scan the QR code), and enter the code. The TV signs in.
 3. Use the arrow keys and OK to search and queue songs, or queue from your phone. *Back* goes back; on the first page it
@@ -67,7 +71,8 @@ Kantahe is then in the TV's app list. To remove it, delete it there, or `tizen u
 * **Why nothing needs HTTPS here.** The app runs from a `file:` address inside the TV, which the web engine treats as
   secure, so the MIDI synthesizer can start; the server it talks to can be plain `http://`. The server answers
   cross-origin requests for the API and the media (decision D10 and PLAN section 8).
-* **What the privileges are for.** `internet` is the connection to the server; `tv.inputdevice` is the remote's Back and
+* **What the privileges are for.** `internet` is the connection to the server; `network.public` is the TV's own address, with which the app looks for
+  servers on the network; `tv.inputdevice` is the remote's Back and
   media keys. The media keys are registered but not used yet. The app asks for nothing else.
 * **Changing the version or the ids.** `tv/tizen/config.xml`: `version`, and `package` (ten letters and digits) with the
   application id `package.Kantahe`. If you change the package, also change the `-p`/`-n` values above.

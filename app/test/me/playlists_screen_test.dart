@@ -8,6 +8,7 @@ import 'package:kantahe/me/playlist_detail_screen.dart';
 import 'package:kantahe/me/playlists_screen.dart';
 
 import 'fakes.dart';
+import '../tv/ring_helper.dart';
 
 Future<MeRig> open(WidgetTester tester, {MeRig? rig}) async {
   final r = rig ?? MeRig();
@@ -90,7 +91,9 @@ void main() {
       final gate = Completer<void>();
       r.server.onCreate = (req) async {
         await gate.future;
-        return CreatePlaylistResponse(playlist: Playlist(id: 'x', name: req.name));
+        return CreatePlaylistResponse(
+          playlist: Playlist(id: 'x', name: req.name),
+        );
       };
       await tester.enterText(find.byKey(const Key('new-playlist')), 'One');
       await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -172,5 +175,12 @@ void main() {
       expect(find.byTooltip('Rename $n'), findsOneWidget);
       expect(find.byTooltip('Delete $n'), findsOneWidget);
     }
+  });
+
+  testWidgets('the remote\'s focus on a playlist shows the ring', (tester) async {
+    await open(tester, rig: withPlaylists());
+    final entry = find.widgetWithText(ListTile, 'Party');
+    await expectNoRingWhenNotFocused(tester, entry);
+    await expectRingOnFocus(tester, entry);
   });
 }

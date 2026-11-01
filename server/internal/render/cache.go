@@ -1,7 +1,6 @@
 package render
 
 import (
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -9,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/andrewloable/kantahe/server/internal/fsutil"
 )
 
 // Ext is the extension of cached renders; only such files count towards the limit.
@@ -113,7 +114,8 @@ func (c *Cache) Store(name string, fill func(w io.Writer) error) error {
 	if err := os.Chmod(tmp.Name(), 0o640); err != nil {
 		return err
 	}
-	if err := os.Rename(tmp.Name(), c.Path(name)); err != nil {
+	// the name is the song's SHA-256 and the render settings: a file that is there already is the same audio and stays
+	if err := fsutil.Place(tmp.Name(), c.Path(name), fsutil.PlaceBudget); err != nil {
 		return err
 	}
 	c.Touch(c.Path(name))
@@ -135,7 +137,7 @@ func (c *Cache) evict(keep string) {
 		if f.name == keep {
 			continue
 		}
-		if err := os.Remove(c.Path(f.name)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		if !fsutil.RemoveQuietly(c.Path(f.name)) {
 			continue // e.g. still open on Windows: the next eviction tries again
 		}
 		total -= f.size
@@ -154,7 +156,7 @@ func (c *Cache) Cleanup() {
 			continue
 		}
 		if info, err := e.Info(); err == nil && now.Sub(info.ModTime()) > staleTempAge {
-			_ = os.Remove(c.Path(e.Name()))
+			_ = fsutil.RemoveQuietly(c.Path(e.Name()))
 		}
 	}
 }

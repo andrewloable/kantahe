@@ -29,6 +29,14 @@ enum MidiMode {
   MIDI_MODE_SERVER = 4;
 }
 
+// Per-device background video choice (plan 4.2); AUTO lets the server decide: off for devices on the low-power or server MIDI mode or with little memory.
+enum BackgroundMode {
+  BACKGROUND_MODE_UNSPECIFIED = 0;
+  BACKGROUND_MODE_AUTO = 1;
+  BACKGROUND_MODE_ON = 2;
+  BACKGROUND_MODE_OFF = 3;
+}
+
 // One library entry; number is unique and never changes (plan 6). Visible to every signed-in user.
 message Song {
   string number = 1;
@@ -89,6 +97,32 @@ message Device {
   MidiMode effective_midi_mode = 8;
   bool is_caller = 9;
   int64 last_seen_unix = 10;
+  // What the user chose; effective_background is what the server resolved from it (whether this device plays the background videos).
+  BackgroundMode background_mode = 11;
+  bool effective_background = 12;
+}
+
+// A background video uploaded by the admin (plan 4.2). url is a signed URL (ListVideos: 1 hour, for the admin preview; GetBackground: 6 hours).
+message Video {
+  string id = 1;
+  string name = 2;
+  int64 size_bytes = 3;
+  int64 duration_ms = 4;
+  int32 width = 5;
+  int32 height = 6;
+  // Video codec of the file, for example "avc1".
+  string codec = 7;
+  // The audio track is never played; this only tells the admin the file carries one.
+  bool has_audio = 8;
+  // The moov box comes before the media data, so playback can start before the whole file is read.
+  bool faststart = 9;
+  bool enabled = 10;
+  // Place in the loop, counted from 1.
+  int32 position = 11;
+  int64 created_at_unix = 12;
+  string url = 13;
+  // Short advice texts such as "wider than 1920 px: may stutter on a TV" or "not optimised for streaming (moov after mdat)".
+  repeated string warnings = 14;
 }
 
 // A device token with its user; the token is shown once and only its hash is stored (plan 5).

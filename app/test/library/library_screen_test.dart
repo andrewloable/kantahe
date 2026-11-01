@@ -8,6 +8,7 @@ import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 import 'package:kantahe/library/library_screen.dart';
 
 import 'fakes.dart';
+import '../tv/ring_helper.dart';
 
 class Rig {
   final fake = FakeLibrary();
@@ -235,5 +236,13 @@ void main() {
     await tester.tap(find.text('Yesterday'));
     await settle(tester);
     expect(find.text('Added Yesterday'), findsOneWidget); // in the snack bar
+  });
+
+  testWidgets('the remote\'s focus on a format filter shows the ring, and the chosen filter stays chosen', (tester) async {
+    await open(tester);
+    final mp3 = find.widgetWithText(ChoiceChip, 'MP3');
+    await expectNoRingWhenNotFocused(tester, mp3);
+    await expectRingOnFocus(tester, mp3);
+    expect(tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'All')).selected, isTrue, reason: 'focus is not selection');
   });
 }

@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"context"
 	"embed"
 	"io"
 	"io/fs"
@@ -8,6 +9,8 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/andrewloable/kantahe/server/internal/fsutil"
 )
 
 // soundfonts holds the default SoundFont. The file is not in the repository: scripts/build-release.sh
@@ -77,7 +80,8 @@ func soundFontPath(fsys fs.FS, explicit, dataDir string) (string, error) {
 	if err := tmp.Close(); err != nil {
 		return "", err
 	}
-	if err := os.Rename(tmp.Name(), dst); err != nil {
+	// not content-addressed (the bank can change with a release): replaced, and a scanner holding the old file is waited for
+	if err := fsutil.Replace(context.Background(), tmp.Name(), dst, fsutil.ReplaceBudget); err != nil {
 		return "", err
 	}
 	return dst, nil

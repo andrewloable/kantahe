@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/andrewloable/kantahe/server/internal/fsutil"
 	"github.com/andrewloable/kantahe/server/internal/song/kar"
 	"github.com/andrewloable/kantahe/server/internal/song/karmp3"
 )
@@ -149,9 +151,13 @@ func (im *Importer) extractMP3(f *os.File, size int64, sha string) (string, erro
 		return "", err
 	}
 	final := filepath.Join(im.mediaDir(), sha+".mp3")
-	if err := os.Rename(tmp.Name(), final); err != nil {
+	// the name is the SHA-256 of the song: a file that is there already is the same MP3 and stays (it may be playing)
+	if err := fsutil.Place(tmp.Name(), final, fsutil.PlaceBudget); err != nil {
 		return "", err
 	}
+	// a file that was there is reused before the row names it: renew its age, so that SweepOrphans does not take it meanwhile
+	now := time.Now()
+	_ = os.Chtimes(final, now, now)
 	return final, nil
 }
 

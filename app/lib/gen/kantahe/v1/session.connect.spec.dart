@@ -122,4 +122,12 @@ abstract final class SessionService {
     kantahev1session.SetMidiModeRequest.new,
     kantahev1session.SetMidiModeResponse.new,
   );
+
+  /// Signed-in user. Sets the background video mode of one of the caller's devices; NOT_FOUND for another user's device.
+  static const setBackgroundMode = connect.Spec(
+    '/$name/SetBackgroundMode',
+    connect.StreamType.unary,
+    kantahev1session.SetBackgroundModeRequest.new,
+    kantahev1session.SetBackgroundModeResponse.new,
+  );
 }

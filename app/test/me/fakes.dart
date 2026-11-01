@@ -34,6 +34,7 @@ class FakeMeServer {
   final queued = <String>[]; // playlists added to the queue
   final added = <String>[]; // songs added to the queue
   final modes = <SetMidiModeRequest>[];
+  final backgrounds = <SetBackgroundModeRequest>[];
   final settings = <UpdateUserSettingsRequest>[];
   final revoked = <String>[];
   int deviceListings = 0;
@@ -48,6 +49,7 @@ class FakeMeServer {
   FutureOr<void> Function(SetFavouriteRequest req)? onFav;
   FutureOr<int> Function(String playlistId)? onAddPlaylist;
   FutureOr<Device> Function(SetMidiModeRequest req)? onMode;
+  FutureOr<Device> Function(SetBackgroundModeRequest req)? onBackground;
   FutureOr<void> Function(UpdateUserSettingsRequest req)? onSettings;
   List<Device> devices = [];
   FutureOr<void> Function(String id)? onRevoke;
@@ -105,6 +107,11 @@ class FakeMeServer {
         added.add(req.number);
         await onAdd?.call(req.number);
         return AddToQueueResponse();
+      })
+      .unary(SessionService.setBackgroundMode, (req, ctx) async {
+        backgrounds.add(req);
+        final d = await onBackground?.call(req);
+        return SetBackgroundModeResponse(device: d);
       })
       .unary(SessionService.setMidiMode, (req, ctx) async {
         modes.add(req);

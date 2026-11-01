@@ -10,9 +10,11 @@ import (
 	"io"
 	"net/netip"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // Config is the validated runtime configuration.
@@ -25,7 +27,17 @@ type Config struct {
 	ScoreSeconds   int
 	RenderCacheGB  int
 	TrustedProxies []netip.Prefix
+	// Name is what clients show in a list of servers and what the server is called on the network.
+	Name string
+	// Discovery turns on the mDNS advertisement.
+	Discovery bool
 }
+
+// maxNameBytes is the longest DNS-SD instance label.
+const maxNameBytes = 63
+
+// hostname is the machine's host name; tests replace it.
+var hostname = os.Hostname
 
 // libraries is a repeatable flag; the first use replaces the environment value.
 type libraries struct {
@@ -46,8 +58,8 @@ func (l *libraries) Set(v string) error {
 }
 
 type values struct {
-	listen, data, soundfont, publicURL, score, cache, proxies string
-	libs                                                      libraries
+	listen, data, soundfont, publicURL, score, cache, proxies, name, discovery string
+	libs                                                                       libraries
 }
 
 func newFlagSet(getenv func(string) string) (*flag.FlagSet, *values) {
@@ -73,6 +85,8 @@ func newFlagSet(getenv func(string) string) (*flag.FlagSet, *values) {
 	fs.StringVar(&v.score, "score-seconds", pick("KANTAHE_SCORE_SECONDS", "6"), "seconds the score is shown, 0-60 (KANTAHE_SCORE_SECONDS)")
 	fs.StringVar(&v.cache, "render-cache-gb", pick("KANTAHE_RENDER_CACHE_GB", "5"), "size limit of the rendered-audio cache in GB (KANTAHE_RENDER_CACHE_GB)")
 	fs.StringVar(&v.proxies, "trusted-proxies", pick("KANTAHE_TRUSTED_PROXIES", ""), "comma-separated CIDRs of reverse proxies (KANTAHE_TRUSTED_PROXIES)")
+	fs.StringVar(&v.name, "name", pick("KANTAHE_NAME", ""), "name shown to clients, at most 63 bytes (KANTAHE_NAME, default \"Kantahe on <host name>\")")
+	fs.StringVar(&v.discovery, "discovery", pick("KANTAHE_DISCOVERY", "true"), "advertise the server on the local network so apps find it, true or false (KANTAHE_DISCOVERY)")
 	return fs, v
 }
 
@@ -114,7 +128,34 @@ func Parse(args []string, getenv func(string) string) (Config, error) {
 	if c.TrustedProxies, err = prefixes(v.proxies); err != nil {
 		return Config{}, err
 	}
+	if c.Discovery, err = strconv.ParseBool(v.discovery); err != nil {
+		return Config{}, fmt.Errorf("invalid --discovery %q: want true or false", v.discovery)
+	}
+	if c.Name, err = serverName(v.name); err != nil {
+		return Config{}, err
+	}
 	return c, nil
+}
+
+// serverName is the name given, or "Kantahe on <host name>" (cut to fit: a long machine name must not stop the server).
+func serverName(given string) (string, error) {
+	if given = strings.TrimSpace(given); given != "" {
+		if len(given) > maxNameBytes {
+			return "", fmt.Errorf("invalid --name %q: at most %d bytes", given, maxNameBytes)
+		}
+		return given, nil
+	}
+	host, err := hostname()
+	host = strings.TrimSuffix(strings.TrimSpace(host), ".local")
+	if err != nil || host == "" {
+		return "Kantahe", nil
+	}
+	name := "Kantahe on " + host
+	for len(name) > maxNameBytes {
+		_, size := utf8.DecodeLastRuneInString(name)
+		name = name[:len(name)-size]
+	}
+	return name, nil
 }
 
 func intIn(name, s string, min, max int) (int, error) {

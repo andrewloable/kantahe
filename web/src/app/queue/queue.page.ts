@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { QueueItem, SessionService } from '../../gen/kantahe/v1/session_pb';
 import { injectClient } from '../core/api';
 import { problem } from '../core/errors';
@@ -35,10 +35,12 @@ import { NowPlayingComponent } from './now-playing.component';
                   @if (item.song) {
                     <app-format-badge [format]="item.song.format" />
                   }
-                  @if (!first) {
-                    <button type="button" [attr.aria-label]="'Move ' + item.song?.title + ' to the top of the queue'" (click)="moveToTop(item)">Move to top</button>
-                  }
-                  <button type="button" [attr.aria-label]="'Remove ' + item.song?.title + ' from the queue'" (click)="remove(item)">Remove</button>
+                  <span class="row-actions">
+                    @if (!first) {
+                      <button type="button" [attr.aria-label]="'Move ' + item.song?.title + ' to the top of the queue'" (click)="moveToTop(item)">Move to top</button>
+                    }
+                    <button type="button" [attr.aria-label]="'Remove ' + item.song?.title + ' from the queue'" (click)="remove(item)">Remove</button>
+                  </span>
                 </li>
               }
             </ol>
@@ -46,14 +48,18 @@ import { NowPlayingComponent } from './now-playing.component';
         </section>
         <app-devices />
       } @else {
-        <p role="status">Connecting…</p>
+        @if (stalled()) {
+          <p role="alert">Could not reach the server. Still trying…</p>
+        } @else {
+          <p role="status">Connecting…</p>
+        }
       }
     </main>
   `,
   styles: `
     .queue-page {
-      max-width: 44rem;
-      margin: 0 auto;
+      /* a reading column: wider, the title and the buttons of a row are too far apart; left aligned in the frame */
+      max-width: 48rem;
       padding: 1rem;
     }
     .queue {
@@ -70,21 +76,56 @@ import { NowPlayingComponent } from './now-playing.component';
       border-bottom: 1px solid var(--line);
     }
     .info {
-      flex: 1;
+      flex: 1 1 12rem;
       display: flex;
       flex-direction: column;
-      min-width: 8rem;
+      min-width: 0;
     }
+    /* a long title or artist is cut to two lines (the library list does the same); an unbroken word breaks inside its box */
     .title {
       font-weight: 600;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      overflow-wrap: anywhere;
     }
-    .artist,
+    .artist {
+      color: var(--muted);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+    }
     .notice {
       color: var(--muted);
+    }
+    /* the buttons of a row stay together: on a phone they are one line below the title, equally wide */
+    .row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    @media (max-width: 30rem) {
+      .row-actions {
+        flex: 1 0 100%;
+      }
+      .row-actions button {
+        flex: 1;
+      }
     }
   `,
 })
 export class QueuePage {
+  /** No state has arrived for a few seconds: "Connecting…" alone would say nothing for ever. */
+  protected readonly stalled = signal(false);
+
+  constructor() {
+    const timer = setTimeout(() => this.stalled.set(true), 6000);
+    inject(DestroyRef).onDestroy(() => clearTimeout(timer));
+  }
+
   protected readonly store = inject(StateStore);
   protected readonly state = this.store.state;
   private readonly client = injectClient(SessionService);

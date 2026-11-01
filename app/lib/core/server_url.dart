@@ -11,12 +11,15 @@ const _checkTimeout = Duration(seconds: 5);
 
 /// The answer of [ServerUrl.validate].
 class ServerCheck {
-  const ServerCheck.ok({required String this.url, required String this.version, required this.setupRequired}) : error = null;
-  const ServerCheck.failed(String this.error) : url = null, version = null, setupRequired = false;
+  const ServerCheck.ok({required String this.url, required String this.version, required this.setupRequired, this.name = ''}) : error = null;
+  const ServerCheck.failed(String this.error) : url = null, version = null, name = null, setupRequired = false;
 
   /// The normalised address that answered.
   final String? url;
   final String? version;
+
+  /// The name the server gives itself (--name); empty when it gives none, null when the check failed.
+  final String? name;
 
   /// No user exists yet: the first person to sign in creates the admin.
   final bool setupRequired;
@@ -34,6 +37,12 @@ class ServerUrl extends ChangeNotifier {
   final KeyValueStore _store;
   final Transport Function(String baseUrl)? _makeTransport;
   String? _value;
+  bool _autoConnect = true;
+
+  /// Whether a single server found on the network may be connected to without asking. Off after [clear] for the rest
+  /// of the run (a person who chose "Use another server" would otherwise be sent straight back); never stored, so a
+  /// new start has it on again.
+  bool get autoConnect => _autoConnect;
 
   /// The stored address, without a trailing slash; null until one is set.
   String? get value => _value;
@@ -85,6 +94,7 @@ class ServerUrl extends ChangeNotifier {
   }
 
   Future<void> clear() async {
+    _autoConnect = false;
     _value = null;
     notifyListeners();
     try {
@@ -112,7 +122,7 @@ class ServerUrl extends ChangeNotifier {
               throw TimeoutException('no answer in 5 seconds');
             },
           );
-      return ServerCheck.ok(url: url, version: r.version, setupRequired: r.setupRequired);
+      return ServerCheck.ok(url: url, version: r.version, setupRequired: r.setupRequired, name: r.name);
     } on Object catch (e) {
       final timedOut = e is TimeoutException || (e is ConnectException && e.code == Code.deadlineExceeded);
       if (timedOut) return ServerCheck.failed('The server at $url did not answer within 5 seconds. Check the address and the network.');

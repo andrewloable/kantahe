@@ -21,7 +21,10 @@ import { ToastService } from '../core/toast';
       </div>
       <button type="submit" [disabled]="busy()">Create</button>
     </form>
-    @if (loaded() && playlists().length === 0) {
+    @if (loadError()) {
+      <p class="error" role="alert">{{ loadError() }} <button type="button" (click)="load()">Try again</button></p>
+    }
+    @if (loaded() && playlists().length === 0 && !loadError()) {
       <p>No playlists yet.</p>
     }
     <ul class="playlists">
@@ -66,11 +69,21 @@ import { ToastService } from '../core/toast';
       border-bottom: 1px solid var(--line);
     }
     li a {
-      flex: 1;
+      /* at least 10rem for the name before the count and the buttons take the rest of the row or wrap */
+      flex: 1 1 10rem;
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.75rem;
+      overflow-wrap: anywhere;
       font-weight: 600;
     }
     .count {
       color: var(--muted);
+    }
+    @media (max-width: 30rem) {
+      li a {
+        flex-basis: 100%;
+      }
     }
     .sr-only {
       position: absolute;
@@ -105,12 +118,16 @@ export class PlaylistsComponent {
     return (e.target as HTMLInputElement).value;
   }
 
-  private async load(): Promise<void> {
+  /** Why the list could not be loaded, shown on the page with a way to try again (a toast would be gone before it was read). */
+  protected readonly loadError = signal('');
+
+  protected async load(): Promise<void> {
+    this.loadError.set('');
     try {
       const res = await this.user.listPlaylists({});
       if (!this.gone) this.playlists.set(res.playlists);
     } catch (e) {
-      this.toast.show(problem(e, {}), 'error');
+      if (!this.gone) this.loadError.set(problem(e, {}));
     } finally {
       this.loaded.set(true);
     }

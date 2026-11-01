@@ -44,6 +44,7 @@ void main() {
 
     // 1. the server address
     expect(find.text('Connect to your server'), findsOneWidget);
+    await until(tester, () => find.byKey(const Key('server-url')).evaluate().isNotEmpty, 'the address form (the run turns discovery off, so nothing is found)');
     await tester.enterText(find.byKey(const Key('server-url')), serverUrl);
     await tester.tap(find.text('Connect'));
     await until(tester, () => find.byKey(const Key('email')).evaluate().isNotEmpty, 'the sign-in screen');

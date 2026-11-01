@@ -67,7 +67,11 @@
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
 		<key>NSLocalNetworkUsageDescription</key>
-		<string>Kantahe talks to the karaoke server on your network.</string>
+		<string>Kantahe looks for karaoke servers on your network and talks to the one you use.</string>
+		<key>NSBonjourServices</key>
+		<array>
+			<string>_kantahe._tcp</string>
+		</array>
 		<key>NSAppTransportSecurity</key>
 		<dict>
 			<key>NSAllowsLocalNetworking</key>

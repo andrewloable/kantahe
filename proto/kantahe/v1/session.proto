@@ -34,6 +34,8 @@ service SessionService {
   rpc ReportDevice(ReportDeviceRequest) returns (ReportDeviceResponse);
   // Signed-in user. Sets the MIDI mode of one of the caller's devices; NOT_FOUND for another user's device.
   rpc SetMidiMode(SetMidiModeRequest) returns (SetMidiModeResponse);
+  // Signed-in user. Sets the background video mode of one of the caller's devices; NOT_FOUND for another user's device.
+  rpc SetBackgroundMode(SetBackgroundModeRequest) returns (SetBackgroundModeResponse);
 }
 
 // Whether the current song is playing or paused.
@@ -199,6 +201,17 @@ message SetMidiModeRequest {
 
 // The device after the change.
 message SetMidiModeResponse {
+  Device device = 1;
+}
+
+// The device and the mode to set.
+message SetBackgroundModeRequest {
+  string device_id = 1;
+  BackgroundMode mode = 2;
+}
+
+// The device after the change.
+message SetBackgroundModeResponse {
   Device device = 1;
 }
 

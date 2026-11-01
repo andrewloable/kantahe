@@ -101,5 +101,31 @@ class MidiMode extends $pb.ProtobufEnum {
   const MidiMode._(super.value, super.name);
 }
 
+/// Per-device background video choice (plan 4.2); AUTO lets the server decide: off for devices on the low-power or server MIDI mode or with little memory.
+class BackgroundMode extends $pb.ProtobufEnum {
+  static const BackgroundMode BACKGROUND_MODE_UNSPECIFIED =
+      BackgroundMode._(0, _omitEnumNames ? '' : 'BACKGROUND_MODE_UNSPECIFIED');
+  static const BackgroundMode BACKGROUND_MODE_AUTO =
+      BackgroundMode._(1, _omitEnumNames ? '' : 'BACKGROUND_MODE_AUTO');
+  static const BackgroundMode BACKGROUND_MODE_ON =
+      BackgroundMode._(2, _omitEnumNames ? '' : 'BACKGROUND_MODE_ON');
+  static const BackgroundMode BACKGROUND_MODE_OFF =
+      BackgroundMode._(3, _omitEnumNames ? '' : 'BACKGROUND_MODE_OFF');
+
+  static const $core.List<BackgroundMode> values = <BackgroundMode>[
+    BACKGROUND_MODE_UNSPECIFIED,
+    BACKGROUND_MODE_AUTO,
+    BACKGROUND_MODE_ON,
+    BACKGROUND_MODE_OFF,
+  ];
+
+  static final $core.List<BackgroundMode?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static BackgroundMode? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const BackgroundMode._(super.value, super.name);
+}
+
 const $core.bool _omitEnumNames =
     $core.bool.fromEnvironment('protobuf.omit_enum_names');

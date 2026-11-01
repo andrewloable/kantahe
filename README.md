@@ -17,6 +17,8 @@ Kantahe is open source (MIT). It ships **no songs**: you bring your own.
   your hand; your other devices become remotes. Songs wait their turn, and when the queue runs dry a random song plays.
 * **Lyrics and score**: words light up as they are sung, with count-in dots before a line. After a song a score screen
   and fanfare, for fun (random) or following how loudly you sing (microphone).
+* **Background videos**: the admin uploads H.264 MP4 clips that loop, with no sound, behind the lyrics on the screen that plays;
+  each device can switch them off.
 * **MIDI that works on weak devices**: the browser synthesizes MIDI songs itself; a TV or an old phone can use a lighter
   mode or let the server render the audio.
 * **One program**: the server is a single static binary with the web app inside, for Linux, macOS and Windows
@@ -41,6 +43,7 @@ Open <http://localhost:8080> and create the first (admin) account. More ways to 
 * [Reverse proxy](docs/reverse-proxy.md): HTTPS with Caddy or nginx.
 * TV apps: [Samsung](docs/tv-samsung.md), [LG](docs/tv-lg.md).
 * [Plan and decisions](docs/PLAN.md): how it works and why.
+* [Releasing](docs/releasing.md): the checklist before a tag, with `scripts/ci-local.sh`.
 
 ## Apps
 

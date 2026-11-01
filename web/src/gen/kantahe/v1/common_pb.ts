@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file kantahe/v1/common.proto.
  */
 export const file_kantahe_v1_common: GenFile = /*@__PURE__*/
-  fileDesc("ChdrYW50YWhlL3YxL2NvbW1vbi5wcm90bxIKa2FudGFoZS52MSKqAQoEU29uZxIOCgZudW1iZXIYASABKAkSIgoGZm9ybWF0GAIgASgOMhIua2FudGFoZS52MS5Gb3JtYXQSDQoFdGl0bGUYAyABKAkSDgoGYXJ0aXN0GAQgASgJEhcKD3Nvbmdib29rX251bWJlchgFIAEoCRITCgtkdXJhdGlvbl9tcxgGIAEoAxIOCgZmYWlsZWQYByABKAgSEQoJZmF2b3VyaXRlGAggASgIIjsKCUx5cmljV29yZBIMCgR0ZXh0GAEgASgJEhAKCHN0YXJ0X21zGAIgASgDEg4KBmVuZF9tcxgDIAEoAyJTCglMeXJpY0xpbmUSEAoIc3RhcnRfbXMYASABKAMSDgoGZW5kX21zGAIgASgDEiQKBXdvcmRzGAMgAygLMhUua2FudGFoZS52MS5MeXJpY1dvcmQiYwoGTHlyaWNzEg4KBm51bWJlchgBIAEoCRIOCgZzb3VyY2UYAiABKAkSEwoLZHVyYXRpb25fbXMYAyABKAMSJAoFbGluZXMYBCADKAsyFS5rYW50YWhlLnYxLkx5cmljTGluZSKIAQoEVXNlchIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSDQoFYWRtaW4YBCABKAgSEAoIdXBsb2FkZXIYBSABKAgSHAoUbXVzdF9jaGFuZ2VfcGFzc3dvcmQYBiABKAgSEAoIZGlzYWJsZWQYByABKAgiiQIKBkRldmljZRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEiQKBHR5cGUYAyABKA4yFi5rYW50YWhlLnYxLkRldmljZVR5cGUSDgoGb25saW5lGAQgASgIEhUKDW1pY19hdmFpbGFibGUYBSABKAgSEQoJbWVtb3J5X21iGAYgASgFEicKCW1pZGlfbW9kZRgHIAEoDjIULmthbnRhaGUudjEuTWlkaU1vZGUSMQoTZWZmZWN0aXZlX21pZGlfbW9kZRgIIAEoDjIULmthbnRhaGUudjEuTWlkaU1vZGUSEQoJaXNfY2FsbGVyGAkgASgIEhYKDmxhc3Rfc2Vlbl91bml4GAogASgDIk0KCUF1dGhUb2tlbhINCgV0b2tlbhgBIAEoCRIRCglkZXZpY2VfaWQYAiABKAkSHgoEdXNlchgDIAEoCzIQLmthbnRhaGUudjEuVXNlcipBCgZGb3JtYXQSFgoSRk9STUFUX1VOU1BFQ0lGSUVEEAASDgoKRk9STUFUX01QMxABEg8KC0ZPUk1BVF9NSURJEAIqtgEKCkRldmljZVR5cGUSGwoXREVWSUNFX1RZUEVfVU5TUEVDSUZJRUQQABITCg9ERVZJQ0VfVFlQRV9XRUIQARIXChNERVZJQ0VfVFlQRV9BTkRST0lEEAISEwoPREVWSUNFX1RZUEVfSU9TEAMSGgoWREVWSUNFX1RZUEVfQU5EUk9JRF9UVhAEEhUKEURFVklDRV9UWVBFX1RJWkVOEAUSFQoRREVWSUNFX1RZUEVfV0VCT1MQBip8CghNaWRpTW9kZRIZChVNSURJX01PREVfVU5TUEVDSUZJRUQQABISCg5NSURJX01PREVfQVVUTxABEhIKDk1JRElfTU9ERV9GVUxMEAISFwoTTUlESV9NT0RFX0xPV19QT1dFUhADEhQKEE1JRElfTU9ERV9TRVJWRVIQBEKnAQoOY29tLmthbnRhaGUudjFCC0NvbW1vblByb3RvUAFaP2dpdGh1Yi5jb20vYW5kcmV3bG9hYmxlL2thbnRhaGUvc2VydmVyL2dlbi9rYW50YWhlL3YxO2thbnRhaGV2MaICA0tYWKoCCkthbnRhaGUuVjHKAgpLYW50YWhlXFYx4gIWS2FudGFoZVxWMVxHUEJNZXRhZGF0YeoCC0thbnRhaGU6OlYxYgZwcm90bzM");
+  fileDesc("ChdrYW50YWhlL3YxL2NvbW1vbi5wcm90bxIKa2FudGFoZS52MSKqAQoEU29uZxIOCgZudW1iZXIYASABKAkSIgoGZm9ybWF0GAIgASgOMhIua2FudGFoZS52MS5Gb3JtYXQSDQoFdGl0bGUYAyABKAkSDgoGYXJ0aXN0GAQgASgJEhcKD3Nvbmdib29rX251bWJlchgFIAEoCRITCgtkdXJhdGlvbl9tcxgGIAEoAxIOCgZmYWlsZWQYByABKAgSEQoJZmF2b3VyaXRlGAggASgIIjsKCUx5cmljV29yZBIMCgR0ZXh0GAEgASgJEhAKCHN0YXJ0X21zGAIgASgDEg4KBmVuZF9tcxgDIAEoAyJTCglMeXJpY0xpbmUSEAoIc3RhcnRfbXMYASABKAMSDgoGZW5kX21zGAIgASgDEiQKBXdvcmRzGAMgAygLMhUua2FudGFoZS52MS5MeXJpY1dvcmQiYwoGTHlyaWNzEg4KBm51bWJlchgBIAEoCRIOCgZzb3VyY2UYAiABKAkSEwoLZHVyYXRpb25fbXMYAyABKAMSJAoFbGluZXMYBCADKAsyFS5rYW50YWhlLnYxLkx5cmljTGluZSKIAQoEVXNlchIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSDQoFYWRtaW4YBCABKAgSEAoIdXBsb2FkZXIYBSABKAgSHAoUbXVzdF9jaGFuZ2VfcGFzc3dvcmQYBiABKAgSEAoIZGlzYWJsZWQYByABKAgi3AIKBkRldmljZRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEiQKBHR5cGUYAyABKA4yFi5rYW50YWhlLnYxLkRldmljZVR5cGUSDgoGb25saW5lGAQgASgIEhUKDW1pY19hdmFpbGFibGUYBSABKAgSEQoJbWVtb3J5X21iGAYgASgFEicKCW1pZGlfbW9kZRgHIAEoDjIULmthbnRhaGUudjEuTWlkaU1vZGUSMQoTZWZmZWN0aXZlX21pZGlfbW9kZRgIIAEoDjIULmthbnRhaGUudjEuTWlkaU1vZGUSEQoJaXNfY2FsbGVyGAkgASgIEhYKDmxhc3Rfc2Vlbl91bml4GAogASgDEjMKD2JhY2tncm91bmRfbW9kZRgLIAEoDjIaLmthbnRhaGUudjEuQmFja2dyb3VuZE1vZGUSHAoUZWZmZWN0aXZlX2JhY2tncm91bmQYDCABKAgi+QEKBVZpZGVvEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEgoKc2l6ZV9ieXRlcxgDIAEoAxITCgtkdXJhdGlvbl9tcxgEIAEoAxINCgV3aWR0aBgFIAEoBRIOCgZoZWlnaHQYBiABKAUSDQoFY29kZWMYByABKAkSEQoJaGFzX2F1ZGlvGAggASgIEhEKCWZhc3RzdGFydBgJIAEoCBIPCgdlbmFibGVkGAogASgIEhAKCHBvc2l0aW9uGAsgASgFEhcKD2NyZWF0ZWRfYXRfdW5peBgMIAEoAxILCgN1cmwYDSABKAkSEAoId2FybmluZ3MYDiADKAkiTQoJQXV0aFRva2VuEg0KBXRva2VuGAEgASgJEhEKCWRldmljZV9pZBgCIAEoCRIeCgR1c2VyGAMgASgLMhAua2FudGFoZS52MS5Vc2VyKkEKBkZvcm1hdBIWChJGT1JNQVRfVU5TUEVDSUZJRUQQABIOCgpGT1JNQVRfTVAzEAESDwoLRk9STUFUX01JREkQAiq2AQoKRGV2aWNlVHlwZRIbChdERVZJQ0VfVFlQRV9VTlNQRUNJRklFRBAAEhMKD0RFVklDRV9UWVBFX1dFQhABEhcKE0RFVklDRV9UWVBFX0FORFJPSUQQAhITCg9ERVZJQ0VfVFlQRV9JT1MQAxIaChZERVZJQ0VfVFlQRV9BTkRST0lEX1RWEAQSFQoRREVWSUNFX1RZUEVfVElaRU4QBRIVChFERVZJQ0VfVFlQRV9XRUJPUxAGKnwKCE1pZGlNb2RlEhkKFU1JRElfTU9ERV9VTlNQRUNJRklFRBAAEhIKDk1JRElfTU9ERV9BVVRPEAESEgoOTUlESV9NT0RFX0ZVTEwQAhIXChNNSURJX01PREVfTE9XX1BPV0VSEAMSFAoQTUlESV9NT0RFX1NFUlZFUhAEKnwKDkJhY2tncm91bmRNb2RlEh8KG0JBQ0tHUk9VTkRfTU9ERV9VTlNQRUNJRklFRBAAEhgKFEJBQ0tHUk9VTkRfTU9ERV9BVVRPEAESFgoSQkFDS0dST1VORF9NT0RFX09OEAISFwoTQkFDS0dST1VORF9NT0RFX09GRhADQqcBCg5jb20ua2FudGFoZS52MUILQ29tbW9uUHJvdG9QAVo/Z2l0aHViLmNvbS9hbmRyZXdsb2FibGUva2FudGFoZS9zZXJ2ZXIvZ2VuL2thbnRhaGUvdjE7a2FudGFoZXYxogIDS1hYqgIKS2FudGFoZS5WMcoCCkthbnRhaGVcVjHiAhZLYW50YWhlXFYxXEdQQk1ldGFkYXRh6gILS2FudGFoZTo6VjFiBnByb3RvMw");
 
 /**
  * One library entry; number is unique and never changes (plan 6). Visible to every signed-in user.
@@ -268,6 +268,18 @@ export type Device = Message<"kantahe.v1.Device"> & {
    * @generated from field: int64 last_seen_unix = 10;
    */
   lastSeenUnix: bigint;
+
+  /**
+   * What the user chose; effective_background is what the server resolved from it (whether this device plays the background videos).
+   *
+   * @generated from field: kantahe.v1.BackgroundMode background_mode = 11;
+   */
+  backgroundMode: BackgroundMode;
+
+  /**
+   * @generated from field: bool effective_background = 12;
+   */
+  effectiveBackground: boolean;
 };
 
 /**
@@ -276,6 +288,100 @@ export type Device = Message<"kantahe.v1.Device"> & {
  */
 export const DeviceSchema: GenMessage<Device> = /*@__PURE__*/
   messageDesc(file_kantahe_v1_common, 5);
+
+/**
+ * A background video uploaded by the admin (plan 4.2). url is a signed URL (ListVideos: 1 hour, for the admin preview; GetBackground: 6 hours).
+ *
+ * @generated from message kantahe.v1.Video
+ */
+export type Video = Message<"kantahe.v1.Video"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: int64 size_bytes = 3;
+   */
+  sizeBytes: bigint;
+
+  /**
+   * @generated from field: int64 duration_ms = 4;
+   */
+  durationMs: bigint;
+
+  /**
+   * @generated from field: int32 width = 5;
+   */
+  width: number;
+
+  /**
+   * @generated from field: int32 height = 6;
+   */
+  height: number;
+
+  /**
+   * Video codec of the file, for example "avc1".
+   *
+   * @generated from field: string codec = 7;
+   */
+  codec: string;
+
+  /**
+   * The audio track is never played; this only tells the admin the file carries one.
+   *
+   * @generated from field: bool has_audio = 8;
+   */
+  hasAudio: boolean;
+
+  /**
+   * The moov box comes before the media data, so playback can start before the whole file is read.
+   *
+   * @generated from field: bool faststart = 9;
+   */
+  faststart: boolean;
+
+  /**
+   * @generated from field: bool enabled = 10;
+   */
+  enabled: boolean;
+
+  /**
+   * Place in the loop, counted from 1.
+   *
+   * @generated from field: int32 position = 11;
+   */
+  position: number;
+
+  /**
+   * @generated from field: int64 created_at_unix = 12;
+   */
+  createdAtUnix: bigint;
+
+  /**
+   * @generated from field: string url = 13;
+   */
+  url: string;
+
+  /**
+   * Short advice texts such as "wider than 1920 px: may stutter on a TV" or "not optimised for streaming (moov after mdat)".
+   *
+   * @generated from field: repeated string warnings = 14;
+   */
+  warnings: string[];
+};
+
+/**
+ * Describes the message kantahe.v1.Video.
+ * Use `create(VideoSchema)` to create a new message.
+ */
+export const VideoSchema: GenMessage<Video> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_common, 6);
 
 /**
  * A device token with its user; the token is shown once and only its hash is stored (plan 5).
@@ -304,7 +410,7 @@ export type AuthToken = Message<"kantahe.v1.AuthToken"> & {
  * Use `create(AuthTokenSchema)` to create a new message.
  */
 export const AuthTokenSchema: GenMessage<AuthToken> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_common, 6);
+  messageDesc(file_kantahe_v1_common, 7);
 
 /**
  * How a song entry is stored: an MP3 (from a .karmp3) or a MIDI file (.kar).
@@ -419,4 +525,37 @@ export enum MidiMode {
  */
 export const MidiModeSchema: GenEnum<MidiMode> = /*@__PURE__*/
   enumDesc(file_kantahe_v1_common, 2);
+
+/**
+ * Per-device background video choice (plan 4.2); AUTO lets the server decide: off for devices on the low-power or server MIDI mode or with little memory.
+ *
+ * @generated from enum kantahe.v1.BackgroundMode
+ */
+export enum BackgroundMode {
+  /**
+   * @generated from enum value: BACKGROUND_MODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: BACKGROUND_MODE_AUTO = 1;
+   */
+  AUTO = 1,
+
+  /**
+   * @generated from enum value: BACKGROUND_MODE_ON = 2;
+   */
+  ON = 2,
+
+  /**
+   * @generated from enum value: BACKGROUND_MODE_OFF = 3;
+   */
+  OFF = 3,
+}
+
+/**
+ * Describes the enum kantahe.v1.BackgroundMode.
+ */
+export const BackgroundModeSchema: GenEnum<BackgroundMode> = /*@__PURE__*/
+  enumDesc(file_kantahe_v1_common, 3);
 

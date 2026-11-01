@@ -135,3 +135,62 @@ func TestModesUsesTheRenderAvailability(t *testing.T) {
 type fixedRender bool
 
 func (f fixedRender) Available() bool { return bool(f) }
+
+func TestEffectiveBackground(t *testing.T) {
+	const (
+		bgAuto  = kantahev1.BackgroundMode_BACKGROUND_MODE_AUTO
+		bgOn    = kantahev1.BackgroundMode_BACKGROUND_MODE_ON
+		bgOff   = kantahev1.BackgroundMode_BACKGROUND_MODE_OFF
+		bgUnset = kantahev1.BackgroundMode_BACKGROUND_MODE_UNSPECIFIED
+		ios     = kantahev1.DeviceType_DEVICE_TYPE_IOS
+	)
+	cases := []struct {
+		name string
+		mode kantahev1.BackgroundMode
+		midi kantahev1.MidiMode
+		typ  kantahev1.DeviceType
+		mb   int
+		want bool
+	}{
+		{"ON on a 512 MB TV", bgOn, srv, atv, 512, true},
+		{"ON with a lighter MIDI mode", bgOn, low, tizen, 0, true},
+		{"OFF on a desktop", bgOff, full, web, 16384, false},
+		{"AUTO, full MIDI, 4 GB web", bgAuto, full, web, 4096, true},
+		{"AUTO, low power MIDI", bgAuto, low, web, 4096, false},
+		{"AUTO, server MIDI", bgAuto, srv, web, 4096, false},
+		{"AUTO, 1024 MB", bgAuto, full, andr, 1024, false},
+		{"AUTO, 1535 MB", bgAuto, full, andr, 1535, false},
+		{"AUTO, 1536 MB", bgAuto, full, andr, 1536, true},
+		{"AUTO, unknown memory on Android TV", bgAuto, full, atv, 0, false},
+		{"AUTO, unknown memory on Tizen", bgAuto, full, tizen, 0, false},
+		{"AUTO, unknown memory on webOS", bgAuto, full, webos, 0, false},
+		{"AUTO, unknown memory on the web", bgAuto, full, web, 0, true},
+		{"AUTO, unknown memory on Android", bgAuto, full, andr, 0, true},
+		{"AUTO, unknown memory on iOS", bgAuto, full, ios, 0, true},
+		{"unset behaves like AUTO: on", bgUnset, full, web, 4096, true},
+		{"unset behaves like AUTO: off", bgUnset, low, web, 4096, false},
+	}
+	for _, c := range cases {
+		if got := EffectiveBackground(c.mode, c.midi, c.typ, c.mb); got != c.want {
+			t.Errorf("%s: %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+// The method on Modes works out the effective MIDI mode itself, with the dropouts of the device and the render switch.
+func TestModesEffectiveBackgroundFollowsTheEffectiveMidiMode(t *testing.T) {
+	m := NewModes(nil)
+	// a 4 GB web device in AUTO plays the full synth and the video
+	if !m.EffectiveBackground(kantahev1.BackgroundMode_BACKGROUND_MODE_AUTO, auto, web, 4096, "d1") {
+		t.Fatal("a strong device must play the background")
+	}
+	// two dropout episodes step the MIDI mode down to low power, and AUTO stops the video
+	m.StepDowns.Add("d1")
+	if m.EffectiveBackground(kantahev1.BackgroundMode_BACKGROUND_MODE_AUTO, auto, web, 4096, "d1") {
+		t.Fatal("after a step down to low power the background must stop")
+	}
+	// ON ignores it
+	if !m.EffectiveBackground(kantahev1.BackgroundMode_BACKGROUND_MODE_ON, auto, web, 4096, "d1") {
+		t.Fatal("ON is ON")
+	}
+}

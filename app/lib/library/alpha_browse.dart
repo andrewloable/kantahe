@@ -4,6 +4,7 @@ import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 import 'package:kantahe/library/library_actions.dart';
 import 'package:kantahe/library/pager.dart';
 import 'package:kantahe/library/song_list.dart';
+import 'package:kantahe/tv/focus.dart';
 
 final _letters = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), '#'];
 
@@ -133,13 +134,16 @@ class _AlphaBrowseState extends State<AlphaBrowse> {
             child: ListView(
               children: [
                 for (final a in p.items)
-                  ListTile(
-                    title: Text(a.name),
-                    trailing: Text(
-                      a.songCount == 1 ? '1 song' : '${a.songCount} songs',
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  FocusRing(
+                    radius: 0,
+                    child: ListTile(
+                      title: Text(a.name),
+                      trailing: Text(
+                        a.songCount == 1 ? '1 song' : '${a.songCount} songs',
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      ),
+                      onTap: () => _choose(a),
                     ),
-                    onTap: () => _choose(a),
                   ),
                 if (p.loading)
                   const Padding(
@@ -167,13 +171,16 @@ class _AlphaBrowseState extends State<AlphaBrowse> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-          child: SegmentedButton<_Mode>(
-            segments: const [
-              ButtonSegment(value: _Mode.titles, label: Text('Titles')),
-              ButtonSegment(value: _Mode.artists, label: Text('Artists')),
-            ],
-            selected: {_mode},
-            onSelectionChanged: (s) => _setMode(s.first),
+          child: FocusRing(
+            radius: 24,
+            child: SegmentedButton<_Mode>(
+              segments: const [
+                ButtonSegment(value: _Mode.titles, label: Text('Titles')),
+                ButtonSegment(value: _Mode.artists, label: Text('Artists')),
+              ],
+              selected: {_mode},
+              onSelectionChanged: (s) => _setMode(s.first),
+            ),
           ),
         ),
         SingleChildScrollView(
@@ -184,7 +191,10 @@ class _AlphaBrowseState extends State<AlphaBrowse> {
               for (final l in _letters)
                 Padding(
                   padding: const EdgeInsets.only(right: 4),
-                  child: ChoiceChip(label: Text(l), selected: _letter == l, onSelected: (_) => _setLetter(l)),
+                  child: FocusRing(
+                    radius: 8,
+                    child: ChoiceChip(label: Text(l), selected: _letter == l, onSelected: (_) => _setLetter(l)),
+                  ),
                 ),
             ],
           ),

@@ -56,7 +56,7 @@ const TABS: { id: Tab; label: string }[] = [
             @if (songs.error()) {
               <p class="error" role="alert">{{ songs.error() }} <button type="button" (click)="songs.retry()">Try again</button></p>
             }
-            <app-song-list [songs]="songs.items()" [hasMore]="songs.hasMore()" [loading]="songs.loading()" [autoMore]="!songs.error()" (more)="songs.more()" />
+            <app-song-list [songs]="songs.items()" [hasMore]="songs.hasMore()" [loading]="songs.loading()" [autoMore]="!songs.error()" [failed]="!!songs.error()" (more)="songs.more()" />
           }
           @case ('number') {
             <app-number-pad />
@@ -70,13 +70,14 @@ const TABS: { id: Tab; label: string }[] = [
   `,
   styles: `
     .library {
-      max-width: 44rem;
-      margin: 0 auto;
+      /* a reading column: wider, the title and the buttons of a row are too far apart; left aligned in the frame */
+      max-width: 48rem;
       padding: 1rem;
     }
     [role='tablist'] {
       display: flex;
-      gap: 0.25rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
       margin-bottom: 1rem;
       border-bottom: 1px solid var(--line);
     }
@@ -91,14 +92,15 @@ const TABS: { id: Tab; label: string }[] = [
     }
     .chips {
       display: flex;
-      gap: 0.25rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
       margin-bottom: 0.75rem;
     }
     input[type='search'] {
       width: 100%;
       min-height: 2.75rem;
       padding: 0.5rem 0.75rem;
-      border: 1px solid var(--line);
+      border: 1px solid var(--field-line);
       border-radius: 0.5rem;
       background: transparent;
       color: inherit;

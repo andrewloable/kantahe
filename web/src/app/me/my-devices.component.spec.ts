@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
-import { AuthTokenSchema, DeviceType, MidiMode } from '../../gen/kantahe/v1/common_pb';
+import { AuthTokenSchema, BackgroundMode, DeviceType, MidiMode } from '../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from '../core/api';
 import { AuthStore } from '../core/auth.store';
 import { StateStore } from '../core/state.store';
@@ -11,12 +11,13 @@ import { device, stateOf } from '../queue/testing';
 import { MyDevicesComponent } from './my-devices.component';
 import { fakeMe } from './testing';
 
-async function setup() {
+async function setup(opts: { failFirst?: boolean } = {}) {
   const mine = [
     device('me', 'This browser', { isCaller: true, type: DeviceType.WEB, midiMode: MidiMode.AUTO }),
     device('tv', 'Living room TV', { type: DeviceType.ANDROID_TV, online: false, midiMode: MidiMode.AUTO }),
   ];
   const server = fakeMe({ devices: mine });
+  if (opts.failFirst) server.failNext(new ConnectError('down', Code.Unavailable));
   localStorage.clear();
   TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: TRANSPORT, useValue: server.transport }] });
   TestBed.inject(AuthStore).signIn(create(AuthTokenSchema, { token: 't', deviceId: 'me' }));
@@ -96,6 +97,89 @@ describe('MyDevicesComponent', () => {
     select.dispatchEvent(new Event('change', { bubbles: true }));
     await settle();
     expect(server.calls.midi).toEqual([{ deviceId: 'tv', mode: MidiMode.FULL }]);
+  });
+
+  describe('Background video', () => {
+    const bgSelect = (li: HTMLElement) => li.querySelector<HTMLSelectElement>('.background select')!;
+
+    it('a second select with Auto, On, Off, an explanation and what the server resolved', async () => {
+      const { row } = await setup();
+      const select = bgSelect(row('Living room TV'));
+      expect(select.getAttribute('aria-label')).toBe('Background video of Living room TV');
+      expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual(['Auto', 'On', 'Off']);
+      expect(select.value).toBe(String(BackgroundMode.AUTO));
+      expect(row('Living room TV').querySelector('.background .explain')?.textContent).toMatch(/unless this device is weak/i);
+      // the MIDI select is still the first one and unchanged
+      expect(Array.from(row('Living room TV').querySelector<HTMLSelectElement>('select')!.options).map((o) => o.textContent?.trim())).toEqual(['Auto', 'Full', 'Low power', 'Server']);
+    });
+
+    it('shows the stored choice and "Now using" from the live state', async () => {
+      const { row, fixture } = await setup();
+      TestBed.inject(StateStore).state.set(
+        stateOf({
+          devices: [
+            device('me', 'This browser', { isCaller: true, backgroundMode: BackgroundMode.ON, effectiveBackground: true }),
+            device('tv', 'Living room TV', { type: DeviceType.ANDROID_TV, backgroundMode: BackgroundMode.AUTO, effectiveBackground: false }),
+          ],
+        }),
+      );
+      fixture.detectChanges();
+      expect(bgSelect(row('This browser')).value).toBe(String(BackgroundMode.ON));
+      expect(row('This browser').querySelector('.background .effective')?.textContent).toBe('Now using: On');
+      expect(row('Living room TV').querySelector('.background .effective')?.textContent).toBe('Now using: Off');
+    });
+
+    it('an unset mode from an older server counts as Auto', async () => {
+      const { row } = await setup();
+      expect(bgSelect(row('This browser')).value).toBe(String(BackgroundMode.AUTO));
+    });
+
+    it('changing it sends SetBackgroundMode for that device, and not the MIDI call', async () => {
+      const { row, server, settle } = await setup();
+      const select = bgSelect(row('Living room TV'));
+      select.value = String(BackgroundMode.OFF);
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      await settle();
+      expect(server.calls.background).toEqual([{ deviceId: 'tv', mode: BackgroundMode.OFF }]);
+      expect(server.calls.midi).toEqual([]);
+      expect(row('Living room TV').querySelector('.background .explain')?.textContent).toMatch(/plain background/i);
+    });
+
+    it('"Now using" follows the live state after a change', async () => {
+      const { row, server, settle, fixture } = await setup();
+      const select = bgSelect(row('This browser'));
+      select.value = String(BackgroundMode.ON);
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      await settle();
+      expect(server.calls.background).toEqual([{ deviceId: 'me', mode: BackgroundMode.ON }]);
+      TestBed.inject(StateStore).state.set(
+        stateOf({ devices: [device('me', 'This browser', { isCaller: true, backgroundMode: BackgroundMode.ON, effectiveBackground: true }), device('tv', 'Living room TV')] }),
+      );
+      fixture.detectChanges();
+      expect(row('This browser').querySelector('.background .effective')?.textContent).toBe('Now using: On');
+    });
+
+    it('a refused change is shown and the select goes back', async () => {
+      const { row, server, settle } = await setup();
+      server.failNext(new ConnectError('nope', Code.InvalidArgument));
+      const select = bgSelect(row('This browser'));
+      select.value = String(BackgroundMode.OFF);
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      await settle();
+      expect(TestBed.inject(ToastService).toasts()[0].message).toBe('nope');
+      expect(select.value).toBe(String(BackgroundMode.AUTO));
+    });
+  });
+
+  it('regression: a failed load shows an inline error with Try again (not only a toast), and Try again loads the list', async () => {
+    const { el, settle, button } = await setup({ failFirst: true });
+    expect(el.querySelector('[role="alert"]'), 'the error is on the page').not.toBeNull();
+    expect(el.querySelectorAll('li.device')).toHaveLength(0);
+    expect(TestBed.inject(ToastService).toasts(), 'no toast for the first load').toHaveLength(0);
+    button(el, 'Try again').click();
+    await settle();
+    expect(el.querySelectorAll('li.device')).toHaveLength(2);
+    expect(el.querySelector('[role="alert"]')).toBeNull();
   });
 
   it('a refused change is shown and the select goes back', async () => {

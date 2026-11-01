@@ -46,6 +46,7 @@ const (
 type Deps struct {
 	DB             *store.DB
 	Version        string
+	Name           string // the --name flag, told to a client that is looking for its server
 	Now            func() time.Time
 	Logger         *slog.Logger
 	TrustedProxies []netip.Prefix
@@ -117,6 +118,7 @@ type Mounted struct {
 	session *session.Service
 	backoff *auth.Backoff // tests inspect it
 	codes   *auth.CodeLogins
+	uploads *UploadServer // its cleanup of unfinished video uploads runs in Run
 }
 
 // Run does the background work of the services (building SoundFonts) until ctx is cancelled.
@@ -132,10 +134,13 @@ func (m *Mounted) Run(ctx context.Context) {
 		}
 		close(renderDone)
 	}()
+	uploadsDone := make(chan struct{})
+	go func() { m.uploads.RunCleanup(ctx); close(uploadsDone) }()
 	m.media.Run(ctx)
 	<-done
 	<-codesDone
 	<-renderDone
+	<-uploadsDone
 }
 
 // Close releases files held by the services.
@@ -202,14 +207,17 @@ func mount(handle func(pattern string, h http.Handler), d Deps) (*Mounted, error
 	authSrv := newAuthServer(d, backoff, h)
 	handle(kantahev1connect.NewAuthServiceHandler(authSrv, opts...))
 	adminOpts := append([]connect.HandlerOption{connect.WithInterceptors(ic, adminOnly{})}, opts[1:]...)
-	handle(kantahev1connect.NewAdminServiceHandler(newAdminServer(d, h), adminOpts...))
+	adminSrv := newAdminServer(d, h)
+	adminSrv.media = mediaSvc
+	handle(kantahev1connect.NewAdminServiceHandler(adminSrv, adminOpts...))
 	uploadOpts := []connect.HandlerOption{connect.WithInterceptors(ic), connect.WithReadMaxBytes(maxUploadMessage)}
-	handle(kantahev1connect.NewUploadServiceHandler(newUploadServer(d), uploadOpts...))
+	uploadSrv := newUploadServer(d)
+	handle(kantahev1connect.NewUploadServiceHandler(uploadSrv, uploadOpts...))
 	mediaSvc.Routes(handle)
 	handle(kantahev1connect.NewCatalogServiceHandler(newCatalogServer(d, cat, mediaSvc), opts...))
 	handle(kantahev1connect.NewSessionServiceHandler(newSessionServer(d, sess, cat), opts...))
 	handle(kantahev1connect.NewUserLibraryServiceHandler(newUserLibraryServer(d), opts...))
-	return &Mounted{media: mediaSvc, render: renderSvc, session: sess, backoff: backoff, codes: authSrv.codes}, nil
+	return &Mounted{media: mediaSvc, render: renderSvc, session: sess, backoff: backoff, codes: authSrv.codes, uploads: uploadSrv}, nil
 }
 
 // dummy is verified against when the email is unknown, so that an unknown
@@ -259,10 +267,13 @@ func toProtoUser(u users.User) *kantahev1.User {
 
 func toProtoDevice(d users.Device, callerID string, modes *devices.Modes) *kantahev1.Device {
 	mode := kantahev1.MidiMode(d.MidiMode)
+	background := kantahev1.BackgroundMode(d.BackgroundMode)
 	return &kantahev1.Device{
 		Id: d.ID, Name: d.Name, Type: kantahev1.DeviceType(d.Type), MicAvailable: d.MicAvailable, MemoryMb: int32(d.MemoryMB),
 		MidiMode: mode, EffectiveMidiMode: modes.Effective(mode, kantahev1.DeviceType(d.Type), d.MemoryMB, d.ID),
-		IsCaller: d.ID == callerID, LastSeenUnix: d.LastSeen,
+		BackgroundMode:      background,
+		EffectiveBackground: modes.EffectiveBackground(background, mode, kantahev1.DeviceType(d.Type), d.MemoryMB, d.ID),
+		IsCaller:            d.ID == callerID, LastSeenUnix: d.LastSeen,
 	}
 }
 
@@ -280,13 +291,13 @@ func (s *AuthServer) newSession(ctx context.Context, tx users.Querier, u users.U
 	return &kantahev1.AuthToken{Token: token, DeviceId: dev.ID, User: toProtoUser(u)}, nil
 }
 
-// GetServerInfo returns the version and whether the first admin is still missing.
+// GetServerInfo returns the version, the server name and whether the first admin is still missing.
 func (s *AuthServer) GetServerInfo(ctx context.Context, _ *connect.Request[kantahev1.GetServerInfoRequest]) (*connect.Response[kantahev1.GetServerInfoResponse], error) {
 	n, err := users.Count(ctx, s.d.DB)
 	if err != nil {
 		return nil, internalErr(s.d.Logger, "GetServerInfo", err)
 	}
-	return connect.NewResponse(&kantahev1.GetServerInfoResponse{Version: s.d.Version, SetupRequired: n == 0}), nil
+	return connect.NewResponse(&kantahev1.GetServerInfoResponse{Version: s.d.Version, Name: s.d.Name, SetupRequired: n == 0}), nil
 }
 
 var errSetupDone = errors.New(setupDoneText)

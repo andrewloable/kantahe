@@ -12,15 +12,18 @@ Direct dependencies are marked with *.
 - github.com/dustin/go-humanize v1.0.1: MIT (Copyright (c) 2005-2008  Dustin Sallings <dustin@spy.net>)
 - github.com/google/uuid v1.6.0: BSD-3-Clause (Copyright (c) 2009,2014 Google Inc. All rights reserved.)
 - github.com/icza/bitio v1.1.0: Apache-2.0
+- github.com/libp2p/zeroconf/v2* v2.2.0: MIT (Copyright (c) 2016 Stefan Smarzly)
 - github.com/mattn/go-isatty v0.0.24: MIT (Copyright (c) Yasuhiro MATSUMOTO <mattn.jp@gmail.com>)
 - github.com/mewkiz/flac* v1.0.14: Unlicense
 - github.com/mewkiz/pkg v0.0.0-20250417130911-3f050ff8c56d: Unlicense
 - github.com/mewpkg/term v0.0.0-20241026122259-37a80af23985: Unlicense
+- github.com/miekg/dns v1.1.43: BSD-3-Clause (Copyright (c) 2009 The Go Authors. All rights reserved.)
 - github.com/ncruces/go-strftime v1.0.0: MIT (Copyright (c) 2022 Nuno Cruces)
 - github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec: BSD-3-Clause (Copyright (c) 2012 The Go Authors. All rights reserved.)
 - github.com/rs/cors* v1.11.1: MIT (Copyright (c) 2014 Olivier Poitrey <rs@dailymotion.com>)
 - github.com/sinshu/go-meltysynth* v0.0.0-20230205031334-05d311382fc4: MIT (Copyright (C) 2021 Nobuaki Tanaka)
 - golang.org/x/crypto* v0.55.0: BSD-3-Clause (Copyright 2009 The Go Authors.)
+- golang.org/x/net v0.57.0: BSD-3-Clause (Copyright 2009 The Go Authors.)
 - golang.org/x/sys* v0.47.0: BSD-3-Clause (Copyright 2009 The Go Authors.)
 - golang.org/x/text* v0.41.0: BSD-3-Clause (Copyright 2009 The Go Authors.)
 - google.golang.org/protobuf* v1.36.12: BSD-3-Clause (Copyright (c) 2018 The Go Authors. All rights reserved.)
@@ -41,7 +44,7 @@ Direct dependencies are marked with *.
 - @connectrpc/connect* 2.3.0: Apache-2.0
 - @connectrpc/connect-web* 2.3.0: Apache-2.0
 - @standard-schema/spec 1.1.0: MIT (Copyright (c) 2024 Colin McDonnell)
-- fflate* 0.8.2: MIT (Copyright (c) 2023 Arjun Barrett)
+- fflate* 0.8.3: MIT (Copyright (c) 2026 Arjun Barrett)
 - qrcode-generator* 2.0.4: MIT
 - rxjs* 7.8.2: Apache-2.0
 - spessasynth_core 4.4.4: Apache-2.0
@@ -56,6 +59,12 @@ Direct dependencies are marked with *.
 - archive* 4.5.2: MIT (Copyright (c) 2013-2021 Brendan Duncan.)
 - args 2.7.0: BSD-3-Clause (Copyright 2013, the Dart project authors.)
 - async 2.13.1: BSD-3-Clause (Copyright 2015, the Dart project authors.)
+- bonsoir* 7.1.6: MIT (Copyright (c) 2019 Hugo DELAUNAY "Skyost")
+- bonsoir_android 7.1.4: MIT (Copyright (c) 2019 Hugo DELAUNAY "Skyost")
+- bonsoir_darwin 7.1.2: MIT (Copyright (c) 2019 Hugo DELAUNAY "Skyost")
+- bonsoir_linux 7.1.1: MIT (Copyright (c) 2019 Hugo DELAUNAY "Skyost")
+- bonsoir_platform_interface 7.0.1: MIT (Copyright (c) 2019 Hugo DELAUNAY "Skyost")
+- bonsoir_windows 7.3.1: MIT (Copyright (c) 2019 Hugo DELAUNAY "Skyost")
 - characters 1.4.1: BSD-3-Clause (Copyright 2019, the Dart project authors.)
 - clock 1.1.3: Apache-2.0
 - code_assets 1.2.1: BSD-3-Clause (Copyright 2025, the Dart project authors.)
@@ -93,7 +102,7 @@ Direct dependencies are marked with *.
 - jni_util 1.0.0: BSD-3-Clause (Copyright 2026, the Dart project authors.)
 - logging 1.3.0: BSD-3-Clause (Copyright 2013, the Dart project authors.)
 - material_color_utilities 0.13.0: Apache-2.0
-- meta 1.18.3: BSD-3-Clause (Copyright 2016, the Dart project authors.)
+- meta 1.19.0: BSD-3-Clause (Copyright 2016, the Dart project authors.)
 - objective_c 9.5.0: BSD-3-Clause (Copyright 2024, the Dart project authors.)
 - package_config 3.0.0: BSD-3-Clause (Copyright 2019, the Dart project authors.)
 - package_info_plus 10.2.2: BSD-3-Clause (Copyright 2017 The Chromium Authors. All rights reserved.)
@@ -2026,6 +2035,41 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~~
 
+### BSD-3-Clause: github.com/miekg/dns v1.1.43
+
+~~~~
+Copyright (c) 2009 The Go Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+As this is fork of the official Go code the same license applies.
+Extensions of the original work are copyright (c) 2011 Miek Gieben
+~~~~
+
 ### BSD-3-Clause: github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec
 
 ~~~~
@@ -2058,7 +2102,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~~
 
-### BSD-3-Clause: golang.org/x/crypto v0.55.0, golang.org/x/sys v0.47.0, golang.org/x/text v0.41.0
+### BSD-3-Clause: golang.org/x/crypto v0.55.0, golang.org/x/net v0.57.0, golang.org/x/sys v0.47.0, golang.org/x/text v0.41.0
 
 ~~~~
 Copyright 2009 The Go Authors.
@@ -2186,7 +2230,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~~
 
-### BSD-3-Clause: meta 1.18.3
+### BSD-3-Clause: meta 1.19.0
 
 ~~~~
 Copyright 2016, the Dart project authors.
@@ -2740,6 +2784,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ~~~~
 
+### MIT: bonsoir 7.1.6, bonsoir_android 7.1.4, bonsoir_darwin 7.1.2, bonsoir_linux 7.1.1, bonsoir_platform_interface 7.0.1, bonsoir_windows 7.3.1
+
+~~~~
+MIT License
+
+Copyright (c) 2019 Hugo DELAUNAY "Skyost"
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+~~~~
+
 ### MIT: cupertino_icons 1.0.9
 
 ~~~~
@@ -2765,12 +2835,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ~~~~
 
-### MIT: fflate 0.8.2
+### MIT: fflate 0.8.3
 
 ~~~~
 MIT License
 
-Copyright (c) 2023 Arjun Barrett
+Copyright (c) 2026 Arjun Barrett
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -2815,6 +2885,37 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 <http://www.opensource.org/licenses/mit-license.php>
+~~~~
+
+### MIT: github.com/libp2p/zeroconf/v2 v2.2.0
+
+~~~~
+The MIT License (MIT)
+ 
+Copyright (c) 2016 Stefan Smarzly
+Copyright (c) 2014 Oleksandr Lobunets
+
+Note: Copyright for portions of project zeroconf.sd are held by Oleksandr 
+      Lobunets, 2014, as part of project bonjour. All other copyright for 
+      project zeroconf.sd are held by Stefan Smarzly, 2016.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ~~~~
 
 ### MIT: github.com/mattn/go-isatty v0.0.24

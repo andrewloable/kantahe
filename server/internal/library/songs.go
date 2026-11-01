@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"os"
 )
 
 // ErrNotFound means there is no live song with that number.
@@ -80,9 +79,7 @@ func (im *Importer) Discard(ctx context.Context, number string) error {
 	if err != nil {
 		return err
 	}
-	if rerr := os.Remove(path); rerr != nil && !errors.Is(rerr, os.ErrNotExist) {
-		im.logger.Warn("cannot remove a discarded upload", "err", rerr)
-	}
+	im.removeDerived(path, removeUpload)
 	im.removeMediaIfUnused(ctx, media)
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 
 	kantahev1 "github.com/andrewloable/kantahe/server/gen/kantahe/v1"
+	"github.com/andrewloable/kantahe/server/internal/catalog"
 	"github.com/andrewloable/kantahe/server/internal/library"
 	"github.com/andrewloable/kantahe/server/internal/settings"
 )
@@ -95,7 +96,7 @@ func (s *AdminServer) DeleteSong(ctx context.Context, req *connect.Request[kanta
 	return connect.NewResponse(&kantahev1.DeleteSongResponse{}), nil
 }
 
-// RemoveSongs takes many songs off the list; their files are never deleted.
+// RemoveSongs takes many songs off the list. Their files are never deleted, except with scope BROKEN and delete_files.
 func (s *AdminServer) RemoveSongs(ctx context.Context, req *connect.Request[kantahev1.RemoveSongsRequest]) (*connect.Response[kantahev1.RemoveSongsResponse], error) {
 	if _, err := requireAdmin(ctx); err != nil {
 		return nil, err
@@ -106,14 +107,76 @@ func (s *AdminServer) RemoveSongs(ctx context.Context, req *connect.Request[kant
 		scope = library.ScopeAll
 	case kantahev1.RemoveScope_REMOVE_SCOPE_NO_MUSIC:
 		scope = library.ScopeNoMusic
+	case kantahev1.RemoveScope_REMOVE_SCOPE_BROKEN:
+		scope = library.ScopeBroken
 	default:
 		return nil, invalidArgument("choose which songs to remove")
 	}
-	n, err := s.d.Importer.RemoveSongs(ctx, scope)
+	if req.Msg.DeleteFiles && scope != library.ScopeBroken {
+		return nil, invalidArgument("files are deleted only when removing the broken songs")
+	}
+	res, err := s.d.Importer.RemoveSongsFiles(ctx, scope, req.Msg.DeleteFiles)
 	if err != nil {
 		return nil, internalErr(s.d.Logger, "RemoveSongs", err)
 	}
-	return connect.NewResponse(&kantahev1.RemoveSongsResponse{Removed: int32(n)}), nil
+	return connect.NewResponse(&kantahev1.RemoveSongsResponse{Removed: int32(res.Removed), FilesDeleted: int32(res.FilesDeleted), FilesFailed: int32(res.FilesFailed)}), nil
+}
+
+// CheckLibrary re-judges every song and streams its progress; the last message has done = true. One check at a time.
+func (s *AdminServer) CheckLibrary(ctx context.Context, _ *connect.Request[kantahev1.CheckLibraryRequest], stream *connect.ServerStream[kantahev1.CheckLibraryResponse]) error {
+	if _, err := requireAdmin(ctx); err != nil {
+		return err
+	}
+	if !s.checking.CompareAndSwap(false, true) {
+		return newErr(connect.CodeFailedPrecondition, "a check is already running")
+	}
+	defer s.checking.Store(false)
+	var sendErr error
+	var total int
+	broken, err := s.d.Importer.CheckLibrary(ctx, func(checked, all, found int) {
+		total = all
+		if sendErr == nil {
+			sendErr = stream.Send(&kantahev1.CheckLibraryResponse{Checked: int32(checked), Total: int32(all), Broken: int32(found)})
+		}
+	})
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil // the client went away; nobody is left to tell
+		}
+		return internalErr(s.d.Logger, "CheckLibrary", err)
+	}
+	if sendErr != nil {
+		return nil
+	}
+	return stream.Send(&kantahev1.CheckLibraryResponse{Checked: int32(total), Total: int32(total), Broken: int32(broken), Done: true})
+}
+
+// ListBrokenSongs returns a page of the songs marked broken, with the reason.
+func (s *AdminServer) ListBrokenSongs(ctx context.Context, req *connect.Request[kantahev1.ListBrokenSongsRequest]) (*connect.Response[kantahev1.ListBrokenSongsResponse], error) {
+	if _, err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	offset, err := catalog.DecodePageToken(req.Msg.PageToken)
+	if err != nil {
+		return nil, invalidArgument("the page token is not valid")
+	}
+	limit := int(req.Msg.PageSize)
+	if limit <= 0 {
+		limit = 50
+	}
+	limit = min(limit, 200)
+	songs, total, err := library.ListBroken(ctx, s.d.DB, offset, limit)
+	if err != nil {
+		return nil, internalErr(s.d.Logger, "ListBrokenSongs", err)
+	}
+	res := &kantahev1.ListBrokenSongsResponse{Total: int32(total)}
+	for _, b := range songs {
+		res.Songs = append(res.Songs, &kantahev1.BrokenSong{Song: toProtoSong(b.SongInfo, false), Reason: b.Reason})
+	}
+	if offset+len(songs) < total {
+		res.NextPageToken = catalog.EncodePageToken(offset + len(songs))
+	}
+	return connect.NewResponse(res), nil
 }
 
 // Rescan scans the watched folders now and reports the counts.
@@ -144,7 +207,8 @@ func (s *AdminServer) loadSettings(ctx context.Context) (*kantahev1.ServerSettin
 	if err != nil {
 		return nil, err
 	}
-	return &kantahev1.ServerSettings{MaxUploadBytes: cur.MaxUploadBytes, ScoreSeconds: int32(cur.ScoreSeconds)}, nil
+	return &kantahev1.ServerSettings{MaxUploadBytes: cur.MaxUploadBytes, ScoreSeconds: int32(cur.ScoreSeconds), MaxVideoBytes: cur.MaxVideoBytes,
+		BackgroundEnabled: cur.BackgroundEnabled, BackgroundShuffle: cur.BackgroundShuffle}, nil
 }
 
 // GetServerSettings returns the current settings.
@@ -171,7 +235,8 @@ func (s *AdminServer) UpdateServerSettings(ctx context.Context, req *connect.Req
 		seconds = &v
 	}
 	err := s.d.DB.WriteTx(ctx, func(tx *sql.Tx) error {
-		return settings.Update(ctx, tx, m.MaxUploadBytes, seconds)
+		return settings.Update(ctx, tx, settings.Patch{MaxUploadBytes: m.MaxUploadBytes, ScoreSeconds: seconds, MaxVideoBytes: m.MaxVideoBytes,
+			BackgroundEnabled: m.BackgroundEnabled, BackgroundShuffle: m.BackgroundShuffle})
 	})
 	if errors.Is(err, settings.ErrInvalid) {
 		return nil, invalidArgument(err.Error())

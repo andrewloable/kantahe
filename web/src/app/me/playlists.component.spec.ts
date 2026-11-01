@@ -9,13 +9,14 @@ import { fakeMe, song } from './testing';
 const ONE = song('1', 'Alpha', 'A');
 const TWO = song('2', 'Bravo', 'B');
 
-async function setup() {
+async function setup(opts: { failFirst?: boolean } = {}) {
   const server = fakeMe({
     playlists: [
       { id: 'p1', name: 'Party', songs: [ONE, TWO] },
       { id: 'p2', name: 'Slow', songs: [ONE] },
     ],
   });
+  if (opts.failFirst) server.failNext(new ConnectError('down', Code.Unavailable));
   TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: TRANSPORT, useValue: server.transport }] });
   const fixture = TestBed.createComponent(PlaylistsComponent);
   const el = fixture.nativeElement as HTMLElement;
@@ -32,6 +33,17 @@ async function setup() {
 }
 
 describe('PlaylistsComponent', () => {
+  it('regression: a failed load shows an inline error with Try again (not only a toast), and Try again loads the list', async () => {
+    const { el, settle, button } = await setup({ failFirst: true });
+    expect(el.querySelector('[role="alert"]'), 'the error is on the page').not.toBeNull();
+    expect(el.querySelectorAll('li.playlist')).toHaveLength(0);
+    expect(el.textContent, 'no "No playlists yet" next to the error').not.toContain('No playlists yet');
+    expect(TestBed.inject(ToastService).toasts(), 'no toast for the first load').toHaveLength(0);
+    button(el, 'Try again')!.click();
+    await settle();
+    expect(el.querySelectorAll('li.playlist')).toHaveLength(2);
+  });
+
   it('lists the playlists with their song counts, each linking to its page', async () => {
     const { el } = await setup();
     const rows = Array.from(el.querySelectorAll('li.playlist'));

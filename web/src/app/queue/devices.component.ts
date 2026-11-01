@@ -42,6 +42,11 @@ export const TYPES: Record<number, { icon: string; label: string }> = {
     </section>
   `,
   styles: `
+    .manage a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.75rem;
+    }
     .devices {
       list-style: none;
       margin: 0;

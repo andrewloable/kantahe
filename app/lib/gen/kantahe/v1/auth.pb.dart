@@ -63,15 +63,17 @@ class GetServerInfoRequest extends $pb.GeneratedMessage {
   static GetServerInfoRequest? _defaultInstance;
 }
 
-/// Version string and whether Setup is still allowed.
+/// Version string, server name and whether Setup is still allowed.
 class GetServerInfoResponse extends $pb.GeneratedMessage {
   factory GetServerInfoResponse({
     $core.String? version,
     $core.bool? setupRequired,
+    $core.String? name,
   }) {
     final result = GetServerInfoResponse._();
     if (version != null) result.version = version;
     if (setupRequired != null) result.setupRequired = setupRequired;
+    if (name != null) result.name = name;
     return result;
   }
 
@@ -90,6 +92,7 @@ class GetServerInfoResponse extends $pb.GeneratedMessage {
       createEmptyInstance: GetServerInfoResponse.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'version')
     ..aOB(2, _omitFieldNames ? '' : 'setupRequired')
+    ..aOS(3, _omitFieldNames ? '' : 'name')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -133,6 +136,16 @@ class GetServerInfoResponse extends $pb.GeneratedMessage {
   $core.bool hasSetupRequired() => $_has(1);
   @$pb.TagNumber(2)
   void clearSetupRequired() => $_clearField(2);
+
+  /// Human-readable server name, the --name flag; also the mDNS instance name.
+  @$pb.TagNumber(3)
+  $core.String get name => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set name($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearName() => $_clearField(3);
 }
 
 /// Creates the first admin and signs in the calling device.

@@ -5,6 +5,7 @@ import { APP_URL } from './e2e/ports';
 // server, and a real browser (see e2e/global-setup.ts for what is started).
 export default defineConfig({
   testDir: 'e2e',
+  testIgnore: 'responsive/**', // the responsive audit has configs of its own (npm run e2e:responsive)
   timeout: 180_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,

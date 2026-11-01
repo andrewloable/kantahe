@@ -77,6 +77,27 @@ describe('ToastsComponent', () => {
     expect(t.toasts().length).toBe(1);
   });
 
+  it('regression: the root instance shows nothing while the shell hosts the toasts, and the shell instance shows them', async () => {
+    const t = TestBed.inject(ToastService);
+    t.inShell.set(true);
+    t.show('Added Song');
+    const root = TestBed.createComponent(ToastsComponent);
+    const inShell = TestBed.createComponent(ToastsComponent);
+    inShell.componentRef.setInput('inShell', true);
+    await root.whenStable();
+    await inShell.whenStable();
+    expect((root.nativeElement as HTMLElement).textContent).not.toContain('Added Song');
+    expect((inShell.nativeElement as HTMLElement).textContent).toContain('Added Song');
+  });
+
+  it('without the shell the root instance shows the toasts', async () => {
+    const t = TestBed.inject(ToastService);
+    t.show('Added Song');
+    const root = TestBed.createComponent(ToastsComponent);
+    await root.whenStable();
+    expect((root.nativeElement as HTMLElement).textContent).toContain('Added Song');
+  });
+
   it('shows the action as a button that runs it', async () => {
     const f = TestBed.createComponent(ToastsComponent);
     const t = TestBed.inject(ToastService);

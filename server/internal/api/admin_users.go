@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"sync/atomic"
 
 	"connectrpc.com/connect"
 
 	kantahev1 "github.com/andrewloable/kantahe/server/gen/kantahe/v1"
 	"github.com/andrewloable/kantahe/server/gen/kantahe/v1/kantahev1connect"
 	"github.com/andrewloable/kantahe/server/internal/auth"
+	"github.com/andrewloable/kantahe/server/internal/media"
 	"github.com/andrewloable/kantahe/server/internal/users"
 )
 
@@ -19,6 +21,10 @@ type AdminServer struct {
 	kantahev1connect.UnimplementedAdminServiceHandler
 	d Deps
 	h *hasher
+	// media signs the preview URLs of the background videos; Mount sets it.
+	media *media.Service
+	// checking is set while a CheckLibrary runs: a second one is refused.
+	checking atomic.Bool
 }
 
 func newAdminServer(d Deps, h *hasher) *AdminServer { return &AdminServer{d: d, h: h} }

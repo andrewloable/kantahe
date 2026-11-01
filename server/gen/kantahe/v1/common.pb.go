@@ -189,6 +189,59 @@ func (MidiMode) EnumDescriptor() ([]byte, []int) {
 	return file_kantahe_v1_common_proto_rawDescGZIP(), []int{2}
 }
 
+// Per-device background video choice (plan 4.2); AUTO lets the server decide: off for devices on the low-power or server MIDI mode or with little memory.
+type BackgroundMode int32
+
+const (
+	BackgroundMode_BACKGROUND_MODE_UNSPECIFIED BackgroundMode = 0
+	BackgroundMode_BACKGROUND_MODE_AUTO        BackgroundMode = 1
+	BackgroundMode_BACKGROUND_MODE_ON          BackgroundMode = 2
+	BackgroundMode_BACKGROUND_MODE_OFF         BackgroundMode = 3
+)
+
+// Enum value maps for BackgroundMode.
+var (
+	BackgroundMode_name = map[int32]string{
+		0: "BACKGROUND_MODE_UNSPECIFIED",
+		1: "BACKGROUND_MODE_AUTO",
+		2: "BACKGROUND_MODE_ON",
+		3: "BACKGROUND_MODE_OFF",
+	}
+	BackgroundMode_value = map[string]int32{
+		"BACKGROUND_MODE_UNSPECIFIED": 0,
+		"BACKGROUND_MODE_AUTO":        1,
+		"BACKGROUND_MODE_ON":          2,
+		"BACKGROUND_MODE_OFF":         3,
+	}
+)
+
+func (x BackgroundMode) Enum() *BackgroundMode {
+	p := new(BackgroundMode)
+	*p = x
+	return p
+}
+
+func (x BackgroundMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (BackgroundMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_kantahe_v1_common_proto_enumTypes[3].Descriptor()
+}
+
+func (BackgroundMode) Type() protoreflect.EnumType {
+	return &file_kantahe_v1_common_proto_enumTypes[3]
+}
+
+func (x BackgroundMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use BackgroundMode.Descriptor instead.
+func (BackgroundMode) EnumDescriptor() ([]byte, []int) {
+	return file_kantahe_v1_common_proto_rawDescGZIP(), []int{3}
+}
+
 // One library entry; number is unique and never changes (plan 6). Visible to every signed-in user.
 type Song struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -590,8 +643,11 @@ type Device struct {
 	EffectiveMidiMode MidiMode `protobuf:"varint,8,opt,name=effective_midi_mode,json=effectiveMidiMode,proto3,enum=kantahe.v1.MidiMode" json:"effective_midi_mode,omitempty"`
 	IsCaller          bool     `protobuf:"varint,9,opt,name=is_caller,json=isCaller,proto3" json:"is_caller,omitempty"`
 	LastSeenUnix      int64    `protobuf:"varint,10,opt,name=last_seen_unix,json=lastSeenUnix,proto3" json:"last_seen_unix,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// What the user chose; effective_background is what the server resolved from it (whether this device plays the background videos).
+	BackgroundMode      BackgroundMode `protobuf:"varint,11,opt,name=background_mode,json=backgroundMode,proto3,enum=kantahe.v1.BackgroundMode" json:"background_mode,omitempty"`
+	EffectiveBackground bool           `protobuf:"varint,12,opt,name=effective_background,json=effectiveBackground,proto3" json:"effective_background,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Device) Reset() {
@@ -694,6 +750,174 @@ func (x *Device) GetLastSeenUnix() int64 {
 	return 0
 }
 
+func (x *Device) GetBackgroundMode() BackgroundMode {
+	if x != nil {
+		return x.BackgroundMode
+	}
+	return BackgroundMode_BACKGROUND_MODE_UNSPECIFIED
+}
+
+func (x *Device) GetEffectiveBackground() bool {
+	if x != nil {
+		return x.EffectiveBackground
+	}
+	return false
+}
+
+// A background video uploaded by the admin (plan 4.2). url is a signed URL (ListVideos: 1 hour, for the admin preview; GetBackground: 6 hours).
+type Video struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name       string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	SizeBytes  int64                  `protobuf:"varint,3,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	DurationMs int64                  `protobuf:"varint,4,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	Width      int32                  `protobuf:"varint,5,opt,name=width,proto3" json:"width,omitempty"`
+	Height     int32                  `protobuf:"varint,6,opt,name=height,proto3" json:"height,omitempty"`
+	// Video codec of the file, for example "avc1".
+	Codec string `protobuf:"bytes,7,opt,name=codec,proto3" json:"codec,omitempty"`
+	// The audio track is never played; this only tells the admin the file carries one.
+	HasAudio bool `protobuf:"varint,8,opt,name=has_audio,json=hasAudio,proto3" json:"has_audio,omitempty"`
+	// The moov box comes before the media data, so playback can start before the whole file is read.
+	Faststart bool `protobuf:"varint,9,opt,name=faststart,proto3" json:"faststart,omitempty"`
+	Enabled   bool `protobuf:"varint,10,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Place in the loop, counted from 1.
+	Position      int32  `protobuf:"varint,11,opt,name=position,proto3" json:"position,omitempty"`
+	CreatedAtUnix int64  `protobuf:"varint,12,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	Url           string `protobuf:"bytes,13,opt,name=url,proto3" json:"url,omitempty"`
+	// Short advice texts such as "wider than 1920 px: may stutter on a TV" or "not optimised for streaming (moov after mdat)".
+	Warnings      []string `protobuf:"bytes,14,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Video) Reset() {
+	*x = Video{}
+	mi := &file_kantahe_v1_common_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Video) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Video) ProtoMessage() {}
+
+func (x *Video) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_common_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Video.ProtoReflect.Descriptor instead.
+func (*Video) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_common_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *Video) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Video) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Video) GetSizeBytes() int64 {
+	if x != nil {
+		return x.SizeBytes
+	}
+	return 0
+}
+
+func (x *Video) GetDurationMs() int64 {
+	if x != nil {
+		return x.DurationMs
+	}
+	return 0
+}
+
+func (x *Video) GetWidth() int32 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
+}
+
+func (x *Video) GetHeight() int32 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *Video) GetCodec() string {
+	if x != nil {
+		return x.Codec
+	}
+	return ""
+}
+
+func (x *Video) GetHasAudio() bool {
+	if x != nil {
+		return x.HasAudio
+	}
+	return false
+}
+
+func (x *Video) GetFaststart() bool {
+	if x != nil {
+		return x.Faststart
+	}
+	return false
+}
+
+func (x *Video) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *Video) GetPosition() int32 {
+	if x != nil {
+		return x.Position
+	}
+	return 0
+}
+
+func (x *Video) GetCreatedAtUnix() int64 {
+	if x != nil {
+		return x.CreatedAtUnix
+	}
+	return 0
+}
+
+func (x *Video) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *Video) GetWarnings() []string {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
+}
+
 // A device token with its user; the token is shown once and only its hash is stored (plan 5).
 type AuthToken struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -706,7 +930,7 @@ type AuthToken struct {
 
 func (x *AuthToken) Reset() {
 	*x = AuthToken{}
-	mi := &file_kantahe_v1_common_proto_msgTypes[6]
+	mi := &file_kantahe_v1_common_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -718,7 +942,7 @@ func (x *AuthToken) String() string {
 func (*AuthToken) ProtoMessage() {}
 
 func (x *AuthToken) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_common_proto_msgTypes[6]
+	mi := &file_kantahe_v1_common_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -731,7 +955,7 @@ func (x *AuthToken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthToken.ProtoReflect.Descriptor instead.
 func (*AuthToken) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_common_proto_rawDescGZIP(), []int{6}
+	return file_kantahe_v1_common_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AuthToken) GetToken() string {
@@ -792,7 +1016,7 @@ const file_kantahe_v1_common_proto_rawDesc = "" +
 	"\x05admin\x18\x04 \x01(\bR\x05admin\x12\x1a\n" +
 	"\buploader\x18\x05 \x01(\bR\buploader\x120\n" +
 	"\x14must_change_password\x18\x06 \x01(\bR\x12mustChangePassword\x12\x1a\n" +
-	"\bdisabled\x18\a \x01(\bR\bdisabled\"\xee\x02\n" +
+	"\bdisabled\x18\a \x01(\bR\bdisabled\"\xe6\x03\n" +
 	"\x06Device\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12*\n" +
@@ -804,7 +1028,27 @@ const file_kantahe_v1_common_proto_rawDesc = "" +
 	"\x13effective_midi_mode\x18\b \x01(\x0e2\x14.kantahe.v1.MidiModeR\x11effectiveMidiMode\x12\x1b\n" +
 	"\tis_caller\x18\t \x01(\bR\bisCaller\x12$\n" +
 	"\x0elast_seen_unix\x18\n" +
-	" \x01(\x03R\flastSeenUnix\"d\n" +
+	" \x01(\x03R\flastSeenUnix\x12C\n" +
+	"\x0fbackground_mode\x18\v \x01(\x0e2\x1a.kantahe.v1.BackgroundModeR\x0ebackgroundMode\x121\n" +
+	"\x14effective_background\x18\f \x01(\bR\x13effectiveBackground\"\xf6\x02\n" +
+	"\x05Video\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\x03 \x01(\x03R\tsizeBytes\x12\x1f\n" +
+	"\vduration_ms\x18\x04 \x01(\x03R\n" +
+	"durationMs\x12\x14\n" +
+	"\x05width\x18\x05 \x01(\x05R\x05width\x12\x16\n" +
+	"\x06height\x18\x06 \x01(\x05R\x06height\x12\x14\n" +
+	"\x05codec\x18\a \x01(\tR\x05codec\x12\x1b\n" +
+	"\thas_audio\x18\b \x01(\bR\bhasAudio\x12\x1c\n" +
+	"\tfaststart\x18\t \x01(\bR\tfaststart\x12\x18\n" +
+	"\aenabled\x18\n" +
+	" \x01(\bR\aenabled\x12\x1a\n" +
+	"\bposition\x18\v \x01(\x05R\bposition\x12&\n" +
+	"\x0fcreated_at_unix\x18\f \x01(\x03R\rcreatedAtUnix\x12\x10\n" +
+	"\x03url\x18\r \x01(\tR\x03url\x12\x1a\n" +
+	"\bwarnings\x18\x0e \x03(\tR\bwarnings\"d\n" +
 	"\tAuthToken\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1b\n" +
 	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\x12$\n" +
@@ -828,7 +1072,12 @@ const file_kantahe_v1_common_proto_rawDesc = "" +
 	"\x0eMIDI_MODE_AUTO\x10\x01\x12\x12\n" +
 	"\x0eMIDI_MODE_FULL\x10\x02\x12\x17\n" +
 	"\x13MIDI_MODE_LOW_POWER\x10\x03\x12\x14\n" +
-	"\x10MIDI_MODE_SERVER\x10\x04B\xa7\x01\n" +
+	"\x10MIDI_MODE_SERVER\x10\x04*|\n" +
+	"\x0eBackgroundMode\x12\x1f\n" +
+	"\x1bBACKGROUND_MODE_UNSPECIFIED\x10\x00\x12\x18\n" +
+	"\x14BACKGROUND_MODE_AUTO\x10\x01\x12\x16\n" +
+	"\x12BACKGROUND_MODE_ON\x10\x02\x12\x17\n" +
+	"\x13BACKGROUND_MODE_OFF\x10\x03B\xa7\x01\n" +
 	"\x0ecom.kantahe.v1B\vCommonProtoP\x01Z?github.com/andrewloable/kantahe/server/gen/kantahe/v1;kantahev1\xa2\x02\x03KXX\xaa\x02\n" +
 	"Kantahe.V1\xca\x02\n" +
 	"Kantahe\\V1\xe2\x02\x16Kantahe\\V1\\GPBMetadata\xea\x02\vKantahe::V1b\x06proto3"
@@ -845,33 +1094,36 @@ func file_kantahe_v1_common_proto_rawDescGZIP() []byte {
 	return file_kantahe_v1_common_proto_rawDescData
 }
 
-var file_kantahe_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_kantahe_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_kantahe_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_kantahe_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_kantahe_v1_common_proto_goTypes = []any{
-	(Format)(0),       // 0: kantahe.v1.Format
-	(DeviceType)(0),   // 1: kantahe.v1.DeviceType
-	(MidiMode)(0),     // 2: kantahe.v1.MidiMode
-	(*Song)(nil),      // 3: kantahe.v1.Song
-	(*LyricWord)(nil), // 4: kantahe.v1.LyricWord
-	(*LyricLine)(nil), // 5: kantahe.v1.LyricLine
-	(*Lyrics)(nil),    // 6: kantahe.v1.Lyrics
-	(*User)(nil),      // 7: kantahe.v1.User
-	(*Device)(nil),    // 8: kantahe.v1.Device
-	(*AuthToken)(nil), // 9: kantahe.v1.AuthToken
+	(Format)(0),         // 0: kantahe.v1.Format
+	(DeviceType)(0),     // 1: kantahe.v1.DeviceType
+	(MidiMode)(0),       // 2: kantahe.v1.MidiMode
+	(BackgroundMode)(0), // 3: kantahe.v1.BackgroundMode
+	(*Song)(nil),        // 4: kantahe.v1.Song
+	(*LyricWord)(nil),   // 5: kantahe.v1.LyricWord
+	(*LyricLine)(nil),   // 6: kantahe.v1.LyricLine
+	(*Lyrics)(nil),      // 7: kantahe.v1.Lyrics
+	(*User)(nil),        // 8: kantahe.v1.User
+	(*Device)(nil),      // 9: kantahe.v1.Device
+	(*Video)(nil),       // 10: kantahe.v1.Video
+	(*AuthToken)(nil),   // 11: kantahe.v1.AuthToken
 }
 var file_kantahe_v1_common_proto_depIdxs = []int32{
 	0, // 0: kantahe.v1.Song.format:type_name -> kantahe.v1.Format
-	4, // 1: kantahe.v1.LyricLine.words:type_name -> kantahe.v1.LyricWord
-	5, // 2: kantahe.v1.Lyrics.lines:type_name -> kantahe.v1.LyricLine
+	5, // 1: kantahe.v1.LyricLine.words:type_name -> kantahe.v1.LyricWord
+	6, // 2: kantahe.v1.Lyrics.lines:type_name -> kantahe.v1.LyricLine
 	1, // 3: kantahe.v1.Device.type:type_name -> kantahe.v1.DeviceType
 	2, // 4: kantahe.v1.Device.midi_mode:type_name -> kantahe.v1.MidiMode
 	2, // 5: kantahe.v1.Device.effective_midi_mode:type_name -> kantahe.v1.MidiMode
-	7, // 6: kantahe.v1.AuthToken.user:type_name -> kantahe.v1.User
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	3, // 6: kantahe.v1.Device.background_mode:type_name -> kantahe.v1.BackgroundMode
+	8, // 7: kantahe.v1.AuthToken.user:type_name -> kantahe.v1.User
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_kantahe_v1_common_proto_init() }
@@ -884,8 +1136,8 @@ func file_kantahe_v1_common_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kantahe_v1_common_proto_rawDesc), len(file_kantahe_v1_common_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   7,
+			NumEnums:      4,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

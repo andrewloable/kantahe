@@ -54,6 +54,23 @@ const (
 	// AdminServiceRemoveSongsProcedure is the fully-qualified name of the AdminService's RemoveSongs
 	// RPC.
 	AdminServiceRemoveSongsProcedure = "/kantahe.v1.AdminService/RemoveSongs"
+	// AdminServiceCheckLibraryProcedure is the fully-qualified name of the AdminService's CheckLibrary
+	// RPC.
+	AdminServiceCheckLibraryProcedure = "/kantahe.v1.AdminService/CheckLibrary"
+	// AdminServiceListBrokenSongsProcedure is the fully-qualified name of the AdminService's
+	// ListBrokenSongs RPC.
+	AdminServiceListBrokenSongsProcedure = "/kantahe.v1.AdminService/ListBrokenSongs"
+	// AdminServiceListVideosProcedure is the fully-qualified name of the AdminService's ListVideos RPC.
+	AdminServiceListVideosProcedure = "/kantahe.v1.AdminService/ListVideos"
+	// AdminServiceUpdateVideoProcedure is the fully-qualified name of the AdminService's UpdateVideo
+	// RPC.
+	AdminServiceUpdateVideoProcedure = "/kantahe.v1.AdminService/UpdateVideo"
+	// AdminServiceReorderVideosProcedure is the fully-qualified name of the AdminService's
+	// ReorderVideos RPC.
+	AdminServiceReorderVideosProcedure = "/kantahe.v1.AdminService/ReorderVideos"
+	// AdminServiceDeleteVideoProcedure is the fully-qualified name of the AdminService's DeleteVideo
+	// RPC.
+	AdminServiceDeleteVideoProcedure = "/kantahe.v1.AdminService/DeleteVideo"
 	// AdminServiceRescanProcedure is the fully-qualified name of the AdminService's Rescan RPC.
 	AdminServiceRescanProcedure = "/kantahe.v1.AdminService/Rescan"
 	// AdminServiceGetServerSettingsProcedure is the fully-qualified name of the AdminService's
@@ -82,8 +99,22 @@ type AdminServiceClient interface {
 	UpdateSong(context.Context, *connect.Request[v1.UpdateSongRequest]) (*connect.Response[v1.UpdateSongResponse], error)
 	// Admin only. Removes the entry and, unless keep_file is set, its file; fails with the reason if the file cannot be deleted.
 	DeleteSong(context.Context, *connect.Request[v1.DeleteSongRequest]) (*connect.Response[v1.DeleteSongResponse], error)
-	// Admin only. Removes many songs from the list at once. The song files are never deleted.
+	// Admin only. Removes many songs from the list at once. The song files are never deleted, except with scope BROKEN and delete_files.
 	RemoveSongs(context.Context, *connect.Request[v1.RemoveSongsRequest]) (*connect.Response[v1.RemoveSongsResponse], error)
+	// Admin only. Re-judges every live song (file missing, MIDI without music, unparsable, a .karmp3 whose audio cannot be read), marks the
+	// broken ones as failed (they leave every user's lists and searches) and clears the mark of repaired ones. Streams its progress; the
+	// last message has done = true. FAILED_PRECONDITION when a check is already running.
+	CheckLibrary(context.Context, *connect.Request[v1.CheckLibraryRequest]) (*connect.ServerStreamForClient[v1.CheckLibraryResponse], error)
+	// Admin only. Lists the songs marked broken, with the reason, ordered by number.
+	ListBrokenSongs(context.Context, *connect.Request[v1.ListBrokenSongsRequest]) (*connect.Response[v1.ListBrokenSongsResponse], error)
+	// Admin only. The background videos in loop order, each with a signed preview URL (1 hour).
+	ListVideos(context.Context, *connect.Request[v1.ListVideosRequest]) (*connect.Response[v1.ListVideosResponse], error)
+	// Admin only. Renames or enables/disables a video; unset optional fields are left unchanged; NOT_FOUND for an unknown id.
+	UpdateVideo(context.Context, *connect.Request[v1.UpdateVideoRequest]) (*connect.Response[v1.UpdateVideoResponse], error)
+	// Admin only. Sets the loop order; ids must be exactly the existing ids (INVALID_ARGUMENT otherwise).
+	ReorderVideos(context.Context, *connect.Request[v1.ReorderVideosRequest]) (*connect.Response[v1.ReorderVideosResponse], error)
+	// Admin only. Removes the video and its file; NOT_FOUND for an unknown id.
+	DeleteVideo(context.Context, *connect.Request[v1.DeleteVideoRequest]) (*connect.Response[v1.DeleteVideoResponse], error)
 	// Admin only. Rescans watched folders and reports the counts.
 	Rescan(context.Context, *connect.Request[v1.RescanRequest]) (*connect.Response[v1.RescanResponse], error)
 	// Admin only. Reads the server settings.
@@ -157,6 +188,42 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(adminServiceMethods.ByName("RemoveSongs")),
 			connect.WithClientOptions(opts...),
 		),
+		checkLibrary: connect.NewClient[v1.CheckLibraryRequest, v1.CheckLibraryResponse](
+			httpClient,
+			baseURL+AdminServiceCheckLibraryProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("CheckLibrary")),
+			connect.WithClientOptions(opts...),
+		),
+		listBrokenSongs: connect.NewClient[v1.ListBrokenSongsRequest, v1.ListBrokenSongsResponse](
+			httpClient,
+			baseURL+AdminServiceListBrokenSongsProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("ListBrokenSongs")),
+			connect.WithClientOptions(opts...),
+		),
+		listVideos: connect.NewClient[v1.ListVideosRequest, v1.ListVideosResponse](
+			httpClient,
+			baseURL+AdminServiceListVideosProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("ListVideos")),
+			connect.WithClientOptions(opts...),
+		),
+		updateVideo: connect.NewClient[v1.UpdateVideoRequest, v1.UpdateVideoResponse](
+			httpClient,
+			baseURL+AdminServiceUpdateVideoProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("UpdateVideo")),
+			connect.WithClientOptions(opts...),
+		),
+		reorderVideos: connect.NewClient[v1.ReorderVideosRequest, v1.ReorderVideosResponse](
+			httpClient,
+			baseURL+AdminServiceReorderVideosProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("ReorderVideos")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteVideo: connect.NewClient[v1.DeleteVideoRequest, v1.DeleteVideoResponse](
+			httpClient,
+			baseURL+AdminServiceDeleteVideoProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("DeleteVideo")),
+			connect.WithClientOptions(opts...),
+		),
 		rescan: connect.NewClient[v1.RescanRequest, v1.RescanResponse](
 			httpClient,
 			baseURL+AdminServiceRescanProcedure,
@@ -189,6 +256,12 @@ type adminServiceClient struct {
 	updateSong           *connect.Client[v1.UpdateSongRequest, v1.UpdateSongResponse]
 	deleteSong           *connect.Client[v1.DeleteSongRequest, v1.DeleteSongResponse]
 	removeSongs          *connect.Client[v1.RemoveSongsRequest, v1.RemoveSongsResponse]
+	checkLibrary         *connect.Client[v1.CheckLibraryRequest, v1.CheckLibraryResponse]
+	listBrokenSongs      *connect.Client[v1.ListBrokenSongsRequest, v1.ListBrokenSongsResponse]
+	listVideos           *connect.Client[v1.ListVideosRequest, v1.ListVideosResponse]
+	updateVideo          *connect.Client[v1.UpdateVideoRequest, v1.UpdateVideoResponse]
+	reorderVideos        *connect.Client[v1.ReorderVideosRequest, v1.ReorderVideosResponse]
+	deleteVideo          *connect.Client[v1.DeleteVideoRequest, v1.DeleteVideoResponse]
 	rescan               *connect.Client[v1.RescanRequest, v1.RescanResponse]
 	getServerSettings    *connect.Client[v1.GetServerSettingsRequest, v1.GetServerSettingsResponse]
 	updateServerSettings *connect.Client[v1.UpdateServerSettingsRequest, v1.UpdateServerSettingsResponse]
@@ -239,6 +312,36 @@ func (c *adminServiceClient) RemoveSongs(ctx context.Context, req *connect.Reque
 	return c.removeSongs.CallUnary(ctx, req)
 }
 
+// CheckLibrary calls kantahe.v1.AdminService.CheckLibrary.
+func (c *adminServiceClient) CheckLibrary(ctx context.Context, req *connect.Request[v1.CheckLibraryRequest]) (*connect.ServerStreamForClient[v1.CheckLibraryResponse], error) {
+	return c.checkLibrary.CallServerStream(ctx, req)
+}
+
+// ListBrokenSongs calls kantahe.v1.AdminService.ListBrokenSongs.
+func (c *adminServiceClient) ListBrokenSongs(ctx context.Context, req *connect.Request[v1.ListBrokenSongsRequest]) (*connect.Response[v1.ListBrokenSongsResponse], error) {
+	return c.listBrokenSongs.CallUnary(ctx, req)
+}
+
+// ListVideos calls kantahe.v1.AdminService.ListVideos.
+func (c *adminServiceClient) ListVideos(ctx context.Context, req *connect.Request[v1.ListVideosRequest]) (*connect.Response[v1.ListVideosResponse], error) {
+	return c.listVideos.CallUnary(ctx, req)
+}
+
+// UpdateVideo calls kantahe.v1.AdminService.UpdateVideo.
+func (c *adminServiceClient) UpdateVideo(ctx context.Context, req *connect.Request[v1.UpdateVideoRequest]) (*connect.Response[v1.UpdateVideoResponse], error) {
+	return c.updateVideo.CallUnary(ctx, req)
+}
+
+// ReorderVideos calls kantahe.v1.AdminService.ReorderVideos.
+func (c *adminServiceClient) ReorderVideos(ctx context.Context, req *connect.Request[v1.ReorderVideosRequest]) (*connect.Response[v1.ReorderVideosResponse], error) {
+	return c.reorderVideos.CallUnary(ctx, req)
+}
+
+// DeleteVideo calls kantahe.v1.AdminService.DeleteVideo.
+func (c *adminServiceClient) DeleteVideo(ctx context.Context, req *connect.Request[v1.DeleteVideoRequest]) (*connect.Response[v1.DeleteVideoResponse], error) {
+	return c.deleteVideo.CallUnary(ctx, req)
+}
+
 // Rescan calls kantahe.v1.AdminService.Rescan.
 func (c *adminServiceClient) Rescan(ctx context.Context, req *connect.Request[v1.RescanRequest]) (*connect.Response[v1.RescanResponse], error) {
 	return c.rescan.CallUnary(ctx, req)
@@ -272,8 +375,22 @@ type AdminServiceHandler interface {
 	UpdateSong(context.Context, *connect.Request[v1.UpdateSongRequest]) (*connect.Response[v1.UpdateSongResponse], error)
 	// Admin only. Removes the entry and, unless keep_file is set, its file; fails with the reason if the file cannot be deleted.
 	DeleteSong(context.Context, *connect.Request[v1.DeleteSongRequest]) (*connect.Response[v1.DeleteSongResponse], error)
-	// Admin only. Removes many songs from the list at once. The song files are never deleted.
+	// Admin only. Removes many songs from the list at once. The song files are never deleted, except with scope BROKEN and delete_files.
 	RemoveSongs(context.Context, *connect.Request[v1.RemoveSongsRequest]) (*connect.Response[v1.RemoveSongsResponse], error)
+	// Admin only. Re-judges every live song (file missing, MIDI without music, unparsable, a .karmp3 whose audio cannot be read), marks the
+	// broken ones as failed (they leave every user's lists and searches) and clears the mark of repaired ones. Streams its progress; the
+	// last message has done = true. FAILED_PRECONDITION when a check is already running.
+	CheckLibrary(context.Context, *connect.Request[v1.CheckLibraryRequest], *connect.ServerStream[v1.CheckLibraryResponse]) error
+	// Admin only. Lists the songs marked broken, with the reason, ordered by number.
+	ListBrokenSongs(context.Context, *connect.Request[v1.ListBrokenSongsRequest]) (*connect.Response[v1.ListBrokenSongsResponse], error)
+	// Admin only. The background videos in loop order, each with a signed preview URL (1 hour).
+	ListVideos(context.Context, *connect.Request[v1.ListVideosRequest]) (*connect.Response[v1.ListVideosResponse], error)
+	// Admin only. Renames or enables/disables a video; unset optional fields are left unchanged; NOT_FOUND for an unknown id.
+	UpdateVideo(context.Context, *connect.Request[v1.UpdateVideoRequest]) (*connect.Response[v1.UpdateVideoResponse], error)
+	// Admin only. Sets the loop order; ids must be exactly the existing ids (INVALID_ARGUMENT otherwise).
+	ReorderVideos(context.Context, *connect.Request[v1.ReorderVideosRequest]) (*connect.Response[v1.ReorderVideosResponse], error)
+	// Admin only. Removes the video and its file; NOT_FOUND for an unknown id.
+	DeleteVideo(context.Context, *connect.Request[v1.DeleteVideoRequest]) (*connect.Response[v1.DeleteVideoResponse], error)
 	// Admin only. Rescans watched folders and reports the counts.
 	Rescan(context.Context, *connect.Request[v1.RescanRequest]) (*connect.Response[v1.RescanResponse], error)
 	// Admin only. Reads the server settings.
@@ -343,6 +460,42 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(adminServiceMethods.ByName("RemoveSongs")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminServiceCheckLibraryHandler := connect.NewServerStreamHandler(
+		AdminServiceCheckLibraryProcedure,
+		svc.CheckLibrary,
+		connect.WithSchema(adminServiceMethods.ByName("CheckLibrary")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceListBrokenSongsHandler := connect.NewUnaryHandler(
+		AdminServiceListBrokenSongsProcedure,
+		svc.ListBrokenSongs,
+		connect.WithSchema(adminServiceMethods.ByName("ListBrokenSongs")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceListVideosHandler := connect.NewUnaryHandler(
+		AdminServiceListVideosProcedure,
+		svc.ListVideos,
+		connect.WithSchema(adminServiceMethods.ByName("ListVideos")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceUpdateVideoHandler := connect.NewUnaryHandler(
+		AdminServiceUpdateVideoProcedure,
+		svc.UpdateVideo,
+		connect.WithSchema(adminServiceMethods.ByName("UpdateVideo")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceReorderVideosHandler := connect.NewUnaryHandler(
+		AdminServiceReorderVideosProcedure,
+		svc.ReorderVideos,
+		connect.WithSchema(adminServiceMethods.ByName("ReorderVideos")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceDeleteVideoHandler := connect.NewUnaryHandler(
+		AdminServiceDeleteVideoProcedure,
+		svc.DeleteVideo,
+		connect.WithSchema(adminServiceMethods.ByName("DeleteVideo")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminServiceRescanHandler := connect.NewUnaryHandler(
 		AdminServiceRescanProcedure,
 		svc.Rescan,
@@ -381,6 +534,18 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 			adminServiceDeleteSongHandler.ServeHTTP(w, r)
 		case AdminServiceRemoveSongsProcedure:
 			adminServiceRemoveSongsHandler.ServeHTTP(w, r)
+		case AdminServiceCheckLibraryProcedure:
+			adminServiceCheckLibraryHandler.ServeHTTP(w, r)
+		case AdminServiceListBrokenSongsProcedure:
+			adminServiceListBrokenSongsHandler.ServeHTTP(w, r)
+		case AdminServiceListVideosProcedure:
+			adminServiceListVideosHandler.ServeHTTP(w, r)
+		case AdminServiceUpdateVideoProcedure:
+			adminServiceUpdateVideoHandler.ServeHTTP(w, r)
+		case AdminServiceReorderVideosProcedure:
+			adminServiceReorderVideosHandler.ServeHTTP(w, r)
+		case AdminServiceDeleteVideoProcedure:
+			adminServiceDeleteVideoHandler.ServeHTTP(w, r)
 		case AdminServiceRescanProcedure:
 			adminServiceRescanHandler.ServeHTTP(w, r)
 		case AdminServiceGetServerSettingsProcedure:
@@ -430,6 +595,30 @@ func (UnimplementedAdminServiceHandler) DeleteSong(context.Context, *connect.Req
 
 func (UnimplementedAdminServiceHandler) RemoveSongs(context.Context, *connect.Request[v1.RemoveSongsRequest]) (*connect.Response[v1.RemoveSongsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.RemoveSongs is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) CheckLibrary(context.Context, *connect.Request[v1.CheckLibraryRequest], *connect.ServerStream[v1.CheckLibraryResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.CheckLibrary is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) ListBrokenSongs(context.Context, *connect.Request[v1.ListBrokenSongsRequest]) (*connect.Response[v1.ListBrokenSongsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.ListBrokenSongs is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) ListVideos(context.Context, *connect.Request[v1.ListVideosRequest]) (*connect.Response[v1.ListVideosResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.ListVideos is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) UpdateVideo(context.Context, *connect.Request[v1.UpdateVideoRequest]) (*connect.Response[v1.UpdateVideoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.UpdateVideo is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) ReorderVideos(context.Context, *connect.Request[v1.ReorderVideosRequest]) (*connect.Response[v1.ReorderVideosResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.ReorderVideos is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) DeleteVideo(context.Context, *connect.Request[v1.DeleteVideoRequest]) (*connect.Response[v1.DeleteVideoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.DeleteVideo is not implemented"))
 }
 
 func (UnimplementedAdminServiceHandler) Rescan(context.Context, *connect.Request[v1.RescanRequest]) (*connect.Response[v1.RescanResponse], error) {

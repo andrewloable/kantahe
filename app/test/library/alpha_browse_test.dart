@@ -5,6 +5,7 @@ import 'package:kantahe/library/alpha_browse.dart';
 import 'package:kantahe/library/library_actions.dart';
 
 import 'fakes.dart';
+import '../tv/ring_helper.dart';
 
 class Rig {
   final fake = FakeLibrary();
@@ -127,5 +128,19 @@ void main() {
     await tester.tap(find.text('Try again'));
     await settle(tester);
     expect(shows('Abba'), isTrue);
+  });
+
+  testWidgets('the remote\'s focus on a letter, on the Titles/Artists switch and on an artist shows the ring', (tester) async {
+    final r = Rig();
+    r.fake.onArtists = (_) => Reply([Artist(name: 'Abba', songCount: 3), Artist(name: 'Adele', songCount: 1)]);
+    await open(tester, rig: r);
+    final letter = find.widgetWithText(ChoiceChip, 'B');
+    await expectNoRingWhenNotFocused(tester, letter);
+    await expectRingOnFocus(tester, letter);
+    expect(tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'A')).selected, isTrue, reason: 'focus is not selection');
+    await expectRingOnFocus(tester, find.byWidgetPredicate((w) => w is SegmentedButton));
+    await tester.tap(find.text('Artists'));
+    await settle(tester);
+    await expectRingOnFocus(tester, find.widgetWithText(ListTile, 'Abba'));
   });
 }

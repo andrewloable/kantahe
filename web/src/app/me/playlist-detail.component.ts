@@ -13,7 +13,7 @@ import { FormatBadgeComponent } from '../library/format-badge.component';
   selector: 'app-playlist-detail',
   imports: [RouterLink, FormatBadgeComponent],
   template: `
-    <p><a routerLink="/me/playlists">← All playlists</a></p>
+    <p><a class="back" routerLink="/me/playlists">← All playlists</a></p>
     @if (missing()) {
       <p>This playlist no longer exists.</p>
     } @else if (id()) {
@@ -32,19 +32,26 @@ import { FormatBadgeComponent } from '../library/format-badge.component';
               <span class="artist">{{ s.artist }}</span>
             </span>
             <app-format-badge [format]="s.format" />
-            @if (!first) {
-              <button type="button" [disabled]="saving()" [attr.aria-label]="'Move ' + s.title + ' up'" (click)="move(i, -1)">Move up</button>
-            }
-            @if (!last) {
-              <button type="button" [disabled]="saving()" [attr.aria-label]="'Move ' + s.title + ' down'" (click)="move(i, 1)">Move down</button>
-            }
-            <button type="button" [disabled]="saving()" [attr.aria-label]="'Remove ' + s.title + ' from the playlist'" (click)="removeAt(i)">Remove</button>
+            <span class="row-actions">
+              @if (!first) {
+                <button type="button" [disabled]="saving()" [attr.aria-label]="'Move ' + s.title + ' up'" (click)="move(i, -1)">Move up</button>
+              }
+              @if (!last) {
+                <button type="button" [disabled]="saving()" [attr.aria-label]="'Move ' + s.title + ' down'" (click)="move(i, 1)">Move down</button>
+              }
+              <button type="button" [disabled]="saving()" [attr.aria-label]="'Remove ' + s.title + ' from the playlist'" (click)="removeAt(i)">Remove</button>
+            </span>
           </li>
         }
       </ol>
     }
   `,
   styles: `
+    .back {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.75rem;
+    }
     .entries {
       list-style: none;
       margin: 0;
@@ -59,17 +66,42 @@ import { FormatBadgeComponent } from '../library/format-badge.component';
       border-bottom: 1px solid var(--line);
     }
     .info {
-      flex: 1;
+      flex: 1 1 12rem;
       display: flex;
       flex-direction: column;
-      min-width: 8rem;
+      min-width: 0;
     }
+    /* a long title or artist is cut to two lines (the library list does the same); an unbroken word breaks inside its box */
     .title {
       font-weight: 600;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      overflow-wrap: anywhere;
     }
     .artist {
       color: var(--muted);
       font-size: 0.875rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+    }
+    /* the buttons of a row stay together: on a phone they are one line below the title, equally wide */
+    .row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    @media (max-width: 30rem) {
+      .row-actions {
+        flex: 1 0 100%;
+      }
+      .row-actions button {
+        flex: 1;
+      }
     }
   `,
 })

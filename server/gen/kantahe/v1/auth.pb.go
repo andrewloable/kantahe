@@ -58,11 +58,13 @@ func (*GetServerInfoRequest) Descriptor() ([]byte, []int) {
 	return file_kantahe_v1_auth_proto_rawDescGZIP(), []int{0}
 }
 
-// Version string and whether Setup is still allowed.
+// Version string, server name and whether Setup is still allowed.
 type GetServerInfoResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Version       string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
 	SetupRequired bool                   `protobuf:"varint,2,opt,name=setup_required,json=setupRequired,proto3" json:"setup_required,omitempty"`
+	// Human-readable server name, the --name flag; also the mDNS instance name.
+	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -109,6 +111,13 @@ func (x *GetServerInfoResponse) GetSetupRequired() bool {
 		return x.SetupRequired
 	}
 	return false
+}
+
+func (x *GetServerInfoResponse) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
 }
 
 // Creates the first admin and signs in the calling device.
@@ -1103,10 +1112,11 @@ const file_kantahe_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"\x15kantahe/v1/auth.proto\x12\n" +
 	"kantahe.v1\x1a\x17kantahe/v1/common.proto\"\x16\n" +
-	"\x14GetServerInfoRequest\"X\n" +
+	"\x14GetServerInfoRequest\"l\n" +
 	"\x15GetServerInfoResponse\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12%\n" +
-	"\x0esetup_required\x18\x02 \x01(\bR\rsetupRequired\"\xbd\x01\n" +
+	"\x0esetup_required\x18\x02 \x01(\bR\rsetupRequired\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\xbd\x01\n" +
 	"\fSetupRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12!\n" +

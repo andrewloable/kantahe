@@ -1614,6 +1614,145 @@ class SetMidiModeResponse extends $pb.GeneratedMessage {
   $0.Device ensureDevice() => $_ensure(0);
 }
 
+/// The device and the mode to set.
+class SetBackgroundModeRequest extends $pb.GeneratedMessage {
+  factory SetBackgroundModeRequest({
+    $core.String? deviceId,
+    $0.BackgroundMode? mode,
+  }) {
+    final result = SetBackgroundModeRequest._();
+    if (deviceId != null) result.deviceId = deviceId;
+    if (mode != null) result.mode = mode;
+    return result;
+  }
+
+  SetBackgroundModeRequest._();
+
+  factory SetBackgroundModeRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetBackgroundModeRequest()..mergeFromBuffer(data, registry);
+  factory SetBackgroundModeRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetBackgroundModeRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetBackgroundModeRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: SetBackgroundModeRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'deviceId')
+    ..aE<$0.BackgroundMode>(2, _omitFieldNames ? '' : 'mode',
+        enumValues: $0.BackgroundMode.values)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetBackgroundModeRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetBackgroundModeRequest copyWith(
+          void Function(SetBackgroundModeRequest) updates) =>
+      super.copyWith((message) => updates(message as SetBackgroundModeRequest))
+          as SetBackgroundModeRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SetBackgroundModeRequest() / SetBackgroundModeRequest.new instead')
+  static SetBackgroundModeRequest create() => SetBackgroundModeRequest._();
+  static $pb.GeneratedMessage $_createMessage() => SetBackgroundModeRequest._();
+  @$core.override
+  SetBackgroundModeRequest createEmptyInstance() =>
+      SetBackgroundModeRequest._();
+  @$core.pragma('dart2js:noInline')
+  static SetBackgroundModeRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SetBackgroundModeRequest>(
+          SetBackgroundModeRequest.$_createMessage);
+  static SetBackgroundModeRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get deviceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set deviceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDeviceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDeviceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $0.BackgroundMode get mode => $_getN(1);
+  @$pb.TagNumber(2)
+  set mode($0.BackgroundMode value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMode() => $_clearField(2);
+}
+
+/// The device after the change.
+class SetBackgroundModeResponse extends $pb.GeneratedMessage {
+  factory SetBackgroundModeResponse({
+    $0.Device? device,
+  }) {
+    final result = SetBackgroundModeResponse._();
+    if (device != null) result.device = device;
+    return result;
+  }
+
+  SetBackgroundModeResponse._();
+
+  factory SetBackgroundModeResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetBackgroundModeResponse()..mergeFromBuffer(data, registry);
+  factory SetBackgroundModeResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetBackgroundModeResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetBackgroundModeResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: SetBackgroundModeResponse.$_createMessage)
+    ..aOM<$0.Device>(1, _omitFieldNames ? '' : 'device',
+        subBuilder: $0.Device.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetBackgroundModeResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetBackgroundModeResponse copyWith(
+          void Function(SetBackgroundModeResponse) updates) =>
+      super.copyWith((message) => updates(message as SetBackgroundModeResponse))
+          as SetBackgroundModeResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SetBackgroundModeResponse() / SetBackgroundModeResponse.new instead')
+  static SetBackgroundModeResponse create() => SetBackgroundModeResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      SetBackgroundModeResponse._();
+  @$core.override
+  SetBackgroundModeResponse createEmptyInstance() =>
+      SetBackgroundModeResponse._();
+  @$core.pragma('dart2js:noInline')
+  static SetBackgroundModeResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SetBackgroundModeResponse>(
+          SetBackgroundModeResponse.$_createMessage);
+  static SetBackgroundModeResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.Device get device => $_getN(0);
+  @$pb.TagNumber(1)
+  set device($0.Device value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDevice() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDevice() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.Device ensureDevice() => $_ensure(0);
+}
+
 /// One entry of the caller's queue.
 class QueueItem extends $pb.GeneratedMessage {
   factory QueueItem({
@@ -2297,6 +2436,12 @@ class SessionServiceApi {
           $pb.ClientContext? ctx, SetMidiModeRequest request) =>
       _client.invoke<SetMidiModeResponse>(
           ctx, 'SessionService', 'SetMidiMode', request, SetMidiModeResponse());
+
+  /// Signed-in user. Sets the background video mode of one of the caller's devices; NOT_FOUND for another user's device.
+  $async.Future<SetBackgroundModeResponse> setBackgroundMode(
+          $pb.ClientContext? ctx, SetBackgroundModeRequest request) =>
+      _client.invoke<SetBackgroundModeResponse>(ctx, 'SessionService',
+          'SetBackgroundMode', request, SetBackgroundModeResponse());
 }
 
 const $core.bool _omitFieldNames =

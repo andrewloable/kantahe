@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -392,14 +393,26 @@ func TestEveryAdminRPCRefusesNonAdmins(t *testing.T) {
 	}
 	for i := 0; i < methods.Len(); i++ {
 		name := string(methods.Get(i).Name())
-		req, _ := http.NewRequest("POST", a.srv.URL+"/kantahe.v1.AdminService/"+name, strings.NewReader("{}"))
-		req.Header.Set("Content-Type", "application/json")
+		body, contentType := "{}", "application/json"
+		if methods.Get(i).IsStreamingServer() {
+			// a server-streaming call is an enveloped message; its refusal comes in the end of the stream (HTTP 200)
+			body, contentType = "\x00\x00\x00\x00\x02{}", "application/connect+json"
+		}
+		req, _ := http.NewRequest("POST", a.srv.URL+"/kantahe.v1.AdminService/"+name, strings.NewReader(body))
+		req.Header.Set("Content-Type", contentType)
 		req.Header.Set("Authorization", "Bearer "+a.user.Token)
 		res, err := a.srv.Client().Do(req)
 		if err != nil {
 			t.Fatal(err)
 		}
+		answer, _ := io.ReadAll(res.Body)
 		res.Body.Close()
+		if methods.Get(i).IsStreamingServer() {
+			if !strings.Contains(string(answer), "permission_denied") {
+				t.Errorf("%s: a non-admin got %q, want permission_denied", name, answer)
+			}
+			continue
+		}
 		if res.StatusCode != http.StatusForbidden {
 			t.Errorf("%s: HTTP %d for a non-admin, want 403 (permission_denied)", name, res.StatusCode)
 		}

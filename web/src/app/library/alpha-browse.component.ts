@@ -65,11 +65,11 @@ const LETTERS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '#'];
     .letters {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.25rem;
+      gap: 0.5rem;
       margin-bottom: 0.75rem;
     }
     .letters button {
-      min-width: 2.5rem;
+      min-width: 2.75rem;
       padding: 0.25rem;
     }
     .artists {

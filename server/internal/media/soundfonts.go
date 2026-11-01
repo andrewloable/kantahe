@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/andrewloable/kantahe/server/internal/fsutil"
 	"github.com/andrewloable/kantahe/server/internal/library"
 	"github.com/andrewloable/kantahe/server/internal/song/kar"
 	"github.com/andrewloable/kantahe/server/internal/song/sf2"
@@ -56,7 +57,8 @@ type SoundFonts struct {
 	inflight map[string]bool    // song sha -> queued or building
 	failed   map[string]failure // song sha -> why and when the last build failed
 
-	builds atomic.Int64 // tests count builds
+	builds    atomic.Int64 // tests count builds
+	afterStat func()       // tests only: runs in Prepare between its first stat of the cache file and taking the lock
 }
 
 type job struct{ number, sha, path string }
@@ -179,8 +181,12 @@ func (s *SoundFonts) Prepare(number string) {
 	if _, err := os.Stat(s.cachePath(j.sha)); err == nil {
 		return
 	}
+	if s.afterStat != nil {
+		s.afterStat()
+	}
 	s.mu.Lock()
-	if s.inflight[j.sha] || s.hasFailed(j.sha) {
+	// the first stat was outside the lock: a build may have finished since, and its inflight mark is gone
+	if _, err := os.Stat(s.cachePath(j.sha)); err == nil || s.inflight[j.sha] || s.hasFailed(j.sha) {
 		s.mu.Unlock()
 		return
 	}
@@ -255,7 +261,8 @@ func (s *SoundFonts) build(j job) error {
 	if err := os.Chmod(tmp.Name(), 0o640); err != nil {
 		return err
 	}
-	return os.Rename(tmp.Name(), s.cachePath(j.sha))
+	// the name is the song's SHA-256 and the content follows from it: a file that is there already stays
+	return fsutil.Place(tmp.Name(), s.cachePath(j.sha), fsutil.PlaceBudget)
 }
 
 // Touch marks the file as used now, which housekeeping looks at.
@@ -283,8 +290,8 @@ func (s *SoundFonts) Cleanup() {
 		old := strings.HasSuffix(e.Name(), ".sf2") && age > cacheMaxAge
 		stale := strings.HasPrefix(e.Name(), ".build-") && age > staleTempAge
 		if old || stale {
-			if err := os.Remove(filepath.Join(s.dir, e.Name())); err != nil && !errors.Is(err, os.ErrNotExist) {
-				s.logger.Warn("cannot remove an old SoundFont", "err", err)
+			if err := fsutil.RemoveOnce(filepath.Join(s.dir, e.Name())); err != nil {
+				s.logger.Warn("cannot remove an old SoundFont", "err", err) // tried again at the next cleanup
 			}
 		}
 	}

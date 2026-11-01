@@ -47,10 +47,11 @@ type Config struct {
 
 // Service signs and serves media.
 type Service struct {
-	db     *store.DB
-	secret []byte
-	now    func() time.Time
-	logger *slog.Logger
+	db      *store.DB
+	dataDir string
+	secret  []byte
+	now     func() time.Time
+	logger  *slog.Logger
 
 	soundFont string
 	sfETag    string
@@ -71,7 +72,7 @@ type Renderer interface {
 
 // New prepares the service. A configured SoundFont that cannot be read is an error.
 func New(ctx context.Context, c Config) (*Service, error) {
-	s := &Service{db: c.DB, now: c.Now, logger: c.Logger, soundFont: c.SoundFont}
+	s := &Service{db: c.DB, dataDir: c.DataDir, now: c.Now, logger: c.Logger, soundFont: c.SoundFont}
 	if s.now == nil {
 		s.now = time.Now
 	}
@@ -181,6 +182,7 @@ func (s *Service) Verify(r *http.Request) (string, bool) {
 // Routes registers the media routes.
 func (s *Service) Routes(handle func(pattern string, h http.Handler)) {
 	handle("GET /media/song/{number}", http.HandlerFunc(s.song))
+	handle("GET /media/video/{id}", http.HandlerFunc(s.video))
 	handle("GET /media/soundfont.sf2", http.HandlerFunc(s.fullSoundFont))
 	handle("GET /media/soundfont/{file}", http.HandlerFunc(s.songSoundFont))
 	handle("GET /media/rendered/{number}", http.HandlerFunc(s.rendered))

@@ -8,6 +8,15 @@ import "kantahe/v1/common.proto";
 service UploadService {
   // Uploader or admin. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
   rpc UploadSong(UploadSongRequest) returns (UploadSongResponse);
+  // Admin only. Starts, or resumes, the upload of one background video: a video is too big for one message, so it goes up in chunks of
+  // unary calls (D3). REJECTED with a reason when the name, the size or the limit is refused; received > 0 when an earlier upload of the same file by the same admin is resumed.
+  rpc BeginVideoUpload(BeginVideoUploadRequest) returns (BeginVideoUploadResponse);
+  // Admin only. One chunk of at most 4 MiB at the offset the server expects next (INVALID_ARGUMENT otherwise); returns the bytes received so far.
+  rpc UploadVideoChunk(UploadVideoChunkRequest) returns (UploadVideoChunkResponse);
+  // Admin only. Checks the whole file (an MP4 with an H.264 video track) and adds it to the end of the loop; rejections are reported in the response, not as errors.
+  rpc CompleteVideoUpload(CompleteVideoUploadRequest) returns (CompleteVideoUploadResponse);
+  // Admin only. Throws away what was received of an unfinished upload.
+  rpc AbortVideoUpload(AbortVideoUploadRequest) returns (AbortVideoUploadResponse);
 }
 
 // Outcome of one upload.
@@ -30,3 +39,50 @@ message UploadSongResponse {
   Song song = 2;
   string reason = 3;
 }
+
+// The original filename and the size of the whole file in bytes.
+message BeginVideoUploadRequest {
+  string filename = 1;
+  int64 size_bytes = 2;
+}
+
+// upload_id names the upload in the next calls; chunk_size is the largest chunk the server accepts.
+message BeginVideoUploadResponse {
+  string upload_id = 1;
+  int32 chunk_size = 2;
+  int64 received = 3;
+  UploadStatus status = 4;
+  string reason = 5;
+}
+
+// The bytes at offset of the file; offset must equal the bytes received so far.
+message UploadVideoChunkRequest {
+  string upload_id = 1;
+  int64 offset = 2;
+  bytes content = 3;
+}
+
+// The bytes received so far.
+message UploadVideoChunkResponse {
+  int64 received = 1;
+}
+
+// The upload to finish.
+message CompleteVideoUploadRequest {
+  string upload_id = 1;
+}
+
+// status ADDED carries the video, REJECTED carries the reason, DUPLICATE carries the existing video.
+message CompleteVideoUploadResponse {
+  UploadStatus status = 1;
+  Video video = 2;
+  string reason = 3;
+}
+
+// The upload to throw away.
+message AbortVideoUploadRequest {
+  string upload_id = 1;
+}
+
+// Nothing to report.
+message AbortVideoUploadResponse {}

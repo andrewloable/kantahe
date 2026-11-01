@@ -30,15 +30,17 @@ import { PlaylistPickerComponent } from './playlist-picker.component';
             </span>
             <app-format-badge [format]="s.format" />
           </button>
-          <button type="button" class="star" [attr.aria-pressed]="actions.isFavourite(s)" [attr.aria-label]="'Favourite: ' + s.title" (click)="actions.toggleFavourite(s)">
-            {{ actions.isFavourite(s) ? '★' : '☆' }}
-          </button>
-          <button type="button" class="menu" [attr.aria-expanded]="pickerFor() === s.number" [attr.aria-label]="'Add ' + s.title + ' to a playlist'" title="Add to a playlist" (click)="togglePicker(s.number)">＋</button>
-          @if (isAdmin()) {
-            <button type="button" class="delete" [attr.aria-label]="'Delete ' + s.title + ' by ' + s.artist" title="Delete" (click)="deleting.set(s.number)">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zM6 9h12l-1 12H7L6 9z" /></svg>
+          <span class="actions">
+            <button type="button" class="star" [attr.aria-pressed]="actions.isFavourite(s)" [attr.aria-label]="'Favourite: ' + s.title" (click)="actions.toggleFavourite(s)">
+              {{ actions.isFavourite(s) ? '★' : '☆' }}
             </button>
-          }
+            <button type="button" class="menu" [attr.aria-expanded]="pickerFor() === s.number" [attr.aria-label]="'Add ' + s.title + ' to a playlist'" title="Add to a playlist" (click)="togglePicker(s.number)">＋</button>
+            @if (isAdmin()) {
+              <button type="button" class="delete" [attr.aria-label]="'Delete ' + s.title + ' by ' + s.artist" title="Delete" (click)="deleting.set(s.number)">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zM6 9h12l-1 12H7L6 9z" /></svg>
+              </button>
+            }
+          </span>
           @if (deleting() === s.number) {
             <div class="confirm picker-slot" role="alert">
               <span>Take "{{ s.title }}" off the list, or delete its file too?</span>
@@ -58,7 +60,7 @@ import { PlaylistPickerComponent } from './playlist-picker.component';
     </ul>
     @if (loading()) {
       <p role="status">Loading…</p>
-    } @else if (visible().length === 0) {
+    } @else if (visible().length === 0 && !failed()) {
       <p>{{ emptyText() }}</p>
     }
     <app-page-bar [win]="win" [hasMore]="hasMore()" />
@@ -73,11 +75,18 @@ import { PlaylistPickerComponent } from './playlist-picker.component';
       display: flex;
       flex-wrap: wrap;
       align-items: stretch;
-      gap: 0.25rem;
+      gap: 0.5rem;
+      /* the buttons of one row stay 8 px away from those of the row above and below */
+      padding: 0.25rem 0;
       border-bottom: 1px solid var(--line);
     }
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+    }
     .main {
-      flex: 1;
+      /* a row of at least 14rem for the text: below that the buttons go to a second line instead of squeezing the title */
+      flex: 1 1 14rem;
       min-width: 0;
       display: flex;
       align-items: center;
@@ -179,6 +188,8 @@ export class SongListComponent {
    */
   readonly autoMore = input(true);
   readonly emptyText = input('No songs found.');
+  /** The load failed: the page shows the error, so the list does not say that nothing was found. */
+  readonly failed = input(false);
   /** The next page is wanted from the server (read ahead, or Next was pressed on the last page that is loaded). */
   readonly more = output<void>();
 

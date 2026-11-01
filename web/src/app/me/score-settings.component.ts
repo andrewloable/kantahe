@@ -58,7 +58,9 @@ const LEVELS = [
       padding: 0.25rem 0;
     }
     .option label {
-      display: inline;
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.75rem;
       margin: 0;
     }
     .hint {

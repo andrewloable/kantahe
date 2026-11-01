@@ -304,6 +304,38 @@ final $typed_data.Uint8List getPlaybackResponseDescriptor = $convert.base64Decod
     'ChNHZXRQbGF5YmFja1Jlc3BvbnNlEjAKCHBsYXliYWNrGAEgASgLMhQua2FudGFoZS52MS5QbG'
     'F5YmFja1IIcGxheWJhY2s=');
 
+@$core.Deprecated('Use getBackgroundRequestDescriptor instead')
+const GetBackgroundRequest$json = {
+  '1': 'GetBackgroundRequest',
+};
+
+/// Descriptor for `GetBackgroundRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getBackgroundRequestDescriptor =
+    $convert.base64Decode('ChRHZXRCYWNrZ3JvdW5kUmVxdWVzdA==');
+
+@$core.Deprecated('Use getBackgroundResponseDescriptor instead')
+const GetBackgroundResponse$json = {
+  '1': 'GetBackgroundResponse',
+  '2': [
+    {'1': 'enabled', '3': 1, '4': 1, '5': 8, '10': 'enabled'},
+    {'1': 'shuffle', '3': 2, '4': 1, '5': 8, '10': 'shuffle'},
+    {
+      '1': 'videos',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.kantahe.v1.Video',
+      '10': 'videos'
+    },
+  ],
+};
+
+/// Descriptor for `GetBackgroundResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getBackgroundResponseDescriptor = $convert.base64Decode(
+    'ChVHZXRCYWNrZ3JvdW5kUmVzcG9uc2USGAoHZW5hYmxlZBgBIAEoCFIHZW5hYmxlZBIYCgdzaH'
+    'VmZmxlGAIgASgIUgdzaHVmZmxlEikKBnZpZGVvcxgDIAMoCzIRLmthbnRhaGUudjEuVmlkZW9S'
+    'BnZpZGVvcw==');
+
 const $core.Map<$core.String, $core.dynamic> CatalogServiceBase$json = {
   '1': 'CatalogService',
   '2': [
@@ -332,6 +364,11 @@ const $core.Map<$core.String, $core.dynamic> CatalogServiceBase$json = {
       '2': '.kantahe.v1.GetPlaybackRequest',
       '3': '.kantahe.v1.GetPlaybackResponse'
     },
+    {
+      '1': 'GetBackground',
+      '2': '.kantahe.v1.GetBackgroundRequest',
+      '3': '.kantahe.v1.GetBackgroundResponse'
+    },
   ],
 };
 
@@ -354,6 +391,9 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.kantahe.v1.GetPlaybackRequest': GetPlaybackRequest$json,
   '.kantahe.v1.GetPlaybackResponse': GetPlaybackResponse$json,
   '.kantahe.v1.Playback': Playback$json,
+  '.kantahe.v1.GetBackgroundRequest': GetBackgroundRequest$json,
+  '.kantahe.v1.GetBackgroundResponse': GetBackgroundResponse$json,
+  '.kantahe.v1.Video': $0.Video$json,
 };
 
 /// Descriptor for `CatalogService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -365,4 +405,5 @@ final $typed_data.Uint8List catalogServiceDescriptor = $convert.base64Decode(
     'YWhlLnYxLkdldFNvbmdSZXNwb25zZRJICglHZXRMeXJpY3MSHC5rYW50YWhlLnYxLkdldEx5cm'
     'ljc1JlcXVlc3QaHS5rYW50YWhlLnYxLkdldEx5cmljc1Jlc3BvbnNlEk4KC0dldFBsYXliYWNr'
     'Eh4ua2FudGFoZS52MS5HZXRQbGF5YmFja1JlcXVlc3QaHy5rYW50YWhlLnYxLkdldFBsYXliYW'
-    'NrUmVzcG9uc2U=');
+    'NrUmVzcG9uc2USVAoNR2V0QmFja2dyb3VuZBIgLmthbnRhaGUudjEuR2V0QmFja2dyb3VuZFJl'
+    'cXVlc3QaIS5rYW50YWhlLnYxLkdldEJhY2tncm91bmRSZXNwb25zZQ==');

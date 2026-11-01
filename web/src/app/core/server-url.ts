@@ -35,6 +35,15 @@ export function normalizeServerUrl(input: string): string | undefined {
 @Injectable({ providedIn: 'root' })
 export class ServerUrl {
   private readonly env = inject(ENVIRONMENT);
+  private auto = true;
+
+  /**
+   * Whether a single server found on the network may be connected to without asking. Off after clear() for the rest of
+   * the run (a person who chose "Use another server" would be sent straight back); never stored.
+   */
+  autoConnect(): boolean {
+    return this.auto;
+  }
 
   private stored(): string | undefined {
     const stored = readStore(KEY);
@@ -56,6 +65,7 @@ export class ServerUrl {
   }
 
   clear(): void {
+    this.auto = false;
     removeStore(KEY);
   }
 }

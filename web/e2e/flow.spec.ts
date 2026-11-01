@@ -62,6 +62,37 @@ test('the whole flow: setup, accounts, upload, search, queue, play, score, rando
     await expect(a.locator('app-temp-password-panel input')).toHaveValue(temporaryPassword);
   });
 
+  await test.step('the tabs of the administration open their pages: Users, Songs, Settings, Users', async () => {
+    const tab = (name: string) => a.getByRole('navigation', { name: 'Administration' }).getByRole('link', { name });
+    await tab('Songs').click();
+    await expect(a).toHaveURL(/\/admin\/songs$/);
+    await expect(a.getByRole('heading', { name: 'Songs', level: 2 })).toBeVisible();
+    await tab('Settings').click();
+    await expect(a).toHaveURL(/\/admin\/settings$/);
+    await expect(a.getByRole('heading', { name: 'Server settings' })).toBeVisible();
+    await tab('Users').click();
+    await expect(a).toHaveURL(/\/admin\/users$/);
+    await expect(a.getByRole('heading', { name: 'Users', level: 2 })).toBeVisible();
+  });
+
+  await test.step('a page left open across a server update still opens a tab: the file that is gone is fetched again by a reload', async () => {
+    const stale = await admin.newPage();
+    await stale.goto('/admin/users');
+    await expect(stale.getByRole('heading', { name: 'Users', level: 2 })).toBeVisible();
+    // the first file asked for from here on is gone (404), as for a page that was loaded before the server was rebuilt
+    let gone = false;
+    await stale.route(/\.js(\?.*)?$/, (route) => {
+      if (gone) return route.continue();
+      gone = true;
+      return route.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' });
+    });
+    await stale.getByRole('navigation', { name: 'Administration' }).getByRole('link', { name: 'Songs' }).click();
+    await expect(stale).toHaveURL(/\/admin\/songs$/);
+    await expect(stale.getByRole('heading', { name: 'Songs', level: 2 })).toBeVisible();
+    expect(gone).toBe(true);
+    await stale.close();
+  });
+
   await test.step('the administrator uploads three songs', async () => {
     await a.goto('/upload');
     const dir = process.env['E2E_UPLOAD_DIR'] as string;

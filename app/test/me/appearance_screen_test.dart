@@ -4,6 +4,7 @@ import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/me/appearance_screen.dart';
 
 import '../library/fakes.dart';
+import '../tv/ring_helper.dart';
 
 Future<AppServices> open(WidgetTester tester) async {
   final services = await FakeLibrary().services();
@@ -34,5 +35,13 @@ void main() {
     await tester.tap(find.text('Light'));
     await settle(tester);
     expect(services.theme.mode, ThemeMode.light);
+  });
+
+  testWidgets('the remote\'s focus on a choice shows the ring, and the marked choice stays marked', (tester) async {
+    await open(tester);
+    final choice = find.widgetWithText(ListTile, 'Dark');
+    await expectNoRingWhenNotFocused(tester, choice);
+    await expectRingOnFocus(tester, choice);
+    expect(tile(tester, 'Auto (system)').selected, isTrue, reason: 'focus is not selection');
   });
 }

@@ -50,4 +50,12 @@ abstract final class CatalogService {
     kantahev1catalog.GetPlaybackRequest.new,
     kantahev1catalog.GetPlaybackResponse.new,
   );
+
+  /// Signed-in user. The enabled background videos in loop order with signed URLs (6 hours); empty when the admin has switched the background off.
+  static const getBackground = connect.Spec(
+    '/$name/GetBackground',
+    connect.StreamType.unary,
+    kantahev1catalog.GetBackgroundRequest.new,
+    kantahev1catalog.GetBackgroundResponse.new,
+  );
 }

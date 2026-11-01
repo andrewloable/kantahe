@@ -30,6 +30,8 @@ const (
 	RemoveScope_REMOVE_SCOPE_ALL RemoveScope = 1
 	// MIDI songs whose file has no audible instrument notes (only lyric timing); they play as silence.
 	RemoveScope_REMOVE_SCOPE_NO_MUSIC RemoveScope = 2
+	// Every live song that is marked broken (by CheckLibrary or at import).
+	RemoveScope_REMOVE_SCOPE_BROKEN RemoveScope = 3
 )
 
 // Enum value maps for RemoveScope.
@@ -38,11 +40,13 @@ var (
 		0: "REMOVE_SCOPE_UNSPECIFIED",
 		1: "REMOVE_SCOPE_ALL",
 		2: "REMOVE_SCOPE_NO_MUSIC",
+		3: "REMOVE_SCOPE_BROKEN",
 	}
 	RemoveScope_value = map[string]int32{
 		"REMOVE_SCOPE_UNSPECIFIED": 0,
 		"REMOVE_SCOPE_ALL":         1,
 		"REMOVE_SCOPE_NO_MUSIC":    2,
+		"REMOVE_SCOPE_BROKEN":      3,
 	}
 )
 
@@ -823,8 +827,11 @@ func (x *DeleteSongRequest) GetKeepFile() bool {
 
 // What to remove from the list.
 type RemoveSongsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Scope         RemoveScope            `protobuf:"varint,1,opt,name=scope,proto3,enum=kantahe.v1.RemoveScope" json:"scope,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Scope RemoveScope            `protobuf:"varint,1,opt,name=scope,proto3,enum=kantahe.v1.RemoveScope" json:"scope,omitempty"`
+	// Also delete the song files (only inside the data and library folders). Allowed only with scope BROKEN; INVALID_ARGUMENT otherwise,
+	// so that ALL and NO_MUSIC keep their promise never to delete a file.
+	DeleteFiles   bool `protobuf:"varint,2,opt,name=delete_files,json=deleteFiles,proto3" json:"delete_files,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -866,10 +873,21 @@ func (x *RemoveSongsRequest) GetScope() RemoveScope {
 	return RemoveScope_REMOVE_SCOPE_UNSPECIFIED
 }
 
+func (x *RemoveSongsRequest) GetDeleteFiles() bool {
+	if x != nil {
+		return x.DeleteFiles
+	}
+	return false
+}
+
 // How many songs left the list.
 type RemoveSongsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Removed       int32                  `protobuf:"varint,1,opt,name=removed,proto3" json:"removed,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Removed int32                  `protobuf:"varint,1,opt,name=removed,proto3" json:"removed,omitempty"`
+	// With delete_files: the files that were deleted, and the files that were not (outside the managed folders, or in use); the
+	// songs of the latter are off the list all the same.
+	FilesDeleted  int32 `protobuf:"varint,2,opt,name=files_deleted,json=filesDeleted,proto3" json:"files_deleted,omitempty"`
+	FilesFailed   int32 `protobuf:"varint,3,opt,name=files_failed,json=filesFailed,proto3" json:"files_failed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -911,6 +929,295 @@ func (x *RemoveSongsResponse) GetRemoved() int32 {
 	return 0
 }
 
+func (x *RemoveSongsResponse) GetFilesDeleted() int32 {
+	if x != nil {
+		return x.FilesDeleted
+	}
+	return 0
+}
+
+func (x *RemoveSongsResponse) GetFilesFailed() int32 {
+	if x != nil {
+		return x.FilesFailed
+	}
+	return 0
+}
+
+// Asks nothing.
+type CheckLibraryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckLibraryRequest) Reset() {
+	*x = CheckLibraryRequest{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckLibraryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckLibraryRequest) ProtoMessage() {}
+
+func (x *CheckLibraryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckLibraryRequest.ProtoReflect.Descriptor instead.
+func (*CheckLibraryRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{17}
+}
+
+// Where the check is; every 250 songs and at the end (done = true).
+type CheckLibraryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Checked       int32                  `protobuf:"varint,1,opt,name=checked,proto3" json:"checked,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	Broken        int32                  `protobuf:"varint,3,opt,name=broken,proto3" json:"broken,omitempty"`
+	Done          bool                   `protobuf:"varint,4,opt,name=done,proto3" json:"done,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckLibraryResponse) Reset() {
+	*x = CheckLibraryResponse{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckLibraryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckLibraryResponse) ProtoMessage() {}
+
+func (x *CheckLibraryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckLibraryResponse.ProtoReflect.Descriptor instead.
+func (*CheckLibraryResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *CheckLibraryResponse) GetChecked() int32 {
+	if x != nil {
+		return x.Checked
+	}
+	return 0
+}
+
+func (x *CheckLibraryResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *CheckLibraryResponse) GetBroken() int32 {
+	if x != nil {
+		return x.Broken
+	}
+	return 0
+}
+
+func (x *CheckLibraryResponse) GetDone() bool {
+	if x != nil {
+		return x.Done
+	}
+	return false
+}
+
+// One page of broken songs.
+type ListBrokenSongsRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	PageToken string                 `protobuf:"bytes,1,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	// Defaults to 50.
+	PageSize      int32 `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBrokenSongsRequest) Reset() {
+	*x = ListBrokenSongsRequest{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBrokenSongsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBrokenSongsRequest) ProtoMessage() {}
+
+func (x *ListBrokenSongsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBrokenSongsRequest.ProtoReflect.Descriptor instead.
+func (*ListBrokenSongsRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ListBrokenSongsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListBrokenSongsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+// A song that cannot be played and why.
+type BrokenSong struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Song  *Song                  `protobuf:"bytes,1,opt,name=song,proto3" json:"song,omitempty"`
+	// For people: "the file is missing", "the file contains no music", ...
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BrokenSong) Reset() {
+	*x = BrokenSong{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BrokenSong) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BrokenSong) ProtoMessage() {}
+
+func (x *BrokenSong) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BrokenSong.ProtoReflect.Descriptor instead.
+func (*BrokenSong) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *BrokenSong) GetSong() *Song {
+	if x != nil {
+		return x.Song
+	}
+	return nil
+}
+
+func (x *BrokenSong) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// The page, and how many broken songs there are in all.
+type ListBrokenSongsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Songs         []*BrokenSong          `protobuf:"bytes,1,rep,name=songs,proto3" json:"songs,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	Total         int32                  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBrokenSongsResponse) Reset() {
+	*x = ListBrokenSongsResponse{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBrokenSongsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBrokenSongsResponse) ProtoMessage() {}
+
+func (x *ListBrokenSongsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBrokenSongsResponse.ProtoReflect.Descriptor instead.
+func (*ListBrokenSongsResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ListBrokenSongsResponse) GetSongs() []*BrokenSong {
+	if x != nil {
+		return x.Songs
+	}
+	return nil
+}
+
+func (x *ListBrokenSongsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *ListBrokenSongsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
 // Empty.
 type DeleteSongResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -920,7 +1227,7 @@ type DeleteSongResponse struct {
 
 func (x *DeleteSongResponse) Reset() {
 	*x = DeleteSongResponse{}
-	mi := &file_kantahe_v1_admin_proto_msgTypes[17]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -932,7 +1239,7 @@ func (x *DeleteSongResponse) String() string {
 func (*DeleteSongResponse) ProtoMessage() {}
 
 func (x *DeleteSongResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_admin_proto_msgTypes[17]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -945,7 +1252,7 @@ func (x *DeleteSongResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSongResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSongResponse) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{17}
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{22}
 }
 
 // Asks nothing.
@@ -957,7 +1264,7 @@ type RescanRequest struct {
 
 func (x *RescanRequest) Reset() {
 	*x = RescanRequest{}
-	mi := &file_kantahe_v1_admin_proto_msgTypes[18]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -969,7 +1276,7 @@ func (x *RescanRequest) String() string {
 func (*RescanRequest) ProtoMessage() {}
 
 func (x *RescanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_admin_proto_msgTypes[18]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -982,7 +1289,7 @@ func (x *RescanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RescanRequest.ProtoReflect.Descriptor instead.
 func (*RescanRequest) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{18}
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{23}
 }
 
 // Counts from the scan.
@@ -998,7 +1305,7 @@ type RescanResponse struct {
 
 func (x *RescanResponse) Reset() {
 	*x = RescanResponse{}
-	mi := &file_kantahe_v1_admin_proto_msgTypes[19]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1010,7 +1317,7 @@ func (x *RescanResponse) String() string {
 func (*RescanResponse) ProtoMessage() {}
 
 func (x *RescanResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_admin_proto_msgTypes[19]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1023,7 +1330,7 @@ func (x *RescanResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RescanResponse.ProtoReflect.Descriptor instead.
 func (*RescanResponse) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{19}
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *RescanResponse) GetAdded() int32 {
@@ -1063,7 +1370,7 @@ type GetServerSettingsRequest struct {
 
 func (x *GetServerSettingsRequest) Reset() {
 	*x = GetServerSettingsRequest{}
-	mi := &file_kantahe_v1_admin_proto_msgTypes[20]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1075,7 +1382,7 @@ func (x *GetServerSettingsRequest) String() string {
 func (*GetServerSettingsRequest) ProtoMessage() {}
 
 func (x *GetServerSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_admin_proto_msgTypes[20]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1088,7 +1395,7 @@ func (x *GetServerSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetServerSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetServerSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{20}
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{25}
 }
 
 // The current settings.
@@ -1101,7 +1408,7 @@ type GetServerSettingsResponse struct {
 
 func (x *GetServerSettingsResponse) Reset() {
 	*x = GetServerSettingsResponse{}
-	mi := &file_kantahe_v1_admin_proto_msgTypes[21]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1113,7 +1420,7 @@ func (x *GetServerSettingsResponse) String() string {
 func (*GetServerSettingsResponse) ProtoMessage() {}
 
 func (x *GetServerSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_admin_proto_msgTypes[21]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1126,7 +1433,7 @@ func (x *GetServerSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetServerSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetServerSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{21}
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetServerSettingsResponse) GetSettings() *ServerSettings {
@@ -1136,18 +1443,22 @@ func (x *GetServerSettingsResponse) GetSettings() *ServerSettings {
 	return nil
 }
 
-// Server-wide limits: upload size per file and how long the score screen shows.
+// Server-wide limits and switches: upload size per song, how long the score screen shows, the size limit of one background video and
+// whether the players show the background videos (in the order set, or shuffled on every pass).
 type ServerSettings struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	MaxUploadBytes int64                  `protobuf:"varint,1,opt,name=max_upload_bytes,json=maxUploadBytes,proto3" json:"max_upload_bytes,omitempty"`
-	ScoreSeconds   int32                  `protobuf:"varint,2,opt,name=score_seconds,json=scoreSeconds,proto3" json:"score_seconds,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	MaxUploadBytes    int64                  `protobuf:"varint,1,opt,name=max_upload_bytes,json=maxUploadBytes,proto3" json:"max_upload_bytes,omitempty"`
+	ScoreSeconds      int32                  `protobuf:"varint,2,opt,name=score_seconds,json=scoreSeconds,proto3" json:"score_seconds,omitempty"`
+	MaxVideoBytes     int64                  `protobuf:"varint,3,opt,name=max_video_bytes,json=maxVideoBytes,proto3" json:"max_video_bytes,omitempty"`
+	BackgroundEnabled bool                   `protobuf:"varint,4,opt,name=background_enabled,json=backgroundEnabled,proto3" json:"background_enabled,omitempty"`
+	BackgroundShuffle bool                   `protobuf:"varint,5,opt,name=background_shuffle,json=backgroundShuffle,proto3" json:"background_shuffle,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ServerSettings) Reset() {
 	*x = ServerSettings{}
-	mi := &file_kantahe_v1_admin_proto_msgTypes[22]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1159,7 +1470,7 @@ func (x *ServerSettings) String() string {
 func (*ServerSettings) ProtoMessage() {}
 
 func (x *ServerSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_admin_proto_msgTypes[22]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1172,7 +1483,7 @@ func (x *ServerSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerSettings.ProtoReflect.Descriptor instead.
 func (*ServerSettings) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{22}
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ServerSettings) GetMaxUploadBytes() int64 {
@@ -1189,18 +1500,42 @@ func (x *ServerSettings) GetScoreSeconds() int32 {
 	return 0
 }
 
+func (x *ServerSettings) GetMaxVideoBytes() int64 {
+	if x != nil {
+		return x.MaxVideoBytes
+	}
+	return 0
+}
+
+func (x *ServerSettings) GetBackgroundEnabled() bool {
+	if x != nil {
+		return x.BackgroundEnabled
+	}
+	return false
+}
+
+func (x *ServerSettings) GetBackgroundShuffle() bool {
+	if x != nil {
+		return x.BackgroundShuffle
+	}
+	return false
+}
+
 // Partial update of the server settings.
 type UpdateServerSettingsRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	MaxUploadBytes *int64                 `protobuf:"varint,1,opt,name=max_upload_bytes,json=maxUploadBytes,proto3,oneof" json:"max_upload_bytes,omitempty"`
-	ScoreSeconds   *int32                 `protobuf:"varint,2,opt,name=score_seconds,json=scoreSeconds,proto3,oneof" json:"score_seconds,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	MaxUploadBytes    *int64                 `protobuf:"varint,1,opt,name=max_upload_bytes,json=maxUploadBytes,proto3,oneof" json:"max_upload_bytes,omitempty"`
+	ScoreSeconds      *int32                 `protobuf:"varint,2,opt,name=score_seconds,json=scoreSeconds,proto3,oneof" json:"score_seconds,omitempty"`
+	MaxVideoBytes     *int64                 `protobuf:"varint,3,opt,name=max_video_bytes,json=maxVideoBytes,proto3,oneof" json:"max_video_bytes,omitempty"`
+	BackgroundEnabled *bool                  `protobuf:"varint,4,opt,name=background_enabled,json=backgroundEnabled,proto3,oneof" json:"background_enabled,omitempty"`
+	BackgroundShuffle *bool                  `protobuf:"varint,5,opt,name=background_shuffle,json=backgroundShuffle,proto3,oneof" json:"background_shuffle,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *UpdateServerSettingsRequest) Reset() {
 	*x = UpdateServerSettingsRequest{}
-	mi := &file_kantahe_v1_admin_proto_msgTypes[23]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1212,7 +1547,7 @@ func (x *UpdateServerSettingsRequest) String() string {
 func (*UpdateServerSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateServerSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_admin_proto_msgTypes[23]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1225,7 +1560,7 @@ func (x *UpdateServerSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateServerSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateServerSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{23}
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *UpdateServerSettingsRequest) GetMaxUploadBytes() int64 {
@@ -1242,6 +1577,27 @@ func (x *UpdateServerSettingsRequest) GetScoreSeconds() int32 {
 	return 0
 }
 
+func (x *UpdateServerSettingsRequest) GetMaxVideoBytes() int64 {
+	if x != nil && x.MaxVideoBytes != nil {
+		return *x.MaxVideoBytes
+	}
+	return 0
+}
+
+func (x *UpdateServerSettingsRequest) GetBackgroundEnabled() bool {
+	if x != nil && x.BackgroundEnabled != nil {
+		return *x.BackgroundEnabled
+	}
+	return false
+}
+
+func (x *UpdateServerSettingsRequest) GetBackgroundShuffle() bool {
+	if x != nil && x.BackgroundShuffle != nil {
+		return *x.BackgroundShuffle
+	}
+	return false
+}
+
 // The settings after the update.
 type UpdateServerSettingsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1252,7 +1608,7 @@ type UpdateServerSettingsResponse struct {
 
 func (x *UpdateServerSettingsResponse) Reset() {
 	*x = UpdateServerSettingsResponse{}
-	mi := &file_kantahe_v1_admin_proto_msgTypes[24]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1264,7 +1620,7 @@ func (x *UpdateServerSettingsResponse) String() string {
 func (*UpdateServerSettingsResponse) ProtoMessage() {}
 
 func (x *UpdateServerSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_admin_proto_msgTypes[24]
+	mi := &file_kantahe_v1_admin_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1277,7 +1633,7 @@ func (x *UpdateServerSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateServerSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateServerSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{24}
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *UpdateServerSettingsResponse) GetSettings() *ServerSettings {
@@ -1285,6 +1641,366 @@ func (x *UpdateServerSettingsResponse) GetSettings() *ServerSettings {
 		return x.Settings
 	}
 	return nil
+}
+
+// Asks nothing.
+type ListVideosRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListVideosRequest) Reset() {
+	*x = ListVideosRequest{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListVideosRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListVideosRequest) ProtoMessage() {}
+
+func (x *ListVideosRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListVideosRequest.ProtoReflect.Descriptor instead.
+func (*ListVideosRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{30}
+}
+
+// Every video, in loop order.
+type ListVideosResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Videos        []*Video               `protobuf:"bytes,1,rep,name=videos,proto3" json:"videos,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListVideosResponse) Reset() {
+	*x = ListVideosResponse{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListVideosResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListVideosResponse) ProtoMessage() {}
+
+func (x *ListVideosResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListVideosResponse.ProtoReflect.Descriptor instead.
+func (*ListVideosResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *ListVideosResponse) GetVideos() []*Video {
+	if x != nil {
+		return x.Videos
+	}
+	return nil
+}
+
+// The video and what to change; unset fields stay as they are.
+type UpdateVideoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Enabled       *bool                  `protobuf:"varint,3,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateVideoRequest) Reset() {
+	*x = UpdateVideoRequest{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateVideoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateVideoRequest) ProtoMessage() {}
+
+func (x *UpdateVideoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateVideoRequest.ProtoReflect.Descriptor instead.
+func (*UpdateVideoRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *UpdateVideoRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateVideoRequest) GetName() string {
+	if x != nil && x.Name != nil {
+		return *x.Name
+	}
+	return ""
+}
+
+func (x *UpdateVideoRequest) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+// The video after the change.
+type UpdateVideoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Video         *Video                 `protobuf:"bytes,1,opt,name=video,proto3" json:"video,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateVideoResponse) Reset() {
+	*x = UpdateVideoResponse{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateVideoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateVideoResponse) ProtoMessage() {}
+
+func (x *UpdateVideoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateVideoResponse.ProtoReflect.Descriptor instead.
+func (*UpdateVideoResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *UpdateVideoResponse) GetVideo() *Video {
+	if x != nil {
+		return x.Video
+	}
+	return nil
+}
+
+// All ids, in the new loop order.
+type ReorderVideosRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ids           []string               `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReorderVideosRequest) Reset() {
+	*x = ReorderVideosRequest{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReorderVideosRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReorderVideosRequest) ProtoMessage() {}
+
+func (x *ReorderVideosRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReorderVideosRequest.ProtoReflect.Descriptor instead.
+func (*ReorderVideosRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *ReorderVideosRequest) GetIds() []string {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+// Every video in the new order.
+type ReorderVideosResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Videos        []*Video               `protobuf:"bytes,1,rep,name=videos,proto3" json:"videos,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReorderVideosResponse) Reset() {
+	*x = ReorderVideosResponse{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReorderVideosResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReorderVideosResponse) ProtoMessage() {}
+
+func (x *ReorderVideosResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReorderVideosResponse.ProtoReflect.Descriptor instead.
+func (*ReorderVideosResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *ReorderVideosResponse) GetVideos() []*Video {
+	if x != nil {
+		return x.Videos
+	}
+	return nil
+}
+
+// The video to remove.
+type DeleteVideoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteVideoRequest) Reset() {
+	*x = DeleteVideoRequest{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteVideoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteVideoRequest) ProtoMessage() {}
+
+func (x *DeleteVideoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteVideoRequest.ProtoReflect.Descriptor instead.
+func (*DeleteVideoRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *DeleteVideoRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+// Nothing to report.
+type DeleteVideoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteVideoResponse) Reset() {
+	*x = DeleteVideoResponse{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteVideoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteVideoResponse) ProtoMessage() {}
+
+func (x *DeleteVideoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteVideoResponse.ProtoReflect.Descriptor instead.
+func (*DeleteVideoResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{37}
 }
 
 var File_kantahe_v1_admin_proto protoreflect.FileDescriptor
@@ -1337,11 +2053,32 @@ const file_kantahe_v1_admin_proto_rawDesc = "" +
 	"\x04song\x18\x01 \x01(\v2\x10.kantahe.v1.SongR\x04song\"H\n" +
 	"\x11DeleteSongRequest\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\tR\x06number\x12\x1b\n" +
-	"\tkeep_file\x18\x02 \x01(\bR\bkeepFile\"C\n" +
+	"\tkeep_file\x18\x02 \x01(\bR\bkeepFile\"f\n" +
 	"\x12RemoveSongsRequest\x12-\n" +
-	"\x05scope\x18\x01 \x01(\x0e2\x17.kantahe.v1.RemoveScopeR\x05scope\"/\n" +
+	"\x05scope\x18\x01 \x01(\x0e2\x17.kantahe.v1.RemoveScopeR\x05scope\x12!\n" +
+	"\fdelete_files\x18\x02 \x01(\bR\vdeleteFiles\"w\n" +
 	"\x13RemoveSongsResponse\x12\x18\n" +
-	"\aremoved\x18\x01 \x01(\x05R\aremoved\"\x14\n" +
+	"\aremoved\x18\x01 \x01(\x05R\aremoved\x12#\n" +
+	"\rfiles_deleted\x18\x02 \x01(\x05R\ffilesDeleted\x12!\n" +
+	"\ffiles_failed\x18\x03 \x01(\x05R\vfilesFailed\"\x15\n" +
+	"\x13CheckLibraryRequest\"r\n" +
+	"\x14CheckLibraryResponse\x12\x18\n" +
+	"\achecked\x18\x01 \x01(\x05R\achecked\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x16\n" +
+	"\x06broken\x18\x03 \x01(\x05R\x06broken\x12\x12\n" +
+	"\x04done\x18\x04 \x01(\bR\x04done\"T\n" +
+	"\x16ListBrokenSongsRequest\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x01 \x01(\tR\tpageToken\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\"J\n" +
+	"\n" +
+	"BrokenSong\x12$\n" +
+	"\x04song\x18\x01 \x01(\v2\x10.kantahe.v1.SongR\x04song\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x85\x01\n" +
+	"\x17ListBrokenSongsResponse\x12,\n" +
+	"\x05songs\x18\x01 \x03(\v2\x16.kantahe.v1.BrokenSongR\x05songs\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"\x14\n" +
 	"\x12DeleteSongResponse\"\x0f\n" +
 	"\rRescanRequest\"r\n" +
 	"\x0eRescanResponse\x12\x14\n" +
@@ -1351,21 +2088,50 @@ const file_kantahe_v1_admin_proto_rawDesc = "" +
 	"\x06failed\x18\x04 \x01(\x05R\x06failed\"\x1a\n" +
 	"\x18GetServerSettingsRequest\"S\n" +
 	"\x19GetServerSettingsResponse\x126\n" +
-	"\bsettings\x18\x01 \x01(\v2\x1a.kantahe.v1.ServerSettingsR\bsettings\"_\n" +
+	"\bsettings\x18\x01 \x01(\v2\x1a.kantahe.v1.ServerSettingsR\bsettings\"\xe5\x01\n" +
 	"\x0eServerSettings\x12(\n" +
 	"\x10max_upload_bytes\x18\x01 \x01(\x03R\x0emaxUploadBytes\x12#\n" +
-	"\rscore_seconds\x18\x02 \x01(\x05R\fscoreSeconds\"\x9d\x01\n" +
+	"\rscore_seconds\x18\x02 \x01(\x05R\fscoreSeconds\x12&\n" +
+	"\x0fmax_video_bytes\x18\x03 \x01(\x03R\rmaxVideoBytes\x12-\n" +
+	"\x12background_enabled\x18\x04 \x01(\bR\x11backgroundEnabled\x12-\n" +
+	"\x12background_shuffle\x18\x05 \x01(\bR\x11backgroundShuffle\"\xf4\x02\n" +
 	"\x1bUpdateServerSettingsRequest\x12-\n" +
 	"\x10max_upload_bytes\x18\x01 \x01(\x03H\x00R\x0emaxUploadBytes\x88\x01\x01\x12(\n" +
-	"\rscore_seconds\x18\x02 \x01(\x05H\x01R\fscoreSeconds\x88\x01\x01B\x13\n" +
+	"\rscore_seconds\x18\x02 \x01(\x05H\x01R\fscoreSeconds\x88\x01\x01\x12+\n" +
+	"\x0fmax_video_bytes\x18\x03 \x01(\x03H\x02R\rmaxVideoBytes\x88\x01\x01\x122\n" +
+	"\x12background_enabled\x18\x04 \x01(\bH\x03R\x11backgroundEnabled\x88\x01\x01\x122\n" +
+	"\x12background_shuffle\x18\x05 \x01(\bH\x04R\x11backgroundShuffle\x88\x01\x01B\x13\n" +
 	"\x11_max_upload_bytesB\x10\n" +
-	"\x0e_score_seconds\"V\n" +
+	"\x0e_score_secondsB\x12\n" +
+	"\x10_max_video_bytesB\x15\n" +
+	"\x13_background_enabledB\x15\n" +
+	"\x13_background_shuffle\"V\n" +
 	"\x1cUpdateServerSettingsResponse\x126\n" +
-	"\bsettings\x18\x01 \x01(\v2\x1a.kantahe.v1.ServerSettingsR\bsettings*\\\n" +
+	"\bsettings\x18\x01 \x01(\v2\x1a.kantahe.v1.ServerSettingsR\bsettings\"\x13\n" +
+	"\x11ListVideosRequest\"?\n" +
+	"\x12ListVideosResponse\x12)\n" +
+	"\x06videos\x18\x01 \x03(\v2\x11.kantahe.v1.VideoR\x06videos\"q\n" +
+	"\x12UpdateVideoRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x1d\n" +
+	"\aenabled\x18\x03 \x01(\bH\x01R\aenabled\x88\x01\x01B\a\n" +
+	"\x05_nameB\n" +
+	"\n" +
+	"\b_enabled\">\n" +
+	"\x13UpdateVideoResponse\x12'\n" +
+	"\x05video\x18\x01 \x01(\v2\x11.kantahe.v1.VideoR\x05video\"(\n" +
+	"\x14ReorderVideosRequest\x12\x10\n" +
+	"\x03ids\x18\x01 \x03(\tR\x03ids\"B\n" +
+	"\x15ReorderVideosResponse\x12)\n" +
+	"\x06videos\x18\x01 \x03(\v2\x11.kantahe.v1.VideoR\x06videos\"$\n" +
+	"\x12DeleteVideoRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x15\n" +
+	"\x13DeleteVideoResponse*u\n" +
 	"\vRemoveScope\x12\x1c\n" +
 	"\x18REMOVE_SCOPE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10REMOVE_SCOPE_ALL\x10\x01\x12\x19\n" +
-	"\x15REMOVE_SCOPE_NO_MUSIC\x10\x022\xef\a\n" +
+	"\x15REMOVE_SCOPE_NO_MUSIC\x10\x02\x12\x17\n" +
+	"\x13REMOVE_SCOPE_BROKEN\x10\x032\xe3\v\n" +
 	"\fAdminService\x12H\n" +
 	"\tListUsers\x12\x1c.kantahe.v1.ListUsersRequest\x1a\x1d.kantahe.v1.ListUsersResponse\x12K\n" +
 	"\n" +
@@ -1380,7 +2146,14 @@ const file_kantahe_v1_admin_proto_rawDesc = "" +
 	"UpdateSong\x12\x1d.kantahe.v1.UpdateSongRequest\x1a\x1e.kantahe.v1.UpdateSongResponse\x12K\n" +
 	"\n" +
 	"DeleteSong\x12\x1d.kantahe.v1.DeleteSongRequest\x1a\x1e.kantahe.v1.DeleteSongResponse\x12N\n" +
-	"\vRemoveSongs\x12\x1e.kantahe.v1.RemoveSongsRequest\x1a\x1f.kantahe.v1.RemoveSongsResponse\x12?\n" +
+	"\vRemoveSongs\x12\x1e.kantahe.v1.RemoveSongsRequest\x1a\x1f.kantahe.v1.RemoveSongsResponse\x12S\n" +
+	"\fCheckLibrary\x12\x1f.kantahe.v1.CheckLibraryRequest\x1a .kantahe.v1.CheckLibraryResponse0\x01\x12Z\n" +
+	"\x0fListBrokenSongs\x12\".kantahe.v1.ListBrokenSongsRequest\x1a#.kantahe.v1.ListBrokenSongsResponse\x12K\n" +
+	"\n" +
+	"ListVideos\x12\x1d.kantahe.v1.ListVideosRequest\x1a\x1e.kantahe.v1.ListVideosResponse\x12N\n" +
+	"\vUpdateVideo\x12\x1e.kantahe.v1.UpdateVideoRequest\x1a\x1f.kantahe.v1.UpdateVideoResponse\x12T\n" +
+	"\rReorderVideos\x12 .kantahe.v1.ReorderVideosRequest\x1a!.kantahe.v1.ReorderVideosResponse\x12N\n" +
+	"\vDeleteVideo\x12\x1e.kantahe.v1.DeleteVideoRequest\x1a\x1f.kantahe.v1.DeleteVideoResponse\x12?\n" +
 	"\x06Rescan\x12\x19.kantahe.v1.RescanRequest\x1a\x1a.kantahe.v1.RescanResponse\x12`\n" +
 	"\x11GetServerSettings\x12$.kantahe.v1.GetServerSettingsRequest\x1a%.kantahe.v1.GetServerSettingsResponse\x12i\n" +
 	"\x14UpdateServerSettings\x12'.kantahe.v1.UpdateServerSettingsRequest\x1a(.kantahe.v1.UpdateServerSettingsResponseB\xa6\x01\n" +
@@ -1402,7 +2175,7 @@ func file_kantahe_v1_admin_proto_rawDescGZIP() []byte {
 }
 
 var file_kantahe_v1_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_kantahe_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_kantahe_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_kantahe_v1_admin_proto_goTypes = []any{
 	(RemoveScope)(0),                     // 0: kantahe.v1.RemoveScope
 	(*ListUsersRequest)(nil),             // 1: kantahe.v1.ListUsersRequest
@@ -1422,54 +2195,85 @@ var file_kantahe_v1_admin_proto_goTypes = []any{
 	(*DeleteSongRequest)(nil),            // 15: kantahe.v1.DeleteSongRequest
 	(*RemoveSongsRequest)(nil),           // 16: kantahe.v1.RemoveSongsRequest
 	(*RemoveSongsResponse)(nil),          // 17: kantahe.v1.RemoveSongsResponse
-	(*DeleteSongResponse)(nil),           // 18: kantahe.v1.DeleteSongResponse
-	(*RescanRequest)(nil),                // 19: kantahe.v1.RescanRequest
-	(*RescanResponse)(nil),               // 20: kantahe.v1.RescanResponse
-	(*GetServerSettingsRequest)(nil),     // 21: kantahe.v1.GetServerSettingsRequest
-	(*GetServerSettingsResponse)(nil),    // 22: kantahe.v1.GetServerSettingsResponse
-	(*ServerSettings)(nil),               // 23: kantahe.v1.ServerSettings
-	(*UpdateServerSettingsRequest)(nil),  // 24: kantahe.v1.UpdateServerSettingsRequest
-	(*UpdateServerSettingsResponse)(nil), // 25: kantahe.v1.UpdateServerSettingsResponse
-	(*User)(nil),                         // 26: kantahe.v1.User
-	(*Song)(nil),                         // 27: kantahe.v1.Song
+	(*CheckLibraryRequest)(nil),          // 18: kantahe.v1.CheckLibraryRequest
+	(*CheckLibraryResponse)(nil),         // 19: kantahe.v1.CheckLibraryResponse
+	(*ListBrokenSongsRequest)(nil),       // 20: kantahe.v1.ListBrokenSongsRequest
+	(*BrokenSong)(nil),                   // 21: kantahe.v1.BrokenSong
+	(*ListBrokenSongsResponse)(nil),      // 22: kantahe.v1.ListBrokenSongsResponse
+	(*DeleteSongResponse)(nil),           // 23: kantahe.v1.DeleteSongResponse
+	(*RescanRequest)(nil),                // 24: kantahe.v1.RescanRequest
+	(*RescanResponse)(nil),               // 25: kantahe.v1.RescanResponse
+	(*GetServerSettingsRequest)(nil),     // 26: kantahe.v1.GetServerSettingsRequest
+	(*GetServerSettingsResponse)(nil),    // 27: kantahe.v1.GetServerSettingsResponse
+	(*ServerSettings)(nil),               // 28: kantahe.v1.ServerSettings
+	(*UpdateServerSettingsRequest)(nil),  // 29: kantahe.v1.UpdateServerSettingsRequest
+	(*UpdateServerSettingsResponse)(nil), // 30: kantahe.v1.UpdateServerSettingsResponse
+	(*ListVideosRequest)(nil),            // 31: kantahe.v1.ListVideosRequest
+	(*ListVideosResponse)(nil),           // 32: kantahe.v1.ListVideosResponse
+	(*UpdateVideoRequest)(nil),           // 33: kantahe.v1.UpdateVideoRequest
+	(*UpdateVideoResponse)(nil),          // 34: kantahe.v1.UpdateVideoResponse
+	(*ReorderVideosRequest)(nil),         // 35: kantahe.v1.ReorderVideosRequest
+	(*ReorderVideosResponse)(nil),        // 36: kantahe.v1.ReorderVideosResponse
+	(*DeleteVideoRequest)(nil),           // 37: kantahe.v1.DeleteVideoRequest
+	(*DeleteVideoResponse)(nil),          // 38: kantahe.v1.DeleteVideoResponse
+	(*User)(nil),                         // 39: kantahe.v1.User
+	(*Song)(nil),                         // 40: kantahe.v1.Song
+	(*Video)(nil),                        // 41: kantahe.v1.Video
 }
 var file_kantahe_v1_admin_proto_depIdxs = []int32{
-	26, // 0: kantahe.v1.ListUsersResponse.users:type_name -> kantahe.v1.User
-	26, // 1: kantahe.v1.CreateUserResponse.user:type_name -> kantahe.v1.User
-	26, // 2: kantahe.v1.UpdateUserResponse.user:type_name -> kantahe.v1.User
-	27, // 3: kantahe.v1.UpdateSongResponse.song:type_name -> kantahe.v1.Song
+	39, // 0: kantahe.v1.ListUsersResponse.users:type_name -> kantahe.v1.User
+	39, // 1: kantahe.v1.CreateUserResponse.user:type_name -> kantahe.v1.User
+	39, // 2: kantahe.v1.UpdateUserResponse.user:type_name -> kantahe.v1.User
+	40, // 3: kantahe.v1.UpdateSongResponse.song:type_name -> kantahe.v1.Song
 	0,  // 4: kantahe.v1.RemoveSongsRequest.scope:type_name -> kantahe.v1.RemoveScope
-	23, // 5: kantahe.v1.GetServerSettingsResponse.settings:type_name -> kantahe.v1.ServerSettings
-	23, // 6: kantahe.v1.UpdateServerSettingsResponse.settings:type_name -> kantahe.v1.ServerSettings
-	1,  // 7: kantahe.v1.AdminService.ListUsers:input_type -> kantahe.v1.ListUsersRequest
-	3,  // 8: kantahe.v1.AdminService.CreateUser:input_type -> kantahe.v1.CreateUserRequest
-	5,  // 9: kantahe.v1.AdminService.UpdateUser:input_type -> kantahe.v1.UpdateUserRequest
-	7,  // 10: kantahe.v1.AdminService.ResetPassword:input_type -> kantahe.v1.ResetPasswordRequest
-	9,  // 11: kantahe.v1.AdminService.DeleteUser:input_type -> kantahe.v1.DeleteUserRequest
-	11, // 12: kantahe.v1.AdminService.RevokeUserDevices:input_type -> kantahe.v1.RevokeUserDevicesRequest
-	13, // 13: kantahe.v1.AdminService.UpdateSong:input_type -> kantahe.v1.UpdateSongRequest
-	15, // 14: kantahe.v1.AdminService.DeleteSong:input_type -> kantahe.v1.DeleteSongRequest
-	16, // 15: kantahe.v1.AdminService.RemoveSongs:input_type -> kantahe.v1.RemoveSongsRequest
-	19, // 16: kantahe.v1.AdminService.Rescan:input_type -> kantahe.v1.RescanRequest
-	21, // 17: kantahe.v1.AdminService.GetServerSettings:input_type -> kantahe.v1.GetServerSettingsRequest
-	24, // 18: kantahe.v1.AdminService.UpdateServerSettings:input_type -> kantahe.v1.UpdateServerSettingsRequest
-	2,  // 19: kantahe.v1.AdminService.ListUsers:output_type -> kantahe.v1.ListUsersResponse
-	4,  // 20: kantahe.v1.AdminService.CreateUser:output_type -> kantahe.v1.CreateUserResponse
-	6,  // 21: kantahe.v1.AdminService.UpdateUser:output_type -> kantahe.v1.UpdateUserResponse
-	8,  // 22: kantahe.v1.AdminService.ResetPassword:output_type -> kantahe.v1.ResetPasswordResponse
-	10, // 23: kantahe.v1.AdminService.DeleteUser:output_type -> kantahe.v1.DeleteUserResponse
-	12, // 24: kantahe.v1.AdminService.RevokeUserDevices:output_type -> kantahe.v1.RevokeUserDevicesResponse
-	14, // 25: kantahe.v1.AdminService.UpdateSong:output_type -> kantahe.v1.UpdateSongResponse
-	18, // 26: kantahe.v1.AdminService.DeleteSong:output_type -> kantahe.v1.DeleteSongResponse
-	17, // 27: kantahe.v1.AdminService.RemoveSongs:output_type -> kantahe.v1.RemoveSongsResponse
-	20, // 28: kantahe.v1.AdminService.Rescan:output_type -> kantahe.v1.RescanResponse
-	22, // 29: kantahe.v1.AdminService.GetServerSettings:output_type -> kantahe.v1.GetServerSettingsResponse
-	25, // 30: kantahe.v1.AdminService.UpdateServerSettings:output_type -> kantahe.v1.UpdateServerSettingsResponse
-	19, // [19:31] is the sub-list for method output_type
-	7,  // [7:19] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	40, // 5: kantahe.v1.BrokenSong.song:type_name -> kantahe.v1.Song
+	21, // 6: kantahe.v1.ListBrokenSongsResponse.songs:type_name -> kantahe.v1.BrokenSong
+	28, // 7: kantahe.v1.GetServerSettingsResponse.settings:type_name -> kantahe.v1.ServerSettings
+	28, // 8: kantahe.v1.UpdateServerSettingsResponse.settings:type_name -> kantahe.v1.ServerSettings
+	41, // 9: kantahe.v1.ListVideosResponse.videos:type_name -> kantahe.v1.Video
+	41, // 10: kantahe.v1.UpdateVideoResponse.video:type_name -> kantahe.v1.Video
+	41, // 11: kantahe.v1.ReorderVideosResponse.videos:type_name -> kantahe.v1.Video
+	1,  // 12: kantahe.v1.AdminService.ListUsers:input_type -> kantahe.v1.ListUsersRequest
+	3,  // 13: kantahe.v1.AdminService.CreateUser:input_type -> kantahe.v1.CreateUserRequest
+	5,  // 14: kantahe.v1.AdminService.UpdateUser:input_type -> kantahe.v1.UpdateUserRequest
+	7,  // 15: kantahe.v1.AdminService.ResetPassword:input_type -> kantahe.v1.ResetPasswordRequest
+	9,  // 16: kantahe.v1.AdminService.DeleteUser:input_type -> kantahe.v1.DeleteUserRequest
+	11, // 17: kantahe.v1.AdminService.RevokeUserDevices:input_type -> kantahe.v1.RevokeUserDevicesRequest
+	13, // 18: kantahe.v1.AdminService.UpdateSong:input_type -> kantahe.v1.UpdateSongRequest
+	15, // 19: kantahe.v1.AdminService.DeleteSong:input_type -> kantahe.v1.DeleteSongRequest
+	16, // 20: kantahe.v1.AdminService.RemoveSongs:input_type -> kantahe.v1.RemoveSongsRequest
+	18, // 21: kantahe.v1.AdminService.CheckLibrary:input_type -> kantahe.v1.CheckLibraryRequest
+	20, // 22: kantahe.v1.AdminService.ListBrokenSongs:input_type -> kantahe.v1.ListBrokenSongsRequest
+	31, // 23: kantahe.v1.AdminService.ListVideos:input_type -> kantahe.v1.ListVideosRequest
+	33, // 24: kantahe.v1.AdminService.UpdateVideo:input_type -> kantahe.v1.UpdateVideoRequest
+	35, // 25: kantahe.v1.AdminService.ReorderVideos:input_type -> kantahe.v1.ReorderVideosRequest
+	37, // 26: kantahe.v1.AdminService.DeleteVideo:input_type -> kantahe.v1.DeleteVideoRequest
+	24, // 27: kantahe.v1.AdminService.Rescan:input_type -> kantahe.v1.RescanRequest
+	26, // 28: kantahe.v1.AdminService.GetServerSettings:input_type -> kantahe.v1.GetServerSettingsRequest
+	29, // 29: kantahe.v1.AdminService.UpdateServerSettings:input_type -> kantahe.v1.UpdateServerSettingsRequest
+	2,  // 30: kantahe.v1.AdminService.ListUsers:output_type -> kantahe.v1.ListUsersResponse
+	4,  // 31: kantahe.v1.AdminService.CreateUser:output_type -> kantahe.v1.CreateUserResponse
+	6,  // 32: kantahe.v1.AdminService.UpdateUser:output_type -> kantahe.v1.UpdateUserResponse
+	8,  // 33: kantahe.v1.AdminService.ResetPassword:output_type -> kantahe.v1.ResetPasswordResponse
+	10, // 34: kantahe.v1.AdminService.DeleteUser:output_type -> kantahe.v1.DeleteUserResponse
+	12, // 35: kantahe.v1.AdminService.RevokeUserDevices:output_type -> kantahe.v1.RevokeUserDevicesResponse
+	14, // 36: kantahe.v1.AdminService.UpdateSong:output_type -> kantahe.v1.UpdateSongResponse
+	23, // 37: kantahe.v1.AdminService.DeleteSong:output_type -> kantahe.v1.DeleteSongResponse
+	17, // 38: kantahe.v1.AdminService.RemoveSongs:output_type -> kantahe.v1.RemoveSongsResponse
+	19, // 39: kantahe.v1.AdminService.CheckLibrary:output_type -> kantahe.v1.CheckLibraryResponse
+	22, // 40: kantahe.v1.AdminService.ListBrokenSongs:output_type -> kantahe.v1.ListBrokenSongsResponse
+	32, // 41: kantahe.v1.AdminService.ListVideos:output_type -> kantahe.v1.ListVideosResponse
+	34, // 42: kantahe.v1.AdminService.UpdateVideo:output_type -> kantahe.v1.UpdateVideoResponse
+	36, // 43: kantahe.v1.AdminService.ReorderVideos:output_type -> kantahe.v1.ReorderVideosResponse
+	38, // 44: kantahe.v1.AdminService.DeleteVideo:output_type -> kantahe.v1.DeleteVideoResponse
+	25, // 45: kantahe.v1.AdminService.Rescan:output_type -> kantahe.v1.RescanResponse
+	27, // 46: kantahe.v1.AdminService.GetServerSettings:output_type -> kantahe.v1.GetServerSettingsResponse
+	30, // 47: kantahe.v1.AdminService.UpdateServerSettings:output_type -> kantahe.v1.UpdateServerSettingsResponse
+	30, // [30:48] is the sub-list for method output_type
+	12, // [12:30] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_kantahe_v1_admin_proto_init() }
@@ -1480,14 +2284,15 @@ func file_kantahe_v1_admin_proto_init() {
 	file_kantahe_v1_common_proto_init()
 	file_kantahe_v1_admin_proto_msgTypes[4].OneofWrappers = []any{}
 	file_kantahe_v1_admin_proto_msgTypes[12].OneofWrappers = []any{}
-	file_kantahe_v1_admin_proto_msgTypes[23].OneofWrappers = []any{}
+	file_kantahe_v1_admin_proto_msgTypes[28].OneofWrappers = []any{}
+	file_kantahe_v1_admin_proto_msgTypes[32].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kantahe_v1_admin_proto_rawDesc), len(file_kantahe_v1_admin_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   25,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -7,6 +7,7 @@ import 'package:kantahe/gen/kantahe/v1/session.pb.dart';
 import 'package:kantahe/me/score_settings_screen.dart';
 
 import 'fakes.dart';
+import '../tv/ring_helper.dart';
 
 Future<MeRig> open(
   WidgetTester tester, {
@@ -102,6 +103,15 @@ void main() {
     final r = MeRig();
     r.setState(stateOf());
     await r.pump(tester, const ScoreSettingsScreen());
+    expect(mode(tester), ScoreMode.SCORE_MODE_RANDOM);
+    expect(level(tester), ScoreLevel.SCORE_LEVEL_MIDDLE);
+  });
+
+  testWidgets('the remote\'s focus on a mode and on a level shows the ring, and the setting does not change', (tester) async {
+    await open(tester);
+    await expectNoRingWhenNotFocused(tester, find.byType(RadioListTile<ScoreMode>));
+    await expectRingOnFocus(tester, find.byType(RadioListTile<ScoreMode>));
+    await expectRingOnFocus(tester, find.byType(RadioListTile<ScoreLevel>));
     expect(mode(tester), ScoreMode.SCORE_MODE_RANDOM);
     expect(level(tester), ScoreLevel.SCORE_LEVEL_MIDDLE);
   });

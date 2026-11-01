@@ -5,6 +5,7 @@ import 'package:kantahe/core/messages.dart';
 import 'package:kantahe/gen/kantahe/v1/user_library.pb.dart';
 import 'package:kantahe/me/playlist_detail_screen.dart';
 import 'package:kantahe/tv/dpad_escape.dart';
+import 'package:kantahe/tv/focus.dart';
 
 /// The user's playlists: create, rename, delete (after asking), open.
 class PlaylistsScreen extends StatefulWidget {
@@ -164,20 +165,23 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
           ),
           if (_loaded && _playlists.isEmpty) const Padding(padding: EdgeInsets.all(8), child: Text('No playlists yet.')),
           for (final p in _playlists)
-            ListTile(
-              title: Text(p.name),
-              subtitle: Text(p.songCount == 1 ? '1 song' : '${p.songCount} songs'),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => PlaylistDetailScreen(id: p.id, name: p.name),
+            FocusRing(
+              radius: 0,
+              child: ListTile(
+                title: Text(p.name),
+                subtitle: Text(p.songCount == 1 ? '1 song' : '${p.songCount} songs'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => PlaylistDetailScreen(id: p.id, name: p.name),
+                  ),
                 ),
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(tooltip: 'Rename ${p.name}', icon: const Icon(Icons.edit_outlined), onPressed: () => _rename(p)),
-                  IconButton(tooltip: 'Delete ${p.name}', icon: const Icon(Icons.delete_outline), onPressed: () => _delete(p)),
-                ],
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(tooltip: 'Rename ${p.name}', icon: const Icon(Icons.edit_outlined), onPressed: () => _rename(p)),
+                    IconButton(tooltip: 'Delete ${p.name}', icon: const Icon(Icons.delete_outline), onPressed: () => _delete(p)),
+                  ],
+                ),
               ),
             ),
         ],

@@ -7,6 +7,7 @@ import { injectClient } from '../../core/api';
 import { fromServer, problem } from '../../core/errors';
 import { fieldValue } from '../../auth/form';
 import { FormatBadgeComponent } from '../../library/format-badge.component';
+import { BrokenSongsComponent } from './broken-songs.component';
 import { PageBarComponent } from '../../library/page-bar.component';
 import { Pager } from '../../library/paged';
 import { PageWindow } from '../../library/page-window';
@@ -15,7 +16,7 @@ const SEARCH_DELAY_MS = 250;
 
 @Component({
   selector: 'app-songs-admin-page',
-  imports: [FormatBadgeComponent, PageBarComponent],
+  imports: [BrokenSongsComponent, FormatBadgeComponent, PageBarComponent],
   template: `
     <h2>Songs</h2>
     <div class="field">
@@ -31,6 +32,7 @@ const SEARCH_DELAY_MS = 250;
         <span class="error" role="alert">{{ scanError() }}</span>
       }
     </p>
+    <app-broken-songs />
     <section class="bulk" aria-labelledby="bulk-title">
       <h3 id="bulk-title">Remove songs from the list</h3>
       <p class="hint">The song files are never deleted.</p>
@@ -61,24 +63,24 @@ const SEARCH_DELAY_MS = 250;
     @if (pager.error()) {
       <p class="error" role="alert">{{ pager.error() }} <button type="button" (click)="pager.retry()">Try again</button></p>
     }
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">Number</th>
-          <th scope="col">Title</th>
-          <th scope="col">Artist</th>
-          <th scope="col">Format</th>
-          <th scope="col">Actions</th>
+    <table role="table">
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col" role="columnheader">Number</th>
+          <th scope="col" role="columnheader">Title</th>
+          <th scope="col" role="columnheader">Artist</th>
+          <th scope="col" role="columnheader">Format</th>
+          <th scope="col" role="columnheader">Actions</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody role="rowgroup">
         @for (s of win.rows(); track s.number) {
-          <tr>
-            <td>{{ s.number }}</td>
-            <td>{{ s.title }}</td>
-            <td>{{ s.artist }}</td>
-            <td><app-format-badge [format]="s.format" /></td>
-            <td class="actions">
+          <tr role="row">
+            <td role="cell">{{ s.number }}</td>
+            <td role="cell">{{ s.title }}</td>
+            <td role="cell">{{ s.artist }}</td>
+            <td role="cell"><app-format-badge [format]="s.format" /></td>
+            <td role="cell" class="actions">
               @if (deleting() === s.number) {
                 <span>Take "{{ s.title }}" off the list, or delete its file too?</span>
                 <button type="button" (click)="remove(s, true)">Remove from list</button>
@@ -98,11 +100,12 @@ const SEARCH_DELAY_MS = 250;
     </table>
     @if (pager.loading()) {
       <p role="status">Loading…</p>
-    } @else if (pager.loaded() && pager.items().length === 0) {
+    } @else if (pager.loaded() && pager.items().length === 0 && !pager.error()) {
       <p>No songs found.</p>
     }
     <app-page-bar [win]="win" [hasMore]="pager.hasMore()" />
     @if (editing(); as e) {
+      <div class="backdrop" aria-hidden="true" (click)="editing.set(undefined)"></div>
       <div class="dialog" role="dialog" aria-modal="true" data-back-closes [attr.aria-label]="'Edit song ' + e.number" (keydown.escape)="editing.set(undefined)">
         <h3>Edit song {{ e.number }}</h3>
         <div class="field">
@@ -123,6 +126,10 @@ const SEARCH_DELAY_MS = 250;
     }
   `,
   styles: `
+    :host {
+      display: block;
+      container-type: inline-size;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -138,12 +145,51 @@ const SEARCH_DELAY_MS = 250;
       flex-wrap: wrap;
       gap: 0.5rem;
     }
+    /* on a phone each song is a block: number and title, artist, format, then the buttons; the header row stays for screen readers */
+    /* the width of the page's own box, in rem: with a larger text size a table that needs 44rem no longer fits, and the blocks come sooner */
+    @container (max-width: 44rem) {
+      table,
+      tbody,
+      tr,
+      td {
+        display: block;
+      }
+      thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+      }
+      tr {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--line);
+      }
+      td {
+        padding: 0.15rem 0;
+        border-bottom: 0;
+        overflow-wrap: anywhere;
+      }
+      td:first-child {
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+    }
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgb(0 0 0 / 0.45);
+    }
+    /* the dialog fits a phone on its side and one with the keyboard open: it starts near the top and scrolls inside */
     .dialog {
       position: fixed;
       left: 50%;
-      top: 20%;
+      top: 1rem;
       transform: translateX(-50%);
-      width: min(28rem, 92vw);
+      width: min(28rem, calc(100vw - 2rem));
+      max-height: calc(100dvh - 2rem);
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
       padding: 1rem;
       border: 1px solid var(--line);
       border-radius: 0.75rem;

@@ -12,6 +12,11 @@ services:
       # delete songs from it. Uploaded songs are kept in the data volume, not here.
       - /path/to/karaoke:/library
     restart: unless-stopped
+    # So that the apps find the server on the network by themselves (it announces itself over mDNS, which does not
+    # leave Docker's default network), use the host's network instead of the ports above: remove the "ports:" lines,
+    # then uncomment the next two lines. The listen port is then the one clients use (KANTAHE_LISTEN, default :8080).
+    # network_mode: host
+    # environment: { KANTAHE_NAME: "Living room karaoke" }
     # Behind a reverse proxy, tell the server its public address (shown to TVs as the approval link):
     # command: ["--data", "/data", "--library", "/library", "--listen", ":8080", "--public-url", "https://karaoke.example.com"]
 

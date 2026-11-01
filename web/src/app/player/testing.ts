@@ -1,6 +1,15 @@
 import { create } from '@bufbuild/protobuf';
 import { createRouterTransport } from '@connectrpc/connect';
-import { CatalogService, GetPlaybackRequest, GetPlaybackResponseSchema, Playback, PlaybackKind, PlaybackSchema } from '../../gen/kantahe/v1/catalog_pb';
+import {
+  CatalogService,
+  GetBackgroundResponse,
+  GetBackgroundResponseSchema,
+  GetPlaybackRequest,
+  GetPlaybackResponseSchema,
+  Playback,
+  PlaybackKind,
+  PlaybackSchema,
+} from '../../gen/kantahe/v1/catalog_pb';
 import { Lyrics, MidiMode, Song } from '../../gen/kantahe/v1/common_pb';
 import {
   ControlRequest,
@@ -51,6 +60,7 @@ export function fakePlayerServer() {
     mic: [] as ReportMicRequest[],
     control: [] as ControlRequest[],
     mode: [] as SetMidiModeRequest[],
+    background: 0,
   };
   const pending: State[] = [];
   let wake: (() => void) | undefined;
@@ -59,12 +69,18 @@ export function fakePlayerServer() {
     ready: (() => undefined) as (req: ReadyRequest) => void,
     control: (() => undefined) as (req: ControlRequest) => void,
     setMidiMode: (() => undefined) as (req: SetMidiModeRequest) => void,
+    /** The list of background videos; none and switched off until a test says otherwise. */
+    background: (() => create(GetBackgroundResponseSchema, { enabled: false })) as () => GetBackgroundResponse | Promise<GetBackgroundResponse>,
   };
   const transport = createRouterTransport(({ service }) => {
     service(CatalogService, {
       async getPlayback(req) {
         calls.playback.push(req);
         return create(GetPlaybackResponseSchema, { playback: await handlers.playback(req) });
+      },
+      async getBackground() {
+        calls.background++;
+        return handlers.background();
       },
     });
     service(SessionService, {

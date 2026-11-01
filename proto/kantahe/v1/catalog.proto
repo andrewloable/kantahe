@@ -16,6 +16,8 @@ service CatalogService {
   rpc GetLyrics(GetLyricsRequest) returns (GetLyricsResponse);
   // Signed-in user. Signed URLs, lyrics and the MIDI mode resolved for the calling device (plan 4.1); ready=false means retry later.
   rpc GetPlayback(GetPlaybackRequest) returns (GetPlaybackResponse);
+  // Signed-in user. The enabled background videos in loop order with signed URLs (6 hours); empty when the admin has switched the background off.
+  rpc GetBackground(GetBackgroundRequest) returns (GetBackgroundResponse);
 }
 
 // Result order for SearchSongs.
@@ -112,4 +114,14 @@ message Playback {
 // The playback description.
 message GetPlaybackResponse {
   Playback playback = 1;
+}
+
+// Asks nothing.
+message GetBackgroundRequest {}
+
+// enabled is the admin's switch; when it is false videos is empty. shuffle asks the player to shuffle the order on every pass.
+message GetBackgroundResponse {
+  bool enabled = 1;
+  bool shuffle = 2;
+  repeated Video videos = 3;
 }

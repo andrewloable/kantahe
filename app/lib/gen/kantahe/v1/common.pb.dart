@@ -547,6 +547,8 @@ class Device extends $pb.GeneratedMessage {
     MidiMode? effectiveMidiMode,
     $core.bool? isCaller,
     $fixnum.Int64? lastSeenUnix,
+    BackgroundMode? backgroundMode,
+    $core.bool? effectiveBackground,
   }) {
     final result = Device._();
     if (id != null) result.id = id;
@@ -559,6 +561,9 @@ class Device extends $pb.GeneratedMessage {
     if (effectiveMidiMode != null) result.effectiveMidiMode = effectiveMidiMode;
     if (isCaller != null) result.isCaller = isCaller;
     if (lastSeenUnix != null) result.lastSeenUnix = lastSeenUnix;
+    if (backgroundMode != null) result.backgroundMode = backgroundMode;
+    if (effectiveBackground != null)
+      result.effectiveBackground = effectiveBackground;
     return result;
   }
 
@@ -588,6 +593,9 @@ class Device extends $pb.GeneratedMessage {
         enumValues: MidiMode.values)
     ..aOB(9, _omitFieldNames ? '' : 'isCaller')
     ..aInt64(10, _omitFieldNames ? '' : 'lastSeenUnix')
+    ..aE<BackgroundMode>(11, _omitFieldNames ? '' : 'backgroundMode',
+        enumValues: BackgroundMode.values)
+    ..aOB(12, _omitFieldNames ? '' : 'effectiveBackground')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -700,6 +708,236 @@ class Device extends $pb.GeneratedMessage {
   $core.bool hasLastSeenUnix() => $_has(9);
   @$pb.TagNumber(10)
   void clearLastSeenUnix() => $_clearField(10);
+
+  /// What the user chose; effective_background is what the server resolved from it (whether this device plays the background videos).
+  @$pb.TagNumber(11)
+  BackgroundMode get backgroundMode => $_getN(10);
+  @$pb.TagNumber(11)
+  set backgroundMode(BackgroundMode value) => $_setField(11, value);
+  @$pb.TagNumber(11)
+  $core.bool hasBackgroundMode() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearBackgroundMode() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.bool get effectiveBackground => $_getBF(11);
+  @$pb.TagNumber(12)
+  set effectiveBackground($core.bool value) => $_setBool(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasEffectiveBackground() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearEffectiveBackground() => $_clearField(12);
+}
+
+/// A background video uploaded by the admin (plan 4.2). url is a signed URL (ListVideos: 1 hour, for the admin preview; GetBackground: 6 hours).
+class Video extends $pb.GeneratedMessage {
+  factory Video({
+    $core.String? id,
+    $core.String? name,
+    $fixnum.Int64? sizeBytes,
+    $fixnum.Int64? durationMs,
+    $core.int? width,
+    $core.int? height,
+    $core.String? codec,
+    $core.bool? hasAudio,
+    $core.bool? faststart,
+    $core.bool? enabled,
+    $core.int? position,
+    $fixnum.Int64? createdAtUnix,
+    $core.String? url,
+    $core.Iterable<$core.String>? warnings,
+  }) {
+    final result = Video._();
+    if (id != null) result.id = id;
+    if (name != null) result.name = name;
+    if (sizeBytes != null) result.sizeBytes = sizeBytes;
+    if (durationMs != null) result.durationMs = durationMs;
+    if (width != null) result.width = width;
+    if (height != null) result.height = height;
+    if (codec != null) result.codec = codec;
+    if (hasAudio != null) result.hasAudio = hasAudio;
+    if (faststart != null) result.faststart = faststart;
+    if (enabled != null) result.enabled = enabled;
+    if (position != null) result.position = position;
+    if (createdAtUnix != null) result.createdAtUnix = createdAtUnix;
+    if (url != null) result.url = url;
+    if (warnings != null) result.warnings.addAll(warnings);
+    return result;
+  }
+
+  Video._();
+
+  factory Video.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Video()..mergeFromBuffer(data, registry);
+  factory Video.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Video()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Video',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: Video.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aInt64(3, _omitFieldNames ? '' : 'sizeBytes')
+    ..aInt64(4, _omitFieldNames ? '' : 'durationMs')
+    ..aI(5, _omitFieldNames ? '' : 'width')
+    ..aI(6, _omitFieldNames ? '' : 'height')
+    ..aOS(7, _omitFieldNames ? '' : 'codec')
+    ..aOB(8, _omitFieldNames ? '' : 'hasAudio')
+    ..aOB(9, _omitFieldNames ? '' : 'faststart')
+    ..aOB(10, _omitFieldNames ? '' : 'enabled')
+    ..aI(11, _omitFieldNames ? '' : 'position')
+    ..aInt64(12, _omitFieldNames ? '' : 'createdAtUnix')
+    ..aOS(13, _omitFieldNames ? '' : 'url')
+    ..pPS(14, _omitFieldNames ? '' : 'warnings')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Video clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Video copyWith(void Function(Video) updates) =>
+      super.copyWith((message) => updates(message as Video)) as Video;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Video() / Video.new instead')
+  static Video create() => Video._();
+  static $pb.GeneratedMessage $_createMessage() => Video._();
+  @$core.override
+  Video createEmptyInstance() => Video._();
+  @$core.pragma('dart2js:noInline')
+  static Video getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Video>(Video.$_createMessage);
+  static Video? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get sizeBytes => $_getI64(2);
+  @$pb.TagNumber(3)
+  set sizeBytes($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSizeBytes() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSizeBytes() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get durationMs => $_getI64(3);
+  @$pb.TagNumber(4)
+  set durationMs($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDurationMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDurationMs() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get width => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set width($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasWidth() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearWidth() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get height => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set height($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasHeight() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearHeight() => $_clearField(6);
+
+  /// Video codec of the file, for example "avc1".
+  @$pb.TagNumber(7)
+  $core.String get codec => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set codec($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCodec() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCodec() => $_clearField(7);
+
+  /// The audio track is never played; this only tells the admin the file carries one.
+  @$pb.TagNumber(8)
+  $core.bool get hasAudio => $_getBF(7);
+  @$pb.TagNumber(8)
+  set hasAudio($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasHasAudio() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearHasAudio() => $_clearField(8);
+
+  /// The moov box comes before the media data, so playback can start before the whole file is read.
+  @$pb.TagNumber(9)
+  $core.bool get faststart => $_getBF(8);
+  @$pb.TagNumber(9)
+  set faststart($core.bool value) => $_setBool(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasFaststart() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearFaststart() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.bool get enabled => $_getBF(9);
+  @$pb.TagNumber(10)
+  set enabled($core.bool value) => $_setBool(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasEnabled() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearEnabled() => $_clearField(10);
+
+  /// Place in the loop, counted from 1.
+  @$pb.TagNumber(11)
+  $core.int get position => $_getIZ(10);
+  @$pb.TagNumber(11)
+  set position($core.int value) => $_setSignedInt32(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasPosition() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearPosition() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $fixnum.Int64 get createdAtUnix => $_getI64(11);
+  @$pb.TagNumber(12)
+  set createdAtUnix($fixnum.Int64 value) => $_setInt64(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasCreatedAtUnix() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearCreatedAtUnix() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.String get url => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set url($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasUrl() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearUrl() => $_clearField(13);
+
+  /// Short advice texts such as "wider than 1920 px: may stutter on a TV" or "not optimised for streaming (moov after mdat)".
+  @$pb.TagNumber(14)
+  $pb.PbList<$core.String> get warnings => $_getList(13);
 }
 
 /// A device token with its user; the token is shown once and only its hash is stored (plan 5).

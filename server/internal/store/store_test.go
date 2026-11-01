@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -381,5 +382,117 @@ func TestCatalogMigrationBackfillsDisplayColumns(t *testing.T) {
 	}
 	if dt != "Élan" || da != "Artist" || tk == "" {
 		t.Fatalf("existing rows must not end up with blank titles: %q %q %q", dt, da, tk)
+	}
+}
+
+func TestVideosMigrationLeavesTheSongsAlone(t *testing.T) {
+	db := rawDB(t)
+	all, err := migrationFiles.ReadDir("migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	upTo := func(last string) fstest.MapFS {
+		m := fstest.MapFS{}
+		for _, f := range all {
+			if f.Name() <= last {
+				body, _ := migrationFiles.ReadFile("migrations/" + f.Name())
+				m[f.Name()] = &fstest.MapFile{Data: body}
+			}
+		}
+		return m
+	}
+	if err := migrateFS(context.Background(), db, upTo("0006_userlib.sql")); err != nil {
+		t.Fatal(err)
+	}
+	for i := 1; i <= 3; i++ {
+		if _, err := db.Exec(`INSERT INTO songs(number, format, source, path, sha256, size, mtime, original_name, file_title, file_artist, metadata_done, created_at)
+			VALUES (?, 2, 1, ?, 'h', 1, 1, 'x.kar', 'Title', 'Artist', 1, 1)`, fmt.Sprintf("0000%d", i), fmt.Sprintf("p%d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	snapshot := func() string {
+		rows, err := db.Query(`SELECT number, path, sha256, file_title FROM songs ORDER BY number`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		var out string
+		for rows.Next() {
+			var a, b, c, d string
+			if err := rows.Scan(&a, &b, &c, &d); err != nil {
+				t.Fatal(err)
+			}
+			out += a + "|" + b + "|" + c + "|" + d + ";"
+		}
+		return out
+	}
+	before := snapshot()
+	if err := migrateFS(context.Background(), db, upTo("9999_x.sql")); err != nil {
+		t.Fatal(err)
+	}
+	if after := snapshot(); after != before || before == "" {
+		t.Fatalf("songs changed:\n%s\n%s", before, after)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM videos`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("videos table: %d %v", n, err)
+	}
+}
+
+func TestDeviceBackgroundMigrationGivesOldDevicesAuto(t *testing.T) {
+	db := rawDB(t)
+	all, err := migrationFiles.ReadDir("migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	upTo := func(last string) fstest.MapFS {
+		m := fstest.MapFS{}
+		for _, f := range all {
+			if f.Name() <= last {
+				body, _ := migrationFiles.ReadFile("migrations/" + f.Name())
+				m[f.Name()] = &fstest.MapFile{Data: body}
+			}
+		}
+		return m
+	}
+	if err := migrateFS(context.Background(), db, upTo("0008_video_uploads.sql")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO users(id, email, display_name, password_hash, created_at) VALUES ('u1', 'a@example.com', 'A', 'h', 1)`); err != nil {
+		t.Fatal(err)
+	}
+	for i := 1; i <= 3; i++ {
+		if _, err := db.Exec(`INSERT INTO devices(id, user_id, name, type, token_hash, created_at, last_seen, midi_mode, memory_mb) VALUES (?, 'u1', ?, 4, ?, 1, 2, 3, 512)`,
+			fmt.Sprintf("d%d", i), fmt.Sprintf("TV %d", i), fmt.Sprintf("hash%d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	snapshot := func() string {
+		rows, err := db.Query(`SELECT id, name, type, midi_mode, memory_mb, last_seen FROM devices ORDER BY id`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		var out string
+		for rows.Next() {
+			var id, name string
+			var typ, midi, mem, seen int
+			if err := rows.Scan(&id, &name, &typ, &midi, &mem, &seen); err != nil {
+				t.Fatal(err)
+			}
+			out += fmt.Sprint(id, name, typ, midi, mem, seen, ";")
+		}
+		return out
+	}
+	before := snapshot()
+	if err := migrateFS(context.Background(), db, upTo("9999_x.sql")); err != nil {
+		t.Fatal(err)
+	}
+	if after := snapshot(); after != before || before == "" {
+		t.Fatalf("devices changed:\n%s\n%s", before, after)
+	}
+	var n, auto int
+	if err := db.QueryRow(`SELECT COUNT(*), COALESCE(SUM(background_mode = 1), 0) FROM devices`).Scan(&n, &auto); err != nil || n != 3 || auto != 3 {
+		t.Fatalf("%d devices, %d with background_mode 1: %v", n, auto, err)
 	}
 }

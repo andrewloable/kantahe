@@ -10,6 +10,8 @@
   --sung: #9a6700;
   --danger: #b3261e;
   --line: #c9cde0;
+  /* the border of a control (3:1 against the page and against a card); --line is for separators and cards */
+  --field-line: #7a81a6;
   color-scheme: light dark;
 }
 
@@ -25,6 +27,7 @@
     --sung: #ffd23f;
     --danger: #ff8a80;
     --line: #2a3592;
+    --field-line: #5562c4;
   }
 }
 
@@ -39,6 +42,7 @@
   --sung: #ffd23f;
   --danger: #ff8a80;
   --line: #2a3592;
+  --field-line: #5562c4;
 }
 
 :root[data-theme="light"] {
@@ -92,14 +96,30 @@ label {
 
 input[type='text'],
 input[type='email'],
-input[type='password'] {
+input[type='password'],
+input[type='search'],
+input[type='number'] {
   width: 100%;
   min-height: 2.75rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-line);
   border-radius: 0.5rem;
   background: transparent;
   color: inherit;
+  font: inherit;
+}
+
+select {
+  min-height: 2.75rem;
+  /* a select does not inherit the font by default; under 16 px iOS Safari zooms into it when it is focused */
+  font: inherit;
+}
+
+/* the file picker is one 44 px target: the box and the button inside it */
+input[type='file'] {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.25rem 0;
   font: inherit;
 }
 

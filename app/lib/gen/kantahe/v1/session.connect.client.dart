@@ -260,4 +260,22 @@ extension type SessionServiceClient (connect.Transport _transport) {
       onTrailer: onTrailer,
     );
   }
+
+  /// Signed-in user. Sets the background video mode of one of the caller's devices; NOT_FOUND for another user's device.
+  Future<kantahev1session.SetBackgroundModeResponse> setBackgroundMode(
+    kantahev1session.SetBackgroundModeRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.SessionService.setBackgroundMode,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
 }

@@ -811,6 +811,104 @@ func (x *GetPlaybackResponse) GetPlayback() *Playback {
 	return nil
 }
 
+// Asks nothing.
+type GetBackgroundRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetBackgroundRequest) Reset() {
+	*x = GetBackgroundRequest{}
+	mi := &file_kantahe_v1_catalog_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetBackgroundRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBackgroundRequest) ProtoMessage() {}
+
+func (x *GetBackgroundRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_catalog_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBackgroundRequest.ProtoReflect.Descriptor instead.
+func (*GetBackgroundRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_catalog_proto_rawDescGZIP(), []int{12}
+}
+
+// enabled is the admin's switch; when it is false videos is empty. shuffle asks the player to shuffle the order on every pass.
+type GetBackgroundResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Shuffle       bool                   `protobuf:"varint,2,opt,name=shuffle,proto3" json:"shuffle,omitempty"`
+	Videos        []*Video               `protobuf:"bytes,3,rep,name=videos,proto3" json:"videos,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetBackgroundResponse) Reset() {
+	*x = GetBackgroundResponse{}
+	mi := &file_kantahe_v1_catalog_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetBackgroundResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBackgroundResponse) ProtoMessage() {}
+
+func (x *GetBackgroundResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_catalog_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBackgroundResponse.ProtoReflect.Descriptor instead.
+func (*GetBackgroundResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_catalog_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetBackgroundResponse) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *GetBackgroundResponse) GetShuffle() bool {
+	if x != nil {
+		return x.Shuffle
+	}
+	return false
+}
+
+func (x *GetBackgroundResponse) GetVideos() []*Video {
+	if x != nil {
+		return x.Videos
+	}
+	return nil
+}
+
 var File_kantahe_v1_catalog_proto protoreflect.FileDescriptor
 
 const file_kantahe_v1_catalog_proto_rawDesc = "" +
@@ -861,7 +959,12 @@ const file_kantahe_v1_catalog_proto_rawDesc = "" +
 	"\x0eretry_after_ms\x18\b \x01(\x05R\fretryAfterMs\x12*\n" +
 	"\x06lyrics\x18\t \x01(\v2\x12.kantahe.v1.LyricsR\x06lyrics\"G\n" +
 	"\x13GetPlaybackResponse\x120\n" +
-	"\bplayback\x18\x01 \x01(\v2\x14.kantahe.v1.PlaybackR\bplayback*f\n" +
+	"\bplayback\x18\x01 \x01(\v2\x14.kantahe.v1.PlaybackR\bplayback\"\x16\n" +
+	"\x14GetBackgroundRequest\"v\n" +
+	"\x15GetBackgroundResponse\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x18\n" +
+	"\ashuffle\x18\x02 \x01(\bR\ashuffle\x12)\n" +
+	"\x06videos\x18\x03 \x03(\v2\x11.kantahe.v1.VideoR\x06videos*f\n" +
 	"\bSongSort\x12\x19\n" +
 	"\x15SONG_SORT_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10SONG_SORT_NUMBER\x10\x01\x12\x13\n" +
@@ -870,13 +973,14 @@ const file_kantahe_v1_catalog_proto_rawDesc = "" +
 	"\fPlaybackKind\x12\x1d\n" +
 	"\x19PLAYBACK_KIND_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13PLAYBACK_KIND_AUDIO\x10\x01\x12\x1c\n" +
-	"\x18PLAYBACK_KIND_MIDI_SYNTH\x10\x022\x8e\x03\n" +
+	"\x18PLAYBACK_KIND_MIDI_SYNTH\x10\x022\xe4\x03\n" +
 	"\x0eCatalogService\x12N\n" +
 	"\vSearchSongs\x12\x1e.kantahe.v1.SearchSongsRequest\x1a\x1f.kantahe.v1.SearchSongsResponse\x12N\n" +
 	"\vListArtists\x12\x1e.kantahe.v1.ListArtistsRequest\x1a\x1f.kantahe.v1.ListArtistsResponse\x12B\n" +
 	"\aGetSong\x12\x1a.kantahe.v1.GetSongRequest\x1a\x1b.kantahe.v1.GetSongResponse\x12H\n" +
 	"\tGetLyrics\x12\x1c.kantahe.v1.GetLyricsRequest\x1a\x1d.kantahe.v1.GetLyricsResponse\x12N\n" +
-	"\vGetPlayback\x12\x1e.kantahe.v1.GetPlaybackRequest\x1a\x1f.kantahe.v1.GetPlaybackResponseB\xa8\x01\n" +
+	"\vGetPlayback\x12\x1e.kantahe.v1.GetPlaybackRequest\x1a\x1f.kantahe.v1.GetPlaybackResponse\x12T\n" +
+	"\rGetBackground\x12 .kantahe.v1.GetBackgroundRequest\x1a!.kantahe.v1.GetBackgroundResponseB\xa8\x01\n" +
 	"\x0ecom.kantahe.v1B\fCatalogProtoP\x01Z?github.com/andrewloable/kantahe/server/gen/kantahe/v1;kantahev1\xa2\x02\x03KXX\xaa\x02\n" +
 	"Kantahe.V1\xca\x02\n" +
 	"Kantahe\\V1\xe2\x02\x16Kantahe\\V1\\GPBMetadata\xea\x02\vKantahe::V1b\x06proto3"
@@ -894,54 +998,60 @@ func file_kantahe_v1_catalog_proto_rawDescGZIP() []byte {
 }
 
 var file_kantahe_v1_catalog_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_kantahe_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_kantahe_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_kantahe_v1_catalog_proto_goTypes = []any{
-	(SongSort)(0),               // 0: kantahe.v1.SongSort
-	(PlaybackKind)(0),           // 1: kantahe.v1.PlaybackKind
-	(*SearchSongsRequest)(nil),  // 2: kantahe.v1.SearchSongsRequest
-	(*SearchSongsResponse)(nil), // 3: kantahe.v1.SearchSongsResponse
-	(*Artist)(nil),              // 4: kantahe.v1.Artist
-	(*ListArtistsRequest)(nil),  // 5: kantahe.v1.ListArtistsRequest
-	(*ListArtistsResponse)(nil), // 6: kantahe.v1.ListArtistsResponse
-	(*GetSongRequest)(nil),      // 7: kantahe.v1.GetSongRequest
-	(*GetSongResponse)(nil),     // 8: kantahe.v1.GetSongResponse
-	(*GetLyricsRequest)(nil),    // 9: kantahe.v1.GetLyricsRequest
-	(*GetLyricsResponse)(nil),   // 10: kantahe.v1.GetLyricsResponse
-	(*GetPlaybackRequest)(nil),  // 11: kantahe.v1.GetPlaybackRequest
-	(*Playback)(nil),            // 12: kantahe.v1.Playback
-	(*GetPlaybackResponse)(nil), // 13: kantahe.v1.GetPlaybackResponse
-	(Format)(0),                 // 14: kantahe.v1.Format
-	(*Song)(nil),                // 15: kantahe.v1.Song
-	(*Lyrics)(nil),              // 16: kantahe.v1.Lyrics
-	(MidiMode)(0),               // 17: kantahe.v1.MidiMode
+	(SongSort)(0),                 // 0: kantahe.v1.SongSort
+	(PlaybackKind)(0),             // 1: kantahe.v1.PlaybackKind
+	(*SearchSongsRequest)(nil),    // 2: kantahe.v1.SearchSongsRequest
+	(*SearchSongsResponse)(nil),   // 3: kantahe.v1.SearchSongsResponse
+	(*Artist)(nil),                // 4: kantahe.v1.Artist
+	(*ListArtistsRequest)(nil),    // 5: kantahe.v1.ListArtistsRequest
+	(*ListArtistsResponse)(nil),   // 6: kantahe.v1.ListArtistsResponse
+	(*GetSongRequest)(nil),        // 7: kantahe.v1.GetSongRequest
+	(*GetSongResponse)(nil),       // 8: kantahe.v1.GetSongResponse
+	(*GetLyricsRequest)(nil),      // 9: kantahe.v1.GetLyricsRequest
+	(*GetLyricsResponse)(nil),     // 10: kantahe.v1.GetLyricsResponse
+	(*GetPlaybackRequest)(nil),    // 11: kantahe.v1.GetPlaybackRequest
+	(*Playback)(nil),              // 12: kantahe.v1.Playback
+	(*GetPlaybackResponse)(nil),   // 13: kantahe.v1.GetPlaybackResponse
+	(*GetBackgroundRequest)(nil),  // 14: kantahe.v1.GetBackgroundRequest
+	(*GetBackgroundResponse)(nil), // 15: kantahe.v1.GetBackgroundResponse
+	(Format)(0),                   // 16: kantahe.v1.Format
+	(*Song)(nil),                  // 17: kantahe.v1.Song
+	(*Lyrics)(nil),                // 18: kantahe.v1.Lyrics
+	(MidiMode)(0),                 // 19: kantahe.v1.MidiMode
+	(*Video)(nil),                 // 20: kantahe.v1.Video
 }
 var file_kantahe_v1_catalog_proto_depIdxs = []int32{
-	14, // 0: kantahe.v1.SearchSongsRequest.format:type_name -> kantahe.v1.Format
+	16, // 0: kantahe.v1.SearchSongsRequest.format:type_name -> kantahe.v1.Format
 	0,  // 1: kantahe.v1.SearchSongsRequest.sort:type_name -> kantahe.v1.SongSort
-	15, // 2: kantahe.v1.SearchSongsResponse.songs:type_name -> kantahe.v1.Song
+	17, // 2: kantahe.v1.SearchSongsResponse.songs:type_name -> kantahe.v1.Song
 	4,  // 3: kantahe.v1.ListArtistsResponse.artists:type_name -> kantahe.v1.Artist
-	15, // 4: kantahe.v1.GetSongResponse.song:type_name -> kantahe.v1.Song
-	16, // 5: kantahe.v1.GetLyricsResponse.lyrics:type_name -> kantahe.v1.Lyrics
-	15, // 6: kantahe.v1.Playback.song:type_name -> kantahe.v1.Song
+	17, // 4: kantahe.v1.GetSongResponse.song:type_name -> kantahe.v1.Song
+	18, // 5: kantahe.v1.GetLyricsResponse.lyrics:type_name -> kantahe.v1.Lyrics
+	17, // 6: kantahe.v1.Playback.song:type_name -> kantahe.v1.Song
 	1,  // 7: kantahe.v1.Playback.kind:type_name -> kantahe.v1.PlaybackKind
-	17, // 8: kantahe.v1.Playback.effective_midi_mode:type_name -> kantahe.v1.MidiMode
-	16, // 9: kantahe.v1.Playback.lyrics:type_name -> kantahe.v1.Lyrics
+	19, // 8: kantahe.v1.Playback.effective_midi_mode:type_name -> kantahe.v1.MidiMode
+	18, // 9: kantahe.v1.Playback.lyrics:type_name -> kantahe.v1.Lyrics
 	12, // 10: kantahe.v1.GetPlaybackResponse.playback:type_name -> kantahe.v1.Playback
-	2,  // 11: kantahe.v1.CatalogService.SearchSongs:input_type -> kantahe.v1.SearchSongsRequest
-	5,  // 12: kantahe.v1.CatalogService.ListArtists:input_type -> kantahe.v1.ListArtistsRequest
-	7,  // 13: kantahe.v1.CatalogService.GetSong:input_type -> kantahe.v1.GetSongRequest
-	9,  // 14: kantahe.v1.CatalogService.GetLyrics:input_type -> kantahe.v1.GetLyricsRequest
-	11, // 15: kantahe.v1.CatalogService.GetPlayback:input_type -> kantahe.v1.GetPlaybackRequest
-	3,  // 16: kantahe.v1.CatalogService.SearchSongs:output_type -> kantahe.v1.SearchSongsResponse
-	6,  // 17: kantahe.v1.CatalogService.ListArtists:output_type -> kantahe.v1.ListArtistsResponse
-	8,  // 18: kantahe.v1.CatalogService.GetSong:output_type -> kantahe.v1.GetSongResponse
-	10, // 19: kantahe.v1.CatalogService.GetLyrics:output_type -> kantahe.v1.GetLyricsResponse
-	13, // 20: kantahe.v1.CatalogService.GetPlayback:output_type -> kantahe.v1.GetPlaybackResponse
-	16, // [16:21] is the sub-list for method output_type
-	11, // [11:16] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	20, // 11: kantahe.v1.GetBackgroundResponse.videos:type_name -> kantahe.v1.Video
+	2,  // 12: kantahe.v1.CatalogService.SearchSongs:input_type -> kantahe.v1.SearchSongsRequest
+	5,  // 13: kantahe.v1.CatalogService.ListArtists:input_type -> kantahe.v1.ListArtistsRequest
+	7,  // 14: kantahe.v1.CatalogService.GetSong:input_type -> kantahe.v1.GetSongRequest
+	9,  // 15: kantahe.v1.CatalogService.GetLyrics:input_type -> kantahe.v1.GetLyricsRequest
+	11, // 16: kantahe.v1.CatalogService.GetPlayback:input_type -> kantahe.v1.GetPlaybackRequest
+	14, // 17: kantahe.v1.CatalogService.GetBackground:input_type -> kantahe.v1.GetBackgroundRequest
+	3,  // 18: kantahe.v1.CatalogService.SearchSongs:output_type -> kantahe.v1.SearchSongsResponse
+	6,  // 19: kantahe.v1.CatalogService.ListArtists:output_type -> kantahe.v1.ListArtistsResponse
+	8,  // 20: kantahe.v1.CatalogService.GetSong:output_type -> kantahe.v1.GetSongResponse
+	10, // 21: kantahe.v1.CatalogService.GetLyrics:output_type -> kantahe.v1.GetLyricsResponse
+	13, // 22: kantahe.v1.CatalogService.GetPlayback:output_type -> kantahe.v1.GetPlaybackResponse
+	15, // 23: kantahe.v1.CatalogService.GetBackground:output_type -> kantahe.v1.GetBackgroundResponse
+	18, // [18:24] is the sub-list for method output_type
+	12, // [12:18] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_kantahe_v1_catalog_proto_init() }
@@ -956,7 +1066,7 @@ func file_kantahe_v1_catalog_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kantahe_v1_catalog_proto_rawDesc), len(file_kantahe_v1_catalog_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   12,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

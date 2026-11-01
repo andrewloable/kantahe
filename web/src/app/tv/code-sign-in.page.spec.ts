@@ -302,5 +302,6 @@ describe('CodeSignInPage', () => {
     expect(TestBed.inject(ServerUrl).hasAddress()).toBe(false); // the TV environment has no origin to fall back to
     expect(TestBed.inject(AuthStore).signedIn()).toBe(false);
     expect(nav).toHaveBeenCalledWith('/server');
+    expect(TestBed.inject(ServerUrl).autoConnect()).toBe(false); // the address page lists the server instead of reconnecting at once
   });
 });

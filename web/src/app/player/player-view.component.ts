@@ -1,9 +1,10 @@
 import { Component, computed, DestroyRef, effect, ElementRef, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthStore } from '../core/auth.store';
-import { ControlAction } from '../../gen/kantahe/v1/session_pb';
+import { ControlAction, PlayStatus } from '../../gen/kantahe/v1/session_pb';
 import { FormatBadgeComponent } from '../library/format-badge.component';
 import { clock } from '../queue/now-playing.component';
+import { BackgroundVideoComponent } from './background/background-video.component';
 import { PlayerController } from './player.controller';
 import { LyricsViewComponent } from './lyrics-view/lyrics-view.component';
 import { ScoreScreenComponent } from './score/score-screen.component';
@@ -14,7 +15,7 @@ const IDLE_MS = 3000;
 /** The full-screen player: lyrics, song, progress and controls; on a device that is not the player, a pointer to the one that is. */
 @Component({
   selector: 'app-player-view',
-  imports: [LyricsViewComponent, FormatBadgeComponent, ScoreScreenComponent],
+  imports: [LyricsViewComponent, FormatBadgeComponent, ScoreScreenComponent, BackgroundVideoComponent],
   providers: [PlayerController],
   // any move, touch or key on the player shows its buttons again
   host: { '(mousemove)': 'wake()', '(pointerdown)': 'wake(false)', '(touchstart)': 'wake(false)', '(keydown)': 'wake(true)', '(focusin)': 'wake()' },
@@ -34,6 +35,7 @@ const IDLE_MS = 3000;
       @if (!c.state()) {
         <p role="status">Connecting…</p>
       } @else if (c.isPlayer()) {
+        <app-background-video [playing]="videoPlaying()" />
         <app-score-screen [score]="c.state()?.score" />
         <div class="player-content" [attr.inert]="scoreOpen() ? '' : null">
           @if (c.phase() === 'preparing') {
@@ -45,9 +47,9 @@ const IDLE_MS = 3000;
           }
           @if (song(); as s) {
             <header class="song">
-              <h1>{{ s.title }}</h1>
+              <h1 [attr.title]="s.title">{{ s.title }}</h1>
               <p>
-                <span>{{ s.artist }}</span>
+                <span class="artist" [attr.title]="s.artist">{{ s.artist }}</span>
                 <app-format-badge [format]="s.format" />
               </p>
             </header>
@@ -97,6 +99,8 @@ const IDLE_MS = 3000;
       --muted: #aeb4d8;
       --sung: #ffd23f;
       position: relative;
+      /* the background video (position: fixed, z-index -1) sits behind everything in here, over this background */
+      isolation: isolate;
       min-height: 100vh;
       padding: 1.5rem 1rem;
       background: #0a0e22;
@@ -109,7 +113,10 @@ const IDLE_MS = 3000;
       flex-direction: column;
       height: 100vh;
       height: 100dvh;
-      overflow: hidden;
+      /* a window too low for song, lyrics and controls scrolls: nothing is cut off */
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior-y: contain; /* a swipe at the end of its own scroll neither scrolls the page nor reloads it */
     }
     .player-content {
       flex: 1;
@@ -119,8 +126,11 @@ const IDLE_MS = 3000;
       justify-content: space-between;
     }
     app-lyrics-view {
+      /* readable over a moving picture as well (the scrim does the main work) */
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
       flex: 1;
-      min-height: 0;
+      /* the lyrics are what the screen is for: the title gives way first (about two lines of lyrics and the dots) */
+      min-height: 7rem;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -167,9 +177,21 @@ const IDLE_MS = 3000;
       padding-top: 4.5rem;
       padding-bottom: 6rem;
     }
+    /* a long title is cut to two lines and a long artist to one: the whole text is in the tooltip */
     h1 {
       margin: 0;
       font-size: clamp(1.5rem, 4vw, 2.5rem);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+    }
+    .artist {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .song p {
       display: flex;
@@ -188,6 +210,7 @@ const IDLE_MS = 3000;
     }
     .controls {
       display: flex;
+      flex-wrap: wrap;
       gap: 1rem;
       justify-content: center;
       margin-top: 1.5rem;
@@ -200,6 +223,22 @@ const IDLE_MS = 3000;
     }
     .elsewhere {
       font-size: 1.5rem;
+    }
+    /* a phone on its side: less air, one line of title */
+    @media (max-height: 30rem) {
+      .stage.fill:not(.embedded) {
+        padding-top: 3.25rem;
+        padding-bottom: 0.5rem;
+      }
+      h1 {
+        -webkit-line-clamp: 1;
+      }
+      .song p {
+        margin-bottom: 0.5rem;
+      }
+      .controls {
+        margin-top: 0.5rem;
+      }
     }
   `,
 })
@@ -273,6 +312,11 @@ export class PlayerViewComponent {
   /** While the score covers the screen, nothing behind it can be reached. */
   protected readonly scoreOpen = computed(() => this.score()?.open() ?? false);
   protected readonly clock = clock;
+  /** The background video moves while a song plays, while nothing plays and while the score shows; a paused song pauses it. */
+  protected readonly videoPlaying = computed(() => {
+    const s = this.c.state();
+    return !s?.now || !!s.score || s.status === PlayStatus.PLAYING;
+  });
   protected readonly song = computed(() => this.c.state()?.now?.song);
   protected readonly duration = computed(() => Number(this.song()?.durationMs ?? 0n));
   protected readonly shown = computed(() =>

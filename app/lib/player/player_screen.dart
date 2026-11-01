@@ -8,6 +8,7 @@ import 'package:kantahe/player/embed_bridge.dart';
 import 'package:kantahe/player/platform.dart';
 import 'package:kantahe/player/web_embed.dart';
 import 'package:kantahe/queue/queue_actions.dart';
+import 'package:kantahe/tv/focus.dart';
 
 /// The full-screen player: the web player page in a WebView (it plays and reports as this device), with
 /// native Play/Pause/Skip and Close on top. The D-pad belongs to the native buttons, never to the page.
@@ -209,7 +210,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 alignment: Alignment.topLeft,
                                 child: Padding(
                                   padding: const EdgeInsets.all(8),
-                                  child: OutlinedButton(onPressed: () => Navigator.of(context).maybePop(), child: const Text('Close')),
+                                  child: FocusGrow(
+                                    child: OutlinedButton(onPressed: () => Navigator.of(context).maybePop(), child: const Text('Close')),
+                                  ),
                                 ),
                               ),
                             ),
@@ -227,18 +230,29 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                       return Wrap(
                                         spacing: 12,
                                         children: [
-                                          FilledButton(
-                                            autofocus: true,
-                                            focusNode: _pauseNode,
-                                            onPressed: () => _actions.control(playing ? ControlAction.CONTROL_ACTION_PAUSE : ControlAction.CONTROL_ACTION_PLAY),
-                                            child: Text(playing ? 'Pause' : 'Play'),
+                                          // all the buttons are one quiet kind: only the one with the focus stands out (tvTheme)
+                                          FocusGrow(
+                                            child: OutlinedButton(
+                                              autofocus: true,
+                                              focusNode: _pauseNode,
+                                              onPressed: () =>
+                                                  _actions.control(playing ? ControlAction.CONTROL_ACTION_PAUSE : ControlAction.CONTROL_ACTION_PLAY),
+                                              child: Text(playing ? 'Pause' : 'Play'),
+                                            ),
                                           ),
-                                          OutlinedButton(onPressed: () => _actions.control(ControlAction.CONTROL_ACTION_SKIP), child: const Text('Skip')),
+                                          FocusGrow(
+                                            child: OutlinedButton(
+                                              onPressed: () => _actions.control(ControlAction.CONTROL_ACTION_SKIP),
+                                              child: const Text('Skip'),
+                                            ),
+                                          ),
                                           // the page's own buttons cannot take the D-pad, so taking over from another device is a native button
                                           if (!isHere)
-                                            OutlinedButton(
-                                              onPressed: () => _actions.control(ControlAction.CONTROL_ACTION_PLAY_HERE),
-                                              child: const Text('Play here'),
+                                            FocusGrow(
+                                              child: OutlinedButton(
+                                                onPressed: () => _actions.control(ControlAction.CONTROL_ACTION_PLAY_HERE),
+                                                child: const Text('Play here'),
+                                              ),
                                             ),
                                         ],
                                       );

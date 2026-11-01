@@ -45,6 +45,35 @@ describe('ServerSettingsPage', () => {
     expect(el.querySelector('[role="status"]')?.textContent).toContain('Saved');
   });
 
+  it('shows the background video limit in megabytes', async () => {
+    const { el } = await setup();
+    expect(el.querySelector<HTMLInputElement>('#max-video')!.value).toBe('500');
+    expect(el.querySelector('label[for="max-video"]')?.textContent).toBe('Largest background video (MB)');
+  });
+
+  it('saves only the video limit, in bytes, when only that changed', async () => {
+    const { type, save, server } = await setup();
+    type('max-video', '1024');
+    await save();
+    expect(server.calls.settings).toHaveLength(1);
+    expect(server.calls.settings[0].maxVideoBytes).toBe(BigInt(1024 * 1024 * 1024));
+    expect(server.calls.settings[0].maxUploadBytes).toBeUndefined();
+    expect(server.calls.settings[0].scoreSeconds).toBeUndefined();
+  });
+
+  it('allows 1 to 8192 megabytes for a background video and says so otherwise, sending nothing', async () => {
+    const { type, save, server, el } = await setup();
+    for (const bad of ['0', '8193', '2.5', '-3', '', 'big']) {
+      type('max-video', bad);
+      await save();
+      expect(el.querySelector('#max-video + [role="alert"]')?.textContent, bad).toContain('1 to 8192');
+    }
+    expect(server.calls.settings).toEqual([]);
+    type('max-video', '8192');
+    await save();
+    expect(server.calls.settings[0].maxVideoBytes).toBe(8192n * 1024n * 1024n);
+  });
+
   it('saves only the score time when only that changed', async () => {
     const { type, save, server } = await setup();
     type('score-seconds', '10');

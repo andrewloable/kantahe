@@ -31,7 +31,7 @@ export function whereText(state: State | undefined, deviceId: string | undefined
   template: `
     <section class="card now" aria-label="Now playing">
       @if (now(); as n) {
-        <h2>{{ n.song?.title }}</h2>
+        <h2 [attr.title]="n.song?.title">{{ n.song?.title }}</h2>
         <p class="meta">
           <span>{{ n.song?.artist }}</span>
           @if (n.song) {
@@ -59,13 +59,24 @@ export function whereText(state: State | undefined, deviceId: string | undefined
         }
       </div>
       @if (upNext(); as u) {
-        <p class="up-next">Up next: {{ u.song?.title }} — {{ u.song?.artist }}</p>
+        <p class="up-next" [attr.title]="u.song?.title + ' — ' + u.song?.artist">Up next: {{ u.song?.title }} — {{ u.song?.artist }}</p>
       }
     </section>
   `,
   styles: `
+    /* the card sits in the column of the page, like the list below it (the .card class of the sign-in pages would centre it at 26rem) */
+    .now {
+      max-width: none;
+      margin: 0 0 1.5rem;
+    }
+    /* a long title is cut to two lines and the whole text is in the tooltip */
     h2 {
       margin: 0 0 0.25rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      overflow-wrap: anywhere;
     }
     .meta {
       display: flex;
@@ -85,6 +96,9 @@ export function whereText(state: State | undefined, deviceId: string | undefined
     }
     .up-next {
       color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   `,
 })

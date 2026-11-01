@@ -21,6 +21,7 @@ import (
 	kantahev1 "github.com/andrewloable/kantahe/server/gen/kantahe/v1"
 	"github.com/andrewloable/kantahe/server/gen/kantahe/v1/kantahev1connect"
 	"github.com/andrewloable/kantahe/server/internal/auth"
+	"github.com/andrewloable/kantahe/server/internal/fsutil"
 	"github.com/andrewloable/kantahe/server/internal/library"
 	"github.com/andrewloable/kantahe/server/internal/store"
 	"github.com/andrewloable/kantahe/server/internal/testfix"
@@ -58,7 +59,7 @@ func newEnv(t *testing.T) *testEnv {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	libDir, _ := filepath.EvalSymlinks(t.TempDir())
+	libDir, _ := fsutil.Canonical(t.TempDir())
 	importer := library.NewImporter(db, dataDir, []string{libDir}, logger)
 	clock := &fakeClock{}
 	ms := &msClock{}
@@ -66,7 +67,7 @@ func newEnv(t *testing.T) *testEnv {
 	prep := &recordingPreparer{}
 	clock.t.Store(time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC).Unix())
 	deps := Deps{
-		DB: db, Version: "test-1.0", Now: clock.now,
+		DB: db, Version: "test-1.0", Name: "Test box", Now: clock.now,
 		Logger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
 		TrustedProxies: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")},
 		HashCost:       auth.CheapCost,
@@ -131,6 +132,14 @@ func (e *testEnv) addUser(t *testing.T, email, pw string, mut ...string) {
 		if _, err := e.db.Exec(q, "u-"+email); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestGetServerInfoName(t *testing.T) {
+	e := newEnv(t)
+	info, err := e.auth.GetServerInfo(context.Background(), connect.NewRequest(&kantahev1.GetServerInfoRequest{}))
+	if err != nil || info.Msg.Name != "Test box" {
+		t.Fatalf("name = %q, %v", info.Msg.GetName(), err)
 	}
 }
 

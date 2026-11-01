@@ -17,6 +17,7 @@ import (
 	"github.com/andrewloable/kantahe/server/internal/app"
 	"github.com/andrewloable/kantahe/server/internal/assets"
 	"github.com/andrewloable/kantahe/server/internal/config"
+	"github.com/andrewloable/kantahe/server/internal/discovery"
 	"github.com/andrewloable/kantahe/server/internal/library"
 	"github.com/andrewloable/kantahe/server/internal/store"
 	"github.com/andrewloable/kantahe/server/internal/webui"
@@ -67,7 +68,7 @@ func runContext(ctx context.Context, args []string, stdout io.Writer) int {
 	}
 	imp := library.NewImporter(db, cfg.DataDir, cfg.Libraries, logger)
 	srv := app.New(cfg, logger)
-	mounted, err := mountServices(srv, api.Deps{DB: db, Version: version, Now: time.Now, Logger: logger, TrustedProxies: cfg.TrustedProxies,
+	mounted, err := mountServices(srv, api.Deps{DB: db, Version: version, Name: cfg.Name, Now: time.Now, Logger: logger, TrustedProxies: cfg.TrustedProxies,
 		DataDir: cfg.DataDir, Importer: imp, ScoreSeconds: cfg.ScoreSeconds, SoundFont: soundFont, PublicURL: cfg.PublicURL,
 		RenderCacheBytes: int64(cfg.RenderCacheGB) << 30})
 	if err != nil {
@@ -81,7 +82,18 @@ func runContext(ctx context.Context, args []string, stdout io.Writer) int {
 	impDone := make(chan struct{})
 	go func() { imp.Run(impCtx); close(impDone) }()
 
+	advCtx, stopAdvertising := context.WithCancel(ctx)
+	advDone := make(chan struct{})
+	go func() {
+		defer close(advDone)
+		if cfg.Discovery {
+			advertise(advCtx, srv, cfg.Name, logger)
+		}
+	}()
+
 	err = srv.Run(ctx)
+	stopAdvertising()
+	<-advDone
 	stopImporter()
 	select {
 	case <-impDone:
@@ -93,6 +105,29 @@ func runContext(ctx context.Context, args []string, stdout io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// advertiseOnLAN is the network announcement; tests replace it.
+var advertiseOnLAN = discovery.Advertise
+
+// advertise announces the server on the local network once it is listening (with the port it really bound, so a
+// listen address of ":0" works too) and takes the announcement back when ctx ends. A host that cannot announce
+// (no multicast interface) still serves: it only logs that discovery is off.
+func advertise(ctx context.Context, srv *app.App, name string, logger *slog.Logger) {
+	for srv.Addr() == "" {
+		select {
+		case <-ctx.Done():
+			return // it never started listening
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
+	stop, err := advertiseOnLAN(srv.Addr(), name, version, logger)
+	if err != nil {
+		logger.Warn("LAN discovery is off", "err", err)
+		return
+	}
+	<-ctx.Done()
+	stop()
 }
 
 // mountServices registers the API and the media routes, which answer cross-origin requests (packaged TV apps

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The background of the official splash (branding/build.py splash()): #0a0e22, not the logo's ink #0c1230. The window shows it between the
+         native splash and the first Flutter frame, so that no black (night) or white (day) frame comes in between. lib/core/brand.dart has the
+         same colour for the Flutter side; app/test/brand_test.dart checks that they agree. -->
+    <color name="kantahe_splash_background">#0a0e22</color>
+</resources>

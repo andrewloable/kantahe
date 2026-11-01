@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantahe/auth/auth_gate.dart';
 import 'package:kantahe/auth/sign_in_screen.dart';
+import 'package:kantahe/core/server_discovery.dart';
 import 'package:kantahe/gen/kantahe/v1/auth.pb.dart';
 import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 
@@ -29,6 +30,7 @@ void main() {
   testWidgets('connecting moves from the address screen to sign-in', (tester) async {
     final h = Harness(server: null);
     await h.pump(tester, gate());
+    await tester.pumpAndSettle(); // nothing is found on the network, so the address form comes
     await enter(tester, 'server-url', 'http://10.0.0.5:8080');
     await tapText(tester, 'Connect');
     expect(find.byType(SignInScreen), findsOneWidget);
@@ -121,5 +123,29 @@ void main() {
     await h.serverUrl.set('http://other:2');
     await tester.pumpAndSettle();
     expect(find.byType(SignInScreen), findsOneWidget);
+  });
+  testWidgets('one server on the network is connected to at once, and sign-in follows', (tester) async {
+    final h = Harness(server: null);
+    h.find = (_) async => [
+      const ServerCandidate('Den', ['http://10.0.0.5:8080']),
+    ];
+    await h.pump(tester, gate());
+    await tester.pumpAndSettle();
+    expect(h.serverUrl.value, 'http://10.0.0.5:8080');
+    expect(find.byType(SignInScreen), findsOneWidget);
+  });
+
+  testWidgets('Use another server with one server on the network shows the list, not sign-in again', (tester) async {
+    final h = Harness();
+    h.find = (_) async => [
+      const ServerCandidate('Den', ['http://10.0.0.5:8080']),
+    ];
+    await h.pump(tester, gate());
+    await tester.pumpAndSettle();
+    expect(find.byType(SignInScreen), findsOneWidget);
+    await tapText(tester, 'Use another server');
+    expect(find.byType(SignInScreen), findsNothing);
+    expect(find.text('Choose your server'), findsOneWidget);
+    expect(h.serverUrl.value, isNull);
   });
 }

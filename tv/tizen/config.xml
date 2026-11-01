@@ -10,6 +10,8 @@
   <!-- internet: the server is on the network; tv.inputdevice: the Back and media keys of the remote -->
   <tizen:privilege name="http://tizen.org/privilege/internet"/>
   <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+  <!-- network.public: the TV's own address (webapis.network.getIp), with which the app looks for servers on its network -->
+  <tizen:privilege name="http://developer.samsung.com/privilege/network.public"/>
   <tizen:profile name="tv"/>
   <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto"/>
   <!-- the address of the server is typed in by the user, so any origin may be reached -->

@@ -4,7 +4,7 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Format, Lyrics, MidiMode, Song } from "./common_pb";
+import type { Format, Lyrics, MidiMode, Song, Video } from "./common_pb";
 import { file_kantahe_v1_common } from "./common_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file kantahe/v1/catalog.proto.
  */
 export const file_kantahe_v1_catalog: GenFile = /*@__PURE__*/
-  fileDesc("ChhrYW50YWhlL3YxL2NhdGFsb2cucHJvdG8SCmthbnRhaGUudjEiogEKElNlYXJjaFNvbmdzUmVxdWVzdBINCgVxdWVyeRgBIAEoCRIiCgZmb3JtYXQYAiABKA4yEi5rYW50YWhlLnYxLkZvcm1hdBIiCgRzb3J0GAMgASgOMhQua2FudGFoZS52MS5Tb25nU29ydBIOCgZsZXR0ZXIYBCABKAkSEgoKcGFnZV90b2tlbhgFIAEoCRIRCglwYWdlX3NpemUYBiABKAUiTwoTU2VhcmNoU29uZ3NSZXNwb25zZRIfCgVzb25ncxgBIAMoCzIQLmthbnRhaGUudjEuU29uZxIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkiKgoGQXJ0aXN0EgwKBG5hbWUYASABKAkSEgoKc29uZ19jb3VudBgCIAEoBSJLChJMaXN0QXJ0aXN0c1JlcXVlc3QSDgoGbGV0dGVyGAEgASgJEhIKCnBhZ2VfdG9rZW4YAiABKAkSEQoJcGFnZV9zaXplGAMgASgFIlMKE0xpc3RBcnRpc3RzUmVzcG9uc2USIwoHYXJ0aXN0cxgBIAMoCzISLmthbnRhaGUudjEuQXJ0aXN0EhcKD25leHRfcGFnZV90b2tlbhgCIAEoCSIgCg5HZXRTb25nUmVxdWVzdBIOCgZudW1iZXIYASABKAkiMQoPR2V0U29uZ1Jlc3BvbnNlEh4KBHNvbmcYASABKAsyEC5rYW50YWhlLnYxLlNvbmciIgoQR2V0THlyaWNzUmVxdWVzdBIOCgZudW1iZXIYASABKAkiNwoRR2V0THlyaWNzUmVzcG9uc2USIgoGbHlyaWNzGAEgASgLMhIua2FudGFoZS52MS5MeXJpY3MiJAoSR2V0UGxheWJhY2tSZXF1ZXN0Eg4KBm51bWJlchgBIAEoCSKMAgoIUGxheWJhY2sSHgoEc29uZxgBIAEoCzIQLmthbnRhaGUudjEuU29uZxImCgRraW5kGAIgASgOMhgua2FudGFoZS52MS5QbGF5YmFja0tpbmQSEQoJYXVkaW9fdXJsGAMgASgJEhAKCG1pZGlfdXJsGAQgASgJEhUKDXNvdW5kZm9udF91cmwYBSABKAkSMQoTZWZmZWN0aXZlX21pZGlfbW9kZRgGIAEoDjIULmthbnRhaGUudjEuTWlkaU1vZGUSDQoFcmVhZHkYByABKAgSFgoOcmV0cnlfYWZ0ZXJfbXMYCCABKAUSIgoGbHlyaWNzGAkgASgLMhIua2FudGFoZS52MS5MeXJpY3MiPQoTR2V0UGxheWJhY2tSZXNwb25zZRImCghwbGF5YmFjaxgBIAEoCzIULmthbnRhaGUudjEuUGxheWJhY2sqZgoIU29uZ1NvcnQSGQoVU09OR19TT1JUX1VOU1BFQ0lGSUVEEAASFAoQU09OR19TT1JUX05VTUJFUhABEhMKD1NPTkdfU09SVF9USVRMRRACEhQKEFNPTkdfU09SVF9BUlRJU1QQAypkCgxQbGF5YmFja0tpbmQSHQoZUExBWUJBQ0tfS0lORF9VTlNQRUNJRklFRBAAEhcKE1BMQVlCQUNLX0tJTkRfQVVESU8QARIcChhQTEFZQkFDS19LSU5EX01JRElfU1lOVEgQAjKOAwoOQ2F0YWxvZ1NlcnZpY2USTgoLU2VhcmNoU29uZ3MSHi5rYW50YWhlLnYxLlNlYXJjaFNvbmdzUmVxdWVzdBofLmthbnRhaGUudjEuU2VhcmNoU29uZ3NSZXNwb25zZRJOCgtMaXN0QXJ0aXN0cxIeLmthbnRhaGUudjEuTGlzdEFydGlzdHNSZXF1ZXN0Gh8ua2FudGFoZS52MS5MaXN0QXJ0aXN0c1Jlc3BvbnNlEkIKB0dldFNvbmcSGi5rYW50YWhlLnYxLkdldFNvbmdSZXF1ZXN0Ghsua2FudGFoZS52MS5HZXRTb25nUmVzcG9uc2USSAoJR2V0THlyaWNzEhwua2FudGFoZS52MS5HZXRMeXJpY3NSZXF1ZXN0Gh0ua2FudGFoZS52MS5HZXRMeXJpY3NSZXNwb25zZRJOCgtHZXRQbGF5YmFjaxIeLmthbnRhaGUudjEuR2V0UGxheWJhY2tSZXF1ZXN0Gh8ua2FudGFoZS52MS5HZXRQbGF5YmFja1Jlc3BvbnNlQqgBCg5jb20ua2FudGFoZS52MUIMQ2F0YWxvZ1Byb3RvUAFaP2dpdGh1Yi5jb20vYW5kcmV3bG9hYmxlL2thbnRhaGUvc2VydmVyL2dlbi9rYW50YWhlL3YxO2thbnRhaGV2MaICA0tYWKoCCkthbnRhaGUuVjHKAgpLYW50YWhlXFYx4gIWS2FudGFoZVxWMVxHUEJNZXRhZGF0YeoCC0thbnRhaGU6OlYxYgZwcm90bzM", [file_kantahe_v1_common]);
+  fileDesc("ChhrYW50YWhlL3YxL2NhdGFsb2cucHJvdG8SCmthbnRhaGUudjEiogEKElNlYXJjaFNvbmdzUmVxdWVzdBINCgVxdWVyeRgBIAEoCRIiCgZmb3JtYXQYAiABKA4yEi5rYW50YWhlLnYxLkZvcm1hdBIiCgRzb3J0GAMgASgOMhQua2FudGFoZS52MS5Tb25nU29ydBIOCgZsZXR0ZXIYBCABKAkSEgoKcGFnZV90b2tlbhgFIAEoCRIRCglwYWdlX3NpemUYBiABKAUiTwoTU2VhcmNoU29uZ3NSZXNwb25zZRIfCgVzb25ncxgBIAMoCzIQLmthbnRhaGUudjEuU29uZxIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkiKgoGQXJ0aXN0EgwKBG5hbWUYASABKAkSEgoKc29uZ19jb3VudBgCIAEoBSJLChJMaXN0QXJ0aXN0c1JlcXVlc3QSDgoGbGV0dGVyGAEgASgJEhIKCnBhZ2VfdG9rZW4YAiABKAkSEQoJcGFnZV9zaXplGAMgASgFIlMKE0xpc3RBcnRpc3RzUmVzcG9uc2USIwoHYXJ0aXN0cxgBIAMoCzISLmthbnRhaGUudjEuQXJ0aXN0EhcKD25leHRfcGFnZV90b2tlbhgCIAEoCSIgCg5HZXRTb25nUmVxdWVzdBIOCgZudW1iZXIYASABKAkiMQoPR2V0U29uZ1Jlc3BvbnNlEh4KBHNvbmcYASABKAsyEC5rYW50YWhlLnYxLlNvbmciIgoQR2V0THlyaWNzUmVxdWVzdBIOCgZudW1iZXIYASABKAkiNwoRR2V0THlyaWNzUmVzcG9uc2USIgoGbHlyaWNzGAEgASgLMhIua2FudGFoZS52MS5MeXJpY3MiJAoSR2V0UGxheWJhY2tSZXF1ZXN0Eg4KBm51bWJlchgBIAEoCSKMAgoIUGxheWJhY2sSHgoEc29uZxgBIAEoCzIQLmthbnRhaGUudjEuU29uZxImCgRraW5kGAIgASgOMhgua2FudGFoZS52MS5QbGF5YmFja0tpbmQSEQoJYXVkaW9fdXJsGAMgASgJEhAKCG1pZGlfdXJsGAQgASgJEhUKDXNvdW5kZm9udF91cmwYBSABKAkSMQoTZWZmZWN0aXZlX21pZGlfbW9kZRgGIAEoDjIULmthbnRhaGUudjEuTWlkaU1vZGUSDQoFcmVhZHkYByABKAgSFgoOcmV0cnlfYWZ0ZXJfbXMYCCABKAUSIgoGbHlyaWNzGAkgASgLMhIua2FudGFoZS52MS5MeXJpY3MiPQoTR2V0UGxheWJhY2tSZXNwb25zZRImCghwbGF5YmFjaxgBIAEoCzIULmthbnRhaGUudjEuUGxheWJhY2siFgoUR2V0QmFja2dyb3VuZFJlcXVlc3QiXAoVR2V0QmFja2dyb3VuZFJlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDwoHc2h1ZmZsZRgCIAEoCBIhCgZ2aWRlb3MYAyADKAsyES5rYW50YWhlLnYxLlZpZGVvKmYKCFNvbmdTb3J0EhkKFVNPTkdfU09SVF9VTlNQRUNJRklFRBAAEhQKEFNPTkdfU09SVF9OVU1CRVIQARITCg9TT05HX1NPUlRfVElUTEUQAhIUChBTT05HX1NPUlRfQVJUSVNUEAMqZAoMUGxheWJhY2tLaW5kEh0KGVBMQVlCQUNLX0tJTkRfVU5TUEVDSUZJRUQQABIXChNQTEFZQkFDS19LSU5EX0FVRElPEAESHAoYUExBWUJBQ0tfS0lORF9NSURJX1NZTlRIEAIy5AMKDkNhdGFsb2dTZXJ2aWNlEk4KC1NlYXJjaFNvbmdzEh4ua2FudGFoZS52MS5TZWFyY2hTb25nc1JlcXVlc3QaHy5rYW50YWhlLnYxLlNlYXJjaFNvbmdzUmVzcG9uc2USTgoLTGlzdEFydGlzdHMSHi5rYW50YWhlLnYxLkxpc3RBcnRpc3RzUmVxdWVzdBofLmthbnRhaGUudjEuTGlzdEFydGlzdHNSZXNwb25zZRJCCgdHZXRTb25nEhoua2FudGFoZS52MS5HZXRTb25nUmVxdWVzdBobLmthbnRhaGUudjEuR2V0U29uZ1Jlc3BvbnNlEkgKCUdldEx5cmljcxIcLmthbnRhaGUudjEuR2V0THlyaWNzUmVxdWVzdBodLmthbnRhaGUudjEuR2V0THlyaWNzUmVzcG9uc2USTgoLR2V0UGxheWJhY2sSHi5rYW50YWhlLnYxLkdldFBsYXliYWNrUmVxdWVzdBofLmthbnRhaGUudjEuR2V0UGxheWJhY2tSZXNwb25zZRJUCg1HZXRCYWNrZ3JvdW5kEiAua2FudGFoZS52MS5HZXRCYWNrZ3JvdW5kUmVxdWVzdBohLmthbnRhaGUudjEuR2V0QmFja2dyb3VuZFJlc3BvbnNlQqgBCg5jb20ua2FudGFoZS52MUIMQ2F0YWxvZ1Byb3RvUAFaP2dpdGh1Yi5jb20vYW5kcmV3bG9hYmxlL2thbnRhaGUvc2VydmVyL2dlbi9rYW50YWhlL3YxO2thbnRhaGV2MaICA0tYWKoCCkthbnRhaGUuVjHKAgpLYW50YWhlXFYx4gIWS2FudGFoZVxWMVxHUEJNZXRhZGF0YeoCC0thbnRhaGU6OlYxYgZwcm90bzM", [file_kantahe_v1_common]);
 
 /**
  * Page size defaults to 50; format and letter are optional filters.
@@ -333,6 +333,50 @@ export const GetPlaybackResponseSchema: GenMessage<GetPlaybackResponse> = /*@__P
   messageDesc(file_kantahe_v1_catalog, 11);
 
 /**
+ * Asks nothing.
+ *
+ * @generated from message kantahe.v1.GetBackgroundRequest
+ */
+export type GetBackgroundRequest = Message<"kantahe.v1.GetBackgroundRequest"> & {
+};
+
+/**
+ * Describes the message kantahe.v1.GetBackgroundRequest.
+ * Use `create(GetBackgroundRequestSchema)` to create a new message.
+ */
+export const GetBackgroundRequestSchema: GenMessage<GetBackgroundRequest> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_catalog, 12);
+
+/**
+ * enabled is the admin's switch; when it is false videos is empty. shuffle asks the player to shuffle the order on every pass.
+ *
+ * @generated from message kantahe.v1.GetBackgroundResponse
+ */
+export type GetBackgroundResponse = Message<"kantahe.v1.GetBackgroundResponse"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: bool shuffle = 2;
+   */
+  shuffle: boolean;
+
+  /**
+   * @generated from field: repeated kantahe.v1.Video videos = 3;
+   */
+  videos: Video[];
+};
+
+/**
+ * Describes the message kantahe.v1.GetBackgroundResponse.
+ * Use `create(GetBackgroundResponseSchema)` to create a new message.
+ */
+export const GetBackgroundResponseSchema: GenMessage<GetBackgroundResponse> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_catalog, 13);
+
+/**
  * Result order for SearchSongs.
  *
  * @generated from enum kantahe.v1.SongSort
@@ -454,6 +498,16 @@ export const CatalogService: GenService<{
     methodKind: "unary";
     input: typeof GetPlaybackRequestSchema;
     output: typeof GetPlaybackResponseSchema;
+  },
+  /**
+   * Signed-in user. The enabled background videos in loop order with signed URLs (6 hours); empty when the admin has switched the background off.
+   *
+   * @generated from rpc kantahe.v1.CatalogService.GetBackground
+   */
+  getBackground: {
+    methodKind: "unary";
+    input: typeof GetBackgroundRequestSchema;
+    output: typeof GetBackgroundResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_kantahe_v1_catalog, 0);

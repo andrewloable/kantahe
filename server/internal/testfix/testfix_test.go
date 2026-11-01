@@ -365,3 +365,29 @@ func TestMP3FrameSizeFollowsTheFormula(t *testing.T) {
 		t.Errorf("formula gives %d, constant is %d", got, mp3FrameSize)
 	}
 }
+
+func TestMP4IsADeterministicBoxTree(t *testing.T) {
+	for _, o := range []MP4Options{{MoovFirst: true, WithAudio: true}, {}, {Version1: true, NoVideo: true}} {
+		b := MP4(o)
+		var types []string
+		off := 0
+		for off < len(b) {
+			size := int(binary.BigEndian.Uint32(b[off:]))
+			if size < 8 || off+size > len(b) {
+				t.Fatalf("%+v: a box at %d declares %d bytes in a file of %d", o, off, size, len(b))
+			}
+			types = append(types, string(b[off+4:off+8]))
+			off += size
+		}
+		want := "ftyp,mdat,moov"
+		if o.MoovFirst {
+			want = "ftyp,moov,mdat"
+		}
+		if strings.Join(types, ",") != want {
+			t.Errorf("%+v: top-level boxes %v, want %s", o, types, want)
+		}
+		if !bytes.Equal(b, MP4(o)) {
+			t.Errorf("%+v: two builds differ", o)
+		}
+	}
+}

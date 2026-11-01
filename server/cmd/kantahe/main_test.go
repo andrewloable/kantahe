@@ -3,14 +3,17 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -211,5 +214,128 @@ func TestAPIAndMediaAnswerCORSButTheWebAppDoesNot(t *testing.T) {
 	res.Body.Close()
 	if got := res.Header.Get("Access-Control-Allow-Origin"); got != "" {
 		t.Errorf("the web app answered CORS (%q): only the API and media do", got)
+	}
+}
+
+// runServer starts runContext on a free loopback port with args, waits until it answers, and returns the stop
+// function (cancel the context, wait for the exit code).
+func runServer(t *testing.T, extra ...string) (stop func() int) {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := ln.Addr().String()
+	ln.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	done := make(chan int, 1)
+	args := append([]string{"--data", filepath.Join(t.TempDir(), "data"), "--listen", addr}, extra...)
+	go func() { done <- runContext(ctx, args, &bytes.Buffer{}) }()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if res, err := http.Get("http://" + addr + "/healthz"); err == nil {
+			res.Body.Close()
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the server did not start")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	return func() int {
+		cancel()
+		select {
+		case code := <-done:
+			return code
+		case <-time.After(15 * time.Second):
+			t.Fatal("runContext did not return after its context was cancelled")
+			return -1
+		}
+	}
+}
+
+// fakeAdvertiser stands in for the network announcement.
+type fakeAdvertiser struct {
+	mu       sync.Mutex
+	calls    []string // "listen|name"
+	stopped  int
+	failWith error
+}
+
+func (f *fakeAdvertiser) advertise(listen, name, _ string, _ *slog.Logger) (func(), error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls = append(f.calls, listen+"|"+name)
+	if f.failWith != nil {
+		return nil, f.failWith
+	}
+	return func() { f.mu.Lock(); f.stopped++; f.mu.Unlock() }, nil
+}
+
+func (f *fakeAdvertiser) snapshot() (calls []string, stopped int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.calls...), f.stopped
+}
+
+// waitForCall waits until the server has tried to advertise (it does so a moment after it starts listening).
+func (f *fakeAdvertiser) waitForCall(t *testing.T) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for calls, _ := f.snapshot(); len(calls) == 0; calls, _ = f.snapshot() {
+		if time.Now().After(deadline) {
+			t.Fatal("the server never tried to advertise")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func useFakeAdvertiser(t *testing.T, f *fakeAdvertiser) {
+	t.Helper()
+	old := advertiseOnLAN
+	advertiseOnLAN = f.advertise
+	t.Cleanup(func() { advertiseOnLAN = old })
+}
+
+func TestAdvertisesTheBoundAddressAndWithdrawsOnShutdown(t *testing.T) {
+	f := &fakeAdvertiser{}
+	useFakeAdvertiser(t, f)
+	stop := runServer(t, "--name", "Den")
+	f.waitForCall(t)
+	if code := stop(); code != 0 {
+		t.Fatalf("exit code = %d", code)
+	}
+	calls, stopped := f.snapshot()
+	if len(calls) != 1 || !strings.HasSuffix(calls[0], "|Den") || !strings.HasPrefix(calls[0], "127.0.0.1:") {
+		t.Fatalf("advertised %v, want one announcement of the bound address as Den", calls)
+	}
+	if stopped != 1 {
+		t.Fatalf("the announcement was withdrawn %d times, want once on shutdown", stopped)
+	}
+}
+
+func TestAServerThatCannotAdvertiseStillServes(t *testing.T) {
+	f := &fakeAdvertiser{failWith: errors.New("no interface can carry multicast")}
+	useFakeAdvertiser(t, f)
+	stop := runServer(t) // runServer fails the test unless /healthz answers
+	f.waitForCall(t)
+	if code := stop(); code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	if calls, _ := f.snapshot(); len(calls) != 1 {
+		t.Fatalf("advertising was tried %d times, want once", len(calls))
+	}
+}
+
+func TestDiscoveryOffAnnouncesNothing(t *testing.T) {
+	f := &fakeAdvertiser{}
+	useFakeAdvertiser(t, f)
+	stop := runServer(t, "--discovery=false")
+	if code := stop(); code != 0 {
+		t.Fatalf("exit code = %d", code)
+	}
+	if calls, _ := f.snapshot(); len(calls) != 0 {
+		t.Fatalf("announced %v with --discovery=false", calls)
 	}
 }

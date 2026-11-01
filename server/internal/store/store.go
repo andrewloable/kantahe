@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"time"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
 )
@@ -37,13 +38,17 @@ func Open(ctx context.Context, dataDir string) (*DB, error) {
 	return &DB{sqlDB}, nil
 }
 
+// BusyTimeout is how long a writer waits for the write lock before it fails with "database is locked". Whatever runs inside a
+// write transaction (a file delete that retries, for one) must take well under this.
+const BusyTimeout = 5 * time.Second
+
 // openRaw opens the database file with the pragmas every connection needs.
 // _txlock=immediate makes every explicit transaction take the write lock at
 // BEGIN, so concurrent writers queue on busy_timeout instead of failing on a
 // lock upgrade; plain queries outside a transaction are unaffected.
 func openRaw(path string) (*sql.DB, error) {
 	q := url.Values{}
-	for _, p := range []string{"journal_mode(WAL)", "foreign_keys(1)", "busy_timeout(5000)", "synchronous(NORMAL)"} {
+	for _, p := range []string{"journal_mode(WAL)", "foreign_keys(1)", fmt.Sprintf("busy_timeout(%d)", BusyTimeout.Milliseconds()), "synchronous(NORMAL)"} {
 		q.Add("_pragma", p)
 	}
 	q.Set("_txlock", "immediate")

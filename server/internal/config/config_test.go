@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"net/netip"
 	"path/filepath"
 	"reflect"
@@ -12,7 +13,16 @@ func env(m map[string]string) func(string) string {
 	return func(k string) string { return m[k] }
 }
 
+// withHostname makes the machine's host name what the test says (or an error) until the test ends.
+func withHostname(t *testing.T, name string, err error) {
+	t.Helper()
+	old := hostname
+	hostname = func() (string, error) { return name, err }
+	t.Cleanup(func() { hostname = old })
+}
+
 func TestParseDefaults(t *testing.T) {
+	withHostname(t, "box", nil)
 	c, err := Parse(nil, env(nil))
 	if err != nil {
 		t.Fatal(err)
@@ -22,6 +32,9 @@ func TestParseDefaults(t *testing.T) {
 	}
 	if len(c.Libraries) != 0 || len(c.TrustedProxies) != 0 || c.SoundFont != "" || c.PublicURL != "" {
 		t.Fatalf("expected empty optional fields: %+v", c)
+	}
+	if c.Name != "Kantahe on box" || !c.Discovery {
+		t.Fatalf("name and discovery defaults wrong: %q %v", c.Name, c.Discovery)
 	}
 }
 
@@ -45,14 +58,22 @@ func TestEnvAllSettings(t *testing.T) {
 		"KANTAHE_SCORE_SECONDS":   "9",
 		"KANTAHE_RENDER_CACHE_GB": "0",
 		"KANTAHE_TRUSTED_PROXIES": "10.0.0.0/8",
+		"KANTAHE_NAME":            "Living room",
+		"KANTAHE_DISCOVERY":       "false",
 	})
 	c, err := Parse(nil, e)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if c.DataDir != "/d" || c.SoundFont != "/sf.sf2" || c.PublicURL != "https://k.example" ||
-		c.ScoreSeconds != 9 || c.RenderCacheGB != 0 || len(c.TrustedProxies) != 1 {
+		c.ScoreSeconds != 9 || c.RenderCacheGB != 0 || len(c.TrustedProxies) != 1 ||
+		c.Name != "Living room" || c.Discovery {
 		t.Fatalf("env not applied: %+v", c)
+	}
+	// a flag beats the environment
+	c, err = Parse([]string{"--discovery=true", "--name", "Den"}, e)
+	if err != nil || !c.Discovery || c.Name != "Den" {
+		t.Fatalf("flags should win: %+v, %v", c, err)
 	}
 }
 
@@ -155,17 +176,64 @@ func TestEveryFlagBeatsEnv(t *testing.T) {
 		"KANTAHE_LISTEN": ":1", "KANTAHE_DATA": "/e", "KANTAHE_SOUNDFONT": "/e.sf2",
 		"KANTAHE_PUBLIC_URL": "https://e.example", "KANTAHE_SCORE_SECONDS": "1",
 		"KANTAHE_RENDER_CACHE_GB": "1", "KANTAHE_TRUSTED_PROXIES": "10.0.0.0/8",
+		"KANTAHE_NAME": "Env name", "KANTAHE_DISCOVERY": "true",
 	})
 	c, err := Parse([]string{
 		"--listen", ":2", "--data", "/f", "--soundfont", "/f.sf2", "--public-url", "https://f.example",
 		"--score-seconds", "2", "--render-cache-gb", "2", "--trusted-proxies", "172.16.0.0/12",
+		"--name", "Flag name", "--discovery=false",
 	}, e)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := Config{Listen: ":2", DataDir: "/f", SoundFont: "/f.sf2", PublicURL: "https://f.example",
-		ScoreSeconds: 2, RenderCacheGB: 2, TrustedProxies: []netip.Prefix{netip.MustParsePrefix("172.16.0.0/12")}}
+		ScoreSeconds: 2, RenderCacheGB: 2, TrustedProxies: []netip.Prefix{netip.MustParsePrefix("172.16.0.0/12")},
+		Name: "Flag name", Discovery: false}
 	if !reflect.DeepEqual(c, want) {
 		t.Fatalf("got %+v\nwant %+v", c, want)
+	}
+}
+
+func TestNameFromHostname(t *testing.T) {
+	withHostname(t, "box.local", nil)
+	if c, err := Parse(nil, env(nil)); err != nil || c.Name != "Kantahe on box" {
+		t.Fatalf(".local should be dropped: %q, %v", c.Name, err)
+	}
+	withHostname(t, "", errors.New("no host name"))
+	if c, err := Parse(nil, env(nil)); err != nil || c.Name != "Kantahe" {
+		t.Fatalf("an unknown host name should leave plain Kantahe: %q, %v", c.Name, err)
+	}
+	withHostname(t, "  ", nil)
+	if c, err := Parse(nil, env(nil)); err != nil || c.Name != "Kantahe" {
+		t.Fatalf("a blank host name should leave plain Kantahe: %q, %v", c.Name, err)
+	}
+}
+
+func TestNameIsTrimmedAndLimited(t *testing.T) {
+	if c, err := Parse([]string{"--name", "  Den  "}, env(nil)); err != nil || c.Name != "Den" {
+		t.Fatalf("name should be trimmed: %q, %v", c.Name, err)
+	}
+	if _, err := Parse([]string{"--name", strings.Repeat("a", 63)}, env(nil)); err != nil {
+		t.Fatalf("63 bytes should do: %v", err)
+	}
+	_, err := Parse([]string{"--name", strings.Repeat("a", 64)}, env(nil))
+	if err == nil || !strings.Contains(err.Error(), "at most 63 bytes") {
+		t.Fatalf("64 bytes: err = %v", err)
+	}
+	// bytes, not characters: 32 two-byte letters are 64 bytes
+	if _, err := Parse([]string{"--name", strings.Repeat("é", 32)}, env(nil)); err == nil {
+		t.Fatal("the limit is in bytes")
+	}
+	// the host name is cut to fit too, so a long machine name never stops the server
+	withHostname(t, strings.Repeat("h", 100), nil)
+	if c, err := Parse(nil, env(nil)); err != nil || len(c.Name) > 63 {
+		t.Fatalf("a long host name should be cut: %d bytes, %v", len(c.Name), err)
+	}
+}
+
+func TestInvalidDiscovery(t *testing.T) {
+	_, err := Parse([]string{"--discovery=maybe"}, env(nil))
+	if err == nil || !strings.Contains(err.Error(), "invalid --discovery") {
+		t.Fatalf("err = %v", err)
 	}
 }

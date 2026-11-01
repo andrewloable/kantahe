@@ -103,6 +103,7 @@ describe('StateStore', () => {
   });
   afterEach(() => {
     TestBed.inject(StateStore).stop();
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
@@ -269,12 +270,23 @@ describe('StateStore', () => {
     });
 
     it('stop cancels the silence timer too', async () => {
+      // vi.getTimerCount() would include the timers of Angular's change detection scheduler (a timeout racing an animation
+      // frame), so the store's silence timers are recognised by their delay and followed one by one
+      const setSpy = vi.spyOn(globalThis, 'setTimeout');
+      const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
+      const silence = () => setSpy.mock.calls.flatMap((c, i) => (c[1] === 60_000 ? [setSpy.mock.results[i].value] : []));
+      const pending = () => {
+        const cleared = clearSpy.mock.calls.map((c) => c[0]);
+        return silence().filter((id) => !cleared.includes(id)).length;
+      };
       const h = setup([hold(st('d1'))]);
       h.store.start();
       await vi.advanceTimersByTimeAsync(10);
+      expect(pending()).toBe(1); // the silence timer is running
       h.store.stop();
       await vi.advanceTimersByTimeAsync(10);
-      expect(vi.getTimerCount()).toBe(0); // nothing is left to fire later
+      expect(silence().length).toBeGreaterThan(0);
+      expect(pending()).toBe(0); // nothing is left to fire later
       await vi.advanceTimersByTimeAsync(120_000);
       expect(h.attempts.length).toBe(1);
     });
@@ -296,7 +308,7 @@ describe('StateStore', () => {
     await vi.advanceTimersByTimeAsync(120_000);
     expect(h.attempts.length).toBe(attempts);
     expect(h.polls.length).toBe(polls);
-    expect(vi.getTimerCount()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0); // 120 s later every finite timer has fired, so any timer left is the store's
   });
 
   it('stop during a back-off wait cancels the retry', async () => {

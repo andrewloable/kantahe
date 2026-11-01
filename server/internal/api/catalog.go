@@ -11,7 +11,9 @@ import (
 	"github.com/andrewloable/kantahe/server/internal/catalog"
 	"github.com/andrewloable/kantahe/server/internal/library"
 	"github.com/andrewloable/kantahe/server/internal/media"
+	"github.com/andrewloable/kantahe/server/internal/settings"
 	"github.com/andrewloable/kantahe/server/internal/users"
+	"github.com/andrewloable/kantahe/server/internal/video"
 )
 
 // CatalogServer implements CatalogService.
@@ -204,4 +206,36 @@ func (s *CatalogServer) GetPlayback(ctx context.Context, req *connect.Request[ka
 		return nil, fromCatalog(s.d.Logger, "GetPlayback", err)
 	}
 	return connect.NewResponse(&kantahev1.GetPlaybackResponse{Playback: pb}), nil
+}
+
+// GetBackground returns the enabled background videos in loop order with signed URLs. The URLs of one video and user stay the same for
+// hours (media.VideoURL), so a browser does not fetch a video again at every refresh of the list.
+func (s *CatalogServer) GetBackground(ctx context.Context, _ *connect.Request[kantahev1.GetBackgroundRequest]) (*connect.Response[kantahev1.GetBackgroundResponse], error) {
+	id, err := identity(ctx)
+	if err != nil {
+		return nil, err
+	}
+	enabled, err := settings.BackgroundEnabled(ctx, s.d.DB)
+	if err != nil {
+		return nil, internalErr(s.d.Logger, "GetBackground", err)
+	}
+	shuffle, err := settings.BackgroundShuffle(ctx, s.d.DB)
+	if err != nil {
+		return nil, internalErr(s.d.Logger, "GetBackground", err)
+	}
+	res := &kantahev1.GetBackgroundResponse{Enabled: enabled, Shuffle: shuffle}
+	if !enabled {
+		return connect.NewResponse(res), nil
+	}
+	all, err := video.New(s.d.DB).List(ctx)
+	if err != nil {
+		return nil, internalErr(s.d.Logger, "GetBackground", err)
+	}
+	now := s.d.Now()
+	for _, v := range all {
+		if v.Enabled {
+			res.Videos = append(res.Videos, toProtoVideo(v, s.media.VideoURL(v.ID, id.UserID, now)))
+		}
+	}
+	return connect.NewResponse(res), nil
 }

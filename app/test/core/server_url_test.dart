@@ -14,7 +14,7 @@ Transport Function(String) serverInfo(List<String> seen, {Object? Function()? fa
   return FakeTransportBuilder().unary(AuthService.getServerInfo, (req, ctx) async {
     final f = fail?.call();
     if (f != null) throw f;
-    return GetServerInfoResponse(version: '1.2.3', setupRequired: setup);
+    return GetServerInfoResponse(version: '1.2.3', setupRequired: setup, name: 'Den');
   }).build();
 };
 
@@ -159,5 +159,33 @@ void main() {
         expect(result!.error, contains('5 seconds'));
       });
     });
+  });
+  group('auto-connect', () {
+    test('is on for a new run', () {
+      expect(ServerUrl(MemoryStore()).autoConnect, isTrue);
+    });
+
+    test('clear() turns it off for the rest of the run (Use another server must not reconnect at once)', () async {
+      final u = ServerUrl(MemoryStore());
+      await u.set('http://a:1');
+      await u.clear();
+      expect(u.autoConnect, isFalse);
+      await u.set('http://b:1');
+      expect(u.autoConnect, isFalse, reason: 'choosing a server does not bring it back');
+    });
+
+    test('is not remembered: a new run starts with it on', () async {
+      final store = MemoryStore();
+      final first = ServerUrl(store);
+      await first.set('http://a:1');
+      await first.clear();
+      expect(ServerUrl(store).autoConnect, isTrue);
+    });
+  });
+
+  test('validate returns the name the server gives itself', () async {
+    final u = ServerUrl(MemoryStore(), makeTransport: serverInfo([]));
+    final r = await u.validate('http://a:1');
+    expect(r.name, 'Den');
   });
 }

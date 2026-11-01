@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/andrewloable/kantahe/server/internal/fsutil"
 	"github.com/andrewloable/kantahe/server/internal/store"
 )
 
@@ -72,8 +73,14 @@ type Importer struct {
 	nWaiting int
 	skipped  map[string]fileSig // duplicate files seen in folders, so that they are not re-hashed every scan
 
+	pmu   sync.Mutex
+	stuck map[string]removalKind // derived files that could not be deleted yet; SweepOrphans tries again (orphans.go)
+
+	linksSeen map[string]bool // linked folders inside watched folders that were logged already (scan.go)
+
 	hookWalk     func() // tests only
 	hookMetadata func() // tests only: runs between reading a file and storing the result
+	hookCheck    func() // tests only: runs before CheckLibrary judges each song
 }
 
 type fileSig struct{ size, mtime int64 }
@@ -82,7 +89,7 @@ type fileSig struct{ size, mtime int64 }
 func NewImporter(db *store.DB, dataDir string, libraries []string, logger *slog.Logger) *Importer {
 	return &Importer{
 		db: db, dataDir: dataDir, libraries: libraries, logger: logger,
-		wake: make(chan struct{}, 1), skipped: map[string]fileSig{},
+		wake: make(chan struct{}, 1), skipped: map[string]fileSig{}, stuck: map[string]removalKind{}, linksSeen: map[string]bool{},
 	}
 }
 
@@ -287,16 +294,14 @@ func resetSong(ctx context.Context, tx *sql.Tx, number string, c candidate) (sta
 
 // removeMediaIfUnused deletes an extracted MP3 that no live entry references.
 func (im *Importer) removeMediaIfUnused(ctx context.Context, mediaPath string) {
-	if mediaPath == "" || filepath.Dir(mediaPath) != im.mediaDir() {
+	if mediaPath == "" || !fsutil.SamePath(filepath.Dir(mediaPath), im.mediaDir()) {
 		return
 	}
 	var n int
 	if err := im.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM songs WHERE media_path = ? AND deleted = 0`, mediaPath).Scan(&n); err != nil || n > 0 {
 		return
 	}
-	if err := os.Remove(mediaPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-		im.logger.Warn("cannot remove extracted media", "err", err)
-	}
+	im.removeDerived(mediaPath, removeMedia) // a file in use is swept later, the user's action does not fail
 }
 
 // Run scans at start and every 10 minutes and processes metadata in the
@@ -308,6 +313,7 @@ func (im *Importer) Run(ctx context.Context) {
 	defer wg.Wait()
 
 	im.scanAndLog(ctx)
+	im.sweepAndLog(ctx)
 	t := time.NewTicker(scanInterval)
 	defer t.Stop()
 	for {
@@ -316,6 +322,7 @@ func (im *Importer) Run(ctx context.Context) {
 			return
 		case <-t.C:
 			im.scanAndLog(ctx)
+			im.sweepAndLog(ctx)
 		}
 	}
 }

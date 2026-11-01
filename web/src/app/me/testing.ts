@@ -1,11 +1,12 @@
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError, createRouterTransport } from '@connectrpc/connect';
 import { AuthService, ListMyDevicesResponseSchema, RevokeDeviceResponseSchema } from '../../gen/kantahe/v1/auth_pb';
-import { Device, MidiMode, Song } from '../../gen/kantahe/v1/common_pb';
+import { BackgroundMode, Device, MidiMode, Song } from '../../gen/kantahe/v1/common_pb';
 import {
   AddPlaylistToQueueResponseSchema,
   AddToQueueResponseSchema,
   SessionService,
+  SetBackgroundModeResponseSchema,
   SetMidiModeResponseSchema,
   UpdateUserSettingsRequest,
   UpdateUserSettingsResponseSchema,
@@ -58,6 +59,7 @@ export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; 
     toQueue: [] as string[],
     add: [] as string[],
     midi: [] as { deviceId: string; mode: MidiMode }[],
+    background: [] as { deviceId: string; mode: BackgroundMode }[],
     settings: [] as UpdateUserSettingsRequest[],
     revoke: [] as string[],
     listDevices: 0,
@@ -95,6 +97,7 @@ export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; 
         return create(SetFavouriteResponseSchema, {});
       },
       listPlaylists() {
+        maybeFail();
         return create(ListPlaylistsResponseSchema, {
           playlists: [...playlists.values()].map((p) => create(PlaylistSummarySchema, { id: p.id, name: p.name, songCount: p.songs.length })),
         });
@@ -143,6 +146,12 @@ export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; 
         calls.toQueue.push(req.playlistId);
         return create(AddPlaylistToQueueResponseSchema, { added: playlists.get(req.playlistId)?.songs.length ?? 0 });
       },
+      setBackgroundMode(req) {
+        maybeFail();
+        calls.background.push({ deviceId: req.deviceId, mode: req.mode });
+        devices = devices.map((d) => (d.id === req.deviceId ? { ...d, backgroundMode: req.mode, effectiveBackground: req.mode === BackgroundMode.ON } : d));
+        return create(SetBackgroundModeResponseSchema, { device: devices.find((d) => d.id === req.deviceId) });
+      },
       setMidiMode(req) {
         maybeFail();
         calls.midi.push({ deviceId: req.deviceId, mode: req.mode });
@@ -157,6 +166,7 @@ export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; 
     });
     service(AuthService, {
       listMyDevices() {
+        maybeFail();
         calls.listDevices++;
         return create(ListMyDevicesResponseSchema, { devices });
       },

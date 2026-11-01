@@ -39,6 +39,18 @@ abstract class AdminServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $1.DeleteSongRequest request);
   $async.Future<$1.RemoveSongsResponse> removeSongs(
       $pb.ServerContext ctx, $1.RemoveSongsRequest request);
+  $async.Future<$1.CheckLibraryResponse> checkLibrary(
+      $pb.ServerContext ctx, $1.CheckLibraryRequest request);
+  $async.Future<$1.ListBrokenSongsResponse> listBrokenSongs(
+      $pb.ServerContext ctx, $1.ListBrokenSongsRequest request);
+  $async.Future<$1.ListVideosResponse> listVideos(
+      $pb.ServerContext ctx, $1.ListVideosRequest request);
+  $async.Future<$1.UpdateVideoResponse> updateVideo(
+      $pb.ServerContext ctx, $1.UpdateVideoRequest request);
+  $async.Future<$1.ReorderVideosResponse> reorderVideos(
+      $pb.ServerContext ctx, $1.ReorderVideosRequest request);
+  $async.Future<$1.DeleteVideoResponse> deleteVideo(
+      $pb.ServerContext ctx, $1.DeleteVideoRequest request);
   $async.Future<$1.RescanResponse> rescan(
       $pb.ServerContext ctx, $1.RescanRequest request);
   $async.Future<$1.GetServerSettingsResponse> getServerSettings(
@@ -66,6 +78,18 @@ abstract class AdminServiceBase extends $pb.GeneratedService {
         return $1.DeleteSongRequest();
       case 'RemoveSongs':
         return $1.RemoveSongsRequest();
+      case 'CheckLibrary':
+        return $1.CheckLibraryRequest();
+      case 'ListBrokenSongs':
+        return $1.ListBrokenSongsRequest();
+      case 'ListVideos':
+        return $1.ListVideosRequest();
+      case 'UpdateVideo':
+        return $1.UpdateVideoRequest();
+      case 'ReorderVideos':
+        return $1.ReorderVideosRequest();
+      case 'DeleteVideo':
+        return $1.DeleteVideoRequest();
       case 'Rescan':
         return $1.RescanRequest();
       case 'GetServerSettings':
@@ -98,6 +122,18 @@ abstract class AdminServiceBase extends $pb.GeneratedService {
         return deleteSong(ctx, request as $1.DeleteSongRequest);
       case 'RemoveSongs':
         return removeSongs(ctx, request as $1.RemoveSongsRequest);
+      case 'CheckLibrary':
+        return checkLibrary(ctx, request as $1.CheckLibraryRequest);
+      case 'ListBrokenSongs':
+        return listBrokenSongs(ctx, request as $1.ListBrokenSongsRequest);
+      case 'ListVideos':
+        return listVideos(ctx, request as $1.ListVideosRequest);
+      case 'UpdateVideo':
+        return updateVideo(ctx, request as $1.UpdateVideoRequest);
+      case 'ReorderVideos':
+        return reorderVideos(ctx, request as $1.ReorderVideosRequest);
+      case 'DeleteVideo':
+        return deleteVideo(ctx, request as $1.DeleteVideoRequest);
       case 'Rescan':
         return rescan(ctx, request as $1.RescanRequest);
       case 'GetServerSettings':

@@ -26,6 +26,16 @@ function setup(inputs: Record<string, unknown>, h: FakeLibrary = {}) {
 }
 
 describe('SongListComponent', () => {
+  it('regression: a failed load does not say that no songs were found', () => {
+    const { el } = setup({ songs: [], failed: true, emptyText: 'No songs found.' });
+    expect(el.textContent).not.toContain('No songs found.');
+  });
+
+  it('an empty result without a failure says that no songs were found', () => {
+    const { el } = setup({ songs: [], emptyText: 'No songs found.' });
+    expect(el.textContent).toContain('No songs found.');
+  });
+
   it('shows number, title, artist and a badge on every row', async () => {
     const { fixture, el } = setup({ songs: [song('01052', 'Hello', 'Adele', Format.MP3), song('21628', 'Hello', 'Adele', Format.MIDI)] });
     await fixture.whenStable();

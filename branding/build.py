@@ -6,9 +6,10 @@
 Needs Google Chrome (renders the SVGs; ImageMagick's own SVG renderer gets clip paths and
 gradients wrong) and ImageMagick `magick` (resizing, favicon.ico). Outputs:
 
-    branding/*.svg            sources: icon, icon-small (<= 48 px), maskable, icon-ios, mark, lockups, splash, tv-banner
+    branding/*.svg            sources: icon, icon-small (<= 48 px), maskable, icon-ios, mark, lockups, splash, splash-logo, tv-banner
     branding/export/          favicon.ico/.svg, PNG icons, apple-touch-icon, maskable icons, icon-ios-1024 (no alpha),
-                              lockup PNGs, 1920x1080 splash and 320x180 launcher banner for TV apps
+                              lockup PNGs, 1920x1080 splash, the splash logo on a transparent background (splash-logo.png, its 960 px
+                              version for the native splash and the Android 12 variant splash-android12-1152.png) and 320x180 launcher banner for TV apps
 
 The design: a handheld singing mic whose ball grille is half "sung" (yellow) and half "unsung"
 (white), the same colour wipe the player draws over lyrics, with two music notes. The wordmark colours "kanta" (Tagalog
@@ -144,6 +145,33 @@ def splash():
 <g transform="translate(521 655)">{wordmark(SUNG, UNSUNG)}</g>""", "Kantahe")
 
 
+# The composition of splash(): the tile at (810, 265) is 300 px square, the wordmark at (521, 655) is 878 wide with strokes of 20, so
+# the wordmark spans y 645..815 (its path is 0..150, a round cap reaches 10 beyond it).
+SPLASH_LEFT, SPLASH_TOP, SPLASH_RIGHT, SPLASH_BOTTOM = 521, 265, 521 + 878, 655 + 150 + 10
+SPLASH_MARGIN = round(0.05 * max(SPLASH_RIGHT - SPLASH_LEFT, SPLASH_BOTTOM - SPLASH_TOP))
+SPLASH_LOGO_BOX = (SPLASH_LEFT - SPLASH_MARGIN, SPLASH_TOP - SPLASH_MARGIN,
+                   SPLASH_RIGHT - SPLASH_LEFT + 2 * SPLASH_MARGIN, SPLASH_BOTTOM - SPLASH_TOP + 2 * SPLASH_MARGIN)
+SPLASH_LOGO_PX = 1536  # width of splash-logo.png
+# The native splash of Android before 12 shows a bitmap at its own size per density, and flutter_native_splash takes the image as its xxxhdpi
+# (4x) version: 1536 px would be 384 dp, wider than a 360 dp phone. 960 px is 240 dp: 480 px on a 1920 px TV at density 320, the size of the web splash.
+SPLASH_LOGO_NATIVE_PX = 960
+ANDROID12_CANVAS, ANDROID12_TILE = 1152, 634  # the icon of an Android 12 splash sits in a circle: the tile is about 55% of the canvas
+
+
+def splash_logo():
+    """Exactly the tile and the wordmark of splash(), same transforms and colours, on a transparent background, cropped to the
+    composition plus a 5% margin. The background and the glow are not part of it (they are CSS or the native splash's colour)."""
+    x, y, w, h = SPLASH_LOGO_BOX
+    logo_defs = BG_DEFS[:BG_DEFS.index("  <radialGradient")]  # the tile's gradient, taken from the same source as splash()
+    body = f"""
+<defs>{logo_defs}</defs>
+<g transform="translate(810 265) scale(.5859)">
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>{mark()}
+</g>
+<g transform="translate(521 655)">{wordmark(SUNG, UNSUNG)}</g>"""
+    return svg(w, h, body, "Kantahe").replace(f'viewBox="0 0 {w} {h}"', f'viewBox="{x} {y} {w} {h}"')
+
+
 SOURCES = {
     "kantahe-icon.svg": icon(),
     "kantahe-icon-small.svg": icon(small=True),
@@ -153,6 +181,7 @@ SOURCES = {
     "kantahe-lockup-dark.svg": lockup(SUNG, UNSUNG),
     "kantahe-lockup-light.svg": lockup(LIGHT_SUNG, LIGHT_INK),
     "kantahe-splash.svg": splash(),
+    "kantahe-splash-logo.svg": splash_logo(),
     "kantahe-tv-banner.svg": tv_banner(),
 }
 
@@ -199,6 +228,13 @@ def main():
     render(HERE / "kantahe-lockup-dark.svg", OUT / "lockup-dark.png", 1872, 400)
     render(HERE / "kantahe-lockup-light.svg", OUT / "lockup-light.png", 1872, 400)
     render(HERE / "kantahe-splash.svg", OUT / "splash-1920x1080.png", 1920, 1080)
+    logo_w = SPLASH_LOGO_BOX[2]
+    render(HERE / "kantahe-splash-logo.svg", OUT / "splash-logo.png", SPLASH_LOGO_PX, round(SPLASH_LOGO_PX * SPLASH_LOGO_BOX[3] / logo_w))
+    render(HERE / "kantahe-splash-logo.svg", OUT / "splash-logo-960.png", SPLASH_LOGO_NATIVE_PX, round(SPLASH_LOGO_NATIVE_PX * SPLASH_LOGO_BOX[3] / logo_w))
+    # the Android 12 splash shows the icon in a circle: the tile alone, centred on a transparent square, at about 55% of its width
+    subprocess.run(["magick", str(big["kantahe-icon.svg"]), "-filter", "Lanczos", "-resize", f"{ANDROID12_TILE}x{ANDROID12_TILE}",
+                    "-background", "none", "-gravity", "center", "-extent", f"{ANDROID12_CANVAS}x{ANDROID12_CANVAS}", "-strip",
+                    str(OUT / "splash-android12-1152.png")], check=True)
     # headless Chrome will not make a window this small: render at 4x and scale down
     render(HERE / "kantahe-tv-banner.svg", OUT / "_banner.png", 1280, 720)
     subprocess.run(["magick", str(OUT / "_banner.png"), "-filter", "Lanczos", "-resize", "320x180", "-strip",

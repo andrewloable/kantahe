@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Kantahe is an open-source (MIT) self-hosted karaoke server: users upload `.kar` / `.karmp3` songs,
 sign in with email and password, and sing from web, mobile and TV clients. The repo is **pre-code**:
 only the plan, branding and fanfare assets exist. [docs/PLAN.md](docs/PLAN.md) is the source of truth
-for behaviour, API, decisions (D1–D10) and the roadmap; read it before building anything and update it
+for behaviour, API, decisions (D1–D12) and the roadmap; read it before building anything and update it
 when a decision changes. Commands marked *planned* do not work until that part is scaffolded; replace
 them with the real ones when it is.
 
@@ -30,6 +30,7 @@ Do not name or compare Kantahe to other media-server products anywhere in the do
 
 ```sh
 python3 branding/build.py          # regenerate all logo SVGs + exports (needs Google Chrome and ImageMagick)
+scripts/ci-local.sh                # BEFORE a tag: every ci.yml check on the committed HEAD in a clean worktree (see docs/releasing.md)
 
 # planned
 buf generate && buf lint                          # after editing proto/; commit the generated code
@@ -38,10 +39,12 @@ cd server && go test ./... -run TestQueueSkip     # one test
 cd server && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./cmd/kantahe   # any OS/arch the same way
 cd web && ng build && ng test
 cd web && npm run e2e                                # the whole product in a real browser (needs: npx playwright install chromium)
+cd web && npm run e2e:responsive -- --allow-findings   # every route at phone and tablet sizes, light and dark: screenshots and a report outside the repo (web/e2e/responsive/README.md)
 cd app && flutter test
 ```
 
 Edit logo shapes in `branding/build.py` (`mark()`, `wordmark()`), never in the generated SVGs.
+`scripts/sync-branding.sh` copies the exports to the clients and puts `branding/kantahe-splash-logo.svg` into `web/src/index.html` (the loading splash); `scripts/sync-branding.sh --check` says whether that page is current and is part of CI.
 ImageMagick's own SVG renderer is wrong for clip paths and gradients, so rendering goes through
 headless Chrome and ImageMagick only resizes and builds `favicon.ico`.
 

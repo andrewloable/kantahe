@@ -13,14 +13,46 @@ jobs:
       run:
         working-directory: server
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
       - run: go vet ./...
       - run: test -z "$(gofmt -l .)"
       - run: CGO_ENABLED=0 go build ./...
-      - run: go test -race ./...
+      # -shuffle=on prints the seed of a failing package (-test.shuffle N): rerun with -shuffle=N to reproduce it
+      - run: go test -race -shuffle=on ./...
+      # UTC+14: a test that only passes in the time zone of the machine it was written on fails here
+      - run: TZ=Pacific/Kiritimati go test ./...
+
+  go-windows:
+    # the server on Windows, where nothing else runs: the build, the tests, the real program and the real service
+    runs-on: windows-latest
+    timeout-minutes: 30 # a stuck test or service must not hold a release for GitHub's default of six hours
+    defaults:
+      run:
+        shell: bash
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - run: go vet ./...
+      - run: CGO_ENABLED=0 go build ./...
+      # no -race here: the race detector needs cgo and a C compiler
+      - run: go test ./... 2>&1 | tee ../windows-test.log
+      - run: go build -o kantahe.exe ./cmd/kantahe
+      # the real program from a console, then as a Windows service (the runner is an administrator)
+      - run: python ../scripts/smoke-windows.py console kantahe.exe
+      - run: python ../scripts/smoke-windows.py service kantahe.exe
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: windows-test-log
+          path: windows-test.log
 
   web:
     runs-on: ubuntu-latest
@@ -28,8 +60,8 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -37,6 +69,7 @@ jobs:
       - run: npm ci
       - run: npx ng lint
       - run: npx ng test --watch=false
+      - run: TZ=Pacific/Kiritimati npx ng test --watch=false
       - run: npx ng build
       - run: npx ng build --configuration tizen
       - run: npx ng build --configuration webos
@@ -45,8 +78,8 @@ jobs:
     # the TV package files and the helper scripts, and the links in the Markdown docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -58,17 +91,26 @@ jobs:
       - run: python3 -m unittest discover -s tv/tizen
       - run: python3 -m unittest discover -s tv/webos
       - run: python3 -m unittest discover -s scripts -p 'test_check_links.py'
+      - run: python3 -m unittest discover -s scripts -p 'test_ci_local.py'
+      - run: python3 -m unittest discover -s scripts -p 'test_check_proxy_configs.py'
+      - run: python3 -m unittest discover -s scripts -p 'test_build_release.py'
+      - run: python3 -m unittest discover -s scripts -p 'test_release_checks.py'
+      - run: python3 -m unittest discover -s scripts -p 'test_smoke_windows.py'
+      - run: python3 -m unittest discover -s scripts -p 'test_verify_release.py'
+      # the splash logo in web/src/index.html is the one that branding/kantahe-splash-logo.svg gives
+      - run: scripts/sync-branding.sh --check
       - run: python3 scripts/check-links.py
 
   e2e:
     # one run of the whole product: the real server with a synthetic library, the web app, a real browser
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: server/go.mod
-      - uses: actions/setup-node@v4
+          cache-dependency-path: server/go.sum
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -79,7 +121,13 @@ jobs:
         working-directory: web
       - run: npm run e2e
         working-directory: web
-      - uses: actions/upload-artifact@v4
+      # the checks of the responsive audit on small pages (the audit itself is run by hand, see web/e2e/responsive/README.md)
+      - run: npm run e2e:responsive:checks
+        working-directory: web
+      # the layout tests of single bugs: the audit's route states on the scratch server, with assertions
+      - run: npm run e2e:layout
+        working-directory: web
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: playwright-traces
@@ -89,17 +137,18 @@ jobs:
     # the release script end to end: web app and SoundFont embedded, six binaries, the linux one started
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: server/go.mod
-      - uses: actions/setup-node@v4
+          cache-dependency-path: server/go.sum
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: scripts/build-release.sh v0.0.0-test
-      - run: test "$(ls dist | wc -l)" = 7
+      - run: test "$(find dist -type f | wc -l)" = 7
       - run: (cd dist && sha256sum -c SHA256SUMS)
       - run: scripts/smoke-release.sh dist/kantahe-v0.0.0-test-linux-amd64 v0.0.0-test
       # the embedded files must not show up in the working tree
@@ -113,9 +162,9 @@ jobs:
       matrix:
         platform: [linux/amd64, linux/arm64]
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
       - run: docker buildx build --platform ${{ matrix.platform }} --build-arg VERSION=v0.0.0-test -t kantahe:test --load .
       - run: scripts/smoke-docker.sh kantahe:test v0.0.0-test ${{ matrix.platform }}
 
@@ -123,7 +172,7 @@ jobs:
     # the proxy examples are accepted by Caddy and nginx, the systemd unit passes systemd-analyze
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: scripts/check-proxy-configs.sh
       # systemd-analyze verify wants the program, the user and the folder to exist
       - run: |
@@ -138,13 +187,16 @@ jobs:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      # pinned to the version the owner builds with: a new stable release must not break a release without a code change
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.47.5
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+      - run: TZ=Pacific/Kiritimati flutter test
 
   flutter-android:
     runs-on: ubuntu-latest
@@ -152,14 +204,16 @@ jobs:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
+      # pinned to the version the owner builds with: a new stable release must not break a release without a code change
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.47.5
       - run: flutter pub get
       - run: flutter build apk --debug
 
@@ -169,17 +223,19 @@ jobs:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      # pinned to the version the owner builds with: a new stable release must not break a release without a code change
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.47.5
       - run: flutter pub get
       - run: flutter build ios --simulator --no-codesign --debug
 
   buf:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: bufbuild/buf-action@v1
         with:
           lint: true

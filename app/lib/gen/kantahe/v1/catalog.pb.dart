@@ -942,6 +942,128 @@ class GetPlaybackResponse extends $pb.GeneratedMessage {
   Playback ensurePlayback() => $_ensure(0);
 }
 
+/// Asks nothing.
+class GetBackgroundRequest extends $pb.GeneratedMessage {
+  factory GetBackgroundRequest() => GetBackgroundRequest._();
+
+  GetBackgroundRequest._();
+
+  factory GetBackgroundRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetBackgroundRequest()..mergeFromBuffer(data, registry);
+  factory GetBackgroundRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetBackgroundRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetBackgroundRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: GetBackgroundRequest.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBackgroundRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBackgroundRequest copyWith(void Function(GetBackgroundRequest) updates) =>
+      super.copyWith((message) => updates(message as GetBackgroundRequest))
+          as GetBackgroundRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetBackgroundRequest() / GetBackgroundRequest.new instead')
+  static GetBackgroundRequest create() => GetBackgroundRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetBackgroundRequest._();
+  @$core.override
+  GetBackgroundRequest createEmptyInstance() => GetBackgroundRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetBackgroundRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetBackgroundRequest>(
+          GetBackgroundRequest.$_createMessage);
+  static GetBackgroundRequest? _defaultInstance;
+}
+
+/// enabled is the admin's switch; when it is false videos is empty. shuffle asks the player to shuffle the order on every pass.
+class GetBackgroundResponse extends $pb.GeneratedMessage {
+  factory GetBackgroundResponse({
+    $core.bool? enabled,
+    $core.bool? shuffle,
+    $core.Iterable<$0.Video>? videos,
+  }) {
+    final result = GetBackgroundResponse._();
+    if (enabled != null) result.enabled = enabled;
+    if (shuffle != null) result.shuffle = shuffle;
+    if (videos != null) result.videos.addAll(videos);
+    return result;
+  }
+
+  GetBackgroundResponse._();
+
+  factory GetBackgroundResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetBackgroundResponse()..mergeFromBuffer(data, registry);
+  factory GetBackgroundResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetBackgroundResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetBackgroundResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: GetBackgroundResponse.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'enabled')
+    ..aOB(2, _omitFieldNames ? '' : 'shuffle')
+    ..pPM<$0.Video>(3, _omitFieldNames ? '' : 'videos',
+        subBuilder: $0.Video.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBackgroundResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBackgroundResponse copyWith(
+          void Function(GetBackgroundResponse) updates) =>
+      super.copyWith((message) => updates(message as GetBackgroundResponse))
+          as GetBackgroundResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetBackgroundResponse() / GetBackgroundResponse.new instead')
+  static GetBackgroundResponse create() => GetBackgroundResponse._();
+  static $pb.GeneratedMessage $_createMessage() => GetBackgroundResponse._();
+  @$core.override
+  GetBackgroundResponse createEmptyInstance() => GetBackgroundResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetBackgroundResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetBackgroundResponse>(
+          GetBackgroundResponse.$_createMessage);
+  static GetBackgroundResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get enabled => $_getBF(0);
+  @$pb.TagNumber(1)
+  set enabled($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEnabled() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEnabled() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.bool get shuffle => $_getBF(1);
+  @$pb.TagNumber(2)
+  set shuffle($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasShuffle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearShuffle() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<$0.Video> get videos => $_getList(2);
+}
+
 /// Read-only library access; any signed-in user (UNAUTHENTICATED otherwise).
 class CatalogServiceApi {
   final $pb.RpcClient _client;
@@ -977,6 +1099,12 @@ class CatalogServiceApi {
           $pb.ClientContext? ctx, GetPlaybackRequest request) =>
       _client.invoke<GetPlaybackResponse>(
           ctx, 'CatalogService', 'GetPlayback', request, GetPlaybackResponse());
+
+  /// Signed-in user. The enabled background videos in loop order with signed URLs (6 hours); empty when the admin has switched the background off.
+  $async.Future<GetBackgroundResponse> getBackground(
+          $pb.ClientContext? ctx, GetBackgroundRequest request) =>
+      _client.invoke<GetBackgroundResponse>(ctx, 'CatalogService',
+          'GetBackground', request, GetBackgroundResponse());
 }
 
 const $core.bool _omitFieldNames =

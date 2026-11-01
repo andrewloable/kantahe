@@ -508,6 +508,49 @@ final $typed_data.Uint8List setMidiModeResponseDescriptor = $convert.base64Decod
     'ChNTZXRNaWRpTW9kZVJlc3BvbnNlEioKBmRldmljZRgBIAEoCzISLmthbnRhaGUudjEuRGV2aW'
     'NlUgZkZXZpY2U=');
 
+@$core.Deprecated('Use setBackgroundModeRequestDescriptor instead')
+const SetBackgroundModeRequest$json = {
+  '1': 'SetBackgroundModeRequest',
+  '2': [
+    {'1': 'device_id', '3': 1, '4': 1, '5': 9, '10': 'deviceId'},
+    {
+      '1': 'mode',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.kantahe.v1.BackgroundMode',
+      '10': 'mode'
+    },
+  ],
+};
+
+/// Descriptor for `SetBackgroundModeRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setBackgroundModeRequestDescriptor =
+    $convert.base64Decode(
+        'ChhTZXRCYWNrZ3JvdW5kTW9kZVJlcXVlc3QSGwoJZGV2aWNlX2lkGAEgASgJUghkZXZpY2VJZB'
+        'IuCgRtb2RlGAIgASgOMhoua2FudGFoZS52MS5CYWNrZ3JvdW5kTW9kZVIEbW9kZQ==');
+
+@$core.Deprecated('Use setBackgroundModeResponseDescriptor instead')
+const SetBackgroundModeResponse$json = {
+  '1': 'SetBackgroundModeResponse',
+  '2': [
+    {
+      '1': 'device',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.kantahe.v1.Device',
+      '10': 'device'
+    },
+  ],
+};
+
+/// Descriptor for `SetBackgroundModeResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setBackgroundModeResponseDescriptor =
+    $convert.base64Decode(
+        'ChlTZXRCYWNrZ3JvdW5kTW9kZVJlc3BvbnNlEioKBmRldmljZRgBIAEoCzISLmthbnRhaGUudj'
+        'EuRGV2aWNlUgZkZXZpY2U=');
+
 @$core.Deprecated('Use queueItemDescriptor instead')
 const QueueItem$json = {
   '1': 'QueueItem',
@@ -789,6 +832,11 @@ const $core.Map<$core.String, $core.dynamic> SessionServiceBase$json = {
       '2': '.kantahe.v1.SetMidiModeRequest',
       '3': '.kantahe.v1.SetMidiModeResponse'
     },
+    {
+      '1': 'SetBackgroundMode',
+      '2': '.kantahe.v1.SetBackgroundModeRequest',
+      '3': '.kantahe.v1.SetBackgroundModeResponse'
+    },
   ],
 };
 
@@ -831,6 +879,8 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.kantahe.v1.ReportDeviceResponse': ReportDeviceResponse$json,
   '.kantahe.v1.SetMidiModeRequest': SetMidiModeRequest$json,
   '.kantahe.v1.SetMidiModeResponse': SetMidiModeResponse$json,
+  '.kantahe.v1.SetBackgroundModeRequest': SetBackgroundModeRequest$json,
+  '.kantahe.v1.SetBackgroundModeResponse': SetBackgroundModeResponse$json,
 };
 
 /// Descriptor for `SessionService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -855,4 +905,6 @@ final $typed_data.Uint8List sessionServiceDescriptor = $convert.base64Decode(
     'hlLnYxLlJlcG9ydE1pY1Jlc3BvbnNlElEKDFJlcG9ydERldmljZRIfLmthbnRhaGUudjEuUmVw'
     'b3J0RGV2aWNlUmVxdWVzdBogLmthbnRhaGUudjEuUmVwb3J0RGV2aWNlUmVzcG9uc2USTgoLU2'
     'V0TWlkaU1vZGUSHi5rYW50YWhlLnYxLlNldE1pZGlNb2RlUmVxdWVzdBofLmthbnRhaGUudjEu'
-    'U2V0TWlkaU1vZGVSZXNwb25zZQ==');
+    'U2V0TWlkaU1vZGVSZXNwb25zZRJgChFTZXRCYWNrZ3JvdW5kTW9kZRIkLmthbnRhaGUudjEuU2'
+    'V0QmFja2dyb3VuZE1vZGVSZXF1ZXN0GiUua2FudGFoZS52MS5TZXRCYWNrZ3JvdW5kTW9kZVJl'
+    'c3BvbnNl');

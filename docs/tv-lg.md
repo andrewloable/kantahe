@@ -57,8 +57,12 @@ Kantahe is then in the TV's app list. To remove it: `ares-install --device tv --
 
 ## 5. First start
 
-1. The app asks for the **server address**. Type it with the on-screen keyboard (`http://192.168.1.20:8080`) and choose
-   *Connect*. A server that has no account yet is set up in a web browser first.
+1. The app **looks for your server on the network** (a few seconds). With one server it connects by itself; with
+   several it lists them by name, and you choose one with the arrow keys and OK. It finds servers that listen on port
+   8080 (the default) or 80 on the same network as the TV, looking first at the addresses nearest the TV's own. Only
+   when it finds none does it ask for the **server address**; if it says none was found *yet*, *Search again* looks at
+   more addresses. Or type the address with the on-screen keyboard (`http://192.168.1.20:8080`, with the port if it is
+   another one) and choose *Connect*. A server that has no account yet is set up in a web browser first.
 2. It shows a **code** and a QR code. On a phone or computer, sign in to Kantahe, open *Me → Approve a TV* (or
    scan the QR code), and enter the code. The TV signs in.
 3. Use the arrow keys and OK to search and queue songs, or queue from your phone. *Back* goes back through the pages

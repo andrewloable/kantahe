@@ -188,6 +188,430 @@ func (x *UploadSongResponse) GetReason() string {
 	return ""
 }
 
+// The original filename and the size of the whole file in bytes.
+type BeginVideoUploadRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
+	SizeBytes     int64                  `protobuf:"varint,2,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BeginVideoUploadRequest) Reset() {
+	*x = BeginVideoUploadRequest{}
+	mi := &file_kantahe_v1_upload_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BeginVideoUploadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BeginVideoUploadRequest) ProtoMessage() {}
+
+func (x *BeginVideoUploadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_upload_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BeginVideoUploadRequest.ProtoReflect.Descriptor instead.
+func (*BeginVideoUploadRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_upload_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *BeginVideoUploadRequest) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *BeginVideoUploadRequest) GetSizeBytes() int64 {
+	if x != nil {
+		return x.SizeBytes
+	}
+	return 0
+}
+
+// upload_id names the upload in the next calls; chunk_size is the largest chunk the server accepts.
+type BeginVideoUploadResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UploadId      string                 `protobuf:"bytes,1,opt,name=upload_id,json=uploadId,proto3" json:"upload_id,omitempty"`
+	ChunkSize     int32                  `protobuf:"varint,2,opt,name=chunk_size,json=chunkSize,proto3" json:"chunk_size,omitempty"`
+	Received      int64                  `protobuf:"varint,3,opt,name=received,proto3" json:"received,omitempty"`
+	Status        UploadStatus           `protobuf:"varint,4,opt,name=status,proto3,enum=kantahe.v1.UploadStatus" json:"status,omitempty"`
+	Reason        string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BeginVideoUploadResponse) Reset() {
+	*x = BeginVideoUploadResponse{}
+	mi := &file_kantahe_v1_upload_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BeginVideoUploadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BeginVideoUploadResponse) ProtoMessage() {}
+
+func (x *BeginVideoUploadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_upload_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BeginVideoUploadResponse.ProtoReflect.Descriptor instead.
+func (*BeginVideoUploadResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_upload_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *BeginVideoUploadResponse) GetUploadId() string {
+	if x != nil {
+		return x.UploadId
+	}
+	return ""
+}
+
+func (x *BeginVideoUploadResponse) GetChunkSize() int32 {
+	if x != nil {
+		return x.ChunkSize
+	}
+	return 0
+}
+
+func (x *BeginVideoUploadResponse) GetReceived() int64 {
+	if x != nil {
+		return x.Received
+	}
+	return 0
+}
+
+func (x *BeginVideoUploadResponse) GetStatus() UploadStatus {
+	if x != nil {
+		return x.Status
+	}
+	return UploadStatus_UPLOAD_STATUS_UNSPECIFIED
+}
+
+func (x *BeginVideoUploadResponse) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// The bytes at offset of the file; offset must equal the bytes received so far.
+type UploadVideoChunkRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UploadId      string                 `protobuf:"bytes,1,opt,name=upload_id,json=uploadId,proto3" json:"upload_id,omitempty"`
+	Offset        int64                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	Content       []byte                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UploadVideoChunkRequest) Reset() {
+	*x = UploadVideoChunkRequest{}
+	mi := &file_kantahe_v1_upload_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadVideoChunkRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadVideoChunkRequest) ProtoMessage() {}
+
+func (x *UploadVideoChunkRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_upload_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadVideoChunkRequest.ProtoReflect.Descriptor instead.
+func (*UploadVideoChunkRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_upload_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *UploadVideoChunkRequest) GetUploadId() string {
+	if x != nil {
+		return x.UploadId
+	}
+	return ""
+}
+
+func (x *UploadVideoChunkRequest) GetOffset() int64 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+func (x *UploadVideoChunkRequest) GetContent() []byte {
+	if x != nil {
+		return x.Content
+	}
+	return nil
+}
+
+// The bytes received so far.
+type UploadVideoChunkResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Received      int64                  `protobuf:"varint,1,opt,name=received,proto3" json:"received,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UploadVideoChunkResponse) Reset() {
+	*x = UploadVideoChunkResponse{}
+	mi := &file_kantahe_v1_upload_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadVideoChunkResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadVideoChunkResponse) ProtoMessage() {}
+
+func (x *UploadVideoChunkResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_upload_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadVideoChunkResponse.ProtoReflect.Descriptor instead.
+func (*UploadVideoChunkResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_upload_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *UploadVideoChunkResponse) GetReceived() int64 {
+	if x != nil {
+		return x.Received
+	}
+	return 0
+}
+
+// The upload to finish.
+type CompleteVideoUploadRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UploadId      string                 `protobuf:"bytes,1,opt,name=upload_id,json=uploadId,proto3" json:"upload_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompleteVideoUploadRequest) Reset() {
+	*x = CompleteVideoUploadRequest{}
+	mi := &file_kantahe_v1_upload_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompleteVideoUploadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompleteVideoUploadRequest) ProtoMessage() {}
+
+func (x *CompleteVideoUploadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_upload_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompleteVideoUploadRequest.ProtoReflect.Descriptor instead.
+func (*CompleteVideoUploadRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_upload_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *CompleteVideoUploadRequest) GetUploadId() string {
+	if x != nil {
+		return x.UploadId
+	}
+	return ""
+}
+
+// status ADDED carries the video, REJECTED carries the reason, DUPLICATE carries the existing video.
+type CompleteVideoUploadResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        UploadStatus           `protobuf:"varint,1,opt,name=status,proto3,enum=kantahe.v1.UploadStatus" json:"status,omitempty"`
+	Video         *Video                 `protobuf:"bytes,2,opt,name=video,proto3" json:"video,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompleteVideoUploadResponse) Reset() {
+	*x = CompleteVideoUploadResponse{}
+	mi := &file_kantahe_v1_upload_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompleteVideoUploadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompleteVideoUploadResponse) ProtoMessage() {}
+
+func (x *CompleteVideoUploadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_upload_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompleteVideoUploadResponse.ProtoReflect.Descriptor instead.
+func (*CompleteVideoUploadResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_upload_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *CompleteVideoUploadResponse) GetStatus() UploadStatus {
+	if x != nil {
+		return x.Status
+	}
+	return UploadStatus_UPLOAD_STATUS_UNSPECIFIED
+}
+
+func (x *CompleteVideoUploadResponse) GetVideo() *Video {
+	if x != nil {
+		return x.Video
+	}
+	return nil
+}
+
+func (x *CompleteVideoUploadResponse) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// The upload to throw away.
+type AbortVideoUploadRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UploadId      string                 `protobuf:"bytes,1,opt,name=upload_id,json=uploadId,proto3" json:"upload_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AbortVideoUploadRequest) Reset() {
+	*x = AbortVideoUploadRequest{}
+	mi := &file_kantahe_v1_upload_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AbortVideoUploadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AbortVideoUploadRequest) ProtoMessage() {}
+
+func (x *AbortVideoUploadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_upload_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AbortVideoUploadRequest.ProtoReflect.Descriptor instead.
+func (*AbortVideoUploadRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_upload_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AbortVideoUploadRequest) GetUploadId() string {
+	if x != nil {
+		return x.UploadId
+	}
+	return ""
+}
+
+// Nothing to report.
+type AbortVideoUploadResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AbortVideoUploadResponse) Reset() {
+	*x = AbortVideoUploadResponse{}
+	mi := &file_kantahe_v1_upload_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AbortVideoUploadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AbortVideoUploadResponse) ProtoMessage() {}
+
+func (x *AbortVideoUploadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_upload_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AbortVideoUploadResponse.ProtoReflect.Descriptor instead.
+func (*AbortVideoUploadResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_upload_proto_rawDescGZIP(), []int{9}
+}
+
 var File_kantahe_v1_upload_proto protoreflect.FileDescriptor
 
 const file_kantahe_v1_upload_proto_rawDesc = "" +
@@ -200,15 +624,45 @@ const file_kantahe_v1_upload_proto_rawDesc = "" +
 	"\x12UploadSongResponse\x120\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x18.kantahe.v1.UploadStatusR\x06status\x12$\n" +
 	"\x04song\x18\x02 \x01(\v2\x10.kantahe.v1.SongR\x04song\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason*\x7f\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"T\n" +
+	"\x17BeginVideoUploadRequest\x12\x1a\n" +
+	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\x02 \x01(\x03R\tsizeBytes\"\xbc\x01\n" +
+	"\x18BeginVideoUploadResponse\x12\x1b\n" +
+	"\tupload_id\x18\x01 \x01(\tR\buploadId\x12\x1d\n" +
+	"\n" +
+	"chunk_size\x18\x02 \x01(\x05R\tchunkSize\x12\x1a\n" +
+	"\breceived\x18\x03 \x01(\x03R\breceived\x120\n" +
+	"\x06status\x18\x04 \x01(\x0e2\x18.kantahe.v1.UploadStatusR\x06status\x12\x16\n" +
+	"\x06reason\x18\x05 \x01(\tR\x06reason\"h\n" +
+	"\x17UploadVideoChunkRequest\x12\x1b\n" +
+	"\tupload_id\x18\x01 \x01(\tR\buploadId\x12\x16\n" +
+	"\x06offset\x18\x02 \x01(\x03R\x06offset\x12\x18\n" +
+	"\acontent\x18\x03 \x01(\fR\acontent\"6\n" +
+	"\x18UploadVideoChunkResponse\x12\x1a\n" +
+	"\breceived\x18\x01 \x01(\x03R\breceived\"9\n" +
+	"\x1aCompleteVideoUploadRequest\x12\x1b\n" +
+	"\tupload_id\x18\x01 \x01(\tR\buploadId\"\x90\x01\n" +
+	"\x1bCompleteVideoUploadResponse\x120\n" +
+	"\x06status\x18\x01 \x01(\x0e2\x18.kantahe.v1.UploadStatusR\x06status\x12'\n" +
+	"\x05video\x18\x02 \x01(\v2\x11.kantahe.v1.VideoR\x05video\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"6\n" +
+	"\x17AbortVideoUploadRequest\x12\x1b\n" +
+	"\tupload_id\x18\x01 \x01(\tR\buploadId\"\x1a\n" +
+	"\x18AbortVideoUploadResponse*\x7f\n" +
 	"\fUploadStatus\x12\x1d\n" +
 	"\x19UPLOAD_STATUS_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13UPLOAD_STATUS_ADDED\x10\x01\x12\x1b\n" +
 	"\x17UPLOAD_STATUS_DUPLICATE\x10\x02\x12\x1a\n" +
-	"\x16UPLOAD_STATUS_REJECTED\x10\x032\\\n" +
+	"\x16UPLOAD_STATUS_REJECTED\x10\x032\xe1\x03\n" +
 	"\rUploadService\x12K\n" +
 	"\n" +
-	"UploadSong\x12\x1d.kantahe.v1.UploadSongRequest\x1a\x1e.kantahe.v1.UploadSongResponseB\xa7\x01\n" +
+	"UploadSong\x12\x1d.kantahe.v1.UploadSongRequest\x1a\x1e.kantahe.v1.UploadSongResponse\x12]\n" +
+	"\x10BeginVideoUpload\x12#.kantahe.v1.BeginVideoUploadRequest\x1a$.kantahe.v1.BeginVideoUploadResponse\x12]\n" +
+	"\x10UploadVideoChunk\x12#.kantahe.v1.UploadVideoChunkRequest\x1a$.kantahe.v1.UploadVideoChunkResponse\x12f\n" +
+	"\x13CompleteVideoUpload\x12&.kantahe.v1.CompleteVideoUploadRequest\x1a'.kantahe.v1.CompleteVideoUploadResponse\x12]\n" +
+	"\x10AbortVideoUpload\x12#.kantahe.v1.AbortVideoUploadRequest\x1a$.kantahe.v1.AbortVideoUploadResponseB\xa7\x01\n" +
 	"\x0ecom.kantahe.v1B\vUploadProtoP\x01Z?github.com/andrewloable/kantahe/server/gen/kantahe/v1;kantahev1\xa2\x02\x03KXX\xaa\x02\n" +
 	"Kantahe.V1\xca\x02\n" +
 	"Kantahe\\V1\xe2\x02\x16Kantahe\\V1\\GPBMetadata\xea\x02\vKantahe::V1b\x06proto3"
@@ -226,23 +680,43 @@ func file_kantahe_v1_upload_proto_rawDescGZIP() []byte {
 }
 
 var file_kantahe_v1_upload_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_kantahe_v1_upload_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_kantahe_v1_upload_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_kantahe_v1_upload_proto_goTypes = []any{
-	(UploadStatus)(0),          // 0: kantahe.v1.UploadStatus
-	(*UploadSongRequest)(nil),  // 1: kantahe.v1.UploadSongRequest
-	(*UploadSongResponse)(nil), // 2: kantahe.v1.UploadSongResponse
-	(*Song)(nil),               // 3: kantahe.v1.Song
+	(UploadStatus)(0),                   // 0: kantahe.v1.UploadStatus
+	(*UploadSongRequest)(nil),           // 1: kantahe.v1.UploadSongRequest
+	(*UploadSongResponse)(nil),          // 2: kantahe.v1.UploadSongResponse
+	(*BeginVideoUploadRequest)(nil),     // 3: kantahe.v1.BeginVideoUploadRequest
+	(*BeginVideoUploadResponse)(nil),    // 4: kantahe.v1.BeginVideoUploadResponse
+	(*UploadVideoChunkRequest)(nil),     // 5: kantahe.v1.UploadVideoChunkRequest
+	(*UploadVideoChunkResponse)(nil),    // 6: kantahe.v1.UploadVideoChunkResponse
+	(*CompleteVideoUploadRequest)(nil),  // 7: kantahe.v1.CompleteVideoUploadRequest
+	(*CompleteVideoUploadResponse)(nil), // 8: kantahe.v1.CompleteVideoUploadResponse
+	(*AbortVideoUploadRequest)(nil),     // 9: kantahe.v1.AbortVideoUploadRequest
+	(*AbortVideoUploadResponse)(nil),    // 10: kantahe.v1.AbortVideoUploadResponse
+	(*Song)(nil),                        // 11: kantahe.v1.Song
+	(*Video)(nil),                       // 12: kantahe.v1.Video
 }
 var file_kantahe_v1_upload_proto_depIdxs = []int32{
-	0, // 0: kantahe.v1.UploadSongResponse.status:type_name -> kantahe.v1.UploadStatus
-	3, // 1: kantahe.v1.UploadSongResponse.song:type_name -> kantahe.v1.Song
-	1, // 2: kantahe.v1.UploadService.UploadSong:input_type -> kantahe.v1.UploadSongRequest
-	2, // 3: kantahe.v1.UploadService.UploadSong:output_type -> kantahe.v1.UploadSongResponse
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0,  // 0: kantahe.v1.UploadSongResponse.status:type_name -> kantahe.v1.UploadStatus
+	11, // 1: kantahe.v1.UploadSongResponse.song:type_name -> kantahe.v1.Song
+	0,  // 2: kantahe.v1.BeginVideoUploadResponse.status:type_name -> kantahe.v1.UploadStatus
+	0,  // 3: kantahe.v1.CompleteVideoUploadResponse.status:type_name -> kantahe.v1.UploadStatus
+	12, // 4: kantahe.v1.CompleteVideoUploadResponse.video:type_name -> kantahe.v1.Video
+	1,  // 5: kantahe.v1.UploadService.UploadSong:input_type -> kantahe.v1.UploadSongRequest
+	3,  // 6: kantahe.v1.UploadService.BeginVideoUpload:input_type -> kantahe.v1.BeginVideoUploadRequest
+	5,  // 7: kantahe.v1.UploadService.UploadVideoChunk:input_type -> kantahe.v1.UploadVideoChunkRequest
+	7,  // 8: kantahe.v1.UploadService.CompleteVideoUpload:input_type -> kantahe.v1.CompleteVideoUploadRequest
+	9,  // 9: kantahe.v1.UploadService.AbortVideoUpload:input_type -> kantahe.v1.AbortVideoUploadRequest
+	2,  // 10: kantahe.v1.UploadService.UploadSong:output_type -> kantahe.v1.UploadSongResponse
+	4,  // 11: kantahe.v1.UploadService.BeginVideoUpload:output_type -> kantahe.v1.BeginVideoUploadResponse
+	6,  // 12: kantahe.v1.UploadService.UploadVideoChunk:output_type -> kantahe.v1.UploadVideoChunkResponse
+	8,  // 13: kantahe.v1.UploadService.CompleteVideoUpload:output_type -> kantahe.v1.CompleteVideoUploadResponse
+	10, // 14: kantahe.v1.UploadService.AbortVideoUpload:output_type -> kantahe.v1.AbortVideoUploadResponse
+	10, // [10:15] is the sub-list for method output_type
+	5,  // [5:10] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_kantahe_v1_upload_proto_init() }
@@ -257,7 +731,7 @@ func file_kantahe_v1_upload_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kantahe_v1_upload_proto_rawDesc), len(file_kantahe_v1_upload_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   2,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

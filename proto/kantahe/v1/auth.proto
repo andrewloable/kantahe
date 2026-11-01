@@ -33,10 +33,12 @@ service AuthService {
 // Asks nothing.
 message GetServerInfoRequest {}
 
-// Version string and whether Setup is still allowed.
+// Version string, server name and whether Setup is still allowed.
 message GetServerInfoResponse {
   string version = 1;
   bool setup_required = 2;
+  // Human-readable server name, the --name flag; also the mDNS instance name.
+  string name = 3;
 }
 
 // Creates the first admin and signs in the calling device.

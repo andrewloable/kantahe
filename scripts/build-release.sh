@@ -37,7 +37,9 @@ font=$cache/GeneralUser-GS-$want.sf2
 got=
 [ -f "$font" ] && got=$(sha256 "$font" | cut -d' ' -f1)
 if [ "$got" != "$want" ]; then
-  curl -fsSL -o "$font.part" "$(lock URL)"
+  # one network blip must not fail a release: retry 3 times (BUILD_RELEASE_RETRY_DELAY seconds apart, 5 by default; the
+  # tests set 1; 0 would mean curl's own backoff), also on connection errors, and never wait more than 5 minutes for the file. The checksum below is checked as ever
+  curl -fsSL --retry 3 --retry-delay "${BUILD_RELEASE_RETRY_DELAY:-5}" --retry-all-errors --max-time 300 -o "$font.part" "$(lock URL)"
   got=$(sha256 "$font.part" | cut -d' ' -f1)
   if [ "$got" != "$want" ]; then
     rm -f "$font.part"

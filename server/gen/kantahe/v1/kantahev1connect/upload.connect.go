@@ -36,12 +36,33 @@ const (
 	// UploadServiceUploadSongProcedure is the fully-qualified name of the UploadService's UploadSong
 	// RPC.
 	UploadServiceUploadSongProcedure = "/kantahe.v1.UploadService/UploadSong"
+	// UploadServiceBeginVideoUploadProcedure is the fully-qualified name of the UploadService's
+	// BeginVideoUpload RPC.
+	UploadServiceBeginVideoUploadProcedure = "/kantahe.v1.UploadService/BeginVideoUpload"
+	// UploadServiceUploadVideoChunkProcedure is the fully-qualified name of the UploadService's
+	// UploadVideoChunk RPC.
+	UploadServiceUploadVideoChunkProcedure = "/kantahe.v1.UploadService/UploadVideoChunk"
+	// UploadServiceCompleteVideoUploadProcedure is the fully-qualified name of the UploadService's
+	// CompleteVideoUpload RPC.
+	UploadServiceCompleteVideoUploadProcedure = "/kantahe.v1.UploadService/CompleteVideoUpload"
+	// UploadServiceAbortVideoUploadProcedure is the fully-qualified name of the UploadService's
+	// AbortVideoUpload RPC.
+	UploadServiceAbortVideoUploadProcedure = "/kantahe.v1.UploadService/AbortVideoUpload"
 )
 
 // UploadServiceClient is a client for the kantahe.v1.UploadService service.
 type UploadServiceClient interface {
 	// Uploader or admin. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
 	UploadSong(context.Context, *connect.Request[v1.UploadSongRequest]) (*connect.Response[v1.UploadSongResponse], error)
+	// Admin only. Starts, or resumes, the upload of one background video: a video is too big for one message, so it goes up in chunks of
+	// unary calls (D3). REJECTED with a reason when the name, the size or the limit is refused; received > 0 when an earlier upload of the same file by the same admin is resumed.
+	BeginVideoUpload(context.Context, *connect.Request[v1.BeginVideoUploadRequest]) (*connect.Response[v1.BeginVideoUploadResponse], error)
+	// Admin only. One chunk of at most 4 MiB at the offset the server expects next (INVALID_ARGUMENT otherwise); returns the bytes received so far.
+	UploadVideoChunk(context.Context, *connect.Request[v1.UploadVideoChunkRequest]) (*connect.Response[v1.UploadVideoChunkResponse], error)
+	// Admin only. Checks the whole file (an MP4 with an H.264 video track) and adds it to the end of the loop; rejections are reported in the response, not as errors.
+	CompleteVideoUpload(context.Context, *connect.Request[v1.CompleteVideoUploadRequest]) (*connect.Response[v1.CompleteVideoUploadResponse], error)
+	// Admin only. Throws away what was received of an unfinished upload.
+	AbortVideoUpload(context.Context, *connect.Request[v1.AbortVideoUploadRequest]) (*connect.Response[v1.AbortVideoUploadResponse], error)
 }
 
 // NewUploadServiceClient constructs a client for the kantahe.v1.UploadService service. By default,
@@ -61,12 +82,40 @@ func NewUploadServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(uploadServiceMethods.ByName("UploadSong")),
 			connect.WithClientOptions(opts...),
 		),
+		beginVideoUpload: connect.NewClient[v1.BeginVideoUploadRequest, v1.BeginVideoUploadResponse](
+			httpClient,
+			baseURL+UploadServiceBeginVideoUploadProcedure,
+			connect.WithSchema(uploadServiceMethods.ByName("BeginVideoUpload")),
+			connect.WithClientOptions(opts...),
+		),
+		uploadVideoChunk: connect.NewClient[v1.UploadVideoChunkRequest, v1.UploadVideoChunkResponse](
+			httpClient,
+			baseURL+UploadServiceUploadVideoChunkProcedure,
+			connect.WithSchema(uploadServiceMethods.ByName("UploadVideoChunk")),
+			connect.WithClientOptions(opts...),
+		),
+		completeVideoUpload: connect.NewClient[v1.CompleteVideoUploadRequest, v1.CompleteVideoUploadResponse](
+			httpClient,
+			baseURL+UploadServiceCompleteVideoUploadProcedure,
+			connect.WithSchema(uploadServiceMethods.ByName("CompleteVideoUpload")),
+			connect.WithClientOptions(opts...),
+		),
+		abortVideoUpload: connect.NewClient[v1.AbortVideoUploadRequest, v1.AbortVideoUploadResponse](
+			httpClient,
+			baseURL+UploadServiceAbortVideoUploadProcedure,
+			connect.WithSchema(uploadServiceMethods.ByName("AbortVideoUpload")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // uploadServiceClient implements UploadServiceClient.
 type uploadServiceClient struct {
-	uploadSong *connect.Client[v1.UploadSongRequest, v1.UploadSongResponse]
+	uploadSong          *connect.Client[v1.UploadSongRequest, v1.UploadSongResponse]
+	beginVideoUpload    *connect.Client[v1.BeginVideoUploadRequest, v1.BeginVideoUploadResponse]
+	uploadVideoChunk    *connect.Client[v1.UploadVideoChunkRequest, v1.UploadVideoChunkResponse]
+	completeVideoUpload *connect.Client[v1.CompleteVideoUploadRequest, v1.CompleteVideoUploadResponse]
+	abortVideoUpload    *connect.Client[v1.AbortVideoUploadRequest, v1.AbortVideoUploadResponse]
 }
 
 // UploadSong calls kantahe.v1.UploadService.UploadSong.
@@ -74,10 +123,39 @@ func (c *uploadServiceClient) UploadSong(ctx context.Context, req *connect.Reque
 	return c.uploadSong.CallUnary(ctx, req)
 }
 
+// BeginVideoUpload calls kantahe.v1.UploadService.BeginVideoUpload.
+func (c *uploadServiceClient) BeginVideoUpload(ctx context.Context, req *connect.Request[v1.BeginVideoUploadRequest]) (*connect.Response[v1.BeginVideoUploadResponse], error) {
+	return c.beginVideoUpload.CallUnary(ctx, req)
+}
+
+// UploadVideoChunk calls kantahe.v1.UploadService.UploadVideoChunk.
+func (c *uploadServiceClient) UploadVideoChunk(ctx context.Context, req *connect.Request[v1.UploadVideoChunkRequest]) (*connect.Response[v1.UploadVideoChunkResponse], error) {
+	return c.uploadVideoChunk.CallUnary(ctx, req)
+}
+
+// CompleteVideoUpload calls kantahe.v1.UploadService.CompleteVideoUpload.
+func (c *uploadServiceClient) CompleteVideoUpload(ctx context.Context, req *connect.Request[v1.CompleteVideoUploadRequest]) (*connect.Response[v1.CompleteVideoUploadResponse], error) {
+	return c.completeVideoUpload.CallUnary(ctx, req)
+}
+
+// AbortVideoUpload calls kantahe.v1.UploadService.AbortVideoUpload.
+func (c *uploadServiceClient) AbortVideoUpload(ctx context.Context, req *connect.Request[v1.AbortVideoUploadRequest]) (*connect.Response[v1.AbortVideoUploadResponse], error) {
+	return c.abortVideoUpload.CallUnary(ctx, req)
+}
+
 // UploadServiceHandler is an implementation of the kantahe.v1.UploadService service.
 type UploadServiceHandler interface {
 	// Uploader or admin. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
 	UploadSong(context.Context, *connect.Request[v1.UploadSongRequest]) (*connect.Response[v1.UploadSongResponse], error)
+	// Admin only. Starts, or resumes, the upload of one background video: a video is too big for one message, so it goes up in chunks of
+	// unary calls (D3). REJECTED with a reason when the name, the size or the limit is refused; received > 0 when an earlier upload of the same file by the same admin is resumed.
+	BeginVideoUpload(context.Context, *connect.Request[v1.BeginVideoUploadRequest]) (*connect.Response[v1.BeginVideoUploadResponse], error)
+	// Admin only. One chunk of at most 4 MiB at the offset the server expects next (INVALID_ARGUMENT otherwise); returns the bytes received so far.
+	UploadVideoChunk(context.Context, *connect.Request[v1.UploadVideoChunkRequest]) (*connect.Response[v1.UploadVideoChunkResponse], error)
+	// Admin only. Checks the whole file (an MP4 with an H.264 video track) and adds it to the end of the loop; rejections are reported in the response, not as errors.
+	CompleteVideoUpload(context.Context, *connect.Request[v1.CompleteVideoUploadRequest]) (*connect.Response[v1.CompleteVideoUploadResponse], error)
+	// Admin only. Throws away what was received of an unfinished upload.
+	AbortVideoUpload(context.Context, *connect.Request[v1.AbortVideoUploadRequest]) (*connect.Response[v1.AbortVideoUploadResponse], error)
 }
 
 // NewUploadServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -93,10 +171,42 @@ func NewUploadServiceHandler(svc UploadServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(uploadServiceMethods.ByName("UploadSong")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uploadServiceBeginVideoUploadHandler := connect.NewUnaryHandler(
+		UploadServiceBeginVideoUploadProcedure,
+		svc.BeginVideoUpload,
+		connect.WithSchema(uploadServiceMethods.ByName("BeginVideoUpload")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uploadServiceUploadVideoChunkHandler := connect.NewUnaryHandler(
+		UploadServiceUploadVideoChunkProcedure,
+		svc.UploadVideoChunk,
+		connect.WithSchema(uploadServiceMethods.ByName("UploadVideoChunk")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uploadServiceCompleteVideoUploadHandler := connect.NewUnaryHandler(
+		UploadServiceCompleteVideoUploadProcedure,
+		svc.CompleteVideoUpload,
+		connect.WithSchema(uploadServiceMethods.ByName("CompleteVideoUpload")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uploadServiceAbortVideoUploadHandler := connect.NewUnaryHandler(
+		UploadServiceAbortVideoUploadProcedure,
+		svc.AbortVideoUpload,
+		connect.WithSchema(uploadServiceMethods.ByName("AbortVideoUpload")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/kantahe.v1.UploadService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UploadServiceUploadSongProcedure:
 			uploadServiceUploadSongHandler.ServeHTTP(w, r)
+		case UploadServiceBeginVideoUploadProcedure:
+			uploadServiceBeginVideoUploadHandler.ServeHTTP(w, r)
+		case UploadServiceUploadVideoChunkProcedure:
+			uploadServiceUploadVideoChunkHandler.ServeHTTP(w, r)
+		case UploadServiceCompleteVideoUploadProcedure:
+			uploadServiceCompleteVideoUploadHandler.ServeHTTP(w, r)
+		case UploadServiceAbortVideoUploadProcedure:
+			uploadServiceAbortVideoUploadHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -108,4 +218,20 @@ type UnimplementedUploadServiceHandler struct{}
 
 func (UnimplementedUploadServiceHandler) UploadSong(context.Context, *connect.Request[v1.UploadSongRequest]) (*connect.Response[v1.UploadSongResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.UploadService.UploadSong is not implemented"))
+}
+
+func (UnimplementedUploadServiceHandler) BeginVideoUpload(context.Context, *connect.Request[v1.BeginVideoUploadRequest]) (*connect.Response[v1.BeginVideoUploadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.UploadService.BeginVideoUpload is not implemented"))
+}
+
+func (UnimplementedUploadServiceHandler) UploadVideoChunk(context.Context, *connect.Request[v1.UploadVideoChunkRequest]) (*connect.Response[v1.UploadVideoChunkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.UploadService.UploadVideoChunk is not implemented"))
+}
+
+func (UnimplementedUploadServiceHandler) CompleteVideoUpload(context.Context, *connect.Request[v1.CompleteVideoUploadRequest]) (*connect.Response[v1.CompleteVideoUploadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.UploadService.CompleteVideoUpload is not implemented"))
+}
+
+func (UnimplementedUploadServiceHandler) AbortVideoUpload(context.Context, *connect.Request[v1.AbortVideoUploadRequest]) (*connect.Response[v1.AbortVideoUploadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.UploadService.AbortVideoUpload is not implemented"))
 }

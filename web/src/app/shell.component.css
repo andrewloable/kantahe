@@ -1,7 +1,15 @@
+.frame {
+  /* the one column of the web app: brand, menu, now bar and every page share its left edge */
+  max-width: 60rem;
+  margin: 0 auto;
+}
+
 .top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 0 0.5rem;
   padding: 0.5rem 1rem 0;
 }
 
@@ -17,8 +25,10 @@
 
 .tools {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+  margin-left: auto;
 }
 
 .skip {
@@ -38,9 +48,11 @@
 
 .theme {
   width: auto;
+  min-width: 0;
+  max-width: 100%;
   min-height: 2.75rem;
   padding: 0.25rem 0.5rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-line);
   border-radius: 0.5rem;
   background: var(--panel);
   color: var(--text);
@@ -49,10 +61,10 @@
 
 nav {
   display: flex;
-  gap: 0 0.25rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   padding: 0 1rem;
   border-bottom: 1px solid var(--line);
-  overflow-x: auto;
 }
 
 nav a {
@@ -71,9 +83,10 @@ nav a.active {
 }
 
 .signout {
+  white-space: nowrap;
   min-height: 2.75rem;
   padding: 0 0.75rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-line);
   background: none;
   color: inherit;
   font: inherit;

@@ -6,6 +6,7 @@ import 'package:kantahe/gen/kantahe/v1/session.pb.dart';
 import 'package:kantahe/player/platform.dart';
 import 'package:kantahe/player/player_screen.dart';
 import 'package:kantahe/player/web_embed.dart';
+import 'package:kantahe/tv/focus.dart';
 
 import '../queue/fakes.dart';
 import 'embed_bridge_test.dart' show FakeHost, argsOf;
@@ -172,7 +173,37 @@ void main() {
     testWidgets('the page never takes focus: the D-pad belongs to the native buttons', (tester) async {
       await open(tester);
       expect(find.ancestor(of: find.byKey(const Key('embed')), matching: find.byType(ExcludeFocus)), findsOneWidget);
-      expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Pause')).autofocus, isTrue);
+      expect(tester.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Pause')).autofocus, isTrue);
+    });
+
+    testWidgets('REGRESSION: Close, Pause, Skip and Play here are one kind of button, none filled (a filled Pause always looked chosen)', (tester) async {
+      await open(
+        tester,
+        state: playingHere(player: 'tv', status: PlayStatus.PLAY_STATUS_PAUSED),
+      );
+      expect(find.byType(FilledButton), findsNothing);
+      for (final label in ['Close', 'Play', 'Skip', 'Play here']) {
+        expect(find.widgetWithText(OutlinedButton, label), findsOneWidget, reason: label);
+      }
+    });
+
+    testWidgets('the remote moves the growth: Pause is larger at first, then Skip when the arrow goes right', (tester) async {
+      await open(tester);
+      double scale(String label) => tester
+          .widget<AnimatedScale>(
+            find.descendant(
+              of: find.ancestor(of: find.text(label), matching: find.byType(FocusGrow)).first,
+              matching: find.byType(AnimatedScale),
+            ),
+          )
+          .scale;
+      await tester.pump();
+      expect(scale('Pause'), greaterThan(1));
+      expect(scale('Skip'), 1);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(scale('Pause'), 1);
+      expect(scale('Skip'), greaterThan(1));
     });
 
     testWidgets('every control has a text label', (tester) async {

@@ -1,12 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 import { AuthTokenSchema, Format, UserSchema } from '../../gen/kantahe/v1/common_pb';
+import { GetBackgroundResponseSchema } from '../../gen/kantahe/v1/catalog_pb';
+import { By } from '@angular/platform-browser';
 import { provideRouter, Router } from '@angular/router';
 import { ControlAction, PlayStatus, ScoreSchema } from '../../gen/kantahe/v1/session_pb';
 import { TRANSPORT } from '../core/api';
 import { AuthStore } from '../core/auth.store';
 import { StateStore } from '../core/state.store';
 import { device, song, stateOf, StateInit } from '../queue/testing';
+import { BackgroundVideoComponent } from './background/background-video.component';
+import { bgVideo, stubMedia } from './background/testing';
 import { CAN_SYNTHESIZE, ENGINES } from './engines/engine';
 import { MIC_METER } from './mic';
 import { PlayerViewComponent } from './player-view.component';
@@ -414,5 +418,82 @@ describe('PlayerViewComponent', () => {
     const { el, push } = setup();
     await push(PLAYING);
     for (const b of Array.from(el.querySelectorAll('button'))) expect((b.textContent ?? '').trim() || b.getAttribute('aria-label')).toBeTruthy();
+  });
+  describe('background video', () => {
+    const WITH_VIDEO: StateInit = {
+      ...PLAYING,
+      devices: [device(ME, 'This browser', { isCaller: true, effectiveBackground: true }), device('tv', 'Living room TV')],
+    };
+    const give = (server: ReturnType<typeof fakePlayerServer>) =>
+      (server.handlers.background = () => create(GetBackgroundResponseSchema, { enabled: true, videos: [bgVideo('v1'), bgVideo('v2')] }));
+    const input = (fixture: ReturnType<typeof setup>['fixture']) =>
+      fixture.debugElement.query(By.directive(BackgroundVideoComponent)).componentInstance as BackgroundVideoComponent;
+
+    it('the player device that shows the background has two video elements behind the lyrics, and asks for the list once', async () => {
+      stubMedia();
+      const { el, server, push } = setup();
+      give(server);
+      await push(WITH_VIDEO);
+      expect(server.calls.background).toBe(1);
+      expect(el.querySelectorAll('app-background-video video')).toHaveLength(2);
+      expect(el.querySelector('app-lyrics-view')).not.toBeNull();
+    });
+
+    it('inside the app (embedded) the same layer is used', async () => {
+      stubMedia();
+      const { fixture, el, server, push } = setup();
+      fixture.componentRef.setInput('embedded', true);
+      give(server);
+      await push(WITH_VIDEO);
+      expect(el.querySelectorAll('app-background-video video')).toHaveLength(2);
+    });
+
+    it('a device whose background is off makes no request and has no video element', async () => {
+      stubMedia();
+      const { el, server, push } = setup();
+      give(server);
+      await push(PLAYING);
+      expect(server.calls.background).toBe(0);
+      expect(el.querySelector('video')).toBeNull();
+    });
+
+    it('a device that is only a remote shows no video, whatever its setting', async () => {
+      stubMedia();
+      const { el, server, push } = setup();
+      give(server);
+      await push({ ...WITH_VIDEO, player: 'tv' });
+      expect(el.querySelector('.elsewhere')).not.toBeNull();
+      expect(el.querySelector('video')).toBeNull();
+    });
+
+    it('moves while a song plays and stops while it is paused; the idle screen and the score screen move', async () => {
+      stubMedia();
+      const { fixture, server, push } = setup();
+      give(server);
+      await push(WITH_VIDEO);
+      expect(input(fixture).playing()).toBe(true);
+      await push({ ...WITH_VIDEO, status: PlayStatus.PAUSED });
+      expect(input(fixture).playing(), 'paused with a song').toBe(false);
+      await push({ ...WITH_VIDEO, status: PlayStatus.PAUSED, now: undefined });
+      expect(input(fixture).playing(), 'nothing is playing: the idle screen').toBe(true);
+      await push({ ...WITH_VIDEO, status: PlayStatus.PAUSED, score: { number: SONG.number, value: 85 } });
+      expect(input(fixture).playing(), 'the score screen').toBe(true);
+    });
+
+    it('does not get in the way: the layer is fixed behind everything, takes no pointer events, and the buttons still work', async () => {
+      stubMedia();
+      const { el, server, push, button } = setup();
+      give(server);
+      await push(WITH_VIDEO);
+      const layer = el.querySelector<HTMLElement>('app-background-video .layer')!;
+      expect(getComputedStyle(layer).pointerEvents).toBe('none');
+      expect(getComputedStyle(layer).position).toBe('fixed');
+      expect(getComputedStyle(layer).zIndex).toBe('-1');
+      expect(getComputedStyle(el.querySelector('main.stage')!).isolation).toBe('isolate');
+      expect(el.querySelectorAll('app-background-video [tabindex], app-background-video button')).toHaveLength(0);
+      button('Pause')!.click();
+      await vi.advanceTimersByTimeAsync(30);
+      expect(server.calls.control.at(-1)?.action).toBe(ControlAction.PAUSE);
+    });
   });
 });

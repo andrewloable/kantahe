@@ -75,12 +75,62 @@ abstract final class AdminService {
     kantahev1admin.DeleteSongResponse.new,
   );
 
-  /// Admin only. Removes many songs from the list at once. The song files are never deleted.
+  /// Admin only. Removes many songs from the list at once. The song files are never deleted, except with scope BROKEN and delete_files.
   static const removeSongs = connect.Spec(
     '/$name/RemoveSongs',
     connect.StreamType.unary,
     kantahev1admin.RemoveSongsRequest.new,
     kantahev1admin.RemoveSongsResponse.new,
+  );
+
+  /// Admin only. Re-judges every live song (file missing, MIDI without music, unparsable, a .karmp3 whose audio cannot be read), marks the
+  /// broken ones as failed (they leave every user's lists and searches) and clears the mark of repaired ones. Streams its progress; the
+  /// last message has done = true. FAILED_PRECONDITION when a check is already running.
+  static const checkLibrary = connect.Spec(
+    '/$name/CheckLibrary',
+    connect.StreamType.server,
+    kantahev1admin.CheckLibraryRequest.new,
+    kantahev1admin.CheckLibraryResponse.new,
+  );
+
+  /// Admin only. Lists the songs marked broken, with the reason, ordered by number.
+  static const listBrokenSongs = connect.Spec(
+    '/$name/ListBrokenSongs',
+    connect.StreamType.unary,
+    kantahev1admin.ListBrokenSongsRequest.new,
+    kantahev1admin.ListBrokenSongsResponse.new,
+  );
+
+  /// Admin only. The background videos in loop order, each with a signed preview URL (1 hour).
+  static const listVideos = connect.Spec(
+    '/$name/ListVideos',
+    connect.StreamType.unary,
+    kantahev1admin.ListVideosRequest.new,
+    kantahev1admin.ListVideosResponse.new,
+  );
+
+  /// Admin only. Renames or enables/disables a video; unset optional fields are left unchanged; NOT_FOUND for an unknown id.
+  static const updateVideo = connect.Spec(
+    '/$name/UpdateVideo',
+    connect.StreamType.unary,
+    kantahev1admin.UpdateVideoRequest.new,
+    kantahev1admin.UpdateVideoResponse.new,
+  );
+
+  /// Admin only. Sets the loop order; ids must be exactly the existing ids (INVALID_ARGUMENT otherwise).
+  static const reorderVideos = connect.Spec(
+    '/$name/ReorderVideos',
+    connect.StreamType.unary,
+    kantahev1admin.ReorderVideosRequest.new,
+    kantahev1admin.ReorderVideosResponse.new,
+  );
+
+  /// Admin only. Removes the video and its file; NOT_FOUND for an unknown id.
+  static const deleteVideo = connect.Spec(
+    '/$name/DeleteVideo',
+    connect.StreamType.unary,
+    kantahev1admin.DeleteVideoRequest.new,
+    kantahev1admin.DeleteVideoResponse.new,
   );
 
   /// Admin only. Rescans watched folders and reports the counts.

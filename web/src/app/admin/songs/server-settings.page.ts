@@ -20,6 +20,13 @@ const MB = 1024n * 1024n;
         }
       </div>
       <div class="field">
+        <label for="max-video">Largest background video (MB)</label>
+        <input id="max-video" type="text" inputmode="numeric" autocomplete="off" [value]="maxVideo()" (input)="maxVideo.set(value($event))" />
+        @if (videoError()) {
+          <p class="error" role="alert">{{ videoError() }}</p>
+        }
+      </div>
+      <div class="field">
         <label for="score-seconds">Show the score for (seconds)</label>
         <input id="score-seconds" type="text" inputmode="numeric" autocomplete="off" [value]="scoreSeconds()" (input)="scoreSeconds.set(value($event))" />
         @if (scoreError()) {
@@ -41,6 +48,8 @@ export class ServerSettingsPage {
 
   protected readonly maxUpload = signal('');
   protected readonly scoreSeconds = signal('');
+  protected readonly maxVideo = signal('');
+  protected readonly videoError = signal('');
   protected readonly maxError = signal('');
   protected readonly scoreError = signal('');
   protected readonly failure = signal('');
@@ -57,6 +66,7 @@ export class ServerSettingsPage {
     this.current = s;
     this.maxUpload.set(String(s.maxUploadBytes / MB));
     this.scoreSeconds.set(String(s.scoreSeconds));
+    this.maxVideo.set(String(s.maxVideoBytes / MB));
   }
 
   private async load(): Promise<void> {
@@ -75,20 +85,26 @@ export class ServerSettingsPage {
     this.failure.set('');
     this.maxError.set('');
     this.scoreError.set('');
+    this.videoError.set('');
     const maxText = this.maxUpload().trim();
     const scoreText = this.scoreSeconds().trim();
     const maxOk = /^\d+$/.test(maxText) && BigInt(maxText) >= 1n;
     const scoreOk = /^\d+$/.test(scoreText) && Number(scoreText) <= 60;
     if (!maxOk) this.maxError.set('The upload limit must be a whole number of megabytes, at least 1.');
     if (!scoreOk) this.scoreError.set('The score time is a whole number of seconds, 0 to 60.');
-    if (!maxOk || !scoreOk) return;
+    const videoText = this.maxVideo().trim();
+    const videoOk = /^\d+$/.test(videoText) && BigInt(videoText) >= 1n && BigInt(videoText) <= 8192n;
+    if (!videoOk) this.videoError.set('The video limit must be a whole number of megabytes, 1 to 8192.');
+    if (!maxOk || !scoreOk || !videoOk) return;
     const maxUploadBytes = BigInt(maxText) * MB;
+    const maxVideoBytes = BigInt(videoText) * MB;
     const score = Number(scoreText);
     const changes = {
       maxUploadBytes: maxUploadBytes !== this.current.maxUploadBytes ? maxUploadBytes : undefined,
       scoreSeconds: score !== this.current.scoreSeconds ? score : undefined,
+      maxVideoBytes: maxVideoBytes !== this.current.maxVideoBytes ? maxVideoBytes : undefined,
     };
-    if (changes.maxUploadBytes === undefined && changes.scoreSeconds === undefined) return;
+    if (changes.maxUploadBytes === undefined && changes.scoreSeconds === undefined && changes.maxVideoBytes === undefined) return;
     this.busy.set(true);
     try {
       const res = await this.admins.updateServerSettings(changes);

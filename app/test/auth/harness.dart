@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kantahe/core/api.dart';
 import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/core/auth_store.dart';
+import 'package:kantahe/core/server_discovery.dart';
 import 'package:kantahe/core/server_url.dart';
 import 'package:kantahe/core/state_store.dart';
 import 'package:kantahe/core/storage.dart';
@@ -15,7 +16,7 @@ import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 
 /// Fake services for the screens: the auth RPCs answer what the test says, nothing touches the network.
 class Harness {
-  Harness({String? server = 'http://srv:1'}) {
+  Harness({String? server = 'http://srv:1', bool tv = false}) {
     final auth = AuthStore(MemoryStore());
     serverUrl = ServerUrl(
       MemoryStore(),
@@ -40,7 +41,17 @@ class Harness {
           .build(interceptors: apiInterceptors(handlers)),
     );
     final state = StateStore(client: api.session, auth: auth)..dispose(); // the screens under test do not stream
-    services = AppServices(serverUrl: serverUrl, auth: auth, api: api, state: state);
+    services = AppServices(
+      serverUrl: serverUrl,
+      auth: auth,
+      api: api,
+      state: state,
+      isTv: tv,
+      findServers: (window) {
+        searches++;
+        return find(window);
+      },
+    );
     if (server != null) serverUrl.set(server);
   }
 
@@ -51,6 +62,10 @@ class Harness {
   /// While set and not completed, the server does not answer: the screen stays busy.
   Completer<void>? infoGate;
   Completer<void>? loginGate;
+
+  /// What the search for servers on the network turns up (nothing, unless a test says so).
+  Future<List<ServerCandidate>> Function(Duration window) find = noServers;
+  int searches = 0;
 
   final infoAsked = <String>[];
   final logins = <LoginRequest>[];

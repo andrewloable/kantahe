@@ -773,3 +773,142 @@ drain:
 	// and once the changes stop, the keep-alive starts again
 	w.next(t, 2*time.Second)
 }
+
+func (a *adminEnv) setBackground(token, deviceID string, mode kantahev1.BackgroundMode) (*kantahev1.SetBackgroundModeResponse, error) {
+	res, err := a.sessionClient().SetBackgroundMode(context.Background(), with(connect.NewRequest(&kantahev1.SetBackgroundModeRequest{DeviceId: deviceID, Mode: mode}), token))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg, nil
+}
+
+func TestSetBackgroundMode(t *testing.T) {
+	a := newAdminEnv(t)
+	d2 := a.secondDevice(t)
+	// a new device is AUTO; the first device sets the mode of the second one (a phone configuring the TV)
+	res, err := a.setBackground(a.admin.Token, d2.DeviceId, kantahev1.BackgroundMode_BACKGROUND_MODE_OFF)
+	if err != nil || res.Device.BackgroundMode != kantahev1.BackgroundMode_BACKGROUND_MODE_OFF || res.Device.EffectiveBackground || res.Device.IsCaller {
+		t.Fatalf("%v %v", res, err)
+	}
+	// the choice is stored, and ON turns the effective value on whatever the device is
+	res, err = a.setBackground(a.admin.Token, d2.DeviceId, kantahev1.BackgroundMode_BACKGROUND_MODE_ON)
+	if err != nil || res.Device.BackgroundMode != kantahev1.BackgroundMode_BACKGROUND_MODE_ON || !res.Device.EffectiveBackground {
+		t.Fatalf("on: %v %v", res, err)
+	}
+	// a pushed state reaches the open streams
+	w := a.watch(t, a.admin.Token)
+	w.next(t, 2*time.Second)
+	if _, err := a.setBackground(a.admin.Token, d2.DeviceId, kantahev1.BackgroundMode_BACKGROUND_MODE_AUTO); err != nil {
+		t.Fatal(err)
+	}
+	w.nextWhere(t, time.Second, func(s *kantahev1.State) bool {
+		for _, d := range s.Devices {
+			if d.Id == d2.DeviceId && d.BackgroundMode == kantahev1.BackgroundMode_BACKGROUND_MODE_AUTO {
+				return true
+			}
+		}
+		return false
+	})
+	for name, mode := range map[string]kantahev1.BackgroundMode{"unspecified": kantahev1.BackgroundMode_BACKGROUND_MODE_UNSPECIFIED, "out of range": kantahev1.BackgroundMode(9)} {
+		if _, err := a.setBackground(a.admin.Token, d2.DeviceId, mode); code(err) != connect.CodeInvalidArgument {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if _, err := a.setBackground("", d2.DeviceId, kantahev1.BackgroundMode_BACKGROUND_MODE_ON); code(err) != connect.CodeUnauthenticated {
+		t.Errorf("no token: %v", err)
+	}
+	// the MIDI mode of the device was not touched
+	var midi int
+	_ = a.db.QueryRow(`SELECT midi_mode FROM devices WHERE id=?`, d2.DeviceId).Scan(&midi)
+	if midi != 1 {
+		t.Fatalf("midi_mode = %d", midi)
+	}
+}
+
+func TestSetBackgroundModeOtherUsersDevice(t *testing.T) {
+	a := newAdminEnv(t)
+	if _, err := a.setBackground(a.admin.Token, a.user.DeviceId, kantahev1.BackgroundMode_BACKGROUND_MODE_OFF); code(err) != connect.CodeNotFound {
+		t.Fatalf("err = %v", err)
+	}
+	if _, err := a.setBackground(a.admin.Token, "nope", kantahev1.BackgroundMode_BACKGROUND_MODE_OFF); code(err) != connect.CodeNotFound {
+		t.Fatalf("unknown: %v", err)
+	}
+	var mode int
+	_ = a.db.QueryRow(`SELECT background_mode FROM devices WHERE id=?`, a.user.DeviceId).Scan(&mode)
+	if mode != 1 {
+		t.Fatalf("the other user's device was changed: %d", mode)
+	}
+}
+
+func TestListMyDevicesShowsTheBackgroundChoiceAndWhatTheServerResolved(t *testing.T) {
+	a := newAdminEnv(t)
+	d2 := a.secondDevice(t)
+	// a device that reports 1 GB: AUTO is off for it
+	if _, err := a.db.Exec(`UPDATE devices SET memory_mb = 1024 WHERE id = ?`, d2.DeviceId); err != nil {
+		t.Fatal(err)
+	}
+	res, err := a.auth.ListMyDevices(context.Background(), with(connect.NewRequest(&kantahev1.ListMyDevicesRequest{}), a.admin.Token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, d := range res.Msg.Devices {
+		if d.Id == d2.DeviceId {
+			found = true
+			if d.BackgroundMode != kantahev1.BackgroundMode_BACKGROUND_MODE_AUTO || d.EffectiveBackground {
+				t.Fatalf("AUTO on 1 GB: %+v", d)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("the second device is not listed")
+	}
+	if _, err := a.setBackground(a.admin.Token, d2.DeviceId, kantahev1.BackgroundMode_BACKGROUND_MODE_ON); err != nil {
+		t.Fatal(err)
+	}
+	res, _ = a.auth.ListMyDevices(context.Background(), with(connect.NewRequest(&kantahev1.ListMyDevicesRequest{}), a.admin.Token))
+	for _, d := range res.Msg.Devices {
+		if d.Id == d2.DeviceId && (d.BackgroundMode != kantahev1.BackgroundMode_BACKGROUND_MODE_ON || !d.EffectiveBackground) {
+			t.Fatalf("ON: %+v", d)
+		}
+	}
+}
+
+// A device on AUTO that reports dropouts steps its MIDI mode down; the background video then turns off for it, in the answer to
+// ReportDevice and in the state pushed to the open streams, because the player obeys effective_background.
+func TestReportDeviceDropoutsTurnTheAutoBackgroundOffAndTheStateSaysSo(t *testing.T) {
+	a := newAdminEnv(t)
+	d2 := a.secondDevice(t)
+	c := a.sessionClient()
+	ctx := context.Background()
+	res, err := c.ReportDevice(ctx, with(connect.NewRequest(&kantahev1.ReportDeviceRequest{MemoryMb: 4096}), d2.Token))
+	if err != nil || res.Msg.Device.EffectiveMidiMode != kantahev1.MidiMode_MIDI_MODE_FULL || !res.Msg.Device.EffectiveBackground {
+		t.Fatalf("a 4 GB device on AUTO: %+v %v", res, err)
+	}
+	w := a.watch(t, a.admin.Token)
+	w.next(t, 2*time.Second)
+	res, err = c.ReportDevice(ctx, with(connect.NewRequest(&kantahev1.ReportDeviceRequest{MemoryMb: 4096, Dropouts: 1}), d2.Token))
+	if err != nil || res.Msg.Device.EffectiveMidiMode != kantahev1.MidiMode_MIDI_MODE_LOW_POWER || res.Msg.Device.EffectiveBackground {
+		t.Fatalf("after a dropout: %+v %v", res, err)
+	}
+	w.nextWhere(t, time.Second, func(s *kantahev1.State) bool {
+		for _, d := range s.Devices {
+			if d.Id == d2.DeviceId {
+				return d.EffectiveMidiMode == kantahev1.MidiMode_MIDI_MODE_LOW_POWER && !d.EffectiveBackground
+			}
+		}
+		return false
+	})
+	// the user's own choice is not overridden: ON stays on
+	if _, err := a.setBackground(a.admin.Token, d2.DeviceId, kantahev1.BackgroundMode_BACKGROUND_MODE_ON); err != nil {
+		t.Fatal(err)
+	}
+	w.nextWhere(t, time.Second, func(s *kantahev1.State) bool {
+		for _, d := range s.Devices {
+			if d.Id == d2.DeviceId {
+				return d.BackgroundMode == kantahev1.BackgroundMode_BACKGROUND_MODE_ON && d.EffectiveBackground
+			}
+		}
+		return false
+	})
+}

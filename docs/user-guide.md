@@ -10,8 +10,11 @@ This is for the people who sing. The person who installs and looks after the ser
   in: nothing else opens until you have.
 * Every browser or app you sign in on is a **device** with a name. *Me → Devices* lists them and lets you sign one out.
   Changing your password signs out all your other devices.
-* The Android, iOS and Android TV apps ask for the **server address** first, then the same email and password. TVs that
-  have no keyboard use a code: see [Singing on a TV](#singing-on-a-tv).
+* The Android, iOS and Android TV apps **look for your server on the network** when they start. With one server they
+  connect to it by themselves, with several they list them (by name) to choose from, and only when they find none do
+  they ask for the **server address**. Then comes the same email and password. TVs that have no keyboard use a code: see
+  [Singing on a TV](#singing-on-a-tv). On iOS, allow the app to find devices on your local network when asked.
+  A server that runs in Docker on its default network cannot be found this way; see [install.md](install.md).
 
 ## Finding a song
 
@@ -64,6 +67,12 @@ touch the screen or press a key and they come back. **Full screen** (where the b
 screen. **Back to Kantahe** returns to the library (and **Admin** to the admin pages, for administrators); leaving the
 player pauses the song if this device was playing it.
 
+If the admin has added background videos, they play behind the lyrics, one after another and round again, without a gap, also
+while nothing is playing and while the score shows; a paused song pauses them. They are **pictures only: no sound ever comes
+from them.** The lyrics are on a dark layer over the picture so that they stay easy to read. Each device has a *Background
+video* choice under *Me → Devices*; on **Auto** a weak device, or one that already uses a lighter sound mode, shows a plain
+background instead, and so does a browser that asks for less motion (**On** shows the videos anyway).
+
 ## Score
 
 After a song that ends **on its own** (not one you skipped) a score screen shows for a few seconds, with a fanfare for
@@ -90,6 +99,12 @@ of your devices:
 * **Full**: the full sound; needs plenty of memory. **Low power**: lighter, for a weak device. **Server**: the server
   makes the sound and the device plays it like an MP3 (the server needs to be able to do that).
 
+The same page has a **Background video** choice for each device (moving pictures behind the lyrics; the admin adds the
+videos, and they never make any sound):
+
+* **Auto** (the default) shows them, unless the device is weak or already uses a lighter sound mode.
+* **On** always shows them on this device. **Off** shows a plain background, which is easier on a weak device.
+
 MP3 songs are not affected. A browser that opens the server through a plain `http://` address on the network cannot start
 the sound engine at all; such a device plays MIDI songs through the server automatically, and microphone scoring is not
 offered on it. Ask the admin about HTTPS if you want the full engine there.
@@ -99,7 +114,10 @@ offered on it. Ask the admin about HTTPS if you want the full engine there.
 TV apps ([Android TV](../app/README.md), [Samsung](tv-samsung.md), [LG](tv-lg.md)) show a **code** and a QR code instead of
 asking for a password:
 
-1. On the TV, type the server address the first time and choose *Connect*.
+1. On an Android TV the app looks for your server by itself (when it finds none it asks for the address, which you type
+   with the on-screen keyboard). A Samsung or LG TV does the same, but only finds a server that listens on port 8080 or
+   80, looking at addresses near its own first (*Search again* looks further); for any other port, type the address with
+   its port and choose *Connect*.
 2. The TV shows a code. On your phone or computer, signed in, open **Me → Approve a TV** and enter the code (or
    scan the QR code, which opens that page).
 3. The TV signs in as you. The code works once and runs out after five minutes: *New code* gets another.

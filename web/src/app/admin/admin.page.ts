@@ -10,6 +10,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
       <nav aria-label="Administration">
         <a routerLink="/admin/users" routerLinkActive="active" ariaCurrentWhenActive="page">Users</a>
         <a routerLink="/admin/songs" routerLinkActive="active" ariaCurrentWhenActive="page">Songs</a>
+        <a routerLink="/admin/videos" routerLinkActive="active" ariaCurrentWhenActive="page">Videos</a>
         <a routerLink="/admin/settings" routerLinkActive="active" ariaCurrentWhenActive="page">Settings</a>
       </nav>
       <router-outlet />
@@ -17,14 +18,12 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
   `,
   styles: `
     .admin {
-      max-width: 60rem;
-      margin: 0 auto;
       padding: 1rem;
     }
     nav {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.25rem 1rem;
+      gap: 0.5rem 1rem;
       margin-bottom: 1rem;
       border-bottom: 1px solid var(--line);
     }

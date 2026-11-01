@@ -1008,9 +1008,11 @@ class DeleteSongRequest extends $pb.GeneratedMessage {
 class RemoveSongsRequest extends $pb.GeneratedMessage {
   factory RemoveSongsRequest({
     RemoveScope? scope,
+    $core.bool? deleteFiles,
   }) {
     final result = RemoveSongsRequest._();
     if (scope != null) result.scope = scope;
+    if (deleteFiles != null) result.deleteFiles = deleteFiles;
     return result;
   }
 
@@ -1029,6 +1031,7 @@ class RemoveSongsRequest extends $pb.GeneratedMessage {
       createEmptyInstance: RemoveSongsRequest.$_createMessage)
     ..aE<RemoveScope>(1, _omitFieldNames ? '' : 'scope',
         enumValues: RemoveScope.values)
+    ..aOB(2, _omitFieldNames ? '' : 'deleteFiles')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1061,15 +1064,30 @@ class RemoveSongsRequest extends $pb.GeneratedMessage {
   $core.bool hasScope() => $_has(0);
   @$pb.TagNumber(1)
   void clearScope() => $_clearField(1);
+
+  /// Also delete the song files (only inside the data and library folders). Allowed only with scope BROKEN; INVALID_ARGUMENT otherwise,
+  /// so that ALL and NO_MUSIC keep their promise never to delete a file.
+  @$pb.TagNumber(2)
+  $core.bool get deleteFiles => $_getBF(1);
+  @$pb.TagNumber(2)
+  set deleteFiles($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasDeleteFiles() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDeleteFiles() => $_clearField(2);
 }
 
 /// How many songs left the list.
 class RemoveSongsResponse extends $pb.GeneratedMessage {
   factory RemoveSongsResponse({
     $core.int? removed,
+    $core.int? filesDeleted,
+    $core.int? filesFailed,
   }) {
     final result = RemoveSongsResponse._();
     if (removed != null) result.removed = removed;
+    if (filesDeleted != null) result.filesDeleted = filesDeleted;
+    if (filesFailed != null) result.filesFailed = filesFailed;
     return result;
   }
 
@@ -1087,6 +1105,8 @@ class RemoveSongsResponse extends $pb.GeneratedMessage {
       package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
       createEmptyInstance: RemoveSongsResponse.$_createMessage)
     ..aI(1, _omitFieldNames ? '' : 'removed')
+    ..aI(2, _omitFieldNames ? '' : 'filesDeleted')
+    ..aI(3, _omitFieldNames ? '' : 'filesFailed')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1120,6 +1140,388 @@ class RemoveSongsResponse extends $pb.GeneratedMessage {
   $core.bool hasRemoved() => $_has(0);
   @$pb.TagNumber(1)
   void clearRemoved() => $_clearField(1);
+
+  /// With delete_files: the files that were deleted, and the files that were not (outside the managed folders, or in use); the
+  /// songs of the latter are off the list all the same.
+  @$pb.TagNumber(2)
+  $core.int get filesDeleted => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set filesDeleted($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFilesDeleted() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFilesDeleted() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get filesFailed => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set filesFailed($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasFilesFailed() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearFilesFailed() => $_clearField(3);
+}
+
+/// Asks nothing.
+class CheckLibraryRequest extends $pb.GeneratedMessage {
+  factory CheckLibraryRequest() => CheckLibraryRequest._();
+
+  CheckLibraryRequest._();
+
+  factory CheckLibraryRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CheckLibraryRequest()..mergeFromBuffer(data, registry);
+  factory CheckLibraryRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CheckLibraryRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CheckLibraryRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: CheckLibraryRequest.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CheckLibraryRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CheckLibraryRequest copyWith(void Function(CheckLibraryRequest) updates) =>
+      super.copyWith((message) => updates(message as CheckLibraryRequest))
+          as CheckLibraryRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use CheckLibraryRequest() / CheckLibraryRequest.new instead')
+  static CheckLibraryRequest create() => CheckLibraryRequest._();
+  static $pb.GeneratedMessage $_createMessage() => CheckLibraryRequest._();
+  @$core.override
+  CheckLibraryRequest createEmptyInstance() => CheckLibraryRequest._();
+  @$core.pragma('dart2js:noInline')
+  static CheckLibraryRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CheckLibraryRequest>(
+          CheckLibraryRequest.$_createMessage);
+  static CheckLibraryRequest? _defaultInstance;
+}
+
+/// Where the check is; every 250 songs and at the end (done = true).
+class CheckLibraryResponse extends $pb.GeneratedMessage {
+  factory CheckLibraryResponse({
+    $core.int? checked,
+    $core.int? total,
+    $core.int? broken,
+    $core.bool? done,
+  }) {
+    final result = CheckLibraryResponse._();
+    if (checked != null) result.checked = checked;
+    if (total != null) result.total = total;
+    if (broken != null) result.broken = broken;
+    if (done != null) result.done = done;
+    return result;
+  }
+
+  CheckLibraryResponse._();
+
+  factory CheckLibraryResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CheckLibraryResponse()..mergeFromBuffer(data, registry);
+  factory CheckLibraryResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CheckLibraryResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CheckLibraryResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: CheckLibraryResponse.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'checked')
+    ..aI(2, _omitFieldNames ? '' : 'total')
+    ..aI(3, _omitFieldNames ? '' : 'broken')
+    ..aOB(4, _omitFieldNames ? '' : 'done')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CheckLibraryResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CheckLibraryResponse copyWith(void Function(CheckLibraryResponse) updates) =>
+      super.copyWith((message) => updates(message as CheckLibraryResponse))
+          as CheckLibraryResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CheckLibraryResponse() / CheckLibraryResponse.new instead')
+  static CheckLibraryResponse create() => CheckLibraryResponse._();
+  static $pb.GeneratedMessage $_createMessage() => CheckLibraryResponse._();
+  @$core.override
+  CheckLibraryResponse createEmptyInstance() => CheckLibraryResponse._();
+  @$core.pragma('dart2js:noInline')
+  static CheckLibraryResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CheckLibraryResponse>(
+          CheckLibraryResponse.$_createMessage);
+  static CheckLibraryResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get checked => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set checked($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasChecked() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearChecked() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get total => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set total($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTotal() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTotal() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get broken => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set broken($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasBroken() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearBroken() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get done => $_getBF(3);
+  @$pb.TagNumber(4)
+  set done($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDone() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDone() => $_clearField(4);
+}
+
+/// One page of broken songs.
+class ListBrokenSongsRequest extends $pb.GeneratedMessage {
+  factory ListBrokenSongsRequest({
+    $core.String? pageToken,
+    $core.int? pageSize,
+  }) {
+    final result = ListBrokenSongsRequest._();
+    if (pageToken != null) result.pageToken = pageToken;
+    if (pageSize != null) result.pageSize = pageSize;
+    return result;
+  }
+
+  ListBrokenSongsRequest._();
+
+  factory ListBrokenSongsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListBrokenSongsRequest()..mergeFromBuffer(data, registry);
+  factory ListBrokenSongsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListBrokenSongsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListBrokenSongsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: ListBrokenSongsRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'pageToken')
+    ..aI(2, _omitFieldNames ? '' : 'pageSize')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListBrokenSongsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListBrokenSongsRequest copyWith(
+          void Function(ListBrokenSongsRequest) updates) =>
+      super.copyWith((message) => updates(message as ListBrokenSongsRequest))
+          as ListBrokenSongsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ListBrokenSongsRequest() / ListBrokenSongsRequest.new instead')
+  static ListBrokenSongsRequest create() => ListBrokenSongsRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ListBrokenSongsRequest._();
+  @$core.override
+  ListBrokenSongsRequest createEmptyInstance() => ListBrokenSongsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ListBrokenSongsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListBrokenSongsRequest>(
+          ListBrokenSongsRequest.$_createMessage);
+  static ListBrokenSongsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get pageToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set pageToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPageToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPageToken() => $_clearField(1);
+
+  /// Defaults to 50.
+  @$pb.TagNumber(2)
+  $core.int get pageSize => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set pageSize($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPageSize() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPageSize() => $_clearField(2);
+}
+
+/// A song that cannot be played and why.
+class BrokenSong extends $pb.GeneratedMessage {
+  factory BrokenSong({
+    $0.Song? song,
+    $core.String? reason,
+  }) {
+    final result = BrokenSong._();
+    if (song != null) result.song = song;
+    if (reason != null) result.reason = reason;
+    return result;
+  }
+
+  BrokenSong._();
+
+  factory BrokenSong.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BrokenSong()..mergeFromBuffer(data, registry);
+  factory BrokenSong.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BrokenSong()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BrokenSong',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: BrokenSong.$_createMessage)
+    ..aOM<$0.Song>(1, _omitFieldNames ? '' : 'song',
+        subBuilder: $0.Song.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'reason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BrokenSong clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BrokenSong copyWith(void Function(BrokenSong) updates) =>
+      super.copyWith((message) => updates(message as BrokenSong)) as BrokenSong;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use BrokenSong() / BrokenSong.new instead')
+  static BrokenSong create() => BrokenSong._();
+  static $pb.GeneratedMessage $_createMessage() => BrokenSong._();
+  @$core.override
+  BrokenSong createEmptyInstance() => BrokenSong._();
+  @$core.pragma('dart2js:noInline')
+  static BrokenSong getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<BrokenSong>(BrokenSong.$_createMessage);
+  static BrokenSong? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.Song get song => $_getN(0);
+  @$pb.TagNumber(1)
+  set song($0.Song value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSong() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSong() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.Song ensureSong() => $_ensure(0);
+
+  /// For people: "the file is missing", "the file contains no music", ...
+  @$pb.TagNumber(2)
+  $core.String get reason => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set reason($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasReason() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearReason() => $_clearField(2);
+}
+
+/// The page, and how many broken songs there are in all.
+class ListBrokenSongsResponse extends $pb.GeneratedMessage {
+  factory ListBrokenSongsResponse({
+    $core.Iterable<BrokenSong>? songs,
+    $core.String? nextPageToken,
+    $core.int? total,
+  }) {
+    final result = ListBrokenSongsResponse._();
+    if (songs != null) result.songs.addAll(songs);
+    if (nextPageToken != null) result.nextPageToken = nextPageToken;
+    if (total != null) result.total = total;
+    return result;
+  }
+
+  ListBrokenSongsResponse._();
+
+  factory ListBrokenSongsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListBrokenSongsResponse()..mergeFromBuffer(data, registry);
+  factory ListBrokenSongsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListBrokenSongsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListBrokenSongsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: ListBrokenSongsResponse.$_createMessage)
+    ..pPM<BrokenSong>(1, _omitFieldNames ? '' : 'songs',
+        subBuilder: BrokenSong.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'nextPageToken')
+    ..aI(3, _omitFieldNames ? '' : 'total')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListBrokenSongsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListBrokenSongsResponse copyWith(
+          void Function(ListBrokenSongsResponse) updates) =>
+      super.copyWith((message) => updates(message as ListBrokenSongsResponse))
+          as ListBrokenSongsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ListBrokenSongsResponse() / ListBrokenSongsResponse.new instead')
+  static ListBrokenSongsResponse create() => ListBrokenSongsResponse._();
+  static $pb.GeneratedMessage $_createMessage() => ListBrokenSongsResponse._();
+  @$core.override
+  ListBrokenSongsResponse createEmptyInstance() => ListBrokenSongsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ListBrokenSongsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListBrokenSongsResponse>(
+          ListBrokenSongsResponse.$_createMessage);
+  static ListBrokenSongsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<BrokenSong> get songs => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.String get nextPageToken => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set nextPageToken($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNextPageToken() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNextPageToken() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get total => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set total($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTotal() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTotal() => $_clearField(3);
 }
 
 /// Empty.
@@ -1410,15 +1812,22 @@ class GetServerSettingsResponse extends $pb.GeneratedMessage {
   ServerSettings ensureSettings() => $_ensure(0);
 }
 
-/// Server-wide limits: upload size per file and how long the score screen shows.
+/// Server-wide limits and switches: upload size per song, how long the score screen shows, the size limit of one background video and
+/// whether the players show the background videos (in the order set, or shuffled on every pass).
 class ServerSettings extends $pb.GeneratedMessage {
   factory ServerSettings({
     $fixnum.Int64? maxUploadBytes,
     $core.int? scoreSeconds,
+    $fixnum.Int64? maxVideoBytes,
+    $core.bool? backgroundEnabled,
+    $core.bool? backgroundShuffle,
   }) {
     final result = ServerSettings._();
     if (maxUploadBytes != null) result.maxUploadBytes = maxUploadBytes;
     if (scoreSeconds != null) result.scoreSeconds = scoreSeconds;
+    if (maxVideoBytes != null) result.maxVideoBytes = maxVideoBytes;
+    if (backgroundEnabled != null) result.backgroundEnabled = backgroundEnabled;
+    if (backgroundShuffle != null) result.backgroundShuffle = backgroundShuffle;
     return result;
   }
 
@@ -1437,6 +1846,9 @@ class ServerSettings extends $pb.GeneratedMessage {
       createEmptyInstance: ServerSettings.$_createMessage)
     ..aInt64(1, _omitFieldNames ? '' : 'maxUploadBytes')
     ..aI(2, _omitFieldNames ? '' : 'scoreSeconds')
+    ..aInt64(3, _omitFieldNames ? '' : 'maxVideoBytes')
+    ..aOB(4, _omitFieldNames ? '' : 'backgroundEnabled')
+    ..aOB(5, _omitFieldNames ? '' : 'backgroundShuffle')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1478,6 +1890,33 @@ class ServerSettings extends $pb.GeneratedMessage {
   $core.bool hasScoreSeconds() => $_has(1);
   @$pb.TagNumber(2)
   void clearScoreSeconds() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get maxVideoBytes => $_getI64(2);
+  @$pb.TagNumber(3)
+  set maxVideoBytes($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasMaxVideoBytes() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearMaxVideoBytes() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get backgroundEnabled => $_getBF(3);
+  @$pb.TagNumber(4)
+  set backgroundEnabled($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasBackgroundEnabled() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearBackgroundEnabled() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get backgroundShuffle => $_getBF(4);
+  @$pb.TagNumber(5)
+  set backgroundShuffle($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasBackgroundShuffle() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearBackgroundShuffle() => $_clearField(5);
 }
 
 /// Partial update of the server settings.
@@ -1485,10 +1924,16 @@ class UpdateServerSettingsRequest extends $pb.GeneratedMessage {
   factory UpdateServerSettingsRequest({
     $fixnum.Int64? maxUploadBytes,
     $core.int? scoreSeconds,
+    $fixnum.Int64? maxVideoBytes,
+    $core.bool? backgroundEnabled,
+    $core.bool? backgroundShuffle,
   }) {
     final result = UpdateServerSettingsRequest._();
     if (maxUploadBytes != null) result.maxUploadBytes = maxUploadBytes;
     if (scoreSeconds != null) result.scoreSeconds = scoreSeconds;
+    if (maxVideoBytes != null) result.maxVideoBytes = maxVideoBytes;
+    if (backgroundEnabled != null) result.backgroundEnabled = backgroundEnabled;
+    if (backgroundShuffle != null) result.backgroundShuffle = backgroundShuffle;
     return result;
   }
 
@@ -1507,6 +1952,9 @@ class UpdateServerSettingsRequest extends $pb.GeneratedMessage {
       createEmptyInstance: UpdateServerSettingsRequest.$_createMessage)
     ..aInt64(1, _omitFieldNames ? '' : 'maxUploadBytes')
     ..aI(2, _omitFieldNames ? '' : 'scoreSeconds')
+    ..aInt64(3, _omitFieldNames ? '' : 'maxVideoBytes')
+    ..aOB(4, _omitFieldNames ? '' : 'backgroundEnabled')
+    ..aOB(5, _omitFieldNames ? '' : 'backgroundShuffle')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1554,6 +2002,33 @@ class UpdateServerSettingsRequest extends $pb.GeneratedMessage {
   $core.bool hasScoreSeconds() => $_has(1);
   @$pb.TagNumber(2)
   void clearScoreSeconds() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get maxVideoBytes => $_getI64(2);
+  @$pb.TagNumber(3)
+  set maxVideoBytes($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasMaxVideoBytes() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearMaxVideoBytes() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get backgroundEnabled => $_getBF(3);
+  @$pb.TagNumber(4)
+  set backgroundEnabled($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasBackgroundEnabled() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearBackgroundEnabled() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get backgroundShuffle => $_getBF(4);
+  @$pb.TagNumber(5)
+  set backgroundShuffle($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasBackgroundShuffle() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearBackgroundShuffle() => $_clearField(5);
 }
 
 /// The settings after the update.
@@ -1623,6 +2098,454 @@ class UpdateServerSettingsResponse extends $pb.GeneratedMessage {
   ServerSettings ensureSettings() => $_ensure(0);
 }
 
+/// Asks nothing.
+class ListVideosRequest extends $pb.GeneratedMessage {
+  factory ListVideosRequest() => ListVideosRequest._();
+
+  ListVideosRequest._();
+
+  factory ListVideosRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListVideosRequest()..mergeFromBuffer(data, registry);
+  factory ListVideosRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListVideosRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListVideosRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: ListVideosRequest.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListVideosRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListVideosRequest copyWith(void Function(ListVideosRequest) updates) =>
+      super.copyWith((message) => updates(message as ListVideosRequest))
+          as ListVideosRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ListVideosRequest() / ListVideosRequest.new instead')
+  static ListVideosRequest create() => ListVideosRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ListVideosRequest._();
+  @$core.override
+  ListVideosRequest createEmptyInstance() => ListVideosRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ListVideosRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ListVideosRequest>(
+          ListVideosRequest.$_createMessage);
+  static ListVideosRequest? _defaultInstance;
+}
+
+/// Every video, in loop order.
+class ListVideosResponse extends $pb.GeneratedMessage {
+  factory ListVideosResponse({
+    $core.Iterable<$0.Video>? videos,
+  }) {
+    final result = ListVideosResponse._();
+    if (videos != null) result.videos.addAll(videos);
+    return result;
+  }
+
+  ListVideosResponse._();
+
+  factory ListVideosResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListVideosResponse()..mergeFromBuffer(data, registry);
+  factory ListVideosResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListVideosResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListVideosResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: ListVideosResponse.$_createMessage)
+    ..pPM<$0.Video>(1, _omitFieldNames ? '' : 'videos',
+        subBuilder: $0.Video.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListVideosResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListVideosResponse copyWith(void Function(ListVideosResponse) updates) =>
+      super.copyWith((message) => updates(message as ListVideosResponse))
+          as ListVideosResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ListVideosResponse() / ListVideosResponse.new instead')
+  static ListVideosResponse create() => ListVideosResponse._();
+  static $pb.GeneratedMessage $_createMessage() => ListVideosResponse._();
+  @$core.override
+  ListVideosResponse createEmptyInstance() => ListVideosResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ListVideosResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListVideosResponse>(
+          ListVideosResponse.$_createMessage);
+  static ListVideosResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<$0.Video> get videos => $_getList(0);
+}
+
+/// The video and what to change; unset fields stay as they are.
+class UpdateVideoRequest extends $pb.GeneratedMessage {
+  factory UpdateVideoRequest({
+    $core.String? id,
+    $core.String? name,
+    $core.bool? enabled,
+  }) {
+    final result = UpdateVideoRequest._();
+    if (id != null) result.id = id;
+    if (name != null) result.name = name;
+    if (enabled != null) result.enabled = enabled;
+    return result;
+  }
+
+  UpdateVideoRequest._();
+
+  factory UpdateVideoRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UpdateVideoRequest()..mergeFromBuffer(data, registry);
+  factory UpdateVideoRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UpdateVideoRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateVideoRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: UpdateVideoRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOB(3, _omitFieldNames ? '' : 'enabled')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateVideoRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateVideoRequest copyWith(void Function(UpdateVideoRequest) updates) =>
+      super.copyWith((message) => updates(message as UpdateVideoRequest))
+          as UpdateVideoRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use UpdateVideoRequest() / UpdateVideoRequest.new instead')
+  static UpdateVideoRequest create() => UpdateVideoRequest._();
+  static $pb.GeneratedMessage $_createMessage() => UpdateVideoRequest._();
+  @$core.override
+  UpdateVideoRequest createEmptyInstance() => UpdateVideoRequest._();
+  @$core.pragma('dart2js:noInline')
+  static UpdateVideoRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdateVideoRequest>(
+          UpdateVideoRequest.$_createMessage);
+  static UpdateVideoRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get enabled => $_getBF(2);
+  @$pb.TagNumber(3)
+  set enabled($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasEnabled() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearEnabled() => $_clearField(3);
+}
+
+/// The video after the change.
+class UpdateVideoResponse extends $pb.GeneratedMessage {
+  factory UpdateVideoResponse({
+    $0.Video? video,
+  }) {
+    final result = UpdateVideoResponse._();
+    if (video != null) result.video = video;
+    return result;
+  }
+
+  UpdateVideoResponse._();
+
+  factory UpdateVideoResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UpdateVideoResponse()..mergeFromBuffer(data, registry);
+  factory UpdateVideoResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UpdateVideoResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateVideoResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: UpdateVideoResponse.$_createMessage)
+    ..aOM<$0.Video>(1, _omitFieldNames ? '' : 'video',
+        subBuilder: $0.Video.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateVideoResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateVideoResponse copyWith(void Function(UpdateVideoResponse) updates) =>
+      super.copyWith((message) => updates(message as UpdateVideoResponse))
+          as UpdateVideoResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use UpdateVideoResponse() / UpdateVideoResponse.new instead')
+  static UpdateVideoResponse create() => UpdateVideoResponse._();
+  static $pb.GeneratedMessage $_createMessage() => UpdateVideoResponse._();
+  @$core.override
+  UpdateVideoResponse createEmptyInstance() => UpdateVideoResponse._();
+  @$core.pragma('dart2js:noInline')
+  static UpdateVideoResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdateVideoResponse>(
+          UpdateVideoResponse.$_createMessage);
+  static UpdateVideoResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.Video get video => $_getN(0);
+  @$pb.TagNumber(1)
+  set video($0.Video value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasVideo() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearVideo() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.Video ensureVideo() => $_ensure(0);
+}
+
+/// All ids, in the new loop order.
+class ReorderVideosRequest extends $pb.GeneratedMessage {
+  factory ReorderVideosRequest({
+    $core.Iterable<$core.String>? ids,
+  }) {
+    final result = ReorderVideosRequest._();
+    if (ids != null) result.ids.addAll(ids);
+    return result;
+  }
+
+  ReorderVideosRequest._();
+
+  factory ReorderVideosRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReorderVideosRequest()..mergeFromBuffer(data, registry);
+  factory ReorderVideosRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReorderVideosRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReorderVideosRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: ReorderVideosRequest.$_createMessage)
+    ..pPS(1, _omitFieldNames ? '' : 'ids')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReorderVideosRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReorderVideosRequest copyWith(void Function(ReorderVideosRequest) updates) =>
+      super.copyWith((message) => updates(message as ReorderVideosRequest))
+          as ReorderVideosRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReorderVideosRequest() / ReorderVideosRequest.new instead')
+  static ReorderVideosRequest create() => ReorderVideosRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ReorderVideosRequest._();
+  @$core.override
+  ReorderVideosRequest createEmptyInstance() => ReorderVideosRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ReorderVideosRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReorderVideosRequest>(
+          ReorderVideosRequest.$_createMessage);
+  static ReorderVideosRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<$core.String> get ids => $_getList(0);
+}
+
+/// Every video in the new order.
+class ReorderVideosResponse extends $pb.GeneratedMessage {
+  factory ReorderVideosResponse({
+    $core.Iterable<$0.Video>? videos,
+  }) {
+    final result = ReorderVideosResponse._();
+    if (videos != null) result.videos.addAll(videos);
+    return result;
+  }
+
+  ReorderVideosResponse._();
+
+  factory ReorderVideosResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReorderVideosResponse()..mergeFromBuffer(data, registry);
+  factory ReorderVideosResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReorderVideosResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReorderVideosResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: ReorderVideosResponse.$_createMessage)
+    ..pPM<$0.Video>(1, _omitFieldNames ? '' : 'videos',
+        subBuilder: $0.Video.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReorderVideosResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReorderVideosResponse copyWith(
+          void Function(ReorderVideosResponse) updates) =>
+      super.copyWith((message) => updates(message as ReorderVideosResponse))
+          as ReorderVideosResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReorderVideosResponse() / ReorderVideosResponse.new instead')
+  static ReorderVideosResponse create() => ReorderVideosResponse._();
+  static $pb.GeneratedMessage $_createMessage() => ReorderVideosResponse._();
+  @$core.override
+  ReorderVideosResponse createEmptyInstance() => ReorderVideosResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ReorderVideosResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReorderVideosResponse>(
+          ReorderVideosResponse.$_createMessage);
+  static ReorderVideosResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<$0.Video> get videos => $_getList(0);
+}
+
+/// The video to remove.
+class DeleteVideoRequest extends $pb.GeneratedMessage {
+  factory DeleteVideoRequest({
+    $core.String? id,
+  }) {
+    final result = DeleteVideoRequest._();
+    if (id != null) result.id = id;
+    return result;
+  }
+
+  DeleteVideoRequest._();
+
+  factory DeleteVideoRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeleteVideoRequest()..mergeFromBuffer(data, registry);
+  factory DeleteVideoRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeleteVideoRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteVideoRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: DeleteVideoRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteVideoRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteVideoRequest copyWith(void Function(DeleteVideoRequest) updates) =>
+      super.copyWith((message) => updates(message as DeleteVideoRequest))
+          as DeleteVideoRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DeleteVideoRequest() / DeleteVideoRequest.new instead')
+  static DeleteVideoRequest create() => DeleteVideoRequest._();
+  static $pb.GeneratedMessage $_createMessage() => DeleteVideoRequest._();
+  @$core.override
+  DeleteVideoRequest createEmptyInstance() => DeleteVideoRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DeleteVideoRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteVideoRequest>(
+          DeleteVideoRequest.$_createMessage);
+  static DeleteVideoRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+}
+
+/// Nothing to report.
+class DeleteVideoResponse extends $pb.GeneratedMessage {
+  factory DeleteVideoResponse() => DeleteVideoResponse._();
+
+  DeleteVideoResponse._();
+
+  factory DeleteVideoResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeleteVideoResponse()..mergeFromBuffer(data, registry);
+  factory DeleteVideoResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeleteVideoResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteVideoResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: DeleteVideoResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteVideoResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteVideoResponse copyWith(void Function(DeleteVideoResponse) updates) =>
+      super.copyWith((message) => updates(message as DeleteVideoResponse))
+          as DeleteVideoResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use DeleteVideoResponse() / DeleteVideoResponse.new instead')
+  static DeleteVideoResponse create() => DeleteVideoResponse._();
+  static $pb.GeneratedMessage $_createMessage() => DeleteVideoResponse._();
+  @$core.override
+  DeleteVideoResponse createEmptyInstance() => DeleteVideoResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DeleteVideoResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteVideoResponse>(
+          DeleteVideoResponse.$_createMessage);
+  static DeleteVideoResponse? _defaultInstance;
+}
+
 /// Administration; every RPC requires the admin role (PERMISSION_DENIED otherwise).
 class AdminServiceApi {
   final $pb.RpcClient _client;
@@ -1677,11 +2600,49 @@ class AdminServiceApi {
       _client.invoke<DeleteSongResponse>(
           ctx, 'AdminService', 'DeleteSong', request, DeleteSongResponse());
 
-  /// Admin only. Removes many songs from the list at once. The song files are never deleted.
+  /// Admin only. Removes many songs from the list at once. The song files are never deleted, except with scope BROKEN and delete_files.
   $async.Future<RemoveSongsResponse> removeSongs(
           $pb.ClientContext? ctx, RemoveSongsRequest request) =>
       _client.invoke<RemoveSongsResponse>(
           ctx, 'AdminService', 'RemoveSongs', request, RemoveSongsResponse());
+
+  /// Admin only. Re-judges every live song (file missing, MIDI without music, unparsable, a .karmp3 whose audio cannot be read), marks the
+  /// broken ones as failed (they leave every user's lists and searches) and clears the mark of repaired ones. Streams its progress; the
+  /// last message has done = true. FAILED_PRECONDITION when a check is already running.
+  $async.Future<CheckLibraryResponse> checkLibrary(
+          $pb.ClientContext? ctx, CheckLibraryRequest request) =>
+      _client.invoke<CheckLibraryResponse>(
+          ctx, 'AdminService', 'CheckLibrary', request, CheckLibraryResponse());
+
+  /// Admin only. Lists the songs marked broken, with the reason, ordered by number.
+  $async.Future<ListBrokenSongsResponse> listBrokenSongs(
+          $pb.ClientContext? ctx, ListBrokenSongsRequest request) =>
+      _client.invoke<ListBrokenSongsResponse>(ctx, 'AdminService',
+          'ListBrokenSongs', request, ListBrokenSongsResponse());
+
+  /// Admin only. The background videos in loop order, each with a signed preview URL (1 hour).
+  $async.Future<ListVideosResponse> listVideos(
+          $pb.ClientContext? ctx, ListVideosRequest request) =>
+      _client.invoke<ListVideosResponse>(
+          ctx, 'AdminService', 'ListVideos', request, ListVideosResponse());
+
+  /// Admin only. Renames or enables/disables a video; unset optional fields are left unchanged; NOT_FOUND for an unknown id.
+  $async.Future<UpdateVideoResponse> updateVideo(
+          $pb.ClientContext? ctx, UpdateVideoRequest request) =>
+      _client.invoke<UpdateVideoResponse>(
+          ctx, 'AdminService', 'UpdateVideo', request, UpdateVideoResponse());
+
+  /// Admin only. Sets the loop order; ids must be exactly the existing ids (INVALID_ARGUMENT otherwise).
+  $async.Future<ReorderVideosResponse> reorderVideos(
+          $pb.ClientContext? ctx, ReorderVideosRequest request) =>
+      _client.invoke<ReorderVideosResponse>(ctx, 'AdminService',
+          'ReorderVideos', request, ReorderVideosResponse());
+
+  /// Admin only. Removes the video and its file; NOT_FOUND for an unknown id.
+  $async.Future<DeleteVideoResponse> deleteVideo(
+          $pb.ClientContext? ctx, DeleteVideoRequest request) =>
+      _client.invoke<DeleteVideoResponse>(
+          ctx, 'AdminService', 'DeleteVideo', request, DeleteVideoResponse());
 
   /// Admin only. Rescans watched folders and reports the counts.
   $async.Future<RescanResponse> rescan(

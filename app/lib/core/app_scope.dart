@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:kantahe/core/api.dart';
 import 'package:kantahe/core/auth_store.dart';
+import 'package:kantahe/core/server_discovery.dart';
 import 'package:kantahe/core/server_url.dart';
 import 'package:kantahe/core/state_store.dart';
 import 'package:kantahe/core/storage.dart';
@@ -12,8 +13,15 @@ import 'package:kantahe/tv/tv_detect.dart';
 
 /// The services every screen uses, created once at start-up.
 class AppServices {
-  AppServices({required this.serverUrl, required this.auth, required this.api, required this.state, this.isTv = false, ThemeSetting? theme})
-    : theme = theme ?? ThemeSetting(MemoryStore()) {
+  AppServices({
+    required this.serverUrl,
+    required this.auth,
+    required this.api,
+    required this.state,
+    this.isTv = false,
+    this.findServers = noServers,
+    ThemeSetting? theme,
+  }) : theme = theme ?? ThemeSetting(MemoryStore()) {
     // A token belongs to one server: a different address ends the session.
     var address = serverUrl.value;
     serverUrl.addListener(() {
@@ -46,6 +54,9 @@ class AppServices {
   /// An Android TV: signs in with a code and is driven with a remote.
   final bool isTv;
 
+  /// Looks for Kantahe servers on the network; tests and the integration runs find none.
+  final FindServers findServers;
+
   /// The real services: tokens in the keystore, the address in shared preferences, one HTTP transport that
   /// follows the stored address. Loads what was stored before returning.
   static Future<AppServices> create() async {
@@ -68,6 +79,7 @@ class AppServices {
       api: api,
       state: StateStore(client: api.session, auth: auth),
       isTv: isTv,
+      findServers: const bool.fromEnvironment('KANTAHE_NO_DISCOVERY') ? noServers : bonsoirFindServers,
       theme: theme,
     );
     unawaited(services.loadUser()); // the app does not wait for it

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { DestroyRef, inject, Injectable } from '@angular/core';
 
 export interface Rect {
   left: number;
@@ -98,6 +98,11 @@ function focusElement(el: HTMLElement): void {
 export class SpatialNav {
   private doc?: Document;
   private readonly onKey = (e: KeyboardEvent) => this.handle(e);
+
+  constructor() {
+    // the listener is on the page's document, which outlives the injector in tests: no stray listener may stay behind
+    inject(DestroyRef).onDestroy(() => this.detach());
+  }
 
   attach(doc: Document): void {
     this.detach();

@@ -7,7 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
+
+	"github.com/andrewloable/kantahe/server/internal/fsutil"
 )
 
 type scanCall struct {
@@ -78,10 +79,9 @@ func (im *Importer) scanOnce(ctx context.Context) (ScanResult, error) {
 	var suppressed []suppressedFile
 
 	for _, lib := range im.libraries {
-		resolved, err := filepath.EvalSymlinks(lib)
-		if err == nil {
-			resolved, err = filepath.Abs(resolved)
-		}
+		// the real place, whatever it was called: links, junctions, short names and the case of the name are resolved, so the
+		// paths stored for its songs do not depend on how the folder was typed
+		resolved, err := fsutil.Canonical(lib)
 		if st, serr := os.Stat(resolved); err != nil || serr != nil || !st.IsDir() {
 			im.logger.Warn("watched folder is not available, its songs are kept", "folder", lib)
 			continue
@@ -100,6 +100,9 @@ func (im *Importer) scanOnce(ctx context.Context) (ScanResult, error) {
 				}
 				r.incomplete = append(r.incomplete, filepath.Dir(p))
 				return nil
+			}
+			if d.IsDir() && p != resolved {
+				return im.walkDirectory(r, p)
 			}
 			if d.Type()&fs.ModeSymlink != 0 || d.IsDir() {
 				return nil // symlinks are never followed
@@ -239,8 +242,32 @@ func (im *Importer) knownFolderFiles(ctx context.Context) (map[string]knownFile,
 	return out, rows.Err()
 }
 
-func under(p, dir string) bool {
-	return p == dir || strings.HasPrefix(p, dir+string(filepath.Separator))
+// dirLinked says whether a directory found by the walk is a link to somewhere else. Only Windows can say yes: a junction is a
+// directory to Go's WalkDir, which would enter it, and it needs no privilege to create. A package variable so that tests can
+// make a directory look like one on any system.
+var dirLinked = fsutil.ResolvesElsewhere
+
+// walkDirectory decides whether the walk enters a directory below the watched folder: a directory that is a link (a junction or a
+// symlink, to a place inside or outside the folder) is skipped, as symlinks are never followed, and said so once. A directory that
+// cannot be judged is skipped too, and the songs below it are not judged missing.
+func (im *Importer) walkDirectory(r *root, dir string) error {
+	linked, err := dirLinked(dir)
+	switch {
+	case err != nil:
+		im.logger.Warn("cannot tell whether a folder is a link, it is skipped", "path", dir, "err", err)
+		r.incomplete = append(r.incomplete, dir)
+		return fs.SkipDir
+	case linked:
+		im.pmu.Lock()
+		first := !im.linksSeen[dir]
+		im.linksSeen[dir] = true
+		im.pmu.Unlock()
+		if first {
+			im.logger.Warn("a folder inside a watched folder is a link (junction or symlink); links are never followed, its songs are not listed", "path", dir)
+		}
+		return fs.SkipDir
+	}
+	return nil
 }
 
 // missingPaths lists known folder files that are no longer on disk, judged only
@@ -253,12 +280,12 @@ func missingPaths(known map[string]knownFile, seen map[string]bool, walked []*ro
 		}
 		judged := false
 		for _, r := range walked {
-			if !under(p, r.path) {
+			if !fsutil.IsUnder(p, r.path) {
 				continue
 			}
 			judged = true
 			for _, bad := range r.incomplete {
-				if under(p, bad) {
+				if fsutil.IsUnder(p, bad) {
 					judged = false
 				}
 			}

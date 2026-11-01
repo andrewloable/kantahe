@@ -5,6 +5,7 @@ import 'package:kantahe/core/messages.dart';
 import 'package:kantahe/gen/kantahe/v1/auth.pb.dart';
 import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart' hide State;
+import 'package:kantahe/tv/focus.dart';
 
 const _types = <DeviceType, String>{
   DeviceType.DEVICE_TYPE_WEB: 'Web',
@@ -30,7 +31,19 @@ const List<_ModeInfo> _modes = [
 
 String _modeLabel(MidiMode m) => _modes.where((x) => x.value == m).firstOrNull?.label ?? 'Auto';
 
-/// The user's devices: type, online, the MIDI mode of each, and signing a device out.
+typedef _BackgroundInfo = ({BackgroundMode value, String label, String explain});
+
+const List<_BackgroundInfo> _backgrounds = [
+  (value: BackgroundMode.BACKGROUND_MODE_AUTO, label: 'Auto', explain: 'On, unless this device is weak or uses a lighter sound mode.'),
+  (
+    value: BackgroundMode.BACKGROUND_MODE_ON,
+    label: 'On',
+    explain: 'Always show the moving pictures behind the lyrics on this device, even if it is weak. There is never any sound from them.',
+  ),
+  (value: BackgroundMode.BACKGROUND_MODE_OFF, label: 'Off', explain: 'A plain background behind the lyrics. Easier on a weak device.'),
+];
+
+/// The user's devices: type, online, the MIDI mode and the background video choice of each, and signing a device out.
 class MyDevicesScreen extends StatefulWidget {
   const MyDevicesScreen({super.key});
 
@@ -45,6 +58,9 @@ class _MyDevicesScreenState extends State<MyDevicesScreen> {
 
   /// Modes chosen here and accepted by the server, for devices the live state does not show.
   final Map<String, MidiMode> _chosen = {};
+
+  /// The same for the background video choice, with what the server resolved from it.
+  final Map<String, ({BackgroundMode mode, bool effective})> _chosenBackground = {};
 
   @override
   void didChangeDependencies() {
@@ -69,6 +85,36 @@ class _MyDevicesScreenState extends State<MyDevicesScreen> {
   MidiMode _mode(Device d) => _chosen[d.id] ?? _live(d)?.midiMode ?? d.midiMode;
   String _explain(Device d) => _modes.where((m) => m.value == _mode(d)).firstOrNull?.explain ?? '';
   String _effective(Device d) => _modeLabel(_live(d)?.effectiveMidiMode ?? d.effectiveMidiMode);
+
+  /// What the user chose; a server that does not know the field says "unspecified", which is Auto.
+  BackgroundMode _background(Device d) {
+    final mode = _chosenBackground[d.id]?.mode ?? _live(d)?.backgroundMode ?? d.backgroundMode;
+    return mode == BackgroundMode.BACKGROUND_MODE_UNSPECIFIED ? BackgroundMode.BACKGROUND_MODE_AUTO : mode;
+  }
+
+  String _explainBackground(Device d) => _backgrounds.where((b) => b.value == _background(d)).firstOrNull?.explain ?? '';
+
+  String _effectiveBackground(Device d) {
+    final live = _live(d);
+    final on = live != null ? live.effectiveBackground : (_chosenBackground[d.id]?.effective ?? d.effectiveBackground);
+    return on ? 'On' : 'Off';
+  }
+
+  Future<void> _setBackground(Device d, BackgroundMode mode) async {
+    try {
+      final res = await _services.api.session.setBackgroundMode(SetBackgroundModeRequest(deviceId: d.id, mode: mode));
+      if (mounted) {
+        setState(
+          () => _chosenBackground[d.id] = (
+            mode: res.hasDevice() ? res.device.backgroundMode : mode,
+            effective: res.hasDevice() && res.device.effectiveBackground,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, problem(e, const {}), error: true);
+    }
+  }
 
   Future<void> _setMode(Device d, MidiMode mode) async {
     try {
@@ -133,18 +179,39 @@ class _MyDevicesScreenState extends State<MyDevicesScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      DropdownButton<MidiMode>(
-                        key: Key('mode-${d.id}'),
-                        value: _modes.any((m) => m.value == _mode(d)) ? _mode(d) : MidiMode.MIDI_MODE_AUTO,
-                        isExpanded: true,
-                        hint: Text('MIDI mode of ${d.name}'),
-                        items: [for (final m in _modes) DropdownMenuItem(value: m.value, child: Text(m.label))],
-                        onChanged: (m) {
-                          if (m != null) _setMode(d, m);
-                        },
+                      const Text('MIDI mode', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      FocusRing(
+                        radius: 8,
+                        child: DropdownButton<MidiMode>(
+                          key: Key('mode-${d.id}'),
+                          value: _modes.any((m) => m.value == _mode(d)) ? _mode(d) : MidiMode.MIDI_MODE_AUTO,
+                          isExpanded: true,
+                          hint: Text('MIDI mode of ${d.name}'),
+                          items: [for (final m in _modes) DropdownMenuItem(value: m.value, child: Text(m.label))],
+                          onChanged: (m) {
+                            if (m != null) _setMode(d, m);
+                          },
+                        ),
                       ),
                       Text(_explain(d), style: TextStyle(color: muted, fontSize: 13)),
                       Text('Now using: ${_effective(d)}'),
+                      const SizedBox(height: 8),
+                      const Text('Background video', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      FocusRing(
+                        radius: 8,
+                        child: DropdownButton<BackgroundMode>(
+                          key: Key('background-${d.id}'),
+                          value: _backgrounds.any((b) => b.value == _background(d)) ? _background(d) : BackgroundMode.BACKGROUND_MODE_AUTO,
+                          isExpanded: true,
+                          hint: Text('Background video of ${d.name}'),
+                          items: [for (final b in _backgrounds) DropdownMenuItem(value: b.value, child: Text(b.label))],
+                          onChanged: (b) {
+                            if (b != null) _setBackground(d, b);
+                          },
+                        ),
+                      ),
+                      Text(_explainBackground(d), style: TextStyle(color: muted, fontSize: 13)),
+                      Text('Now using: ${_effectiveBackground(d)}'),
                       Align(
                         alignment: Alignment.centerRight,
                         child: IconButton(tooltip: 'Sign out ${d.name}', icon: const Icon(Icons.logout), onPressed: () => _revoke(d)),

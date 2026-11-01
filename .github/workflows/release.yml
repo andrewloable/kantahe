@@ -1,59 +1,161 @@
 name: release
 
-# Pushing a tag such as v0.1.0 runs the checks of ci.yml, then builds the binaries and attaches them to a
-# GitHub release. This is the only automatic run; nothing builds on ordinary pushes or pull requests.
+# Pushing a tag such as v0.1.0 checks the tag, runs the checks of ci.yml, builds the binaries and attaches them to a GitHub
+# release, and pushes the Docker image. This is the only automatic run; nothing builds on ordinary pushes or pull requests.
+# Run workflow by hand (Actions tab) is a rehearsal: the same steps with any version name, and nothing is published (no
+# release, no image push); the files of dist/ are kept as a workflow artifact.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version name to build as (a rehearsal publishes nothing)
+        type: string
+        required: true
+        default: v0.0.0-dry
 
 permissions:
-  contents: write
+  contents: read
+
+# One release at a time (two tags would race for the image tag "latest"), and a release that has started is never cancelled.
+# A rehearsal has a group of its own, so that it can never take the place of a release that is waiting.
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && 'release-rehearsal' || 'release' }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
 
 jobs:
+  plan:
+    # refuses a tag that is not a version, or not greater than the existing ones, before anything is built
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      prerelease: ${{ steps.plan.outputs.prerelease }}
+      notes: ${{ steps.plan.outputs.notes }}
+      previous: ${{ steps.plan.outputs.previous }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # every tag, for the check that this one is the greatest
+      - id: plan
+        run: |
+          git tag --list 'v*' > "$RUNNER_TEMP/tags.txt"
+          # published releases that have files: a release without files (the old v0.2.0) is not a start for the notes
+          gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+            --jq '.[] | select(.draft | not) | select((.assets | length) > 0) | .tag_name' > "$RUNNER_TEMP/released.txt"
+          options=()
+          if gh release view "$TAG" > /dev/null 2>&1; then options+=(--release-exists); fi
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then options+=(--dry-run); fi
+          # a file, not a pipe: the default shell has no pipefail, and a refused tag must fail this step
+          python3 scripts/release-checks.py "$TAG" --tags "$RUNNER_TEMP/tags.txt" --released "$RUNNER_TEMP/released.txt" "${options[@]}" > "$RUNNER_TEMP/plan.txt"
+          cat "$RUNNER_TEMP/plan.txt"
+          cat "$RUNNER_TEMP/plan.txt" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - if: steps.plan.outputs.warning != ''
+        run: echo "::warning::$WARNING"
+        env:
+          WARNING: ${{ steps.plan.outputs.warning }}
+
   checks:
+    needs: plan
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci.yml
 
   release:
-    needs: checks
+    needs: [plan, checks]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: server/go.mod
-      - uses: actions/setup-node@v4
+          cache-dependency-path: server/go.sum
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - run: scripts/build-release.sh "$GITHUB_REF_NAME"
-      - run: scripts/smoke-release.sh "dist/kantahe-$GITHUB_REF_NAME-linux-amd64" "$GITHUB_REF_NAME"
-      - run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes
+      - run: scripts/build-release.sh "$TAG"
+      - run: scripts/smoke-release.sh "dist/kantahe-$TAG-linux-amd64" "$TAG"
+      - uses: actions/upload-artifact@v6
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: release-files
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+      # only a pushed tag publishes; a manual run stops above
+      - if: github.event_name == 'push'
+        run: scripts/publish-release.sh "$TAG" dist "$PRERELEASE" "$NOTES" "$PREVIOUS"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRERELEASE: ${{ needs.plan.outputs.prerelease }}
+          NOTES: ${{ needs.plan.outputs.notes }}
+          PREVIOUS: ${{ needs.plan.outputs.previous }}
 
   image:
     # the multi-arch image on ghcr.io; "latest" only moves for versions without a pre-release suffix
-    needs: checks
+    needs: [plan, checks]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@v5
+      - id: tags
+        run: |
+          {
+            echo 'list<<EOF'
+            echo "ghcr.io/andrewloable/kantahe:$TAG"
+            if [ "$PRERELEASE" != true ]; then echo "ghcr.io/andrewloable/kantahe:latest"; fi
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+        env:
+          PRERELEASE: ${{ needs.plan.outputs.prerelease }}
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - if: github.event_name == 'push'
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: true
-          build-args: VERSION=${{ github.ref_name }}
-          tags: |
-            ghcr.io/andrewloable/kantahe:${{ github.ref_name }}
-            ${{ !contains(github.ref_name, '-') && 'ghcr.io/andrewloable/kantahe:latest' || '' }}
+          push: ${{ github.event_name == 'push' }}
+          build-args: VERSION=${{ env.TAG }}
+          tags: ${{ steps.tags.outputs.list }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max,ignore-error=true
+
+  verify:
+    # after the release and the image are published: download what users download and run it (scripts/verify-release.sh). Read-only.
+    # If it is red the release stays published; docs/releasing.md says what to do.
+    if: github.event_name == 'push'
+    needs: [plan, release, image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v4 # the arm64 image and the arm64 binary
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: scripts/verify-release.sh "$TAG" --strict
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

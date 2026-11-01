@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:kantahe/auth/auth_gate.dart';
+import 'package:kantahe/bootstrap.dart';
 import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/shell/app_shell.dart';
 import 'package:kantahe/tv/focus.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  final services = await AppServices.create();
-  runApp(AppRoot(services: services, child: const KantaheApp()));
+  // the splash is drawn at once; the services are made behind it (lib/bootstrap.dart)
+  runApp(
+    Bootstrap(
+      create: AppServices.create,
+      app: (services) => AppRoot(services: services, child: const KantaheApp()),
+    ),
+  );
 }
 
 /// The app below an [AppRoot]: the sign-in flow first, then the shell with Library, Queue and Me.

@@ -1,0 +1,22 @@
+# Text files are LF in the repository and in every checkout, Windows included. Without this, GitHub's Windows runners check text out
+# with CRLF (core.autocrlf is on there), which breaks every test that compares file bytes and every shell script that is run there.
+* text=auto eol=lf
+
+# The ignore pattern for the macOS "Icon\r" file needs its carriage return: this file is not converted.
+.gitignore -text
+
+# Never touched: binary files (git guesses most of them right; these are stated so that no guess can change a byte).
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.mp3 binary
+*.sf2 binary
+*.zip binary
+*.jar binary
+*.kar binary
+*.karmp3 binary
+*.mid binary

@@ -18,6 +18,7 @@ describe('AdminPage', () => {
     expect(Array.from(nav!.querySelectorAll('a')).map((a) => [a.textContent?.trim(), a.getAttribute('href')])).toEqual([
       ['Users', '/admin/users'],
       ['Songs', '/admin/songs'],
+      ['Videos', '/admin/videos'],
       ['Settings', '/admin/settings'],
     ]);
     expect(nav!.querySelector('a[aria-current="page"]')?.textContent?.trim()).toBe('Users');

@@ -47,6 +47,9 @@ const (
 	// CatalogServiceGetPlaybackProcedure is the fully-qualified name of the CatalogService's
 	// GetPlayback RPC.
 	CatalogServiceGetPlaybackProcedure = "/kantahe.v1.CatalogService/GetPlayback"
+	// CatalogServiceGetBackgroundProcedure is the fully-qualified name of the CatalogService's
+	// GetBackground RPC.
+	CatalogServiceGetBackgroundProcedure = "/kantahe.v1.CatalogService/GetBackground"
 )
 
 // CatalogServiceClient is a client for the kantahe.v1.CatalogService service.
@@ -61,6 +64,8 @@ type CatalogServiceClient interface {
 	GetLyrics(context.Context, *connect.Request[v1.GetLyricsRequest]) (*connect.Response[v1.GetLyricsResponse], error)
 	// Signed-in user. Signed URLs, lyrics and the MIDI mode resolved for the calling device (plan 4.1); ready=false means retry later.
 	GetPlayback(context.Context, *connect.Request[v1.GetPlaybackRequest]) (*connect.Response[v1.GetPlaybackResponse], error)
+	// Signed-in user. The enabled background videos in loop order with signed URLs (6 hours); empty when the admin has switched the background off.
+	GetBackground(context.Context, *connect.Request[v1.GetBackgroundRequest]) (*connect.Response[v1.GetBackgroundResponse], error)
 }
 
 // NewCatalogServiceClient constructs a client for the kantahe.v1.CatalogService service. By
@@ -104,16 +109,23 @@ func NewCatalogServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(catalogServiceMethods.ByName("GetPlayback")),
 			connect.WithClientOptions(opts...),
 		),
+		getBackground: connect.NewClient[v1.GetBackgroundRequest, v1.GetBackgroundResponse](
+			httpClient,
+			baseURL+CatalogServiceGetBackgroundProcedure,
+			connect.WithSchema(catalogServiceMethods.ByName("GetBackground")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // catalogServiceClient implements CatalogServiceClient.
 type catalogServiceClient struct {
-	searchSongs *connect.Client[v1.SearchSongsRequest, v1.SearchSongsResponse]
-	listArtists *connect.Client[v1.ListArtistsRequest, v1.ListArtistsResponse]
-	getSong     *connect.Client[v1.GetSongRequest, v1.GetSongResponse]
-	getLyrics   *connect.Client[v1.GetLyricsRequest, v1.GetLyricsResponse]
-	getPlayback *connect.Client[v1.GetPlaybackRequest, v1.GetPlaybackResponse]
+	searchSongs   *connect.Client[v1.SearchSongsRequest, v1.SearchSongsResponse]
+	listArtists   *connect.Client[v1.ListArtistsRequest, v1.ListArtistsResponse]
+	getSong       *connect.Client[v1.GetSongRequest, v1.GetSongResponse]
+	getLyrics     *connect.Client[v1.GetLyricsRequest, v1.GetLyricsResponse]
+	getPlayback   *connect.Client[v1.GetPlaybackRequest, v1.GetPlaybackResponse]
+	getBackground *connect.Client[v1.GetBackgroundRequest, v1.GetBackgroundResponse]
 }
 
 // SearchSongs calls kantahe.v1.CatalogService.SearchSongs.
@@ -141,6 +153,11 @@ func (c *catalogServiceClient) GetPlayback(ctx context.Context, req *connect.Req
 	return c.getPlayback.CallUnary(ctx, req)
 }
 
+// GetBackground calls kantahe.v1.CatalogService.GetBackground.
+func (c *catalogServiceClient) GetBackground(ctx context.Context, req *connect.Request[v1.GetBackgroundRequest]) (*connect.Response[v1.GetBackgroundResponse], error) {
+	return c.getBackground.CallUnary(ctx, req)
+}
+
 // CatalogServiceHandler is an implementation of the kantahe.v1.CatalogService service.
 type CatalogServiceHandler interface {
 	// Signed-in user. Digits-only query matches the number prefix, otherwise full-text over title and artist (plan 6).
@@ -153,6 +170,8 @@ type CatalogServiceHandler interface {
 	GetLyrics(context.Context, *connect.Request[v1.GetLyricsRequest]) (*connect.Response[v1.GetLyricsResponse], error)
 	// Signed-in user. Signed URLs, lyrics and the MIDI mode resolved for the calling device (plan 4.1); ready=false means retry later.
 	GetPlayback(context.Context, *connect.Request[v1.GetPlaybackRequest]) (*connect.Response[v1.GetPlaybackResponse], error)
+	// Signed-in user. The enabled background videos in loop order with signed URLs (6 hours); empty when the admin has switched the background off.
+	GetBackground(context.Context, *connect.Request[v1.GetBackgroundRequest]) (*connect.Response[v1.GetBackgroundResponse], error)
 }
 
 // NewCatalogServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -192,6 +211,12 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 		connect.WithSchema(catalogServiceMethods.ByName("GetPlayback")),
 		connect.WithHandlerOptions(opts...),
 	)
+	catalogServiceGetBackgroundHandler := connect.NewUnaryHandler(
+		CatalogServiceGetBackgroundProcedure,
+		svc.GetBackground,
+		connect.WithSchema(catalogServiceMethods.ByName("GetBackground")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/kantahe.v1.CatalogService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CatalogServiceSearchSongsProcedure:
@@ -204,6 +229,8 @@ func NewCatalogServiceHandler(svc CatalogServiceHandler, opts ...connect.Handler
 			catalogServiceGetLyricsHandler.ServeHTTP(w, r)
 		case CatalogServiceGetPlaybackProcedure:
 			catalogServiceGetPlaybackHandler.ServeHTTP(w, r)
+		case CatalogServiceGetBackgroundProcedure:
+			catalogServiceGetBackgroundHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -231,4 +258,8 @@ func (UnimplementedCatalogServiceHandler) GetLyrics(context.Context, *connect.Re
 
 func (UnimplementedCatalogServiceHandler) GetPlayback(context.Context, *connect.Request[v1.GetPlaybackRequest]) (*connect.Response[v1.GetPlaybackResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.CatalogService.GetPlayback is not implemented"))
+}
+
+func (UnimplementedCatalogServiceHandler) GetBackground(context.Context, *connect.Request[v1.GetBackgroundRequest]) (*connect.Response[v1.GetBackgroundResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.CatalogService.GetBackground is not implemented"))
 }

@@ -28,7 +28,7 @@ Future<void> until(WidgetTester tester, bool Function() done, String what) async
     if (done()) return;
   }
   final texts = find.byType(Text).evaluate().map((e) => (e.widget as Text).data).whereType<String>().toList();
-  fail('Timed out waiting for: $what. The screen shows: $texts');
+  fail('Timed out waiting for: $what. The screen shows: $texts. The focus is on: ${FocusManager.instance.primaryFocus} (scope: ${FocusManager.instance.primaryFocus?.enclosingScope})');
 }
 
 bool shows(String text) => find.textContaining(text).evaluate().isNotEmpty;
@@ -70,10 +70,25 @@ void main() {
     expect(code.length, 6);
     expect(shows('Sign in to Kantahe'), isTrue);
 
-    // 2. the phone approves it: the TV signs in and shows the library with the remote on the first song
+    // 2. the phone approves it: the TV signs in, opens the player by itself, and after Close shows the library with the remote on the first song
     final approved = await phone.auth.approveCode(ApproveCodeRequest(code: code));
     expect(approved.deviceName, isNotEmpty);
     await until(tester, () => services.auth.signedIn && find.byType(NavigationRail).evaluate().isNotEmpty, 'the signed-in TV app');
+    // a TV opens the player by itself, once per start (AppShell._openPlayerOnTv), and it covers the library: the test
+    // notes that on purpose, then closes it with the remote as a person does
+    await until(tester, () => find.text('Close').evaluate().isNotEmpty, 'the player that opens by itself');
+    expect(find.text('Close'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1)); // the page has finished arriving: before that the keys go to the library underneath
+    // Left from Play reaches Close at the top left (measured on a BRAVIA: Up from Play does not). While a song plays here
+    // the controls fade away after 4 s and the first key only wakes them and puts the focus on Play/Pause (the first
+    // Left is then used up): so press Left until Close has the focus, then OK
+    for (var i = 0; i < 4 && !focused(tester, 'Close'); i++) {
+      await key(tester, LogicalKeyboardKey.arrowLeft);
+    }
+    if (!focused(tester, 'Close')) debugDumpFocusTree();
+    expect(focused(tester, 'Close'), isTrue, reason: 'the remote reached Close; the focus is on ${FocusManager.instance.primaryFocus} (${FocusManager.instance.primaryFocus?.rect}); the screen shows ${find.byType(Text).evaluate().map((e) => (e.widget as Text).data).whereType<String>().toList()}');
+    await key(tester, LogicalKeyboardKey.select);
+    await until(tester, () => find.text('Close').evaluate().isEmpty, 'the player closed');
     await until(tester, () => shows('Title 1') && shows('Title 3'), 'the library');
     await until(tester, () => focused(tester, 'Title 1'), 'the first song focused');
 

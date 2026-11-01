@@ -69,6 +69,23 @@ final $typed_data.Uint8List midiModeDescriptor = $convert.base64Decode(
     'ABEhIKDk1JRElfTU9ERV9GVUxMEAISFwoTTUlESV9NT0RFX0xPV19QT1dFUhADEhQKEE1JRElf'
     'TU9ERV9TRVJWRVIQBA==');
 
+@$core.Deprecated('Use backgroundModeDescriptor instead')
+const BackgroundMode$json = {
+  '1': 'BackgroundMode',
+  '2': [
+    {'1': 'BACKGROUND_MODE_UNSPECIFIED', '2': 0},
+    {'1': 'BACKGROUND_MODE_AUTO', '2': 1},
+    {'1': 'BACKGROUND_MODE_ON', '2': 2},
+    {'1': 'BACKGROUND_MODE_OFF', '2': 3},
+  ],
+};
+
+/// Descriptor for `BackgroundMode`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List backgroundModeDescriptor = $convert.base64Decode(
+    'Cg5CYWNrZ3JvdW5kTW9kZRIfChtCQUNLR1JPVU5EX01PREVfVU5TUEVDSUZJRUQQABIYChRCQU'
+    'NLR1JPVU5EX01PREVfQVVUTxABEhYKEkJBQ0tHUk9VTkRfTU9ERV9PThACEhcKE0JBQ0tHUk9V'
+    'TkRfTU9ERV9PRkYQAw==');
+
 @$core.Deprecated('Use songDescriptor instead')
 const Song$json = {
   '1': 'Song',
@@ -222,6 +239,21 @@ const Device$json = {
     },
     {'1': 'is_caller', '3': 9, '4': 1, '5': 8, '10': 'isCaller'},
     {'1': 'last_seen_unix', '3': 10, '4': 1, '5': 3, '10': 'lastSeenUnix'},
+    {
+      '1': 'background_mode',
+      '3': 11,
+      '4': 1,
+      '5': 14,
+      '6': '.kantahe.v1.BackgroundMode',
+      '10': 'backgroundMode'
+    },
+    {
+      '1': 'effective_background',
+      '3': 12,
+      '4': 1,
+      '5': 8,
+      '10': 'effectiveBackground'
+    },
   ],
 };
 
@@ -233,7 +265,40 @@ final $typed_data.Uint8List deviceDescriptor = $convert.base64Decode(
     'gFUghtZW1vcnlNYhIxCgltaWRpX21vZGUYByABKA4yFC5rYW50YWhlLnYxLk1pZGlNb2RlUght'
     'aWRpTW9kZRJEChNlZmZlY3RpdmVfbWlkaV9tb2RlGAggASgOMhQua2FudGFoZS52MS5NaWRpTW'
     '9kZVIRZWZmZWN0aXZlTWlkaU1vZGUSGwoJaXNfY2FsbGVyGAkgASgIUghpc0NhbGxlchIkCg5s'
-    'YXN0X3NlZW5fdW5peBgKIAEoA1IMbGFzdFNlZW5Vbml4');
+    'YXN0X3NlZW5fdW5peBgKIAEoA1IMbGFzdFNlZW5Vbml4EkMKD2JhY2tncm91bmRfbW9kZRgLIA'
+    'EoDjIaLmthbnRhaGUudjEuQmFja2dyb3VuZE1vZGVSDmJhY2tncm91bmRNb2RlEjEKFGVmZmVj'
+    'dGl2ZV9iYWNrZ3JvdW5kGAwgASgIUhNlZmZlY3RpdmVCYWNrZ3JvdW5k');
+
+@$core.Deprecated('Use videoDescriptor instead')
+const Video$json = {
+  '1': 'Video',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'size_bytes', '3': 3, '4': 1, '5': 3, '10': 'sizeBytes'},
+    {'1': 'duration_ms', '3': 4, '4': 1, '5': 3, '10': 'durationMs'},
+    {'1': 'width', '3': 5, '4': 1, '5': 5, '10': 'width'},
+    {'1': 'height', '3': 6, '4': 1, '5': 5, '10': 'height'},
+    {'1': 'codec', '3': 7, '4': 1, '5': 9, '10': 'codec'},
+    {'1': 'has_audio', '3': 8, '4': 1, '5': 8, '10': 'hasAudio'},
+    {'1': 'faststart', '3': 9, '4': 1, '5': 8, '10': 'faststart'},
+    {'1': 'enabled', '3': 10, '4': 1, '5': 8, '10': 'enabled'},
+    {'1': 'position', '3': 11, '4': 1, '5': 5, '10': 'position'},
+    {'1': 'created_at_unix', '3': 12, '4': 1, '5': 3, '10': 'createdAtUnix'},
+    {'1': 'url', '3': 13, '4': 1, '5': 9, '10': 'url'},
+    {'1': 'warnings', '3': 14, '4': 3, '5': 9, '10': 'warnings'},
+  ],
+};
+
+/// Descriptor for `Video`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List videoDescriptor = $convert.base64Decode(
+    'CgVWaWRlbxIOCgJpZBgBIAEoCVICaWQSEgoEbmFtZRgCIAEoCVIEbmFtZRIdCgpzaXplX2J5dG'
+    'VzGAMgASgDUglzaXplQnl0ZXMSHwoLZHVyYXRpb25fbXMYBCABKANSCmR1cmF0aW9uTXMSFAoF'
+    'd2lkdGgYBSABKAVSBXdpZHRoEhYKBmhlaWdodBgGIAEoBVIGaGVpZ2h0EhQKBWNvZGVjGAcgAS'
+    'gJUgVjb2RlYxIbCgloYXNfYXVkaW8YCCABKAhSCGhhc0F1ZGlvEhwKCWZhc3RzdGFydBgJIAEo'
+    'CFIJZmFzdHN0YXJ0EhgKB2VuYWJsZWQYCiABKAhSB2VuYWJsZWQSGgoIcG9zaXRpb24YCyABKA'
+    'VSCHBvc2l0aW9uEiYKD2NyZWF0ZWRfYXRfdW5peBgMIAEoA1INY3JlYXRlZEF0VW5peBIQCgN1'
+    'cmwYDSABKAlSA3VybBIaCgh3YXJuaW5ncxgOIAMoCVIId2FybmluZ3M=');
 
 @$core.Deprecated('Use authTokenDescriptor instead')
 const AuthToken$json = {

@@ -21,14 +21,14 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
   `,
   styles: `
     .me {
-      max-width: 44rem;
-      margin: 0 auto;
+      /* a reading column: wider, the title and the buttons of a row are too far apart; left aligned in the frame */
+      max-width: 48rem;
       padding: 1rem;
     }
     nav {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.25rem 1rem;
+      gap: 0.5rem 1rem;
       margin-bottom: 1rem;
       border-bottom: 1px solid var(--line);
     }

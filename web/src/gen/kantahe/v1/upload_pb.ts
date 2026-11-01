@@ -4,7 +4,7 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Song } from "./common_pb";
+import type { Song, Video } from "./common_pb";
 import { file_kantahe_v1_common } from "./common_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file kantahe/v1/upload.proto.
  */
 export const file_kantahe_v1_upload: GenFile = /*@__PURE__*/
-  fileDesc("ChdrYW50YWhlL3YxL3VwbG9hZC5wcm90bxIKa2FudGFoZS52MSI2ChFVcGxvYWRTb25nUmVxdWVzdBIQCghmaWxlbmFtZRgBIAEoCRIPCgdjb250ZW50GAIgASgMIm4KElVwbG9hZFNvbmdSZXNwb25zZRIoCgZzdGF0dXMYASABKA4yGC5rYW50YWhlLnYxLlVwbG9hZFN0YXR1cxIeCgRzb25nGAIgASgLMhAua2FudGFoZS52MS5Tb25nEg4KBnJlYXNvbhgDIAEoCSp/CgxVcGxvYWRTdGF0dXMSHQoZVVBMT0FEX1NUQVRVU19VTlNQRUNJRklFRBAAEhcKE1VQTE9BRF9TVEFUVVNfQURERUQQARIbChdVUExPQURfU1RBVFVTX0RVUExJQ0FURRACEhoKFlVQTE9BRF9TVEFUVVNfUkVKRUNURUQQAzJcCg1VcGxvYWRTZXJ2aWNlEksKClVwbG9hZFNvbmcSHS5rYW50YWhlLnYxLlVwbG9hZFNvbmdSZXF1ZXN0Gh4ua2FudGFoZS52MS5VcGxvYWRTb25nUmVzcG9uc2VCpwEKDmNvbS5rYW50YWhlLnYxQgtVcGxvYWRQcm90b1ABWj9naXRodWIuY29tL2FuZHJld2xvYWJsZS9rYW50YWhlL3NlcnZlci9nZW4va2FudGFoZS92MTtrYW50YWhldjGiAgNLWFiqAgpLYW50YWhlLlYxygIKS2FudGFoZVxWMeICFkthbnRhaGVcVjFcR1BCTWV0YWRhdGHqAgtLYW50YWhlOjpWMWIGcHJvdG8z", [file_kantahe_v1_common]);
+  fileDesc("ChdrYW50YWhlL3YxL3VwbG9hZC5wcm90bxIKa2FudGFoZS52MSI2ChFVcGxvYWRTb25nUmVxdWVzdBIQCghmaWxlbmFtZRgBIAEoCRIPCgdjb250ZW50GAIgASgMIm4KElVwbG9hZFNvbmdSZXNwb25zZRIoCgZzdGF0dXMYASABKA4yGC5rYW50YWhlLnYxLlVwbG9hZFN0YXR1cxIeCgRzb25nGAIgASgLMhAua2FudGFoZS52MS5Tb25nEg4KBnJlYXNvbhgDIAEoCSI/ChdCZWdpblZpZGVvVXBsb2FkUmVxdWVzdBIQCghmaWxlbmFtZRgBIAEoCRISCgpzaXplX2J5dGVzGAIgASgDIo0BChhCZWdpblZpZGVvVXBsb2FkUmVzcG9uc2USEQoJdXBsb2FkX2lkGAEgASgJEhIKCmNodW5rX3NpemUYAiABKAUSEAoIcmVjZWl2ZWQYAyABKAMSKAoGc3RhdHVzGAQgASgOMhgua2FudGFoZS52MS5VcGxvYWRTdGF0dXMSDgoGcmVhc29uGAUgASgJIk0KF1VwbG9hZFZpZGVvQ2h1bmtSZXF1ZXN0EhEKCXVwbG9hZF9pZBgBIAEoCRIOCgZvZmZzZXQYAiABKAMSDwoHY29udGVudBgDIAEoDCIsChhVcGxvYWRWaWRlb0NodW5rUmVzcG9uc2USEAoIcmVjZWl2ZWQYASABKAMiLwoaQ29tcGxldGVWaWRlb1VwbG9hZFJlcXVlc3QSEQoJdXBsb2FkX2lkGAEgASgJInkKG0NvbXBsZXRlVmlkZW9VcGxvYWRSZXNwb25zZRIoCgZzdGF0dXMYASABKA4yGC5rYW50YWhlLnYxLlVwbG9hZFN0YXR1cxIgCgV2aWRlbxgCIAEoCzIRLmthbnRhaGUudjEuVmlkZW8SDgoGcmVhc29uGAMgASgJIiwKF0Fib3J0VmlkZW9VcGxvYWRSZXF1ZXN0EhEKCXVwbG9hZF9pZBgBIAEoCSIaChhBYm9ydFZpZGVvVXBsb2FkUmVzcG9uc2UqfwoMVXBsb2FkU3RhdHVzEh0KGVVQTE9BRF9TVEFUVVNfVU5TUEVDSUZJRUQQABIXChNVUExPQURfU1RBVFVTX0FEREVEEAESGwoXVVBMT0FEX1NUQVRVU19EVVBMSUNBVEUQAhIaChZVUExPQURfU1RBVFVTX1JFSkVDVEVEEAMy4QMKDVVwbG9hZFNlcnZpY2USSwoKVXBsb2FkU29uZxIdLmthbnRhaGUudjEuVXBsb2FkU29uZ1JlcXVlc3QaHi5rYW50YWhlLnYxLlVwbG9hZFNvbmdSZXNwb25zZRJdChBCZWdpblZpZGVvVXBsb2FkEiMua2FudGFoZS52MS5CZWdpblZpZGVvVXBsb2FkUmVxdWVzdBokLmthbnRhaGUudjEuQmVnaW5WaWRlb1VwbG9hZFJlc3BvbnNlEl0KEFVwbG9hZFZpZGVvQ2h1bmsSIy5rYW50YWhlLnYxLlVwbG9hZFZpZGVvQ2h1bmtSZXF1ZXN0GiQua2FudGFoZS52MS5VcGxvYWRWaWRlb0NodW5rUmVzcG9uc2USZgoTQ29tcGxldGVWaWRlb1VwbG9hZBImLmthbnRhaGUudjEuQ29tcGxldGVWaWRlb1VwbG9hZFJlcXVlc3QaJy5rYW50YWhlLnYxLkNvbXBsZXRlVmlkZW9VcGxvYWRSZXNwb25zZRJdChBBYm9ydFZpZGVvVXBsb2FkEiMua2FudGFoZS52MS5BYm9ydFZpZGVvVXBsb2FkUmVxdWVzdBokLmthbnRhaGUudjEuQWJvcnRWaWRlb1VwbG9hZFJlc3BvbnNlQqcBCg5jb20ua2FudGFoZS52MUILVXBsb2FkUHJvdG9QAVo/Z2l0aHViLmNvbS9hbmRyZXdsb2FibGUva2FudGFoZS9zZXJ2ZXIvZ2VuL2thbnRhaGUvdjE7a2FudGFoZXYxogIDS1hYqgIKS2FudGFoZS5WMcoCCkthbnRhaGVcVjHiAhZLYW50YWhlXFYxXEdQQk1ldGFkYXRh6gILS2FudGFoZTo6VjFiBnByb3RvMw", [file_kantahe_v1_common]);
 
 /**
  * The original filename (its leading digits become the song number) and the file bytes (at most the configured limit).
@@ -68,6 +68,199 @@ export const UploadSongResponseSchema: GenMessage<UploadSongResponse> = /*@__PUR
   messageDesc(file_kantahe_v1_upload, 1);
 
 /**
+ * The original filename and the size of the whole file in bytes.
+ *
+ * @generated from message kantahe.v1.BeginVideoUploadRequest
+ */
+export type BeginVideoUploadRequest = Message<"kantahe.v1.BeginVideoUploadRequest"> & {
+  /**
+   * @generated from field: string filename = 1;
+   */
+  filename: string;
+
+  /**
+   * @generated from field: int64 size_bytes = 2;
+   */
+  sizeBytes: bigint;
+};
+
+/**
+ * Describes the message kantahe.v1.BeginVideoUploadRequest.
+ * Use `create(BeginVideoUploadRequestSchema)` to create a new message.
+ */
+export const BeginVideoUploadRequestSchema: GenMessage<BeginVideoUploadRequest> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_upload, 2);
+
+/**
+ * upload_id names the upload in the next calls; chunk_size is the largest chunk the server accepts.
+ *
+ * @generated from message kantahe.v1.BeginVideoUploadResponse
+ */
+export type BeginVideoUploadResponse = Message<"kantahe.v1.BeginVideoUploadResponse"> & {
+  /**
+   * @generated from field: string upload_id = 1;
+   */
+  uploadId: string;
+
+  /**
+   * @generated from field: int32 chunk_size = 2;
+   */
+  chunkSize: number;
+
+  /**
+   * @generated from field: int64 received = 3;
+   */
+  received: bigint;
+
+  /**
+   * @generated from field: kantahe.v1.UploadStatus status = 4;
+   */
+  status: UploadStatus;
+
+  /**
+   * @generated from field: string reason = 5;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message kantahe.v1.BeginVideoUploadResponse.
+ * Use `create(BeginVideoUploadResponseSchema)` to create a new message.
+ */
+export const BeginVideoUploadResponseSchema: GenMessage<BeginVideoUploadResponse> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_upload, 3);
+
+/**
+ * The bytes at offset of the file; offset must equal the bytes received so far.
+ *
+ * @generated from message kantahe.v1.UploadVideoChunkRequest
+ */
+export type UploadVideoChunkRequest = Message<"kantahe.v1.UploadVideoChunkRequest"> & {
+  /**
+   * @generated from field: string upload_id = 1;
+   */
+  uploadId: string;
+
+  /**
+   * @generated from field: int64 offset = 2;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: bytes content = 3;
+   */
+  content: Uint8Array;
+};
+
+/**
+ * Describes the message kantahe.v1.UploadVideoChunkRequest.
+ * Use `create(UploadVideoChunkRequestSchema)` to create a new message.
+ */
+export const UploadVideoChunkRequestSchema: GenMessage<UploadVideoChunkRequest> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_upload, 4);
+
+/**
+ * The bytes received so far.
+ *
+ * @generated from message kantahe.v1.UploadVideoChunkResponse
+ */
+export type UploadVideoChunkResponse = Message<"kantahe.v1.UploadVideoChunkResponse"> & {
+  /**
+   * @generated from field: int64 received = 1;
+   */
+  received: bigint;
+};
+
+/**
+ * Describes the message kantahe.v1.UploadVideoChunkResponse.
+ * Use `create(UploadVideoChunkResponseSchema)` to create a new message.
+ */
+export const UploadVideoChunkResponseSchema: GenMessage<UploadVideoChunkResponse> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_upload, 5);
+
+/**
+ * The upload to finish.
+ *
+ * @generated from message kantahe.v1.CompleteVideoUploadRequest
+ */
+export type CompleteVideoUploadRequest = Message<"kantahe.v1.CompleteVideoUploadRequest"> & {
+  /**
+   * @generated from field: string upload_id = 1;
+   */
+  uploadId: string;
+};
+
+/**
+ * Describes the message kantahe.v1.CompleteVideoUploadRequest.
+ * Use `create(CompleteVideoUploadRequestSchema)` to create a new message.
+ */
+export const CompleteVideoUploadRequestSchema: GenMessage<CompleteVideoUploadRequest> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_upload, 6);
+
+/**
+ * status ADDED carries the video, REJECTED carries the reason, DUPLICATE carries the existing video.
+ *
+ * @generated from message kantahe.v1.CompleteVideoUploadResponse
+ */
+export type CompleteVideoUploadResponse = Message<"kantahe.v1.CompleteVideoUploadResponse"> & {
+  /**
+   * @generated from field: kantahe.v1.UploadStatus status = 1;
+   */
+  status: UploadStatus;
+
+  /**
+   * @generated from field: kantahe.v1.Video video = 2;
+   */
+  video?: Video | undefined;
+
+  /**
+   * @generated from field: string reason = 3;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message kantahe.v1.CompleteVideoUploadResponse.
+ * Use `create(CompleteVideoUploadResponseSchema)` to create a new message.
+ */
+export const CompleteVideoUploadResponseSchema: GenMessage<CompleteVideoUploadResponse> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_upload, 7);
+
+/**
+ * The upload to throw away.
+ *
+ * @generated from message kantahe.v1.AbortVideoUploadRequest
+ */
+export type AbortVideoUploadRequest = Message<"kantahe.v1.AbortVideoUploadRequest"> & {
+  /**
+   * @generated from field: string upload_id = 1;
+   */
+  uploadId: string;
+};
+
+/**
+ * Describes the message kantahe.v1.AbortVideoUploadRequest.
+ * Use `create(AbortVideoUploadRequestSchema)` to create a new message.
+ */
+export const AbortVideoUploadRequestSchema: GenMessage<AbortVideoUploadRequest> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_upload, 8);
+
+/**
+ * Nothing to report.
+ *
+ * @generated from message kantahe.v1.AbortVideoUploadResponse
+ */
+export type AbortVideoUploadResponse = Message<"kantahe.v1.AbortVideoUploadResponse"> & {
+};
+
+/**
+ * Describes the message kantahe.v1.AbortVideoUploadResponse.
+ * Use `create(AbortVideoUploadResponseSchema)` to create a new message.
+ */
+export const AbortVideoUploadResponseSchema: GenMessage<AbortVideoUploadResponse> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_upload, 9);
+
+/**
  * Outcome of one upload.
  *
  * @generated from enum kantahe.v1.UploadStatus
@@ -115,6 +308,47 @@ export const UploadService: GenService<{
     methodKind: "unary";
     input: typeof UploadSongRequestSchema;
     output: typeof UploadSongResponseSchema;
+  },
+  /**
+   * Admin only. Starts, or resumes, the upload of one background video: a video is too big for one message, so it goes up in chunks of
+   * unary calls (D3). REJECTED with a reason when the name, the size or the limit is refused; received > 0 when an earlier upload of the same file by the same admin is resumed.
+   *
+   * @generated from rpc kantahe.v1.UploadService.BeginVideoUpload
+   */
+  beginVideoUpload: {
+    methodKind: "unary";
+    input: typeof BeginVideoUploadRequestSchema;
+    output: typeof BeginVideoUploadResponseSchema;
+  },
+  /**
+   * Admin only. One chunk of at most 4 MiB at the offset the server expects next (INVALID_ARGUMENT otherwise); returns the bytes received so far.
+   *
+   * @generated from rpc kantahe.v1.UploadService.UploadVideoChunk
+   */
+  uploadVideoChunk: {
+    methodKind: "unary";
+    input: typeof UploadVideoChunkRequestSchema;
+    output: typeof UploadVideoChunkResponseSchema;
+  },
+  /**
+   * Admin only. Checks the whole file (an MP4 with an H.264 video track) and adds it to the end of the loop; rejections are reported in the response, not as errors.
+   *
+   * @generated from rpc kantahe.v1.UploadService.CompleteVideoUpload
+   */
+  completeVideoUpload: {
+    methodKind: "unary";
+    input: typeof CompleteVideoUploadRequestSchema;
+    output: typeof CompleteVideoUploadResponseSchema;
+  },
+  /**
+   * Admin only. Throws away what was received of an unfinished upload.
+   *
+   * @generated from rpc kantahe.v1.UploadService.AbortVideoUpload
+   */
+  abortVideoUpload: {
+    methodKind: "unary";
+    input: typeof AbortVideoUploadRequestSchema;
+    output: typeof AbortVideoUploadResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_kantahe_v1_upload, 0);

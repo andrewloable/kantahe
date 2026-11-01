@@ -40,6 +40,22 @@ describe('provideTv', () => {
     b.remove();
   });
 
+  it('the keys stop with the app: no listener stays on the document when its injector is destroyed', () => {
+    const { back } = start({ isTv: true, tvDeviceType: DeviceType.TIZEN });
+    TestBed.resetTestingModule();
+    keydown({ keyCode: 10009 });
+    expect(back).not.toHaveBeenCalled();
+    const a = document.createElement('button');
+    const b = document.createElement('button');
+    document.body.append(a, b);
+    for (const [el, top] of [[a, 0], [b, 80]] as const) el.getBoundingClientRect = () => ({ left: 0, top, width: 100, height: 50, x: 0, y: top, right: 100, bottom: top + 50, toJSON: () => ({}) });
+    a.focus();
+    a.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+    expect(document.activeElement).toBe(a); // the arrow key moved nothing
+    a.remove();
+    b.remove();
+  });
+
   it('on the web build: nothing is attached', () => {
     const { back } = start({ isTv: false, tvDeviceType: DeviceType.UNSPECIFIED });
     expect(document.documentElement.classList.contains('tv')).toBe(false);

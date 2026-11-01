@@ -1,3 +1,5 @@
+/// <reference types="node" />
+import { readFileSync } from 'node:fs';
 import { zipSync } from 'fflate';
 import { extractSongs, ZipEntry } from './zip';
 
@@ -111,5 +113,24 @@ describe('extractSongs', () => {
 
   it('an empty archive gives no songs', async () => {
     expect(await all(new File([zipSync({}) as BlobPart], 'empty.zip'))).toEqual([]);
+  });
+
+  it('regression: an entry that claims ZIP64 sizes but has no ZIP64 field is refused, not looped on (fflate before 0.8.3 never returned: GHSA-px8p-9vwx-vf98)', async () => {
+    // a hang cannot be timed out in the page, so a fflate that is too old fails here first
+    const installed = (JSON.parse(readFileSync('node_modules/fflate/package.json', 'utf8')) as { version: string }).version;
+    const [major, minor, patch] = installed.split('.').map(Number);
+    expect(major * 1e6 + minor * 1e3 + patch, `fflate ${installed} is too old`).toBeGreaterThanOrEqual(8003);
+    const name = 'a.kar';
+    const header = new Uint8Array(30 + name.length + 16);
+    const view = new DataView(header.buffer);
+    view.setUint32(0, 0x04034b50, true); // local file header
+    view.setUint16(4, 20, true); // version needed
+    view.setUint32(18, 0xffffffff, true); // compressed size: the ZIP64 marker ...
+    view.setUint32(22, 0xffffffff, true);
+    view.setUint16(26, name.length, true);
+    // ... and no extra field (length 0), so there is no ZIP64 field to read the real size from
+    header.set(enc(name), 30);
+    header.fill(0x78, 30 + name.length);
+    await expect(all(new File([header as BlobPart], 'crafted.zip'))).rejects.toThrow(/damaged or incomplete/i);
   });
 });

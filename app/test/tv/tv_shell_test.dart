@@ -88,4 +88,21 @@ void main() {
       expect(style.side!.resolve({}), isNot(equals(focused)));
     }
   });
+
+  testWidgets('REGRESSION: the remote on a rail destination makes it a solid block with a bold label (the rail only tinted a small pill)', (tester) async {
+    await open(tester);
+    expect(find.byKey(const Key('rail-focus')), findsNothing);
+    Focus.of(tester.element(find.descendant(of: find.byType(NavigationRail), matching: find.text('Queue')))).requestFocus();
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('rail-focus')), findsOneWidget);
+    final label = tester.widget<Text>(find.descendant(of: find.byType(NavigationRail), matching: find.text('Queue')));
+    expect(label.style?.fontWeight, FontWeight.w800);
+    final other = tester.widget<Text>(find.descendant(of: find.byType(NavigationRail), matching: find.text('Library')));
+    expect(other.style?.fontWeight, isNot(FontWeight.w800));
+    final box = tester.widget<DecoratedBox>(find.byKey(const Key('rail-focus'))).decoration as BoxDecoration;
+    final scheme = Theme.of(tester.element(find.byKey(const Key('rail-focus')))).colorScheme;
+    expect(box.color, scheme.inverseSurface);
+    expect(box.boxShadow!.single.color, scheme.surface);
+  });
 }

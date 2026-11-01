@@ -32,13 +32,14 @@ const GetServerInfoResponse$json = {
   '2': [
     {'1': 'version', '3': 1, '4': 1, '5': 9, '10': 'version'},
     {'1': 'setup_required', '3': 2, '4': 1, '5': 8, '10': 'setupRequired'},
+    {'1': 'name', '3': 3, '4': 1, '5': 9, '10': 'name'},
   ],
 };
 
 /// Descriptor for `GetServerInfoResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List getServerInfoResponseDescriptor = $convert.base64Decode(
     'ChVHZXRTZXJ2ZXJJbmZvUmVzcG9uc2USGAoHdmVyc2lvbhgBIAEoCVIHdmVyc2lvbhIlCg5zZX'
-    'R1cF9yZXF1aXJlZBgCIAEoCFINc2V0dXBSZXF1aXJlZA==');
+    'R1cF9yZXF1aXJlZBgCIAEoCFINc2V0dXBSZXF1aXJlZBISCgRuYW1lGAMgASgJUgRuYW1l');
 
 @$core.Deprecated('Use setupRequestDescriptor instead')
 const SetupRequest$json = {

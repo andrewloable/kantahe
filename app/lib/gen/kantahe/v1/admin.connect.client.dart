@@ -153,7 +153,7 @@ extension type AdminServiceClient (connect.Transport _transport) {
     );
   }
 
-  /// Admin only. Removes many songs from the list at once. The song files are never deleted.
+  /// Admin only. Removes many songs from the list at once. The song files are never deleted, except with scope BROKEN and delete_files.
   Future<kantahev1admin.RemoveSongsResponse> removeSongs(
     kantahev1admin.RemoveSongsRequest input, {
     connect.Headers? headers,
@@ -163,6 +163,116 @@ extension type AdminServiceClient (connect.Transport _transport) {
   }) {
     return connect.Client(_transport).unary(
       specs.AdminService.removeSongs,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
+  /// Admin only. Re-judges every live song (file missing, MIDI without music, unparsable, a .karmp3 whose audio cannot be read), marks the
+  /// broken ones as failed (they leave every user's lists and searches) and clears the mark of repaired ones. Streams its progress; the
+  /// last message has done = true. FAILED_PRECONDITION when a check is already running.
+  Stream<kantahev1admin.CheckLibraryResponse> checkLibrary(
+    kantahev1admin.CheckLibraryRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).server(
+      specs.AdminService.checkLibrary,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
+  /// Admin only. Lists the songs marked broken, with the reason, ordered by number.
+  Future<kantahev1admin.ListBrokenSongsResponse> listBrokenSongs(
+    kantahev1admin.ListBrokenSongsRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.AdminService.listBrokenSongs,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
+  /// Admin only. The background videos in loop order, each with a signed preview URL (1 hour).
+  Future<kantahev1admin.ListVideosResponse> listVideos(
+    kantahev1admin.ListVideosRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.AdminService.listVideos,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
+  /// Admin only. Renames or enables/disables a video; unset optional fields are left unchanged; NOT_FOUND for an unknown id.
+  Future<kantahev1admin.UpdateVideoResponse> updateVideo(
+    kantahev1admin.UpdateVideoRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.AdminService.updateVideo,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
+  /// Admin only. Sets the loop order; ids must be exactly the existing ids (INVALID_ARGUMENT otherwise).
+  Future<kantahev1admin.ReorderVideosResponse> reorderVideos(
+    kantahev1admin.ReorderVideosRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.AdminService.reorderVideos,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
+  /// Admin only. Removes the video and its file; NOT_FOUND for an unknown id.
+  Future<kantahev1admin.DeleteVideoResponse> deleteVideo(
+    kantahev1admin.DeleteVideoRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.AdminService.deleteVideo,
       input,
       signal: signal,
       headers: headers,

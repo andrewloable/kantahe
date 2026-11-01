@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/core/messages.dart';
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart' hide State;
+import 'package:kantahe/tv/focus.dart';
 
 const _modes = [
   (value: ScoreMode.SCORE_MODE_OFF, label: 'Off', hint: 'No score after a song.'),
@@ -75,7 +76,13 @@ class _ScoreSettingsScreenState extends State<ScoreSettingsScreen> {
               groupValue: _mode,
               onChanged: (m) => _choose(mode: m),
               child: Column(
-                children: [for (final m in _modes) RadioListTile<ScoreMode>(value: m.value, title: Text(m.label), subtitle: Text(m.hint))],
+                children: [
+                  for (final m in _modes)
+                    FocusRing(
+                      radius: 0,
+                      child: RadioListTile<ScoreMode>(value: m.value, title: Text(m.label), subtitle: Text(m.hint)),
+                    ),
+                ],
               ),
             ),
             if (!_canListen)
@@ -89,7 +96,13 @@ class _ScoreSettingsScreenState extends State<ScoreSettingsScreen> {
               groupValue: _level,
               onChanged: (l) => _choose(level: l),
               child: Column(
-                children: [for (final l in _levels) RadioListTile<ScoreLevel>(value: l.value, title: Text(l.label), subtitle: Text(l.hint))],
+                children: [
+                  for (final l in _levels)
+                    FocusRing(
+                      radius: 0,
+                      child: RadioListTile<ScoreLevel>(value: l.value, title: Text(l.label), subtitle: Text(l.hint)),
+                    ),
+                ],
               ),
             ),
           ],

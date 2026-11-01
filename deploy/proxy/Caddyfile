@@ -7,7 +7,7 @@ karaoke.example.com {
 	}
 
 	reverse_proxy 127.0.0.1:8080 {
-		# Send every chunk of a streaming response (WatchState, WaitCodeLogin) at once instead of buffering.
+		# Send every chunk of a streaming response (WatchState, WaitCodeLogin, CheckLibrary) at once instead of buffering.
 		flush_interval -1
 	}
 }

@@ -100,7 +100,12 @@ import { CatalogService, SearchSongsRequest, SearchSongsResponseSchema } from '.
 import {
   DeleteSongResponseSchema,
   GetServerSettingsResponseSchema,
+  BrokenSongSchema,
+  CheckLibraryResponseSchema,
+  ListBrokenSongsRequest,
+  ListBrokenSongsResponseSchema,
   RemoveScope,
+  RemoveSongsRequest,
   RemoveSongsResponseSchema,
   RescanResponseSchema,
   ServerSettingsSchema,
@@ -122,8 +127,9 @@ export interface UploadReply {
 }
 
 /** An in-memory server for song administration, upload and settings. */
-export function fakeAdminSongs(seed: { songs?: Song[]; maxUploadBytes?: number; scoreSeconds?: number; pageSize?: number } = {}) {
+export function fakeAdminSongs(seed: { songs?: Song[]; broken?: { song: Song; reason: string }[]; maxUploadBytes?: number; scoreSeconds?: number; pageSize?: number } = {}) {
   const songs = [...(seed.songs ?? [])];
+  let broken = [...(seed.broken ?? [])];
   const calls = {
     search: [] as SearchSongsRequest[],
     upload: [] as UploadSongRequest[],
@@ -132,11 +138,15 @@ export function fakeAdminSongs(seed: { songs?: Song[]; maxUploadBytes?: number; 
     /** keepFile of each DeleteSong, in the order of remove. */
     removeKeep: [] as boolean[],
     removeSongs: [] as RemoveScope[],
+    /** The whole RemoveSongs request, scope and deleteFiles. */
+    removeRequests: [] as RemoveSongsRequest[],
+    checks: 0,
+    listBroken: [] as ListBrokenSongsRequest[],
     rescan: 0,
     settings: [] as UpdateServerSettingsRequest[],
     getSettings: 0,
   };
-  let settings = { maxUploadBytes: BigInt(seed.maxUploadBytes ?? 50 * 1024 * 1024), scoreSeconds: seed.scoreSeconds ?? 6 };
+  let settings = { maxUploadBytes: BigInt(seed.maxUploadBytes ?? 50 * 1024 * 1024), scoreSeconds: seed.scoreSeconds ?? 6, maxVideoBytes: BigInt(500 * 1024 * 1024) };
   const concurrency = { now: 0, max: 0, startedAfterFinished: [] as boolean[] };
   const fail: { next?: ConnectError } = {};
   const maybeFail = () => {
@@ -152,6 +162,8 @@ export function fakeAdminSongs(seed: { songs?: Song[]; maxUploadBytes?: number; 
     ) => UploadReply | Promise<UploadReply>,
     rescan: { added: 3, updated: 1, removed: 0, failed: 2 },
     removeSongs: { removed: 5 },
+    /** What CheckLibrary streams: the songs checked at each step (the last one is the total) and how many are broken at the end. */
+    check: { steps: [2, 4], broken: 1 },
   };
   const transport = createRouterTransport(({ service }) => {
     service(UploadService, {
@@ -195,12 +207,41 @@ export function fakeAdminSongs(seed: { songs?: Song[]; maxUploadBytes?: number; 
         maybeFail();
         const i = songs.findIndex((s) => s.number === req.number);
         if (i >= 0) songs.splice(i, 1);
+        broken = broken.filter((b) => b.song.number !== req.number);
         return create(DeleteSongResponseSchema, {});
       },
       removeSongs(req) {
         calls.removeSongs.push(req.scope);
+        calls.removeRequests.push(req);
         maybeFail();
+        if (req.scope === RemoveScope.BROKEN) {
+          const removed = broken.length;
+          broken = [];
+          return create(RemoveSongsResponseSchema, { removed, filesDeleted: req.deleteFiles ? removed : 0, filesFailed: 0 });
+        }
         return create(RemoveSongsResponseSchema, handlers.removeSongs);
+      },
+      async *checkLibrary() {
+        calls.checks++;
+        maybeFail();
+        const total = handlers.check.steps[handlers.check.steps.length - 1];
+        for (const checked of handlers.check.steps) {
+          await Promise.resolve();
+          yield create(CheckLibraryResponseSchema, { checked, total, broken: checked === total ? handlers.check.broken : 0 });
+        }
+        yield create(CheckLibraryResponseSchema, { checked: total, total, broken: handlers.check.broken, done: true });
+      },
+      listBrokenSongs(req) {
+        calls.listBroken.push(req);
+        maybeFail();
+        const size = req.pageSize || seed.pageSize || 2;
+        const start = req.pageToken ? Number(req.pageToken) : 0;
+        const next = start + size < broken.length ? String(start + size) : '';
+        return create(ListBrokenSongsResponseSchema, {
+          songs: broken.slice(start, start + size).map((b) => create(BrokenSongSchema, b)),
+          nextPageToken: next,
+          total: broken.length,
+        });
       },
       rescan() {
         calls.rescan++;
@@ -215,7 +256,7 @@ export function fakeAdminSongs(seed: { songs?: Song[]; maxUploadBytes?: number; 
       updateServerSettings(req) {
         calls.settings.push(req);
         maybeFail();
-        settings = { maxUploadBytes: req.maxUploadBytes ?? settings.maxUploadBytes, scoreSeconds: req.scoreSeconds ?? settings.scoreSeconds };
+        settings = { maxUploadBytes: req.maxUploadBytes ?? settings.maxUploadBytes, scoreSeconds: req.scoreSeconds ?? settings.scoreSeconds, maxVideoBytes: req.maxVideoBytes ?? settings.maxVideoBytes };
         return create(UpdateServerSettingsResponseSchema, { settings: create(ServerSettingsSchema, settings) });
       },
     });
@@ -224,6 +265,10 @@ export function fakeAdminSongs(seed: { songs?: Song[]; maxUploadBytes?: number; 
     transport,
     calls,
     songs,
+    /** Marks songs as broken from now on (what a check finds). */
+    setBroken(list: { song: Song; reason: string }[]) {
+      broken = [...list];
+    },
     handlers,
     concurrency,
     failNext(e: ConnectError) {

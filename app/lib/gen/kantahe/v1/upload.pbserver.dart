@@ -23,11 +23,27 @@ export 'upload.pb.dart';
 abstract class UploadServiceBase extends $pb.GeneratedService {
   $async.Future<$1.UploadSongResponse> uploadSong(
       $pb.ServerContext ctx, $1.UploadSongRequest request);
+  $async.Future<$1.BeginVideoUploadResponse> beginVideoUpload(
+      $pb.ServerContext ctx, $1.BeginVideoUploadRequest request);
+  $async.Future<$1.UploadVideoChunkResponse> uploadVideoChunk(
+      $pb.ServerContext ctx, $1.UploadVideoChunkRequest request);
+  $async.Future<$1.CompleteVideoUploadResponse> completeVideoUpload(
+      $pb.ServerContext ctx, $1.CompleteVideoUploadRequest request);
+  $async.Future<$1.AbortVideoUploadResponse> abortVideoUpload(
+      $pb.ServerContext ctx, $1.AbortVideoUploadRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
       case 'UploadSong':
         return $1.UploadSongRequest();
+      case 'BeginVideoUpload':
+        return $1.BeginVideoUploadRequest();
+      case 'UploadVideoChunk':
+        return $1.UploadVideoChunkRequest();
+      case 'CompleteVideoUpload':
+        return $1.CompleteVideoUploadRequest();
+      case 'AbortVideoUpload':
+        return $1.AbortVideoUploadRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -38,6 +54,15 @@ abstract class UploadServiceBase extends $pb.GeneratedService {
     switch (methodName) {
       case 'UploadSong':
         return uploadSong(ctx, request as $1.UploadSongRequest);
+      case 'BeginVideoUpload':
+        return beginVideoUpload(ctx, request as $1.BeginVideoUploadRequest);
+      case 'UploadVideoChunk':
+        return uploadVideoChunk(ctx, request as $1.UploadVideoChunkRequest);
+      case 'CompleteVideoUpload':
+        return completeVideoUpload(
+            ctx, request as $1.CompleteVideoUploadRequest);
+      case 'AbortVideoUpload':
+        return abortVideoUpload(ctx, request as $1.AbortVideoUploadRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }

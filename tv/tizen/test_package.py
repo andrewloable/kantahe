@@ -43,9 +43,17 @@ class ConfigXml(unittest.TestCase):
         self.assertEqual(w.find(W + "content").get("src"), "index.html")
         self.assertEqual(w.find(W + "name").text, "Kantahe")
 
-    def test_privileges_are_internet_and_remote_keys_only(self):
+    def test_privileges_are_internet_remote_keys_and_the_tvs_own_address(self):
+        # network.public: webapis.network.getIp(), with which the app looks for servers on the TV's network
         names = {p.get("name") for p in config().findall(T + "privilege")}
-        self.assertEqual(names, {"http://tizen.org/privilege/internet", "http://tizen.org/privilege/tv.inputdevice"})
+        self.assertEqual(
+            names,
+            {
+                "http://tizen.org/privilege/internet",
+                "http://tizen.org/privilege/tv.inputdevice",
+                "http://developer.samsung.com/privilege/network.public",
+            },
+        )
 
     def test_settings(self):
         s = config().find(T + "setting")
@@ -105,7 +113,12 @@ class BuildScript(unittest.TestCase):
             for name in ("index.html", "config.xml", "icon.png"):
                 self.assertTrue((stage / name).is_file(), name)
             self.assertEqual((stage / "config.xml").read_bytes(), (HERE / "config.xml").read_bytes())
-            self.assertIn('<base href="./index.html"', (stage / "index.html").read_text())
+            index = (stage / "index.html").read_text()
+            self.assertIn('<base href="./index.html"', index)
+            # Samsung's webapis (getIp) must be loaded before the app's own scripts
+            webapis = index.find('<script src="$WEBAPIS/webapis/webapis.js"></script>')
+            self.assertGreaterEqual(webapis, 0, "webapis.js is not in the staged index.html")
+            self.assertLess(webapis, index.find("main-"), "webapis.js must come before the app")
             self.assertTrue(list(stage.glob("main-*.js")) or list(stage.glob("chunk-*.js")))
             self.assertFalse(list(stage.glob("*.wgt")))
             self.assertFalse(list(stage.rglob("*.map")), "no source maps in a package")

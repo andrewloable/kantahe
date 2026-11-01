@@ -64,6 +64,16 @@ describe('QueuePage', () => {
     expect(el.textContent).toContain('The queue is empty');
   });
 
+  it('regression: after a few seconds without a state it says that the server cannot be reached, and the state replaces that message', async () => {
+    const { el, server, settle } = await setup();
+    await settle(7000);
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Could not reach the server');
+    server.push(stateOf(BASE));
+    await settle();
+    expect(el.textContent).not.toContain('Could not reach the server');
+    expect(el.querySelectorAll('.queue li').length).toBe(3);
+  });
+
   it('shows that it is connecting until the first state arrives', async () => {
     const { el, server, settle } = await setup();
     expect(el.querySelector('[role="status"]')?.textContent).toContain('Connecting');

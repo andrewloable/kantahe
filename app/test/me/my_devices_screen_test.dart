@@ -5,6 +5,7 @@ import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 import 'package:kantahe/me/my_devices_screen.dart';
 
 import 'fakes.dart';
+import '../tv/ring_helper.dart';
 
 Device dev(
   String id,
@@ -14,7 +15,19 @@ Device dev(
   bool isCaller = false,
   MidiMode mode = MidiMode.MIDI_MODE_AUTO,
   MidiMode effective = MidiMode.MIDI_MODE_FULL,
-}) => Device(id: id, name: name, type: type, online: online, isCaller: isCaller, midiMode: mode, effectiveMidiMode: effective);
+  BackgroundMode background = BackgroundMode.BACKGROUND_MODE_AUTO,
+  bool effectiveBackground = true,
+}) => Device(
+  id: id,
+  name: name,
+  type: type,
+  online: online,
+  isCaller: isCaller,
+  midiMode: mode,
+  effectiveMidiMode: effective,
+  backgroundMode: background,
+  effectiveBackground: effectiveBackground,
+);
 
 Future<MeRig> open(WidgetTester tester, List<Device> devices, {String me = 'me'}) async {
   final r = MeRig(deviceId: me);
@@ -25,7 +38,18 @@ Future<MeRig> open(WidgetTester tester, List<Device> devices, {String me = 'me'}
 }
 
 Future<void> choose(WidgetTester tester, String device, String label) async {
+  await tester.ensureVisible(find.byKey(Key('mode-$device')));
+  await tester.pumpAndSettle();
   await tester.tap(find.byKey(Key('mode-$device')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(label).last);
+  await tester.pumpAndSettle();
+}
+
+Future<void> chooseBackground(WidgetTester tester, String device, String label) async {
+  await tester.ensureVisible(find.byKey(Key('background-$device')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(Key('background-$device')));
   await tester.pumpAndSettle();
   await tester.tap(find.text(label).last);
   await tester.pumpAndSettle();
@@ -87,9 +111,61 @@ void main() {
     expect(shows('Chooses by the memory of the device'), isTrue); // Auto again
   });
 
+  group('background video', () {
+    testWidgets('Auto, On, Off with an explanation and what the server resolved', (tester) async {
+      await open(tester, [dev('me', 'Phone', isCaller: true, background: BackgroundMode.BACKGROUND_MODE_OFF, effectiveBackground: false)]);
+      expect(shows('A plain background behind the lyrics'), isTrue);
+      expect(shows('Now using: Off'), isTrue);
+      await tester.tap(find.byKey(const Key('background-me')));
+      await tester.pumpAndSettle();
+      for (final l in ['Auto', 'On', 'Off']) {
+        expect(find.text(l), findsWidgets, reason: l);
+      }
+    });
+
+    testWidgets('an unset mode from an older server counts as Auto', (tester) async {
+      await open(tester, [dev('me', 'Phone', isCaller: true, background: BackgroundMode.BACKGROUND_MODE_UNSPECIFIED)]);
+      expect(shows('On, unless this device is weak'), isTrue);
+    });
+
+    testWidgets('changing it sends SetBackgroundMode for that device and not the MIDI call', (tester) async {
+      final r = await open(tester, [dev('me', 'Phone', isCaller: true), dev('tv', 'TV')]);
+      r.server.onBackground = (req) => dev(req.deviceId, 'TV', background: req.mode, effectiveBackground: true);
+      await chooseBackground(tester, 'tv', 'Off');
+      expect(r.server.backgrounds.single.deviceId, 'tv');
+      expect(r.server.backgrounds.single.mode, BackgroundMode.BACKGROUND_MODE_OFF);
+      expect(r.server.modes, isEmpty);
+      expect(shows('A plain background behind the lyrics'), isTrue);
+    });
+
+    testWidgets('"Now using" follows the live state', (tester) async {
+      final r = await open(tester, [dev('me', 'Phone', isCaller: true)]);
+      r.setState(stateOf(devices: [device('me', 'Phone').deepCopy()..effectiveBackground = false]));
+      await tester.pump();
+      expect(shows('Now using: Off'), isTrue);
+    });
+
+    testWidgets('a refused change is shown and the choice goes back', (tester) async {
+      final r = await open(tester, [dev('me', 'Phone', isCaller: true)]);
+      r.server.onBackground = (_) => throw ConnectException(Code.unavailable, 'down');
+      await chooseBackground(tester, 'me', 'Off');
+      expect(shows('Could not reach the server'), isTrue);
+      expect(shows('On, unless this device is weak'), isTrue); // Auto again
+    });
+
+    testWidgets("the remote's focus on the background video of a device shows the ring", (tester) async {
+      await open(tester, [dev('me', 'Phone', isCaller: true)]);
+      final dropdown = find.byKey(const Key('background-me'));
+      await expectNoRingWhenNotFocused(tester, dropdown);
+      await expectRingOnFocus(tester, dropdown);
+    });
+  });
+
   group('sign out', () {
     testWidgets('signing out another device asks first, then signs it out and refreshes the list', (tester) async {
       final r = await open(tester, [dev('me', 'Phone', isCaller: true), dev('tv', 'Living room TV')]);
+      await tester.ensureVisible(find.byTooltip('Sign out Living room TV')); // the second card is below the window now
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Sign out Living room TV'));
       await tester.pumpAndSettle();
       expect(shows('Sign out "Living room TV"?'), isTrue);
@@ -133,5 +209,12 @@ void main() {
       expect(shows('Could not reach the server'), isTrue);
       expect(find.text('TV'), findsOneWidget);
     });
+  });
+
+  testWidgets('the remote\'s focus on the MIDI mode of a device shows the ring', (tester) async {
+    await open(tester, [dev('me', 'Phone', isCaller: true)]);
+    final dropdown = find.byKey(const Key('mode-me'));
+    await expectNoRingWhenNotFocused(tester, dropdown);
+    await expectRingOnFocus(tester, dropdown);
   });
 }

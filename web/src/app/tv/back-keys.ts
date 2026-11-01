@@ -1,4 +1,4 @@
-import { inject, Injectable, InjectionToken } from '@angular/core';
+import { DestroyRef, inject, Injectable, InjectionToken } from '@angular/core';
 
 /** What the Back key does; tests replace it. */
 export interface BackActions {
@@ -68,6 +68,11 @@ export class BackKeys {
     else if (this.actions.canGoBack()) this.actions.back();
     else this.actions.exit();
   };
+
+  constructor() {
+    // the listener is on the page's document, which outlives the injector in tests: no stray listener may stay behind
+    inject(DestroyRef).onDestroy(() => this.detach());
+  }
 
   attach(doc: Document): void {
     this.detach();

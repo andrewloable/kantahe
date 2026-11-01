@@ -158,6 +158,7 @@ describe('ScoreScreenComponent', () => {
   });
 
   it('a score whose time is long past does not show at all', async () => {
+    const random = vi.spyOn(Math, 'random');
     const { show, el, played } = setup();
     vi.setSystemTime(0);
     await vi.advanceTimersByTimeAsync(60_000);
@@ -165,7 +166,7 @@ describe('ScoreScreenComponent', () => {
     await vi.advanceTimersByTimeAsync(5000); // long enough for a roll and its fanfare
     expect(el.querySelector('.overlay')).toBeNull();
     expect(played).toEqual([]);
-    expect(vi.getTimerCount()).toBe(0);
+    expect(random).not.toHaveBeenCalled(); // no roll was started
   });
 
   it('clearing the score closes the overlay and stops the fanfare', async () => {
@@ -177,23 +178,43 @@ describe('ScoreScreenComponent', () => {
     expect(played[0].audio.pause).toHaveBeenCalled();
   });
 
+  // The timers are checked by what they would do if they were left running: the roll draws a random number, the land
+  // timer starts the fanfare, the close timer ends the overlay. vi.getTimerCount() would also count the timers of
+  // anything else that runs in the same page (this suite shares one document and one fake clock with other specs).
   it('clearing the score during the roll stops the roll and plays nothing', async () => {
+    const random = vi.spyOn(Math, 'random');
     const { show, pass, played } = setup();
     await show(score());
     await pass(500);
     await show(undefined);
+    const draws = random.mock.calls.length;
     await pass(3000);
     expect(played).toEqual([]);
-    expect(vi.getTimerCount()).toBe(0);
+    expect(random.mock.calls.length).toBe(draws);
   });
 
-  it('destroying the component stops the fanfare and the timers', async () => {
+  it('destroying the component during the roll stops the roll, the landing and the closing', async () => {
+    const random = vi.spyOn(Math, 'random');
+    const { fixture, show, pass, played } = setup();
+    await show(score());
+    await pass(500);
+    fixture.destroy();
+    const draws = random.mock.calls.length;
+    await pass(60_000); // far past the landing (1.4 s) and the closing (score end + 2.6 s)
+    expect(random.mock.calls.length).toBe(draws); // the roll interval is gone
+    expect(played).toEqual([]); // the landing timer is gone
+    expect(fixture.componentInstance.open()).toBe(true); // the closing timer is gone: it would have ended the overlay
+  });
+
+  it('destroying the component after the landing stops the fanfare and the closing', async () => {
     const { fixture, show, pass, played } = setup();
     await show(score());
     await pass(1400);
     fixture.destroy();
     expect(played[0].audio.pause).toHaveBeenCalled();
-    expect(vi.getTimerCount()).toBe(0);
+    await pass(60_000);
+    expect(fixture.componentInstance.open()).toBe(true);
+    expect(played.length).toBe(1);
   });
 
   it('a new score starts a new roll and stops the old fanfare', async () => {

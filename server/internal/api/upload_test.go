@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 
 	kantahev1 "github.com/andrewloable/kantahe/server/gen/kantahe/v1"
+	"github.com/andrewloable/kantahe/server/internal/fsutil"
 	"github.com/andrewloable/kantahe/server/internal/testfix"
 )
 
@@ -40,6 +41,41 @@ func (e *testEnv) songRows(t *testing.T) int {
 
 func goodKAR(title, artist string) []byte {
 	return testfix.KAR(title, artist, []testfix.Syllable{{Tick: 0, Text: "/Hel"}, {Tick: 240, Text: "lo "}})
+}
+
+// A song file that is open (a player streaming it) cannot be replaced on Windows. Its name is the SHA-256 of its content, so a second
+// upload of the same bytes has nothing to replace it with: the file stays, no rename is tried, and the answer is DUPLICATE.
+func TestUploadOfTheSameSongWhileAReaderHasTheFileOpenIsADuplicateNotAnError(t *testing.T) {
+	a := newAdminEnv(t)
+	body := goodKAR("Song", "Singer")
+	if res, err := a.uploadAs(a.admin.Token, "a.kar", body); err != nil || res.Status != kantahev1.UploadStatus_UPLOAD_STATUS_ADDED {
+		t.Fatalf("first upload: %+v %v", res, err)
+	}
+	files := a.songFiles(t)
+	if len(files) != 1 {
+		t.Fatalf("files = %v", files)
+	}
+	reader, err := os.Open(filepath.Join(a.dataDir, "songs", files[0]))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	renames := 0
+	t.Cleanup(fsutil.SetHooksForTest(fsutil.Hooks{Rename: func(oldpath, newpath string) error {
+		renames++
+		return os.Rename(oldpath, newpath)
+	}}))
+
+	res, err := a.uploadAs(a.admin.Token, "b.kar", body)
+	if err != nil || res.Status != kantahev1.UploadStatus_UPLOAD_STATUS_DUPLICATE {
+		t.Fatalf("second upload: %+v %v, want DUPLICATE", res, err)
+	}
+	if renames != 0 {
+		t.Fatalf("%d renames: the existing file must be kept, not replaced", renames)
+	}
+	if got := a.songFiles(t); len(got) != 1 || got[0] != files[0] {
+		t.Fatalf("files = %v, want only %v (no temporary file left)", got, files[0])
+	}
 }
 
 func TestUploadRequiresUploader(t *testing.T) {

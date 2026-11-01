@@ -77,6 +77,29 @@ func waitReady(t *testing.T, e *testEnv, number string) {
 	t.Fatalf("the SoundFont of %s never became ready", number)
 }
 
+func TestPrepareDoesNotQueueABuildThatFinishedMeanwhile(t *testing.T) {
+	e, _ := newEnv(t, fullBank(t)) // no runner: the test plays the part of the other request
+	e.addMIDISong(t, "00001", songWithPrograms())
+	f := e.svc.Fonts()
+	j, err := f.lookup(context.Background(), "00001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.afterStat = func() { // another request builds the file after this one found it missing and before it takes the lock
+		if err := f.build(j); err != nil {
+			t.Error(err)
+		}
+	}
+	f.Prepare("00001")
+	f.afterStat = nil
+	if n := len(f.queue); n != 0 {
+		t.Fatalf("%d build(s) of a finished SoundFont were queued", n)
+	}
+	if n := f.builds.Load(); n != 1 {
+		t.Fatalf("builds = %d, want 1", n)
+	}
+}
+
 func TestPrepareBuildsOnce(t *testing.T) {
 	e, _ := newEnv(t, fullBank(t))
 	startRunner(t, e)

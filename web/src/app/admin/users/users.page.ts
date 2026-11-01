@@ -22,28 +22,28 @@ type Role = 'admin' | 'uploader' | 'disabled';
     @if (loadError()) {
       <p class="error" role="alert">{{ loadError() }} <button type="button" (click)="load()">Try again</button></p>
     }
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">Email</th>
-          <th scope="col">Name</th>
-          <th scope="col">Admin</th>
-          <th scope="col">Uploader</th>
-          <th scope="col">Disabled</th>
-          <th scope="col">Account</th>
-          <th scope="col">Actions</th>
+    <table role="table">
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col" role="columnheader">Email</th>
+          <th scope="col" role="columnheader">Name</th>
+          <th scope="col" role="columnheader">Admin</th>
+          <th scope="col" role="columnheader">Uploader</th>
+          <th scope="col" role="columnheader">Disabled</th>
+          <th scope="col" role="columnheader">Account</th>
+          <th scope="col" role="columnheader">Actions</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody role="rowgroup">
         @for (u of users(); track u.id) {
-          <tr>
-            <td>{{ u.email }}</td>
-            <td>{{ u.displayName }}</td>
-            <td><input type="checkbox" data-role="admin" [attr.aria-label]="'Admin: ' + u.email" [checked]="u.admin" [disabled]="pending().has(u.id + ':admin')" (change)="toggle(u, 'admin', $event)" /></td>
-            <td><input type="checkbox" data-role="uploader" [attr.aria-label]="'Uploader: ' + u.email" [checked]="u.uploader" [disabled]="pending().has(u.id + ':uploader')" (change)="toggle(u, 'uploader', $event)" /></td>
-            <td><input type="checkbox" data-role="disabled" [attr.aria-label]="'Disabled: ' + u.email" [checked]="u.disabled" [disabled]="pending().has(u.id + ':disabled')" (change)="toggle(u, 'disabled', $event)" /></td>
-            <td>{{ u.mustChangePassword ? 'must change password' : '' }}</td>
-            <td class="actions">
+          <tr role="row">
+            <td role="cell">{{ u.email }}</td>
+            <td role="cell">{{ u.displayName }}</td>
+            <td role="cell"><label class="role"><input type="checkbox" data-role="admin" [attr.aria-label]="'Admin: ' + u.email" [checked]="u.admin" [disabled]="pending().has(u.id + ':admin')" (change)="toggle(u, 'admin', $event)" /><span class="role-name">Admin</span></label></td>
+            <td role="cell"><label class="role"><input type="checkbox" data-role="uploader" [attr.aria-label]="'Uploader: ' + u.email" [checked]="u.uploader" [disabled]="pending().has(u.id + ':uploader')" (change)="toggle(u, 'uploader', $event)" /><span class="role-name">Uploader</span></label></td>
+            <td role="cell"><label class="role"><input type="checkbox" data-role="disabled" [attr.aria-label]="'Disabled: ' + u.email" [checked]="u.disabled" [disabled]="pending().has(u.id + ':disabled')" (change)="toggle(u, 'disabled', $event)" /><span class="role-name">Disabled</span></label></td>
+            <td role="cell">{{ u.mustChangePassword ? 'must change password' : '' }}</td>
+            <td role="cell" class="actions">
               @if (deleting() === u.id) {
                 <label [for]="'confirm-' + u.id">Type {{ u.email }} to delete this user</label>
                 <input [id]="'confirm-' + u.id" type="text" autocomplete="off" [value]="typed()" (input)="typed.set(value($event))" />
@@ -80,6 +80,7 @@ type Role = 'admin' | 'uploader' | 'disabled';
     :host {
       display: block;
       overflow-x: auto;
+      container-type: inline-size;
     }
     table {
       width: 100%;
@@ -100,6 +101,60 @@ type Role = 'admin' | 'uploader' | 'disabled';
     input[type='checkbox'] {
       width: 1.5rem;
       height: 1.5rem;
+    }
+    /* the checkbox and its name are one 44 px target; in the table the column header names it, so the name is only for screen readers there */
+    .role {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-height: 2.75rem;
+      margin: 0;
+    }
+    .role-name {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    /* on a phone each user is a block: address, name, the three roles, the state, then the buttons */
+    /* the width of the page's own box, in rem: with a larger text size a table that needs 44rem no longer fits, and the blocks come sooner */
+    @container (max-width: 44rem) {
+      :host {
+        overflow-x: visible;
+      }
+      table,
+      tbody,
+      tr,
+      td {
+        display: block;
+      }
+      thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+      }
+      tr {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--line);
+      }
+      td {
+        padding: 0.15rem 0;
+        border-bottom: 0;
+        overflow-wrap: anywhere;
+      }
+      .role-name {
+        position: static;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        clip-path: none;
+      }
+      td.actions {
+        padding-top: 0.5rem;
+      }
     }
     .notice {
       color: var(--muted);

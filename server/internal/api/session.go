@@ -503,6 +503,43 @@ func (s *SessionServer) SetMidiMode(ctx context.Context, req *connect.Request[ka
 	return connect.NewResponse(&kantahev1.SetMidiModeResponse{Device: pd}), nil
 }
 
+// SetBackgroundMode stores the background video choice of one of the caller's own devices (AUTO, ON or OFF) and returns the device with the
+// value the server resolved from it.
+func (s *SessionServer) SetBackgroundMode(ctx context.Context, req *connect.Request[kantahev1.SetBackgroundModeRequest]) (*connect.Response[kantahev1.SetBackgroundModeResponse], error) {
+	id, err := identity(ctx)
+	if err != nil {
+		return nil, err
+	}
+	m := req.Msg
+	switch m.Mode {
+	case kantahev1.BackgroundMode_BACKGROUND_MODE_AUTO, kantahev1.BackgroundMode_BACKGROUND_MODE_ON, kantahev1.BackgroundMode_BACKGROUND_MODE_OFF:
+	default:
+		return nil, invalidArgument("unknown background video mode")
+	}
+	var found bool
+	err = s.d.DB.WriteTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		found, err = users.SetDeviceBackgroundMode(ctx, tx, id.UserID, m.DeviceId, int(m.Mode))
+		return err
+	})
+	if err != nil {
+		return nil, s.fail("SetBackgroundMode", err)
+	}
+	if !found {
+		return nil, newErr(connect.CodeNotFound, "device not found")
+	}
+	dev, err := users.DeviceByID(ctx, s.d.DB, id.UserID, m.DeviceId)
+	if err != nil {
+		return nil, s.fail("SetBackgroundMode", err)
+	}
+	if err := s.svc.Notify(ctx, id.UserID); err != nil {
+		return nil, s.fail("SetBackgroundMode", err)
+	}
+	pd := toProtoDevice(dev, id.DeviceID, s.d.Modes)
+	pd.Online = s.svc.IsOnline(id.UserID, dev.ID)
+	return connect.NewResponse(&kantahev1.SetBackgroundModeResponse{Device: pd}), nil
+}
+
 const maxMemoryMB = 1 << 20 // 1 TB: anything larger is a bad report
 
 // AddPlaylistToQueue appends every playable song of one of the caller's playlists, in order, in one change.

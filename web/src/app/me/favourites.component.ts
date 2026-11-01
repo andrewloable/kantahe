@@ -14,7 +14,7 @@ import { SongListComponent } from '../library/song-list.component';
     @if (pager.error()) {
       <p class="error" role="alert">{{ pager.error() }} <button type="button" (click)="pager.retry()">Try again</button></p>
     }
-    <app-song-list [songs]="shown()" [hasMore]="pager.hasMore()" [loading]="pager.loading()" emptyText="You have no favourites yet." (more)="more()" />
+    <app-song-list [songs]="shown()" [hasMore]="pager.hasMore()" [loading]="pager.loading()" emptyText="You have no favourites yet." [failed]="!!pager.error()" (more)="more()" />
   `,
 })
 export class FavouritesComponent {

@@ -22,8 +22,22 @@ service AdminService {
   rpc UpdateSong(UpdateSongRequest) returns (UpdateSongResponse);
   // Admin only. Removes the entry and, unless keep_file is set, its file; fails with the reason if the file cannot be deleted.
   rpc DeleteSong(DeleteSongRequest) returns (DeleteSongResponse);
-  // Admin only. Removes many songs from the list at once. The song files are never deleted.
+  // Admin only. Removes many songs from the list at once. The song files are never deleted, except with scope BROKEN and delete_files.
   rpc RemoveSongs(RemoveSongsRequest) returns (RemoveSongsResponse);
+  // Admin only. Re-judges every live song (file missing, MIDI without music, unparsable, a .karmp3 whose audio cannot be read), marks the
+  // broken ones as failed (they leave every user's lists and searches) and clears the mark of repaired ones. Streams its progress; the
+  // last message has done = true. FAILED_PRECONDITION when a check is already running.
+  rpc CheckLibrary(CheckLibraryRequest) returns (stream CheckLibraryResponse);
+  // Admin only. Lists the songs marked broken, with the reason, ordered by number.
+  rpc ListBrokenSongs(ListBrokenSongsRequest) returns (ListBrokenSongsResponse);
+  // Admin only. The background videos in loop order, each with a signed preview URL (1 hour).
+  rpc ListVideos(ListVideosRequest) returns (ListVideosResponse);
+  // Admin only. Renames or enables/disables a video; unset optional fields are left unchanged; NOT_FOUND for an unknown id.
+  rpc UpdateVideo(UpdateVideoRequest) returns (UpdateVideoResponse);
+  // Admin only. Sets the loop order; ids must be exactly the existing ids (INVALID_ARGUMENT otherwise).
+  rpc ReorderVideos(ReorderVideosRequest) returns (ReorderVideosResponse);
+  // Admin only. Removes the video and its file; NOT_FOUND for an unknown id.
+  rpc DeleteVideo(DeleteVideoRequest) returns (DeleteVideoResponse);
   // Admin only. Rescans watched folders and reports the counts.
   rpc Rescan(RescanRequest) returns (RescanResponse);
   // Admin only. Reads the server settings.
@@ -121,16 +135,57 @@ enum RemoveScope {
   REMOVE_SCOPE_ALL = 1;
   // MIDI songs whose file has no audible instrument notes (only lyric timing); they play as silence.
   REMOVE_SCOPE_NO_MUSIC = 2;
+  // Every live song that is marked broken (by CheckLibrary or at import).
+  REMOVE_SCOPE_BROKEN = 3;
 }
 
 // What to remove from the list.
 message RemoveSongsRequest {
   RemoveScope scope = 1;
+  // Also delete the song files (only inside the data and library folders). Allowed only with scope BROKEN; INVALID_ARGUMENT otherwise,
+  // so that ALL and NO_MUSIC keep their promise never to delete a file.
+  bool delete_files = 2;
 }
 
 // How many songs left the list.
 message RemoveSongsResponse {
   int32 removed = 1;
+  // With delete_files: the files that were deleted, and the files that were not (outside the managed folders, or in use); the
+  // songs of the latter are off the list all the same.
+  int32 files_deleted = 2;
+  int32 files_failed = 3;
+}
+
+// Asks nothing.
+message CheckLibraryRequest {}
+
+// Where the check is; every 250 songs and at the end (done = true).
+message CheckLibraryResponse {
+  int32 checked = 1;
+  int32 total = 2;
+  int32 broken = 3;
+  bool done = 4;
+}
+
+// One page of broken songs.
+message ListBrokenSongsRequest {
+  string page_token = 1;
+  // Defaults to 50.
+  int32 page_size = 2;
+}
+
+// A song that cannot be played and why.
+message BrokenSong {
+  Song song = 1;
+  // For people: "the file is missing", "the file contains no music", ...
+  string reason = 2;
+}
+
+// The page, and how many broken songs there are in all.
+message ListBrokenSongsResponse {
+  repeated BrokenSong songs = 1;
+  string next_page_token = 2;
+  int32 total = 3;
 }
 
 // Empty.
@@ -155,19 +210,64 @@ message GetServerSettingsResponse {
   ServerSettings settings = 1;
 }
 
-// Server-wide limits: upload size per file and how long the score screen shows.
+// Server-wide limits and switches: upload size per song, how long the score screen shows, the size limit of one background video and
+// whether the players show the background videos (in the order set, or shuffled on every pass).
 message ServerSettings {
   int64 max_upload_bytes = 1;
   int32 score_seconds = 2;
+  int64 max_video_bytes = 3;
+  bool background_enabled = 4;
+  bool background_shuffle = 5;
 }
 
 // Partial update of the server settings.
 message UpdateServerSettingsRequest {
   optional int64 max_upload_bytes = 1;
   optional int32 score_seconds = 2;
+  optional int64 max_video_bytes = 3;
+  optional bool background_enabled = 4;
+  optional bool background_shuffle = 5;
 }
 
 // The settings after the update.
 message UpdateServerSettingsResponse {
   ServerSettings settings = 1;
 }
+
+// Asks nothing.
+message ListVideosRequest {}
+
+// Every video, in loop order.
+message ListVideosResponse {
+  repeated Video videos = 1;
+}
+
+// The video and what to change; unset fields stay as they are.
+message UpdateVideoRequest {
+  string id = 1;
+  optional string name = 2;
+  optional bool enabled = 3;
+}
+
+// The video after the change.
+message UpdateVideoResponse {
+  Video video = 1;
+}
+
+// All ids, in the new loop order.
+message ReorderVideosRequest {
+  repeated string ids = 1;
+}
+
+// Every video in the new order.
+message ReorderVideosResponse {
+  repeated Video videos = 1;
+}
+
+// The video to remove.
+message DeleteVideoRequest {
+  string id = 1;
+}
+
+// Nothing to report.
+message DeleteVideoResponse {}

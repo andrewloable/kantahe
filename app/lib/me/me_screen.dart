@@ -9,6 +9,7 @@ import 'package:kantahe/me/history_screen.dart';
 import 'package:kantahe/me/my_devices_screen.dart';
 import 'package:kantahe/me/playlists_screen.dart';
 import 'package:kantahe/me/score_settings_screen.dart';
+import 'package:kantahe/tv/focus.dart';
 import 'package:kantahe/upload/upload_screen.dart';
 
 /// The account menu: the user's own pages, uploading (for uploaders), signing a TV in, and signing out.
@@ -36,7 +37,10 @@ class MeScreen extends StatelessWidget {
       builder: (context, _) {
         final user = services.auth.user;
         final mayUpload = user?.uploader == true || user?.admin == true;
-        Widget tile(String title, IconData icon, VoidCallback onTap) => ListTile(leading: Icon(icon), title: Text(title), onTap: onTap);
+        Widget tile(String title, IconData icon, VoidCallback onTap) => FocusRing(
+          radius: 0,
+          child: ListTile(leading: Icon(icon), title: Text(title), onTap: onTap),
+        );
         return Scaffold(
           appBar: AppBar(title: const Text('Me')),
           body: ListView(

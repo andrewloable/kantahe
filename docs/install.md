@@ -13,14 +13,26 @@ HTTPS through a reverse proxy.
 
 You need two folders:
 
-* a **data folder** for the database, uploaded songs and settings (Kantahe creates it);
+* a **data folder** for the database, uploaded songs, background videos and settings (Kantahe creates it). Background videos
+  (optional, uploaded by the admin) are kept in `<data>/videos`: a one-minute 1080p clip at 6 Mbps is about 45 MB, and the largest
+  one allowed is 500 MB unless the admin changes it, so leave some room;
 * optionally a **library folder** with your karaoke files (`.kar`, `.karmp3`), which Kantahe scans.
   Kantahe ships no songs.
 
 Settings are flags or environment variables (`kantahe --help` lists them): `--data`, `--library`
 (repeatable), `--listen` (default `:8080`), `--public-url`, `--trusted-proxies`, `--soundfont`,
-`--score-seconds`, `--render-cache-gb`. Releases are on the project's GitHub releases page, one file per
+`--score-seconds`, `--render-cache-gb`, `--name` and `--discovery`. Releases are on the project's GitHub releases page, one file per
 system named `kantahe-VERSION-OS-ARCH`, with a `SHA256SUMS` file.
+
+## Finding the server from the apps
+
+Kantahe announces itself on the local network (mDNS, service `_kantahe._tcp`) so that the apps can find it without
+being told its address. `--name` (or `KANTAHE_NAME`) is the name the apps show when they find more than one server;
+by default it is "Kantahe on" and the machine's name, and it may be at most 63 bytes. `--discovery=false` (or
+`KANTAHE_DISCOVERY=false`) switches the announcement off. A server that listens on a loopback address only
+(`--listen 127.0.0.1:8080`) is not announced. The announcement uses the port of `--listen`, so a server on another
+port is found too. If the machine has no network interface that can carry multicast, the server logs "LAN discovery is
+off" and goes on serving.
 
 ## Docker
 
@@ -35,6 +47,13 @@ add `:ro` if admins should not be able to delete songs from that folder (uploade
 volume, not to the library). If you mount a host folder for `/data` instead of the volume, it must be
 writable by user 65532. To change flags, repeat the whole command in the compose file, for example to
 add `--public-url`.
+
+**Discovery from Docker.** Announcements do not leave Docker's default bridge network, and a published port such as
+`-p 9000:8080` would announce the wrong port. For the apps to find the server, run the container on the host's
+network (`network_mode: host` on Linux, see the commented lines in `deploy/compose.yaml`) or on a macvlan network. The
+port the program listens on is then the port clients use: change it with `KANTAHE_LISTEN`, not with a `-p` mapping.
+Set `KANTAHE_NAME` as well, because inside a container the machine's name is a container id. On the default network
+nothing breaks: the apps simply find no server and ask for its address.
 
 ## Linux (systemd)
 
@@ -110,6 +129,22 @@ schtasks /Run /TN Kantahe
 ```
 
 Stop it with `schtasks /End /TN Kantahe`. The task runs as SYSTEM too.
+
+**Files in use.** Windows does not let a program delete or replace a file that another program has open, and a virus scanner or
+the search indexer opens every new file for a moment. Kantahe waits a few seconds and tries again, so a short lock is not
+noticed. If an admin deletes a song while it is still being played or scanned, the answer is "the song's file is in use (a player
+or a virus scanner may have it open); try again in a moment", and nothing has changed: try again. The files Kantahe made
+itself (extracted MP3s, per-song SoundFonts, rendered audio) never make an action fail: one that cannot be deleted at once is
+removed within about ten minutes. Leaving the data folder out of the virus scanner is optional and makes all of this quicker. Keep
+the data folder on a local disk, not on a network share: the database needs local file locking.
+
+**Folders and paths.** Windows spells one folder many ways (`D:\Karaoke`, `d:\karaoke\`, a short name such as `D:\KARAOK~1`, a
+link to it), and Kantahe treats them as the same folder: it resolves each watched folder and the data folder to the real place
+before it compares anything, and it deletes song files only inside them. So `--library d:\karaoke` and `--library D:\Karaoke` mean
+the same, and deleting a song is not refused because a folder was typed in another case. A **junction or symbolic link inside a
+watched folder is not followed**: the songs behind it are not listed (the log says so once), and a song file that is reached through
+one is never deleted. To use a folder elsewhere, name it with its own `--library`. Use a local folder for `--data` and for the
+library (not a mapped network drive that can disconnect).
 
 ## First start
 

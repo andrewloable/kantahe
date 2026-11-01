@@ -43,6 +43,7 @@ void main() {
 
     // 1. no address yet: the address screen; an address nobody answers on is refused
     expect(find.text('Connect to your server'), findsOneWidget);
+    await until(tester, () => find.byKey(const Key('server-url')).evaluate().isNotEmpty, 'the address form (the run turns discovery off, so nothing is found)');
     await tester.enterText(find.byKey(const Key('server-url')), 'http://127.0.0.1:1');
     await tester.tap(find.text('Connect'));
     await until(tester, () => shows('Could not reach the server at http://127.0.0.1:1'), 'unreachable message');

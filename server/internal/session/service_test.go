@@ -110,17 +110,22 @@ func TestSlowSubscriberDoesNotBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer fast.Close()
-	done := make(chan struct{})
+	step := make(chan struct{})
 	go func() {
+		defer close(step)
 		for i := 0; i < 200; i++ {
 			add(t, e.svc, "u1", "00001")
+			step <- struct{}{}
 		}
-		close(done)
 	}()
-	select {
-	case <-done:
-	case <-time.After(10 * time.Second):
-		t.Fatal("an unread subscriber blocked the others")
+	// each add has its own deadline: a subscriber that blocks the others hangs one add for good, while a slow or busy
+	// machine (200 database writes under -race) only stretches all of them, so a total budget would measure the machine
+	for i := 1; i <= 200; i++ {
+		select {
+		case <-step:
+		case <-time.After(30 * time.Second):
+			t.Fatalf("add %d did not finish: an unread subscriber blocked the others", i)
+		}
 	}
 	// the slow subscriber holds only the newest snapshot, not 200
 	s, ok := recvWithin(t, slow, 100*time.Millisecond)

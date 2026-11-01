@@ -11,6 +11,7 @@ import 'package:kantahe/auth/approve_code_screen.dart';
 import 'package:kantahe/auth/change_password_screen.dart';
 
 import 'fakes.dart';
+import '../tv/ring_helper.dart';
 
 Future<MeRig> open(WidgetTester tester, {bool uploader = false, bool admin = false}) async {
   final r = MeRig(uploader: uploader, admin: admin);
@@ -74,5 +75,12 @@ void main() {
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
     expect(r.auth.signedIn, isFalse);
+  });
+
+  testWidgets('the remote\'s focus on a menu entry shows the ring, and only then', (tester) async {
+    await open(tester);
+    final entry = find.widgetWithText(ListTile, 'Favourites');
+    await expectNoRingWhenNotFocused(tester, entry);
+    await expectRingOnFocus(tester, entry);
   });
 }

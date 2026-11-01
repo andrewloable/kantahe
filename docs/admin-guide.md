@@ -69,10 +69,66 @@ file**:
   play as silence. (New uploads of that kind are refused, and a watched-folder file like that is marked as failed.)
 * **Remove all songs** empties the list.
 
+### Checking the library for broken songs
+
+*Admin → Songs → Check the library → Check for broken songs* looks at **every song file again** and says how far it is while it
+works (a library of 20,000 songs takes about a minute). A song is broken when its file is missing (also for an uploaded song
+whose file was deleted by hand), when it is a MIDI song without any music (only lyric timing, it plays as silence), when the
+file cannot be read, or when a `.karmp3` is damaged. (The extracted MP3 of a `.karmp3` that went missing is made again, and
+the song is not counted as broken.) The check **marks the broken songs and hides them from everyone** (they leave every
+search and list at once); a song whose file was repaired is shown again at the next check. Nothing is deleted by a check.
+
+The broken songs are listed (50 to a page) with the reason, also when you open the page later without a new check. For each one
+you choose, as for any song, **Remove from list** (the file stays) or **Delete file too**. Two buttons work on all of them, each
+after a confirmation that names how many songs it is about:
+
+* **Remove all N broken songs from the list**: the files stay where they are.
+* **Remove them and delete their files**: the files are deleted for good, but only inside the data folder and the watched
+  folders; a song whose file lies elsewhere, or is in use, is taken off the list all the same and the result says how many files
+  could not be deleted.
+
+Only one check runs at a time. *Remove all songs* and *Remove songs with no music* still never delete a file.
+
 A song's number is never used again, so a song that is added back later gets a new number. A song in a watched folder is
 added again at the next scan while its file is still in the folder; move the file out, or delete it, to keep it off the
 list. The file of an uploaded song stays in `<data>/songs`, but nothing lists it any more: to get it back, upload it
 again. A file that disappears from a watched folder disappears from the library at the next scan.
+
+## Background videos
+
+Moving pictures can play behind the lyrics, as on a videoke machine. You upload the videos; Kantahe ships none, and you are
+responsible for having the rights to what you upload. The videos are **picture only**: no sound ever comes from them, and a
+sound track inside an uploaded file is ignored (the list says "has a sound track (never played)").
+
+*Admin → Videos* is where they are managed.
+
+**Adding.** Press *Choose video files* and pick one or several. A file that is not an `.mp4`, `.m4v` or `.mov`, or is larger than
+the limit (500 MB unless you change *Largest background video* in *Admin → Settings*), is refused on the page and not sent.
+The others go up one after another with a progress bar and a *Cancel* button. A video is sent in pieces of 4 MB, so a large
+file is fine, and an interrupted upload can be **resumed**: pick the same file again (also after reloading the page) and it goes
+on where it stopped. The result of each file is *Added*, *Already in the list* (the same content was uploaded before) or
+*Refused* with the reason.
+
+**What is accepted.** H.264 video in an MP4 (also `.m4v` and `.mov`). HEVC, AV1, VP9, WebM and Matroska are refused with a message;
+convert them first, for example with ffmpeg:
+
+```sh
+ffmpeg -i in.mov -c:v libx264 -profile:v high -level 4.1 -pix_fmt yuv420p -vf scale=-2:1080 -r 30 -b:v 6M -an -movflags +faststart out.mp4
+```
+
+(`-an` leaves the sound out, which makes the file smaller; it is not required.) 1920×1080, 30 frames a second or less and about
+6 Mbps are comfortable for a TV box. A file wider than 1920 px is accepted with a warning (a TV box may stutter), and so is one
+whose index comes after the picture data (it starts playing more slowly; `-movflags +faststart` fixes that).
+
+**The list.** The videos play one after another in the order of the list, over and over; the numbers show the order. *Move up* and
+*Move down* change it. *Play this video* switches one off without deleting it. *Rename* changes the name shown here. *Preview*
+plays a small silent preview. *Delete* asks first and then deletes the video and its file; if the file is in use at that moment
+(a player or a virus scanner has it open) the video stays and you can try again. The files are kept in `<data>/videos`.
+
+**Options.** *Play background videos on the players* switches the whole thing off for everyone; *Shuffle the order on every
+round* plays the videos in a new random order each time round. Each person can also choose, per device, under *Me → Devices* in
+the *Background video* setting: **Auto** (the default) shows the videos unless the device is weak or already uses a lighter sound
+mode, **On** always shows them, **Off** never does. A browser that asks for less motion shows none on **Auto**.
 
 ## Settings
 

@@ -32,7 +32,9 @@ Song formats: `.kar` (Standard MIDI file with lyrics as text events) and `.karmp
 * No PostgreSQL: SQLite only.
 * Server-side audio rendering only as a per-device fallback for weak devices: MIDI is synthesized by
   the client by default (section 4, D2).
-* Not in the MVP: volume, key change, tempo, LAN auto-discovery of servers.
+* Not in the MVP: volume, key change, tempo.
+* Background videos (section 4.2) are admin-uploaded H.264 MP4 only: no transcoding on the server, no video sound,
+  no per-song or per-singer videos.
 
 ## 2. Behaviour (the owner's rules)
 
@@ -145,6 +147,8 @@ before anything is stored ("the file contains no music"), and a watched-folder f
 | D8 | **The player device is the playback clock.** It reports position about once a second (kept in memory, saved every ~30 s and on Pause); the server advances the queue on `Ended`/Skip. If the server restarts, the player keeps playing and resynchronises when its stream reconnects. | Lyrics and sound are on one device; no clock sync. | Server-side clock. |
 | D9 | **Single Angular app** with a separate **`/embed/player`** route (player only, no navigation) for the Flutter WebView; TV packages are build configurations of the same app. | One web codebase. | Separate player project. |
 | D10 | **HTTP only; HTTPS by reverse proxy.** Documented Caddy and nginx examples (no response buffering and long timeouts for `WatchState`, large upload size). On plain HTTP from a LAN address the browser gives the page neither an AudioWorklet nor the microphone (secure contexts only; measured in an Android WebView, spike S3 and review of 6y6.9): the player then switches that device to server-rendered audio for MIDI songs (kantahe-4oc) and Microphone scoring is not offered. | Users already run proxies; no certificate code in the server. | Built-in Let's Encrypt. |
+| D11 | **LAN discovery.** The server advertises `_kantahe._tcp` over mDNS/DNS-SD (`libp2p/zeroconf`, pure Go; instance = the server name, SRV port = the port of `--listen`, TXT `version`). The Flutter apps browse it (`bonsoir`); the Samsung and LG packages, which are web apps and cannot do mDNS, sweep their own /24 with `GetServerInfo` on ports 8080 and 80. | A client app finds its server by itself on first start; nothing to type on a TV. | UDP broadcast (iOS needs a restricted multicast entitlement to send it); typed address only. |
+| D12 | **Background videos.** The admin uploads H.264 MP4 videos that the player loops behind the lyrics (section 4.2). The server only reads container metadata and accepts only what every player target decodes; it never transcodes. A video goes up in **chunks of unary calls** (resumable, admin only), is served as **plain HTTP with Range behind a signed URL**, and each device has a **Background video** choice Auto / On / Off. | The server is one static pure-Go binary and cannot transcode; TVs decode H.264 in hardware; D3 forbids streaming uploads and the message cap is 64 MiB. | WebM, HEVC or AV1 (not decodable everywhere); transcoding with ffmpeg (breaks the single static binary); one big unary upload (the 64 MiB message cap). |
 
 ### 4.1 MIDI on weak devices (cheap Android TV boxes, TVs, old phones)
 
@@ -192,9 +196,56 @@ falling behind real time by more than 100 ms). Users can override it in the devi
 Published minimum spec (from spike S1 numbers): MP3 songs on any supported device; MIDI songs per
 mode, for example "full synth needs ~2 GB RAM; anything else uses server render".
 
+A device also has a **background video** choice (`auto`, `on`, `off`, section 4.2). `auto` follows the MIDI mode above: a device that
+had to go to low power or server render does not also decode a video.
+
 The thresholds above are the plan's own estimates: spike S1 (`docs/spikes/s1-web-player.md`) has the page and the
 procedure, and the real-device rows (the cheap box, phones, Tizen, webOS) are filled in by the owner; until then the
 numbers stay provisional and `auto` follows them.
+
+### 4.2 Background videos
+
+*Status: built for the server, the admin page and the web player (epic kantahe-pwh); what is still to be checked is the decoding and the Auto threshold on the real TVs and WebViews (kantahe-pwh.17).*
+
+Videoke machines show moving pictures behind the lyrics. Kantahe ships none (like songs, the project bundles no videos and no
+video file is ever committed): the admin uploads them.
+
+* **Accepted files**: MP4 (the `.m4v` and `.mov` brands too) with an H.264 (`avc1`/`avc3`) video track. **A background video is video only (owner): no sound
+  ever comes from it.** An audio track in the file is accepted (the server cannot remove it without transcoding) but never played: the
+  player's video element is always muted (the `muted` property true, volume 0, no controls, so nothing can unmute it), and the admin
+  list only says that the file carries sound. Refused, with a reason that says how to fix it: HEVC, AV1, VP9, WebM, no video track, an unreadable file, wider than 3840 px.
+  Recommended, not enforced: 1920×1080, 30 fps or less, about 6 Mbps or less, `yuv420p`, `-movflags +faststart` (the `moov` box before
+  the media data). A file whose `moov` is after the media data is accepted with a warning in the admin list; `Video.warnings` carries such advice.
+* **Size and storage**: one video is at most `max_video_bytes` (a server setting, default 500 MiB). A video is stored as
+  `<data>/videos/<sha256>.mp4`, so the same content uploaded twice is a DUPLICATE. The list is the table `videos` (migration `0007_videos.sql`: id
+  `v` and 10 hex characters, sha256 unique, name, original name, size, duration, width, height, codec, has audio, faststart, enabled, position 1..n),
+  kept by `server/internal/video` (`Store`: add, list, rename, enable, reorder, delete). Its `Inspect(io.ReaderAt, size)` judges a file by the box
+  headers and the `moov` box alone (at most 16 MiB of it, never the media data, so a file of any size costs a few KB of reads) and needs no
+  program outside the binary.
+* **Upload**: `BeginVideoUpload`, `UploadVideoChunk`, `CompleteVideoUpload`, `AbortVideoUpload`: unary calls, admin only, chunks of at most
+  4 MiB at sequential offsets. An upload can be resumed (`Begin` for the same file by the same admin returns what was received);
+  an unfinished upload is thrown away after 24 hours.
+* **Management** (web only, Admin → Videos): list with a preview, rename, enable/disable, reorder (the order **is** the loop order) and
+  delete (the row and the file). Two server settings: `background_enabled` (default on) and `background_shuffle` (default off).
+  The Flutter apps and the TV packages only play.
+* **Getting the videos**: `GetBackground` returns the enabled videos in loop order with signed URLs (6 hours, bound to the user; plain
+  HTTP with Range, an `ETag` and `X-Content-Type-Options: nosniff`, `GET /media/video/{id}?u=&exp=&sig=`) and the shuffle flag; it is empty when the admin switched the background off. A player asks again every
+  10 minutes and whenever its stream reconnects. The URL of one video for one user stays the same for hours (its expiry is the next
+  multiple of 6 hours that is at least an hour away, so 1 to 7 hours are left), so a browser keeps the file it has instead of
+  fetching it again at every refresh of the list.
+* **Playing**: the player shows the videos behind the lyrics on the device that plays (always muted, picture only, `playsinline`, `object-fit: cover`, a dark
+  scrim of 70 % so that the lyrics keep a contrast of at least 3:1 even over a pure white frame), one after another and wrapping around
+  (shuffled on every pass when `background_shuffle` is set), without a gap (the next video is loaded in a second element when less than
+  1.5 s of the current one are left, and is shown when it is playing), continuing across songs, paused while the song is paused, and also on the
+  idle screen and the score screen. A video that fails to load, or does not start within 10 s, is skipped (and the list is asked for again once, because a
+  refused address looks like a failure); when every video fails within a minute nothing is tried for five minutes. The layer takes no focus
+  and no pointer events and is hidden from assistive technology. With no video to show (the administrator switched them all off) there is no
+  element at all, and a device whose background is off asks for nothing. A browser that asks for less motion (`prefers-reduced-motion`) gets
+  no video on `auto`; `on` shows it anyway. The same player runs in `/embed/player` (the apps' WebView) and in the Samsung and LG packages.
+* **Per device**: `backgroundMode` is `auto` (default), `on` or `off`, set on My devices (web and Flutter). The server resolves it into
+  `effective_background`: `auto` is off when the device's effective MIDI mode is low power or server, when the device reports less than
+  1.5 GB (1536 MB), and on a TV that reports no memory at all, and on otherwise (a video decoding next to the synth can make a cheap TV box
+  stutter). `on` and `off` are used as chosen. Like the thresholds in 4.1, these are estimates until they are measured on the TV.
 
 ## 5. Accounts and sign-in
 
@@ -228,6 +279,11 @@ numbers stay provisional and `auto` follows them.
   count and uncompressed-size limits (ZIP bombs); size limit 50 MB per file (admin setting; the
   connect-go handler's read limit matches it); duplicates by SHA-256 are skipped. Each call returns
   added (with its number), duplicate, or rejected (with the reason); the client shows a report.
+  A **background video** (section 4.2) is too big for one call, so the administrator's upload is chunked from unary calls:
+  `BeginVideoUpload` (checks the name and the size against `max_video_bytes`, which is read again at every chunk and at Complete, at most 2 unfinished uploads, and resumes the
+  unfinished upload of the same file), `UploadVideoChunk` (at most 4 MiB at the offset the server expects, which is the length of the
+  partial file `<data>/videos/.upload-<id>`), `CompleteVideoUpload` (checks length, `Inspect`, hashes the file and moves it to
+  `<data>/videos/<sha256>.mp4`) and `AbortVideoUpload`. Unfinished uploads older than 24 hours are removed hourly.
 * **Numbers** (unique per entry):
   * leading digits of the original filename (`NNN… - Artist - Title.ext`), any length;
   * no number: next free number above the highest one;
@@ -303,16 +359,21 @@ service AdminService {        // admin only
   rpc ListUsers / CreateUser / UpdateUser / ResetPassword / DeleteUser / RevokeUserDevices;
   rpc UpdateSong(UpdateSongRequest) returns (Song);                // title, artist
   rpc DeleteSong(DeleteSongRequest) returns (DeleteSongResponse);  // keep_file: only take it off the list, the file stays
-  rpc RemoveSongs(RemoveSongsRequest) returns (RemoveSongsResponse);  // scope ALL or NO_MUSIC; never deletes a song file
+  rpc RemoveSongs(RemoveSongsRequest) returns (RemoveSongsResponse);  // scope ALL, NO_MUSIC or BROKEN; deletes song files only with BROKEN and delete_files
+  rpc CheckLibrary(CheckLibraryRequest) returns (stream CheckLibraryResponse);  // re-judges every song, marks the broken ones failed; progress; one at a time
+  rpc ListBrokenSongs(ListBrokenSongsRequest) returns (ListBrokenSongsResponse); // the failed songs with the reason, paged
   rpc Rescan(RescanRequest) returns (RescanResponse);
-  rpc GetSettings / UpdateSettings;                                // upload limits, score seconds, SoundFont
+  rpc ListVideos / UpdateVideo / ReorderVideos / DeleteVideo;      // background videos (4.2): list with preview URL, rename/enable, loop order, delete
+  rpc GetSettings / UpdateSettings;                                // upload limits, score seconds, SoundFont, video limit and background switches
 }
 service UploadService {       // users with the uploader role
   rpc UploadSong(UploadSongRequest) returns (UploadSongResponse);  // filename + bytes (≤ 50 MB); added/duplicate/rejected
+  rpc BeginVideoUpload / UploadVideoChunk / CompleteVideoUpload / AbortVideoUpload;  // admin only: a background video in chunks of ≤ 4 MiB (4.2)
 }
 service CatalogService {
   rpc SearchSongs / ListArtists / GetSong / GetLyrics;
   rpc GetPlayback(GetPlaybackRequest) returns (Playback);          // signed URLs per the device's MIDI mode, lyrics
+  rpc GetBackground(GetBackgroundRequest) returns (GetBackgroundResponse);  // the enabled background videos in loop order, signed URLs (4.2)
 }
 service SessionService {      // always the caller's own user
   rpc WatchState(WatchStateRequest) returns (stream State);
@@ -323,6 +384,7 @@ service SessionService {      // always the caller's own user
   rpc Ready / ReportPosition / Ended / ReportMic;                  // current player device only
   rpc ReportDevice(ReportDeviceRequest) returns (Device);          // memory, dropouts seen → effective MIDI mode
   rpc SetMidiMode(SetMidiModeRequest) returns (Device);            // auto | full | lowPower | server
+  rpc SetBackgroundMode(SetBackgroundModeRequest) returns (Device); // auto | on | off (4.2)
 }
 service UserLibraryService {  // favourites, history, playlists of the caller
   rpc SetFavourite / ListFavourites / ListHistory;
@@ -333,12 +395,14 @@ service UserLibraryService {  // favourites, history, playlists of the caller
 Plain HTTP (everything else is ConnectRPC): `GET /media/song/{number}?exp=&sig=` (MP3 with Range,
 or the `.kar` file), `GET /media/soundfont/{number}.sf2?exp=&sig=` (per-song trimmed SoundFont),
 `GET /media/rendered/{number}?exp=&sig=` (server-rendered MIDI audio with Range; `503` + `Retry-After`
-while rendering), `GET /media/soundfont.sf2` (full bank) and `GET /media/fanfare/{1|2|3}.mp3` (cacheable, no
+while rendering), `GET /media/video/{id}?exp=&sig=` (a background video with Range, 4.2), `GET /media/soundfont.sf2` (full bank) and `GET /media/fanfare/{1|2|3}.mp3` (cacheable, no
 secret content), and the static web app (with `/embed/player`).
 
 ## 8. Clients
 
 **Angular web app** (`web/`): signals, standalone components, zoneless, default test runner.
+
+**Loading splash.** `web/src/index.html` paints the Kantahe logo from the first frame, before any script arrives: plain HTML and CSS around the inline brand SVG (`branding/kantahe-splash-logo.svg`, copied in by `scripts/sync-branding.sh`), dark in every theme (`#0a0e22`, the colour of the official splash, the manifest and the player). The root component takes it off after the first navigation has ended and its page is rendered; if the app never starts it says so after 15 s. Inside the Flutter WebView (`/embed/...`) only the colour shows, because the app has its own splash.
 
 | Route | Screen |
 |---|---|
@@ -346,7 +410,7 @@ secret content), and the static web app (with `/embed/player`).
 | `/library` | Search · Number pad · Browse (A–Z, artists), MP3/MIDI badges, format filter, add to queue, favourite. Song lists (library, favourites, admin Songs) draw **one page of 50 rows** with Previous / Next; the next page is read ahead, so a library of thousands never becomes thousands of rows (`PageWindow` in `web/src/app/library/page-window.ts`). |
 | `/queue` | Queue (remove, move to top), up next, now playing, **devices** with "Play here" / which one plays, Play/Pause/Skip. |
 | every page but `/queue` and `/player` | A slim **now-playing bar** under the menu (shown once the state has arrived and a song plays or songs wait): title and artist, "Playing on <device>" / "Paused on <device>", how many are coming up; a link to `/queue`. No new RPC and no clock (positions are not pushed). |
-| `/player` | Full-screen player: lyrics with colour wipe and count-in dots, title + badge, progress, Play/Pause/Skip, score screen with fanfare, "preparing…" while the SoundFont loads. |
+| `/player` | Full-screen player: lyrics with colour wipe and count-in dots, title + badge, progress, Play/Pause/Skip, score screen with fanfare, "preparing…" while the SoundFont loads. Background videos (pictures only, never any sound) loop behind the lyrics on the device that plays, unless its Background video is off (section 4.2); a scrim keeps the lyrics readable, and the layer takes no focus and no pointer events. |
 | `/embed/player` | The same player without app navigation, for the Flutter WebView. Receives the device token from Flutter through a JavaScript channel (never in the URL). |
 | `/me` | Favourites, history, playlists, my devices, change password, score settings. |
 | `/admin` | Users (create, roles, reset password, revoke), songs (upload, edit title/artist, delete, rescan, import report), server settings. |
@@ -358,6 +422,30 @@ SoundFont or the rendered audio is ready, and watches for dropouts (`ReportDevic
 current playback time in both cases. Microphone loudness readings as in the sample (counts loud
 100 ms samples; reported on `Ended`).
 
+**Finding the server** (Flutter apps and the Samsung/LG packages; the browser web app is served by its server and needs none).
+The search runs whenever the app has no stored server address: first start, or after "Use another server".
+1. While it runs the screen says "Looking for Kantahe servers on this network..." with a progress indicator.
+2. Every address found is checked with the `GetServerInfo` probe; only addresses that answer count, and the same
+   address counts once.
+3. **Exactly one server** (not `setup_required`, auto-connect allowed): its address is stored as a typed one is, and the
+   app goes on to sign-in by itself (email and password on phones, code sign-in on TVs).
+4. **Two or more** (or one while auto-connect is not allowed): a list, one row per server with its name
+   (`GetServerInfoResponse.name`; the address when the name is empty), address and version; choosing a row stores it
+   and goes on to sign-in. A server with no account yet is listed too; choosing it explains that it is set up in a web
+   browser first and stores nothing. A lone server that needs setup is shown as a list of one, not connected.
+   "Search again" is on the list.
+5. **None**: the only case in which the manual address form appears (unchanged), with "Search again".
+6. After "Use another server" auto-connect is off for the rest of that app run (in memory, not stored), so a single
+   server does not reconnect at once; a restart allows it again.
+How the search works: Flutter browses `_kantahe._tcp` (about 3 s). A Samsung or LG TV reads its own IPv4 address from
+the platform (Samsung: `webapis.network.getIp()`, loaded from the TV's `webapis.js`; LG: the connection manager,
+`luna://com.palm.connectionmanager/getStatus`, wired address first) and probes the other hosts of its /24 at ports 8080 and 80 (800 ms each, 64 at a time), the hosts nearest its own
+address first and 100 probes (50 hosts) at a time: a browser keeps the socket of a connection to a host that does not
+exist until the operating system gives it up, and holds at most 256 sockets, so all 506 probes at once would starve
+(measured: later probes never connected). With nothing found yet the form says so and "Search again" asks the next
+batch (after the last one, the nearest again), so a server far from the TV is found after a few presses. A server on
+another port is not found there, and the address is typed.
+
 **Samsung Tizen / LG webOS** (phase 6): build configurations of the same Angular app, packaged as a
 Tizen `.wgt` and a webOS `.ipk`. Differences: first-run "server address" screen, code sign-in,
 D-pad focus navigation, large type. Minimum TV model years come from spike S1.
@@ -368,7 +456,8 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
   keeps its path after a `#`, and the base is the page itself (a base that is a directory makes the router's fragment
   URLs refer to the directory, which Chromium refuses to write to the history on `file:`).
 * **Server address**: there is no server at the page's own origin, so until an address is stored every page goes to
-  `/server` (type the address, `GetServerInfo` checks it within 5 seconds, a server with no account yet is set up in a
+  `/server`, which looks for servers first (see "Finding the server"); only when none is found does it offer the field
+  to type the address (`GetServerInfo` checks it within 5 seconds, a server with no account yet is set up in a
   browser instead). A new address ends the old session. "Use another server" on the code screen forgets both.
 * **Code sign-in** replaces the password form at `/login`: `StartCodeLogin` (type TIZEN or WEBOS), the code in large
   type and a QR of `approve_url` (`qrcode-generator`, pinned), `WaitCodeLogin` kept open and reopened with the same
@@ -381,7 +470,7 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
   marked `data-back-closes` first, else goes back, and from the first page leaves the app; the Tizen media keys are
   registered. The page gets the class `tv` (150 % type, a thick focus ring).
 * **Samsung package** (`tv/tizen/`, `scripts/build-tizen.sh`, `docs/tv-samsung.md`): `config.xml` (TV profile, package
-  `KantaheApp`, application id `KantaheApp.Kantahe`, Tizen 5.0, privileges `internet` and `tv.inputdevice`, any origin
+  `KantaheApp`, application id `KantaheApp.Kantahe`, Tizen 5.0, privileges `internet`, `tv.inputdevice` and `network.public` (the TV's own address, for finding servers), any origin
   reachable), the 512 px brand icon, and a script that builds the `tizen` configuration, assembles `build/tizen/` and
   signs it with the owner's certificate profile through the Tizen CLI (`--stage-only` skips the CLI). Certificates are
   never in the repository.
@@ -395,9 +484,10 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
 
 **Flutter app** (`app/`: Android, iOS, Android TV):
 
-* Native screens mirroring the web app: server address, email/password sign-in (code sign-in on
+* Native screens mirroring the web app: finding the server (the typed address only when none is found), email/password sign-in (code sign-in on
   Android TV), library (search, number pad, browse), queue + devices, favourites/history/playlists,
   settings, upload (file picker) for uploaders.
+* **Splash**: the official one (`branding/kantahe-splash-logo.svg`: tile and wordmark on the flat background `#0a0e22`, dark in every theme) from the first frame the system draws until the first real screen. Android 12 and later draw the system splash (the tile in a circle, `splash-android12.png`); before 12 the window shows the logo (`splash-logo-native.png`, 240 dp); then `lib/bootstrap.dart` draws the same logo at once, before the stored address, the keystore and TV detection are read, and swaps to the app (or says "Kantahe could not start." with a Retry that the remote's Select presses). The window colour behind the app is `#0a0e22` too, so no black or white frame comes in between. The files come from `branding/build.py` through `scripts/sync-branding.sh`; the native files are regenerated by `scripts/sync-branding.sh --flutter`.
 * **Player**: a full-screen WebView loading `{server}/embed/player`; the device token is passed in via
   a JavaScript channel. Play/Pause/Skip are native controls that call `SessionService.Control`; the
   embedded player reacts to the state stream like any other player. On Android TV the D-pad drives
@@ -409,8 +499,8 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
   `drawable-xhdpi/tv_banner.png`) and does not require a touch screen or a microphone. A TV with no session
   shows the **code sign-in** screen: `StartCodeLogin` (device type `ANDROID_TV`), the code in large type with
   a QR of `approve_url`, and `WaitCodeLogin` kept open (reopened with the same secret when the link drops);
-  approved signs in, expired offers a New code button. Server address entry is the same screen as on a phone
-  (typed with the on-screen keyboard). After sign-in the destinations are a left **navigation rail** instead
+  approved signs in, expired offers a New code button. The server screen is the same as on a phone (found servers are
+  chosen with the remote; an address, when none was found, is typed with the on-screen keyboard). After sign-in the destinations are a left **navigation rail** instead
   of a bottom bar, text is 1.25 times larger, and every focusable thing shows a thick ring (`FocusRing`,
   `tvTheme`); the first song of the library has the focus at the start and the arrow keys move it row by
   row, OK queues the song. The player screen keeps its Play/Pause button focused and the WebView out of the
@@ -444,6 +534,12 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
   `scripts/smoke-docker.sh`: version, non-root user, health, setup required, web app served, default
   SoundFont extracted, and an account created before a restart still exists after it. Tags push the
   image to `ghcr.io/andrewloable/kantahe` (`release.yml`).
+  **Discovery from Docker**: mDNS does not leave Docker's default bridge network (multicast is link-local, and the
+  advertised address would be the container's), and with `-p host:container` the SRV port would be wrong. For the apps
+  to find the server use host networking (`network_mode: host`, Linux) or a macvlan network, where the container's
+  listen port is the reachable one (change it with `KANTAHE_LISTEN`, not a `-p` remap), and set `KANTAHE_NAME`
+  (the host name inside a container is its id). On a bridge network the Flutter apps find nothing and fall back to
+  typing the address; a TV still finds a server published on host port 8080 or 80.
 * **Service files**: `deploy/systemd/kantahe.service` (dedicated user, hardened), `deploy/launchd/com.loabletech.kantahe.plist`
   (login item), and for Windows a real service (`sc.exe create Kantahe ... start= auto`, `docs/install.md`): when the
   Windows service manager starts the program (`svc.IsWindowsService`), `main` runs it under `golang.org/x/sys/windows/svc`
@@ -453,7 +549,9 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
   From a console nothing changes (Ctrl+C). A scheduled task remains documented as an alternative and for older versions.
 * **Config**: flags/env only: `--listen :8080`, `--data`, `--library` (repeatable), `--soundfont`,
   `--render-cache-gb` (server-render cache, default 5),
-  `--public-url` (for the approval QR shown on TVs).
+  `--public-url` (for the approval QR shown on TVs), `--name` (the server's name shown in the list of servers, default
+  "Kantahe on <host name>", at most 63 bytes) and `--discovery` (advertise over mDNS, default true; not advertised
+  when `--listen` is a loopback address).
 * **Reverse proxy**: Caddy and nginx examples in `deploy/proxy/` (explained in `docs/reverse-proxy.md`, checked by
   `scripts/check-proxy-configs.sh`): HTTPS, streaming without buffering for
   `/kantahe.v1.SessionService/WatchState` and `/kantahe.v1.AuthService/WaitCodeLogin`, request body
@@ -525,6 +623,12 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
   Run it with `cd web && npm run e2e` (it builds the server and `server/cmd/kantahe-fixtures`, writes a
   synthetic library and a tiny SoundFont to a temp folder, starts both servers and Chromium; once per
   machine `npx playwright install chromium`). Nothing is written into the repo.
+  The responsive audit (`cd web && npm run e2e:responsive`, see [web/e2e/responsive/README.md](../web/e2e/responsive/README.md))
+  drives every route at a fixed matrix of phone and tablet viewports in both themes against the same kind of scratch
+  server, runs automatic checks (sideways scrolling, elements outside the window, tap targets under 44 px, targets too
+  close together, cut-off text, covered controls, console errors) and writes screenshots and a report outside the repo;
+  Chromium emulation is not Safari or an Android WebView, so it comes with a real-device checklist. It is run by hand,
+  not in CI; only the tests of its checks (`npm run e2e:responsive:checks`) are.
 * **Flutter**: widget tests with fake services (`cd app && flutter test`); integration tests in
   `app/integration_test/` against the real Go binary with the web app embedded and the synthetic library,
   run by `scripts/flutter-integration.sh <device>` on an Android emulator (`10.0.2.2`) or an iOS simulator
@@ -553,7 +657,7 @@ Phases 0–3 are the **MVP** (server + web). Each phase has an exit check.
 | **5 Server render + Android TV** | Server-render fallback (pure-Go synth, encoding, render cache, `/media/rendered`, `auto` step-down to server); Flutter Android TV: D-pad navigation, code sign-in, TV layout. | On the owner's cheap box: sign in with a code, queue from a phone, sing MP3 and MIDI songs without dropouts (in whatever mode `auto` picks). |
 | **6 Samsung Tizen + LG webOS** | Package the Angular app; server address screen, code sign-in, D-pad. | Installs and plays MP3 and MIDI songs on one Samsung and one LG TV. |
 | **7 Polish** | README, user and admin guides, store listings, licence notices (`THIRD_PARTY_NOTICES.md`, generated and checked by `scripts/licenses.sh`; links checked by `scripts/check-links.py`) (GeneralUser GS, spessasynth, fanfares), app icons and splash from `branding/`. | A stranger installs the server and an app from the docs alone. |
-| **Later** | Offline downloads, email password reset, single sign-on, shared/party queues, guests, LAN discovery, volume, key/tempo, real pitch scoring. | — |
+| **Later** | Offline downloads, email password reset, single sign-on, shared/party queues, guests, volume, key/tempo, real pitch scoring. | — |
 
 ## 13. Decisions recorded and open items
 
@@ -576,7 +680,7 @@ Decided by the owner:
 | Database | SQLite only. |
 | Offline | Not in the MVP. |
 | API | ConnectRPC (connect-go, connect-es, connect-dart) between the server and every frontend, including uploads (one file per call, ZIPs unpacked on the client); only audio media is plain HTTP. |
-| Deleting songs | Asks: remove from the list (the file stays) or delete the file too, also in watched folders. Bulk: all songs, or MIDI songs with no music, never deleting files. |
+| Deleting songs | Asks: remove from the list (the file stays) or delete the file too, also in watched folders. Bulk: all songs, or MIDI songs with no music, never deleting files; and the broken songs found by *Check the library* (file missing, no music, unreadable, damaged), with or without their files. |
 | Sign-in tokens | Expire after 90 days unused; revocable any time. |
 | Defaults | GeneralUser GS embedded as the default SoundFont (replaceable); player gone 30 s → paused at the last position, resumable on any device; port 8080; upload limit 50 MB per file. |
 | Build order | Server → Angular web → packaging → Flutter Android/iOS → Android TV → Samsung/LG. |

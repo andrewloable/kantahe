@@ -5,6 +5,7 @@ import 'package:kantahe/me/me_screen.dart';
 import 'package:kantahe/player/player_screen.dart';
 import 'package:kantahe/core/state_store.dart';
 import 'package:kantahe/queue/queue_screen.dart';
+import 'package:kantahe/tv/focus.dart';
 
 /// What the app shows once signed in: Library, Queue and Me behind a navigation bar. The screens are kept
 /// while another one is shown (what was typed or scrolled stays). Play here on the queue opens the player.
@@ -80,7 +81,8 @@ class _AppShellState extends State<AppShell> {
                 onDestinationSelected: (i) => setState(() => _index = i),
                 labelType: NavigationRailLabelType.all,
                 destinations: [
-                  for (final d in _destinations) NavigationRailDestination(icon: Icon(d.icon), selectedIcon: Icon(d.selected), label: Text(d.label)),
+                  for (final d in _destinations)
+                    NavigationRailDestination(icon: _RailIcon(d.icon), selectedIcon: _RailIcon(d.selected), label: _RailLabel(d.label)),
                 ],
               ),
               const VerticalDivider(width: 1),
@@ -99,4 +101,43 @@ class _AppShellState extends State<AppShell> {
       ),
     );
   }
+}
+
+/// The icon of a rail destination. The rail only tints a small pill behind the icon while the remote is on a
+/// destination, which is too faint across a room: with the focus it becomes a solid block of the opposite tone of the
+/// page, with a halo in the page's own tone (the same look as the buttons).
+class _RailIcon extends StatelessWidget {
+  const _RailIcon(this.icon);
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return FocusAware(
+      builder: (context, focused) => focused
+          ? DecoratedBox(
+              key: const Key('rail-focus'),
+              decoration: BoxDecoration(
+                color: scheme.inverseSurface,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [BoxShadow(color: scheme.surface, spreadRadius: 2)],
+              ),
+              child: SizedBox(width: 56, height: 32, child: Icon(icon, color: scheme.onInverseSurface)),
+            )
+          : Icon(icon),
+    );
+  }
+}
+
+/// The label of a rail destination: bold while the remote is on it.
+class _RailLabel extends StatelessWidget {
+  const _RailLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => FocusAware(
+    builder: (context, focused) => Text(label, style: focused ? const TextStyle(fontWeight: FontWeight.w800) : null),
+  );
 }

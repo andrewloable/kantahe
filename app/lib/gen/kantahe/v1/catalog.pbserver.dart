@@ -31,6 +31,8 @@ abstract class CatalogServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $1.GetLyricsRequest request);
   $async.Future<$1.GetPlaybackResponse> getPlayback(
       $pb.ServerContext ctx, $1.GetPlaybackRequest request);
+  $async.Future<$1.GetBackgroundResponse> getBackground(
+      $pb.ServerContext ctx, $1.GetBackgroundRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
@@ -44,6 +46,8 @@ abstract class CatalogServiceBase extends $pb.GeneratedService {
         return $1.GetLyricsRequest();
       case 'GetPlayback':
         return $1.GetPlaybackRequest();
+      case 'GetBackground':
+        return $1.GetBackgroundRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -62,6 +66,8 @@ abstract class CatalogServiceBase extends $pb.GeneratedService {
         return getLyrics(ctx, request as $1.GetLyricsRequest);
       case 'GetPlayback':
         return getPlayback(ctx, request as $1.GetPlaybackRequest);
+      case 'GetBackground':
+        return getBackground(ctx, request as $1.GetBackgroundRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }

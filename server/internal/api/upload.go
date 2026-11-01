@@ -9,14 +9,18 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"connectrpc.com/connect"
 
 	kantahev1 "github.com/andrewloable/kantahe/server/gen/kantahe/v1"
 	"github.com/andrewloable/kantahe/server/gen/kantahe/v1/kantahev1connect"
 	"github.com/andrewloable/kantahe/server/internal/auth"
+	"github.com/andrewloable/kantahe/server/internal/fsutil"
 	"github.com/andrewloable/kantahe/server/internal/library"
 	"github.com/andrewloable/kantahe/server/internal/settings"
+	"github.com/andrewloable/kantahe/server/internal/video"
 )
 
 const maxFilenameBytes = 255
@@ -25,9 +29,21 @@ const maxFilenameBytes = 255
 type UploadServer struct {
 	kantahev1connect.UnimplementedUploadServiceHandler
 	d Deps
+
+	// background videos (video_upload.go)
+	videos  *video.Store
+	now     func() time.Time
+	beginMu sync.Mutex // one Begin at a time, so that the count of unfinished uploads and the resume lookup are not raced
+	locks   sync.Map   // upload id -> *sync.Mutex, one chunk, complete or abort at a time for an upload
 }
 
-func newUploadServer(d Deps) *UploadServer { return &UploadServer{d: d} }
+func newUploadServer(d Deps) *UploadServer {
+	now := d.Now
+	if now == nil {
+		now = time.Now
+	}
+	return &UploadServer{d: d, videos: video.New(d.DB), now: now}
+}
 
 func rejected(reason string) (*connect.Response[kantahev1.UploadSongResponse], error) {
 	return connect.NewResponse(&kantahev1.UploadSongResponse{Status: kantahev1.UploadStatus_UPLOAD_STATUS_REJECTED, Reason: reason}), nil
@@ -157,7 +173,8 @@ func (s *UploadServer) store(content []byte, format library.Format) (finalPath s
 	if err := os.Chmod(tmp.Name(), 0o640); err != nil {
 		return "", false, err
 	}
-	if err := os.Rename(tmp.Name(), finalPath); err != nil {
+	// the name is the SHA-256 of the content: a file that is there already is identical and stays, even while a player reads it
+	if err := fsutil.Place(tmp.Name(), finalPath, fsutil.PlaceBudget); err != nil {
 		return "", false, err
 	}
 	return finalPath, created, nil
@@ -172,10 +189,5 @@ func (s *UploadServer) dropIfCreated(ctx context.Context, p string, created bool
 // dropUnreferenced removes a stored upload unless a song entry points at it: a
 // concurrent upload of the same bytes shares the file.
 func (s *UploadServer) dropUnreferenced(ctx context.Context, p string) {
-	if used, err := s.d.Importer.IsReferenced(ctx, p); err != nil || used {
-		return
-	}
-	if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
-		s.d.Logger.Warn("cannot remove a rejected upload", "err", err)
-	}
+	s.d.Importer.RemoveIfUnreferenced(ctx, p) // never fails the upload: a file in use is swept later
 }

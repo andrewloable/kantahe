@@ -43,6 +43,12 @@ rm -rf "${stage:?}"
 mkdir -p "$stage"
 cp -R "$repo/web/dist/tizen/." "$stage/"
 cp "$repo/tv/tizen/config.xml" "$repo/tv/tizen/icon.png" "$stage/"
+# Samsung's webapis (the TV's own address, to look for servers) must be loaded before the app's scripts; the TV
+# provides the file at $WEBAPIS. Only the package gets it: the web app and the other TV build share src/index.html.
+# shellcheck disable=SC2016  # $WEBAPIS is meant literally: the TV resolves it
+sed 's#<head>#<head><script src="$WEBAPIS/webapis/webapis.js"></script>#' "$stage/index.html" > "$stage/index.html.tmp"
+grep -q 'webapis/webapis.js' "$stage/index.html.tmp" || { echo "build-tizen: no <head> in index.html to add webapis.js to" >&2; exit 1; }
+mv "$stage/index.html.tmp" "$stage/index.html"
 
 if [ "$stage_only" = 1 ]; then
   echo "staged in $stage (not packaged)"

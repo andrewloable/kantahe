@@ -74,12 +74,13 @@ const MAX_DIGITS = 20;
     }
     .keys {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 0.5rem;
       margin-bottom: 0.75rem;
     }
     .keys button {
       min-height: 3.5rem;
+      padding-inline: 0;
       font-size: 1.5rem;
     }
     .add {

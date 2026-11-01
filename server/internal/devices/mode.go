@@ -16,6 +16,10 @@ const (
 	lowPowerFromMB = 2048
 )
 
+// BackgroundMinMemoryMB is the least memory a device must report for AUTO to play the background videos: decoding a video next to
+// the synth is too much below it. An estimate, to be tuned by the TV verification of the background videos (docs/PLAN.md 4.2).
+const BackgroundMinMemoryMB = 1536
+
 // RenderAvailability says whether the server can render MIDI to audio.
 type RenderAvailability interface{ Available() bool }
 
@@ -28,6 +32,27 @@ var levels = []kantahev1.MidiMode{kantahev1.MidiMode_MIDI_MODE_FULL, kantahev1.M
 
 func isTV(t kantahev1.DeviceType) bool {
 	return t == kantahev1.DeviceType_DEVICE_TYPE_ANDROID_TV || t == kantahev1.DeviceType_DEVICE_TYPE_TIZEN || t == kantahev1.DeviceType_DEVICE_TYPE_WEBOS
+}
+
+// EffectiveBackground says whether a device plays the background videos. ON and OFF are used as they are. AUTO (and an unset mode) is
+// off when the device already plays MIDI in a lighter mode (low power or server), off when it reports less than BackgroundMinMemoryMB,
+// off on a TV that reports no memory, and on otherwise.
+func EffectiveBackground(mode kantahev1.BackgroundMode, effectiveMidi kantahev1.MidiMode, deviceType kantahev1.DeviceType, memoryMB int) bool {
+	switch mode {
+	case kantahev1.BackgroundMode_BACKGROUND_MODE_ON:
+		return true
+	case kantahev1.BackgroundMode_BACKGROUND_MODE_OFF:
+		return false
+	}
+	switch {
+	case effectiveMidi == kantahev1.MidiMode_MIDI_MODE_LOW_POWER, effectiveMidi == kantahev1.MidiMode_MIDI_MODE_SERVER:
+		return false
+	case memoryMB > 0 && memoryMB < BackgroundMinMemoryMB:
+		return false
+	case memoryMB == 0 && isTV(deviceType):
+		return false
+	}
+	return true
 }
 
 // Effective is the mode a device plays MIDI songs in. An explicit mode is used as
@@ -106,4 +131,9 @@ func NewModes(render RenderAvailability) *Modes {
 // Effective is the package function with the counters and render switch filled in.
 func (m *Modes) Effective(mode kantahev1.MidiMode, deviceType kantahev1.DeviceType, memoryMB int, deviceID string) kantahev1.MidiMode {
 	return Effective(mode, deviceType, memoryMB, m.StepDowns.Count(deviceID), m.Render.Available())
+}
+
+// EffectiveBackground is the package function with the device's effective MIDI mode worked out the same way as Effective does.
+func (m *Modes) EffectiveBackground(bg kantahev1.BackgroundMode, midi kantahev1.MidiMode, deviceType kantahev1.DeviceType, memoryMB int, deviceID string) bool {
+	return EffectiveBackground(bg, m.Effective(midi, deviceType, memoryMB, deviceID), deviceType, memoryMB)
 }

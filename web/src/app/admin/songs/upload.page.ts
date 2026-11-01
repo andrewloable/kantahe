@@ -31,23 +31,23 @@ interface Row {
         @if (busy()) {
           <button type="button" (click)="cancel()">Cancel</button>
         }
-        <table>
+        <table role="table">
           <caption class="sr-only">
             Result for each file
           </caption>
-          <thead>
-            <tr>
-              <th scope="col">File</th>
-              <th scope="col">Result</th>
-              <th scope="col">Details</th>
+          <thead role="rowgroup">
+            <tr role="row">
+              <th scope="col" role="columnheader">File</th>
+              <th scope="col" role="columnheader">Result</th>
+              <th scope="col" role="columnheader">Details</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody role="rowgroup">
             @for (r of rows(); track $index) {
-              <tr>
-                <td>{{ r.name }}</td>
-                <td>{{ r.result }}</td>
-                <td>{{ r.detail }}</td>
+              <tr role="row">
+                <td role="cell">{{ r.name }}</td>
+                <td role="cell">{{ r.result }}</td>
+                <td role="cell">{{ r.detail }}</td>
               </tr>
             }
           </tbody>
@@ -56,9 +56,11 @@ interface Row {
     </main>
   `,
   styles: `
+    :host {
+      display: block;
+      container-type: inline-size;
+    }
     .upload {
-      max-width: 50rem;
-      margin: 0 auto;
       padding: 1rem;
     }
     .drop {
@@ -73,6 +75,32 @@ interface Row {
     table {
       width: 100%;
       border-collapse: collapse;
+    }
+    /* on a phone each result is a block: the file, the result, the details at the full width; the header row stays for screen readers */
+    /* the width of the page's own box, in rem: with a larger text size a table that needs 44rem no longer fits, and the blocks come sooner */
+    @container (max-width: 44rem) {
+      table,
+      tbody,
+      tr,
+      td {
+        display: block;
+      }
+      thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+      }
+      tr {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--line);
+      }
+      td {
+        padding: 0.15rem 0;
+        border-bottom: 0;
+        overflow-wrap: anywhere;
+      }
     }
     th,
     td {

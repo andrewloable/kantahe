@@ -40,6 +40,7 @@ const pages = (env: Environment): Routes => [
       { path: '', pathMatch: 'full', redirectTo: 'users' },
       { path: 'users', title: 'Users', loadComponent: () => import('./admin/users/users.page').then((m) => m.UsersPage) },
       { path: 'songs', title: 'Songs', loadComponent: () => import('./admin/songs/songs-admin.page').then((m) => m.SongsAdminPage) },
+      { path: 'videos', title: 'Videos', loadComponent: () => import('./admin/videos/videos.page').then((m) => m.VideosPage) },
       { path: 'settings', title: 'Settings', loadComponent: () => import('./admin/songs/server-settings.page').then((m) => m.ServerSettingsPage) },
     ],
   },
