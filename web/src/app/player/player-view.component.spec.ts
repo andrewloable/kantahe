@@ -13,6 +13,7 @@ import { BackgroundVideoComponent } from './background/background-video.componen
 import { bgVideo, stubMedia } from './background/testing';
 import { CAN_SYNTHESIZE, ENGINES } from './engines/engine';
 import { MIC_METER } from './mic';
+import { NativeControls } from './native-controls';
 import { PlayerViewComponent } from './player-view.component';
 import { asMic, fakeEngines, FakeMic, fakePlayerServer, playbackOf } from './testing';
 
@@ -89,6 +90,31 @@ describe('PlayerViewComponent', () => {
     expect(button('Pause')).toBeUndefined();
     expect(button('Play')).toBeUndefined();
     expect(button('Skip')).toBeUndefined();
+  });
+
+  describe('room for the app\'s buttons', () => {
+    const MP3_STATE: StateInit = { ...PLAYING, now: { song: song('21628', 'Hello', 'Adele', Format.MP3), positionMs: 0, positionAtMs: 1000 } };
+    const stageStyle = (el: HTMLElement) => (el.querySelector('main.stage') as HTMLElement).style.getPropertyValue('--native-controls');
+
+    it('embedded_view_gets_the_height: the page keeps the room the app says its buttons take', async () => {
+      const { fixture, el, push, settle } = setup();
+      fixture.componentRef.setInput('embedded', true);
+      await push(MP3_STATE);
+      TestBed.inject(NativeControls).height.set(220);
+      await settle();
+      expect(stageStyle(el)).toBe('220px');
+      TestBed.inject(NativeControls).height.set(330);
+      await settle();
+      expect(stageStyle(el)).toBe('330px');
+    });
+
+    it('not_embedded_view_has_no_height: the page\'s own buttons need no room', async () => {
+      const { el, push, settle } = setup();
+      await push(MP3_STATE);
+      TestBed.inject(NativeControls).height.set(220);
+      await settle();
+      expect(stageStyle(el)).toBe('');
+    });
   });
 
   describe('guide vocals', () => {

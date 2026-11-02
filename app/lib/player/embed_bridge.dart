@@ -25,6 +25,10 @@ String buildSetVocalsScript(bool on, int pct) {
   return 'window.kantahe && window.kantahe.setVocals && window.kantahe.setVocals($on, $level);';
 }
 
+/// JavaScript that tells the page how tall the app's own buttons are, in pixels (the page keeps that much room free at the bottom): one call
+/// to window.kantahe.setControlsHeight. The only value in it is a whole number between 0 and 600.
+String buildSetControlsHeightScript(int px) => 'window.kantahe && window.kantahe.setControlsHeight && window.kantahe.setControlsHeight(${px.clamp(0, 600)});';
+
 /// What the page says about the guide vocals: `KantaheVocals:state:pct` with the state off, loading, on or failed (pct from 0 to 100).
 class VocalsReport {
   const VocalsReport(this.state, this.pct);
@@ -92,6 +96,16 @@ class EmbedBridge {
   /// What the user chose with the Vocals buttons; a page that starts again is given it after the token.
   ({bool on, int pct})? vocalsChoice;
 
+  /// How tall the app's buttons are; a page that starts again is given it after the token. The page can only be told once it is ready.
+  int? controlsHeight;
+  bool _pageReady = false;
+
+  Future<void> setControlsHeight(int px) async {
+    if (px == controlsHeight) return;
+    controlsHeight = px;
+    if (_pageReady) await host?.runJavaScript(buildSetControlsHeightScript(px));
+  }
+
   /// Passes the choice of the Vocals buttons to the page, and remembers it.
   Future<void> setVocals(bool on, int pct) async {
     vocalsChoice = (on: on, pct: pct);
@@ -116,5 +130,8 @@ class EmbedBridge {
     await host.runJavaScript(buildSetTokenScript(token, deviceId, server));
     final choice = vocalsChoice;
     if (choice != null) await host.runJavaScript(buildSetVocalsScript(choice.on, choice.pct));
+    _pageReady = true;
+    final height = controlsHeight;
+    if (height != null) await host.runJavaScript(buildSetControlsHeightScript(height));
   }
 }

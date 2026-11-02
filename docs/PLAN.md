@@ -442,7 +442,7 @@ secret content), and the static web app (with `/embed/player`).
 | `/queue` | Queue (remove, move to top), up next, now playing, **devices** with "Play here" / which one plays, Play/Pause/Skip. |
 | every page but `/queue` and `/player` | A slim **now-playing bar** under the menu (shown once the state has arrived and a song plays or songs wait): title and artist, "Playing on <device>" / "Paused on <device>", how many are coming up; a link to `/queue`. No new RPC and no clock (positions are not pushed). |
 | `/player` | Full-screen player: lyrics with colour wipe and count-in dots, title + badge, progress, Play/Pause/Skip, score screen with fanfare, "preparing…" while the SoundFont loads. Background videos (pictures only, never any sound) loop behind the lyrics on the device that plays, unless its Background video is off (section 4.2); a scrim keeps the lyrics readable, and the layer takes no focus and no pointer events. |
-| `/embed/player` | The same player without app navigation, for the Flutter WebView. Receives the device token from Flutter through a JavaScript channel (never in the URL), and the guide-vocals choice through `window.kantahe.setVocals(on, pct)`; it answers on the same channel with `KantaheVocals:<state>:<pct>` (state `off`, `loading`, `on` or `failed`). |
+| `/embed/player` | The same player without app navigation, for the Flutter WebView. Receives the device token from Flutter through a JavaScript channel (never in the URL), and the guide-vocals choice through `window.kantahe.setVocals(on, pct)`, and how tall the app's own buttons are through `window.kantahe.setControlsHeight(px)` (the page keeps that much room free below its time and progress bar, at least the 6rem of one row); it answers on the same channel with `KantaheVocals:<state>:<pct>` (state `off`, `loading`, `on` or `failed`). |
 | `/me` | Favourites, history, playlists, my devices, change password, score settings. |
 | `/admin` | Users (create, roles, reset password, revoke), songs (upload, edit title/artist, delete, rescan, import report), server settings. |
 
@@ -524,7 +524,7 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
   embedded player reacts to the state stream like any other player. For a song with a vocals track
   (`Song.has_vocals`, on the player device only) the native Vocals switch and its volume buttons call
   `window.kantahe.setVocals(on, pct)`; the page plays the voice as a second audio track and reports its
-  state back (`KantaheVocals:…`); the choice is kept in memory only. On Android TV the D-pad drives
+  state back (`KantaheVocals:…`); the choice is kept in memory only. The app measures its block of buttons after every layout and tells the page (`setControlsHeight`), so that the buttons, which wrap to more rows on a narrow screen or with the vocals on, never cover the page's progress bar. On a TV the buttons are smaller than elsewhere (the TV's text enlargement is taken out again inside the player). On Android TV the D-pad drives
   the native controls; the WebView never needs focus. WebView settings: media playback without a user
   gesture; microphone permission forwarded for Microphone score mode.
 * **Android TV** (same app, `app/lib/tv/`): the app is a TV when the system reports the `leanback`

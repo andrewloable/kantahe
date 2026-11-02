@@ -7,6 +7,7 @@ import 'package:kantahe/core/errors.dart';
 import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart' hide State;
 import 'package:kantahe/player/connect_card.dart';
+import 'package:kantahe/player/compact_controls.dart';
 import 'package:kantahe/player/embed_bridge.dart';
 import 'package:kantahe/player/platform.dart';
 import 'package:kantahe/player/web_embed.dart';
@@ -47,6 +48,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   final FocusNode _pauseNode = FocusNode(debugLabel: 'player: Play/Pause');
   final FocusNode _connectNode = FocusNode(debugLabel: 'player: Connect a phone');
   final FocusNode _vocalsNode = FocusNode(debugLabel: 'player: Vocals');
+  final GlobalKey _controlsKey = GlobalKey(debugLabel: 'player: the block of buttons');
   Timer? _hideTimer;
   Timer? _connectTimer;
   bool _connectOpen = false; // the card with the QR of the server address
@@ -163,6 +165,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   bool get _hasVocals {
     final s = _services.state.state;
     return s != null && s.hasNow() && s.now.hasSong() && s.now.song.format != Format.FORMAT_MIDI && s.now.song.hasVocals;
+  }
+
+  /// Tells the page how tall the block of buttons is, with the padding around it and the bottom of the screen that it keeps clear of.
+  void _reportControlsHeight() {
+    if (!mounted) return;
+    final box = _controlsKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    unawaited(_bridge.setControlsHeight((box.size.height + MediaQuery.paddingOf(context).bottom).round()));
   }
 
   void _toggleVocals() {
@@ -381,124 +391,130 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                     ),
                   ),
                 Positioned.fill(
-                  child: ExcludeFocus(
-                    excluding: _idle,
-                    child: IgnorePointer(
-                      ignoring: _idle,
-                      child: AnimatedOpacity(
-                        key: const Key('player-controls'),
-                        opacity: _idle ? 0 : 1,
-                        duration: const Duration(milliseconds: 300),
-                        child: Stack(
-                          children: [
-                            SafeArea(
-                              child: Align(
-                                alignment: Alignment.topLeft,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: FocusGrow(
-                                    child: OutlinedButton(onPressed: () => Navigator.of(context).maybePop(), child: const Text('Close')),
+                  child: CompactControls(
+                    tv: AppScope.isTvOf(context),
+                    child: ExcludeFocus(
+                      excluding: _idle,
+                      child: IgnorePointer(
+                        ignoring: _idle,
+                        child: AnimatedOpacity(
+                          key: const Key('player-controls'),
+                          opacity: _idle ? 0 : 1,
+                          duration: const Duration(milliseconds: 300),
+                          child: Stack(
+                            children: [
+                              SafeArea(
+                                child: Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: FocusGrow(
+                                      child: OutlinedButton(onPressed: () => Navigator.of(context).maybePop(), child: const Text('Close')),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            SafeArea(
-                              child: Align(
-                                alignment: Alignment.bottomCenter,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: ListenableBuilder(
-                                    listenable: _services.state,
-                                    builder: (context, _) {
-                                      final playing = _services.state.state?.status == PlayStatus.PLAY_STATUS_PLAYING;
-                                      final playerId = _services.state.state?.playerDeviceId ?? '';
-                                      final isHere = playerId.isNotEmpty && playerId == _services.auth.deviceId;
-                                      return Wrap(
-                                        spacing: 12,
-                                        runSpacing: 8,
-                                        crossAxisAlignment: WrapCrossAlignment.center,
-                                        children: [
-                                          // all the buttons are one quiet kind: only the one with the focus stands out (tvTheme)
-                                          FocusGrow(
-                                            child: OutlinedButton(
-                                              autofocus: true,
-                                              focusNode: _pauseNode,
-                                              onPressed: () =>
-                                                  _actions.control(playing ? ControlAction.CONTROL_ACTION_PAUSE : ControlAction.CONTROL_ACTION_PLAY),
-                                              child: Text(playing ? 'Pause' : 'Play'),
-                                            ),
-                                          ),
-                                          FocusGrow(
-                                            child: OutlinedButton(
-                                              onPressed: () => _actions.control(ControlAction.CONTROL_ACTION_SKIP),
-                                              child: const Text('Skip'),
-                                            ),
-                                          ),
-                                          // this device's volume: only while this device is the player (the song that plays elsewhere is not affected)
-                                          if (isHere && _volumeIsMp3 != null) ...[
-                                            FocusGrow(
-                                              child: OutlinedButton(onPressed: () => _changeVolume(-1), child: const Text('Volume down')),
-                                            ),
-                                            Semantics(
-                                              liveRegion: true,
-                                              child: Text(
-                                                '${_volumeIsMp3! ? 'MP3' : 'MIDI'} volume ${_volumePct(_volumeIsMp3!)}%',
-                                                style: const TextStyle(color: Colors.white, fontSize: 18),
-                                              ),
-                                            ),
-                                            FocusGrow(
-                                              child: OutlinedButton(onPressed: () => _changeVolume(1), child: const Text('Volume up')),
-                                            ),
-                                          ],
-                                          // the guide vocals of a song that has them, on the player only: the page plays the voice, these buttons drive it
-                                          if (isHere && _hasVocals) ...[
+                              SafeArea(
+                                child: Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: Padding(
+                                    key: _controlsKey,
+                                    padding: const EdgeInsets.all(16),
+                                    child: ListenableBuilder(
+                                      listenable: _services.state,
+                                      builder: (context, _) {
+                                        // after every layout: tell the page how much room the buttons take (a row more or less, the vocals on, a turned screen)
+                                        WidgetsBinding.instance.addPostFrameCallback((_) => _reportControlsHeight());
+                                        final playing = _services.state.state?.status == PlayStatus.PLAY_STATUS_PLAYING;
+                                        final playerId = _services.state.state?.playerDeviceId ?? '';
+                                        final isHere = playerId.isNotEmpty && playerId == _services.auth.deviceId;
+                                        return Wrap(
+                                          spacing: 12,
+                                          runSpacing: 8,
+                                          crossAxisAlignment: WrapCrossAlignment.center,
+                                          children: [
+                                            // all the buttons are one quiet kind: only the one with the focus stands out (tvTheme)
                                             FocusGrow(
                                               child: OutlinedButton(
-                                                focusNode: _vocalsNode,
-                                                onPressed: _toggleVocals,
-                                                child: Text(
-                                                  _vocalsState == 'on'
-                                                      ? 'Vocals: on'
-                                                      : _vocalsState == 'loading'
-                                                      ? 'Vocals: loading…'
-                                                      : 'Vocals: off',
-                                                ),
+                                                autofocus: true,
+                                                focusNode: _pauseNode,
+                                                onPressed: () =>
+                                                    _actions.control(playing ? ControlAction.CONTROL_ACTION_PAUSE : ControlAction.CONTROL_ACTION_PLAY),
+                                                child: Text(playing ? 'Pause' : 'Play'),
                                               ),
                                             ),
-                                            if (_vocalsState != 'off') ...[
+                                            FocusGrow(
+                                              child: OutlinedButton(
+                                                onPressed: () => _actions.control(ControlAction.CONTROL_ACTION_SKIP),
+                                                child: const Text('Skip'),
+                                              ),
+                                            ),
+                                            // this device's volume: only while this device is the player (the song that plays elsewhere is not affected)
+                                            if (isHere && _volumeIsMp3 != null) ...[
                                               FocusGrow(
-                                                child: OutlinedButton(onPressed: () => _changeVocals(-1), child: const Text('Vocals quieter')),
+                                                child: OutlinedButton(onPressed: () => _changeVolume(-1), child: const Text('Volume down')),
                                               ),
                                               Semantics(
                                                 liveRegion: true,
-                                                child: Text('Vocals volume $_vocalsPct%', style: const TextStyle(color: Colors.white, fontSize: 18)),
+                                                child: Text(
+                                                  '${_volumeIsMp3! ? 'MP3' : 'MIDI'} volume ${_volumePct(_volumeIsMp3!)}%',
+                                                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                                                ),
                                               ),
                                               FocusGrow(
-                                                child: OutlinedButton(onPressed: () => _changeVocals(1), child: const Text('Vocals louder')),
+                                                child: OutlinedButton(onPressed: () => _changeVolume(1), child: const Text('Volume up')),
                                               ),
                                             ],
-                                          ],
-                                          // the page's own buttons cannot take the D-pad, so taking over from another device is a native button
-                                          if (!isHere)
-                                            FocusGrow(
-                                              child: OutlinedButton(
-                                                onPressed: () => _actions.control(ControlAction.CONTROL_ACTION_PLAY_HERE),
-                                                child: const Text('Play here'),
+                                            // the guide vocals of a song that has them, on the player only: the page plays the voice, these buttons drive it
+                                            if (isHere && _hasVocals) ...[
+                                              FocusGrow(
+                                                child: OutlinedButton(
+                                                  focusNode: _vocalsNode,
+                                                  onPressed: _toggleVocals,
+                                                  child: Text(
+                                                    _vocalsState == 'on'
+                                                        ? 'Vocals: on'
+                                                        : _vocalsState == 'loading'
+                                                        ? 'Vocals: loading…'
+                                                        : 'Vocals: off',
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                          // for the people in the room: the server's address as a QR, to queue songs from a phone or tablet
-                                          if (AppScope.isTvOf(context))
-                                            FocusGrow(
-                                              child: OutlinedButton(focusNode: _connectNode, onPressed: _showConnect, child: const Text('Connect a phone')),
-                                            ),
-                                        ],
-                                      );
-                                    },
+                                              if (_vocalsState != 'off') ...[
+                                                FocusGrow(
+                                                  child: OutlinedButton(onPressed: () => _changeVocals(-1), child: const Text('Vocals quieter')),
+                                                ),
+                                                Semantics(
+                                                  liveRegion: true,
+                                                  child: Text('Vocals volume $_vocalsPct%', style: const TextStyle(color: Colors.white, fontSize: 16)),
+                                                ),
+                                                FocusGrow(
+                                                  child: OutlinedButton(onPressed: () => _changeVocals(1), child: const Text('Vocals louder')),
+                                                ),
+                                              ],
+                                            ],
+                                            // the page's own buttons cannot take the D-pad, so taking over from another device is a native button
+                                            if (!isHere)
+                                              FocusGrow(
+                                                child: OutlinedButton(
+                                                  onPressed: () => _actions.control(ControlAction.CONTROL_ACTION_PLAY_HERE),
+                                                  child: const Text('Play here'),
+                                                ),
+                                              ),
+                                            // for the people in the room: the server's address as a QR, to queue songs from a phone or tablet
+                                            if (AppScope.isTvOf(context))
+                                              FocusGrow(
+                                                child: OutlinedButton(focusNode: _connectNode, onPressed: _showConnect, child: const Text('Connect a phone')),
+                                              ),
+                                          ],
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),

@@ -10,12 +10,14 @@ import { MIC_METER } from './mic';
 import { PlaybackKind } from '../../gen/kantahe/v1/catalog_pb';
 import { Format } from '../../gen/kantahe/v1/common_pb';
 import { PlayStatus } from '../../gen/kantahe/v1/session_pb';
+import { NativeControls } from './native-controls';
 import { VocalsPrefs } from './vocals-prefs';
 import { asMic, fakeEngines, FakeMic, fakePlayerServer, playbackOf } from './testing';
 
 interface KantaheBridge {
   setToken(token: string, deviceId: string, serverUrl?: string): void;
   setVocals(on: unknown, pct: unknown): void;
+  setControlsHeight(px: unknown): void;
 }
 const bridge = () => (window as unknown as { kantahe?: KantaheBridge }).kantahe;
 
@@ -117,6 +119,37 @@ describe('EmbedPlayerPage', () => {
     fixture.destroy();
     expect(bridge()).toBeUndefined();
   });
+  describe('room for the app\'s buttons', () => {
+    it('bridge_has_setControlsHeight', () => {
+      setup();
+      expect(typeof bridge()!.setControlsHeight).toBe('function');
+    });
+
+    it('setControlsHeight_sets_the_room, rounded to whole pixels', () => {
+      setup();
+      const room = TestBed.inject(NativeControls).height;
+      expect(room()).toBe(0);
+      bridge()!.setControlsHeight(220);
+      expect(room()).toBe(220);
+      bridge()!.setControlsHeight(220.4);
+      expect(room()).toBe(220);
+      bridge()!.setControlsHeight(220.6);
+      expect(room()).toBe(221);
+    });
+
+    it('setControlsHeight_ignores_bad_values_and_clamps', () => {
+      setup();
+      const room = TestBed.inject(NativeControls).height;
+      bridge()!.setControlsHeight(200);
+      for (const bad of ['tall', NaN, Infinity, -Infinity, undefined, null, {}]) bridge()!.setControlsHeight(bad);
+      expect(room()).toBe(200);
+      bridge()!.setControlsHeight(-5);
+      expect(room()).toBe(0);
+      bridge()!.setControlsHeight(5000);
+      expect(room()).toBe(600);
+    });
+  });
+
   describe('guide vocals', () => {
     const MP3_SONG = song('21628', 'Hello', 'Adele', Format.MP3);
     const withVocals = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21628?sig=a', vocalsUrl: '/media/vocals/21628?sig=v', song: MP3_SONG });

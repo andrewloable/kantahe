@@ -5,6 +5,7 @@ import { ControlAction, PlayStatus } from '../../gen/kantahe/v1/session_pb';
 import { FormatBadgeComponent } from '../library/format-badge.component';
 import { clock } from '../queue/now-playing.component';
 import { BackgroundVideoComponent } from './background/background-video.component';
+import { NativeControls } from './native-controls';
 import { PlayerController } from './player.controller';
 import { LyricsViewComponent } from './lyrics-view/lyrics-view.component';
 import { ScoreScreenComponent } from './score/score-screen.component';
@@ -20,7 +21,7 @@ const IDLE_MS = 3000;
   // any move, touch or key on the player shows its buttons again
   host: { '(mousemove)': 'wake()', '(pointerdown)': 'wake(false)', '(touchstart)': 'wake(false)', '(keydown)': 'wake(true)', '(focusin)': 'wake()' },
   template: `
-    <main class="stage fill" [class.embedded]="embedded()" [class.idle]="idle()">
+    <main class="stage fill" [class.embedded]="embedded()" [class.idle]="idle()" [style.--native-controls]="embedded() ? controls.height() + 'px' : null">
       @if (!embedded()) {
         <div class="topbar">
           <button type="button" (click)="leave('/library')">Back to Kantahe</button>
@@ -190,7 +191,8 @@ const IDLE_MS = 3000;
     /* inside the app the native Close sits at the top and the native controls at the bottom, over the page */
     .stage.embedded {
       padding-top: 4.5rem;
-      padding-bottom: 6rem;
+      /* one row of the app's buttons needs 6rem; the app says how much more it takes when they wrap to more rows */
+      padding-bottom: max(6rem, calc(var(--native-controls, 0px) + 1.5rem));
     }
     /* a long title is cut to two lines and a long artist to one: the whole text is in the tooltip */
     h1 {
@@ -265,6 +267,7 @@ const IDLE_MS = 3000;
 })
 export class PlayerViewComponent {
   protected readonly c = inject(PlayerController);
+  protected readonly controls = inject(NativeControls);
   /** Inside the app's WebView: the same player without anything around it. */
   readonly embedded = input(false);
 

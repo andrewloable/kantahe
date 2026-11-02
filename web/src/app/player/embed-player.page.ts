@@ -2,12 +2,15 @@ import { Component, DestroyRef, effect, inject, untracked, viewChild } from '@an
 import { AuthStore } from '../core/auth.store';
 import { ServerUrl, validServerUrl } from '../core/server-url';
 import { PlayerViewComponent } from './player-view.component';
+import { MAX_CONTROLS_HEIGHT, NativeControls } from './native-controls';
 import { VOCALS_MAX, VOCALS_STEP, VocalsPrefs } from './vocals-prefs';
 
 interface KantaheBridge {
   setToken(token: string, deviceId: string, serverUrl?: string): void;
   /** The app's Vocals buttons: on or off, and the level in percent (rounded to a step of 10, 0 to 100). */
   setVocals(on: boolean, pct: number): void;
+  /** How tall the app's own buttons are, in pixels: the page keeps that much room free at the bottom. */
+  setControlsHeight(px: number): void;
 }
 
 interface HostWindow {
@@ -46,6 +49,7 @@ export class EmbedPlayerPage {
   protected readonly auth = inject(AuthStore);
   private readonly serverUrl = inject(ServerUrl);
   private readonly prefs = inject(VocalsPrefs);
+  private readonly controls = inject(NativeControls);
   private readonly view = viewChild(PlayerViewComponent);
 
   constructor() {
@@ -53,6 +57,7 @@ export class EmbedPlayerPage {
     host.kantahe = {
       setToken: (token, deviceId, serverUrl) => this.setToken(token, deviceId, serverUrl),
       setVocals: (on, pct) => this.setVocals(on, pct),
+      setControlsHeight: (px) => this.setControlsHeight(px),
     };
     this.reportVocals(host);
     inject(DestroyRef).onDestroy(() => delete host.kantahe);
@@ -68,6 +73,12 @@ export class EmbedPlayerPage {
     const view = this.view();
     if (view) view.setVocals(on);
     else this.prefs.on.set(on); // no player yet: the choice waits for the first song with vocals
+  }
+
+  /** Anything that is not a finite number is ignored; the rest is rounded and kept between 0 and MAX_CONTROLS_HEIGHT. */
+  private setControlsHeight(px: unknown): void {
+    if (typeof px !== 'number' || !Number.isFinite(px)) return;
+    this.controls.height.set(Math.min(MAX_CONTROLS_HEIGHT, Math.max(0, Math.round(px))));
   }
 
   /** Tells the app what the vocals do, once per change; what was true at the start is not news. */

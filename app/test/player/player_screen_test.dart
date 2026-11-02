@@ -82,6 +82,12 @@ Future<Rig> open(WidgetTester tester, {State? state, String? server = 'http://sr
   return r;
 }
 
+/// The scripts the page was sent that call [name] (the token, the vocals, the room for the buttons arrive in any order).
+List<String> scriptsWith(Rig r, String name) => [
+  for (final s in r.host.scripts)
+    if (s.contains(name)) s,
+];
+
 void main() {
   testWidgets('loads the player page of the server, with no token in the address', (tester) async {
     final r = await open(tester);
@@ -94,7 +100,7 @@ void main() {
     expect(r.host.scripts, isEmpty);
     r.config!.onMessage('KantaheReady');
     await tester.pump();
-    expect(argsOf(r.host.scripts.single), ['t', 'me', 'http://srv:1']);
+    expect(argsOf(scriptsWith(r, 'setToken').single), ['t', 'me', 'http://srv:1']);
   });
 
   testWidgets('regression: the page may only navigate within the server address', (tester) async {
@@ -585,8 +591,7 @@ void main() {
       await comeBack(tester);
       r.config!.onMessage('KantaheReady');
       await settle(tester);
-      expect(r.host.scripts, hasLength(1));
-      expect(r.host.scripts.single, contains('setToken'));
+      expect(scriptsWith(r, 'setToken'), hasLength(1));
     });
 
     testWidgets('review: the wake lock is taken again only when the state says playing here after coming back', (tester) async {
@@ -688,6 +693,55 @@ void main() {
     });
   });
 
+  group('room for the buttons', () {
+    int? lastHeight(Rig r) {
+      final heights = [
+        for (final sc in r.host.scripts)
+          if (sc.contains('setControlsHeight')) argsOf(sc).single as int,
+      ];
+      return heights.isEmpty ? null : heights.last;
+    }
+
+    State withVocalsSong({bool hasVocals = true}) => stateOf(
+      status: PlayStatus.PLAY_STATUS_PLAYING,
+      player: 'me',
+      devices: [device('me', 'This device', isCaller: true), device('tv', 'TV')],
+      now: nowPlaying(song('1', 'A', 'B', hasVocals: hasVocals)),
+    );
+
+    testWidgets('controls_height_is_reported_after_ready: a whole number above zero', (tester) async {
+      final r = await open(tester, state: withVocalsSong());
+      expect(lastHeight(r), isNull, reason: 'the page is not ready');
+      r.config!.onMessage('KantaheReady');
+      await tester.pump();
+      await tester.pump();
+      expect(lastHeight(r), greaterThan(0));
+    });
+
+    testWidgets('more_rows_report_a_larger_height: on a narrow screen the vocals buttons add a row', (tester) async {
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final r = await open(tester, state: withVocalsSong());
+      r.config!.onMessage('KantaheReady');
+      await tester.pump();
+      await tester.pump();
+      final before = lastHeight(r)!;
+      r.config!.onMessage('KantaheVocals:on:60');
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      expect(lastHeight(r)!, greaterThan(before));
+    });
+
+    testWidgets('tv_buttons_are_smaller in the player: the TV Pause button is at most 36 tall, the phone one is the default 40', (tester) async {
+      await open(tester, tv: true);
+      expect(tester.getSize(find.widgetWithText(OutlinedButton, 'Pause')).height, lessThanOrEqualTo(36.5));
+      await open(tester);
+      expect(tester.getSize(find.widgetWithText(OutlinedButton, 'Pause')).height, greaterThanOrEqualTo(40));
+    });
+  });
+
   group('vocals', () {
     const me = 'me';
     State withSong({bool hasVocals = true, Format format = Format.FORMAT_MP3, String player = me}) => stateOf(
@@ -745,7 +799,7 @@ void main() {
       await report(tester, r, 'KantaheVocals:on:60');
       await tester.tap(find.text('Vocals: on'));
       await tester.pump();
-      expect(argsOf(r.host.scripts.last), [false, 60]);
+      expect(argsOf(scriptsWith(r, 'setVocals').last), [false, 60]);
     });
 
     testWidgets('volume_steps: 10 per press, stops at 0 and at 100, and each step is sent', (tester) async {
@@ -756,22 +810,22 @@ void main() {
       await tester.tap(find.text('Vocals quieter'));
       await tester.pump();
       expect(find.text('Vocals volume 40%'), findsOneWidget);
-      expect(argsOf(r.host.scripts.last), [true, 40]);
+      expect(argsOf(scriptsWith(r, 'setVocals').last), [true, 40]);
       for (var i = 0; i < 8; i++) {
         await tester.tap(find.text('Vocals quieter'));
         await tester.pump();
       }
       expect(find.text('Vocals volume 0%'), findsOneWidget);
-      final sent = r.host.scripts.length;
+      final sent = scriptsWith(r, 'setVocals').length;
       await tester.tap(find.text('Vocals quieter'));
       await tester.pump();
-      expect(r.host.scripts, hasLength(sent)); // nothing to change
+      expect(scriptsWith(r, 'setVocals'), hasLength(sent)); // nothing to change
       for (var i = 0; i < 12; i++) {
         await tester.tap(find.text('Vocals louder'));
         await tester.pump();
       }
       expect(find.text('Vocals volume 100%'), findsOneWidget);
-      expect(argsOf(r.host.scripts.last), [true, 100]);
+      expect(argsOf(scriptsWith(r, 'setVocals').last), [true, 100]);
     });
 
     testWidgets('failed_report_switches_off_with_a_message', (tester) async {
@@ -799,7 +853,7 @@ void main() {
       r.host.scripts.clear();
       r.config!.onMessage('KantaheReady');
       await tester.pump();
-      expect(argsOf(r.host.scripts.last), [true, 60]);
+      expect(argsOf(scriptsWith(r, 'setVocals').last), [true, 60]);
       r.q.setState(withSong());
       await tester.pump();
       expect(find.text('Vocals: off'), findsOneWidget); // the label follows the page, which reported off
@@ -813,7 +867,7 @@ void main() {
       r.host.scripts.clear();
       r.config!.onMessage('KantaheReady');
       await tester.pump();
-      expect(argsOf(r.host.scripts.last), [false, 60]);
+      expect(argsOf(scriptsWith(r, 'setVocals').last), [false, 60]);
     });
 
     testWidgets('tv_remote_reaches_the_vocals_buttons', (tester) async {
@@ -826,7 +880,7 @@ void main() {
       expect(FocusManager.instance.primaryFocus?.debugLabel, 'player: Vocals');
       await tester.sendKeyEvent(LogicalKeyboardKey.select);
       await tester.pump();
-      expect(argsOf(r.host.scripts.last), [true, 60]);
+      expect(argsOf(scriptsWith(r, 'setVocals').last), [true, 60]);
     });
   });
 

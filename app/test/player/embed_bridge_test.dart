@@ -58,6 +58,46 @@ Future<({EmbedBridge bridge, FakeHost host, AuthStore auth})> make({bool signedI
 }
 
 void main() {
+  group('room for the buttons', () {
+    test('buildSetControlsHeightScript_is_plain: a guarded call with a whole number between 0 and 600', () {
+      expect(buildSetControlsHeightScript(180), 'window.kantahe && window.kantahe.setControlsHeight && window.kantahe.setControlsHeight(180);');
+      expect(argsOf(buildSetControlsHeightScript(-5)), [0]);
+      expect(argsOf(buildSetControlsHeightScript(9999)), [600]);
+    });
+
+    test('setControlsHeight_waits_for_the_page, then sends each new value once', () async {
+      final m = await make();
+      await m.bridge.setControlsHeight(180);
+      expect(m.host.scripts, isEmpty, reason: 'the page has not said it is ready');
+      await m.bridge.onMessage('KantaheReady');
+      expect(m.host.scripts, hasLength(2));
+      expect(m.host.scripts[0], contains('setToken'));
+      expect(argsOf(m.host.scripts[1]), [180]);
+      await m.bridge.setControlsHeight(200);
+      expect(m.host.scripts, hasLength(3));
+      expect(argsOf(m.host.scripts[2]), [200]);
+      await m.bridge.setControlsHeight(200);
+      expect(m.host.scripts, hasLength(3), reason: 'the same value again says nothing');
+    });
+
+    test('a page that starts again is given the height again, after the token', () async {
+      final m = await make();
+      await m.bridge.onMessage('KantaheReady');
+      await m.bridge.setControlsHeight(180);
+      m.host.scripts.clear();
+      await m.bridge.onMessage('KantaheReady');
+      expect(m.host.scripts, hasLength(2));
+      expect(m.host.scripts[0], contains('setToken'));
+      expect(argsOf(m.host.scripts[1]), [180]);
+    });
+
+    test('ready_without_a_height_still_sends_only_the_token', () async {
+      final m = await make();
+      await m.bridge.onMessage('KantaheReady');
+      expect(m.host.scripts, hasLength(1));
+    });
+  });
+
   group('guide vocals', () {
     test('buildSetVocalsScript_is_plain: a guarded call with a boolean and a whole number, rounded down to a step of 10 between 0 and 100', () {
       expect(buildSetVocalsScript(true, 60), 'window.kantahe && window.kantahe.setVocals && window.kantahe.setVocals(true, 60);');
