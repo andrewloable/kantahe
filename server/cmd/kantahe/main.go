@@ -20,6 +20,7 @@ import (
 	"github.com/andrewloable/kantahe/server/internal/discovery"
 	"github.com/andrewloable/kantahe/server/internal/library"
 	"github.com/andrewloable/kantahe/server/internal/store"
+	"github.com/andrewloable/kantahe/server/internal/users"
 	"github.com/andrewloable/kantahe/server/internal/webui"
 )
 
@@ -67,6 +68,7 @@ func runContext(ctx context.Context, args []string, stdout io.Writer) int {
 		return 1
 	}
 	warnNoSoundFont(logger, soundFont)
+	warnSetupOpen(ctx, logger, db)
 	imp := library.NewImporter(db, cfg.DataDir, cfg.Libraries, logger)
 	srv := app.New(cfg, logger)
 	mounted, err := mountServices(srv, api.Deps{DB: db, Version: version, Name: cfg.Name, Now: time.Now, Logger: logger, TrustedProxies: cfg.TrustedProxies,
@@ -117,6 +119,19 @@ func warnNoSoundFont(logger *slog.Logger, soundFont string) {
 		return
 	}
 	logger.Warn("no SoundFont: MIDI songs cannot be played. Run go generate ./internal/assets before building (the build then embeds the default one), or pass --soundfont")
+}
+
+// warnSetupOpen says at start-up that no account exists yet: the first visitor of the web app creates the admin, so the server
+// should not be reachable from the internet before that. It never stops the server.
+func warnSetupOpen(ctx context.Context, logger *slog.Logger, db *store.DB) {
+	n, err := users.Count(ctx, db)
+	if err != nil {
+		logger.Warn("cannot tell whether an admin account exists", "err", err)
+		return
+	}
+	if n == 0 {
+		logger.Warn("no admin account yet: the first visitor of the web app creates it. Open the server on your own network and create it before making the server reachable from the internet")
+	}
 }
 
 // advertise announces the server on the local network once it is listening (with the port it really bound, so a

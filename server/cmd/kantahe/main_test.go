@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"io"
 	"log/slog"
@@ -22,6 +23,7 @@ import (
 	"github.com/andrewloable/kantahe/server/internal/config"
 	"github.com/andrewloable/kantahe/server/internal/library"
 	"github.com/andrewloable/kantahe/server/internal/store"
+	"github.com/andrewloable/kantahe/server/internal/users"
 )
 
 func TestVersionFlag(t *testing.T) {
@@ -356,5 +358,39 @@ func TestWarnNoSoundFont(t *testing.T) {
 	warnNoSoundFont(logger, "/data/soundfont/default.sf2")
 	if buf.Len() != 0 {
 		t.Errorf("a server with a SoundFont logged %q", buf.String())
+	}
+}
+
+func setupWarning(t *testing.T, withAdmin bool) string {
+	t.Helper()
+	ctx := context.Background()
+	db, err := store.Open(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Close() })
+	if withAdmin {
+		err := db.WriteTx(ctx, func(tx *sql.Tx) error {
+			return users.Create(ctx, tx, users.User{ID: users.NewID(), Email: "admin@example.com", DisplayName: "Admin", PasswordHash: "x", Admin: true, CreatedAt: 1})
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	var buf bytes.Buffer
+	warnSetupOpen(ctx, slog.New(slog.NewTextHandler(&buf, nil)), db)
+	return buf.String()
+}
+
+func TestWarnSetupOpenWithNoUsers(t *testing.T) {
+	got := setupWarning(t, false)
+	if !strings.Contains(got, "no admin account yet") || !strings.Contains(got, "level=WARN") {
+		t.Fatalf("expected the warning, got %q", got)
+	}
+}
+
+func TestWarnSetupOpenQuietOnceAnAdminExists(t *testing.T) {
+	if got := setupWarning(t, true); strings.Contains(got, "no admin account yet") {
+		t.Fatalf("unexpected warning: %q", got)
 	}
 }

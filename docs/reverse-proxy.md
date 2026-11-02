@@ -6,6 +6,9 @@ on plain HTTP the server renders MIDI songs instead), put a reverse proxy in fro
 [deploy/proxy/](../deploy/proxy/) are complete: `Caddyfile` (certificates automatic) and `nginx.conf`
 (bring your own certificate, for example from certbot).
 
+**Create the admin account first.** Until it exists, the first visitor of the web app becomes the admin. Open the
+server on your own network and set it up before the proxy (or a tunnel) makes it reachable from the internet.
+
 ## What the proxy must do
 
 * **Not buffer the streaming calls.** The app keeps a call open for as long as it is on screen:

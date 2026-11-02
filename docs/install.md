@@ -149,7 +149,9 @@ library (not a mapped network drive that can disconnect).
 ## First start
 
 Open `http://SERVER:8080`. The first visit asks you to create the **admin** account (email, name,
-password). The admin then creates the other users under *Admin → Users* and decides who may upload.
+password). Create it before the server is reachable from outside your network (reverse proxy, tunnel, port
+forward): until it exists, the first visitor becomes the admin, and the server logs a warning at start-up while
+it is missing. The admin then creates the other users under *Admin → Users* and decides who may upload.
 Everyone has their own queue, favourites, history and playlists; the song library is shared.
 
 ## Adding songs
