@@ -76,9 +76,14 @@ paragraph. Title, artist and credits come from `@T` lines (in a track whose even
 `@KMIDI KARAOKE FILE`, `@V…`, `@I…`), else from the track name. Event times are converted to
 milliseconds with the file's division and its tempo map (every `FF 51` tempo change).
 
-**`.karmp3`**: a ZIP with three entries sharing one base name: `NAME.mp3` (the recording), `NAME.lrc`
+**`.karmp3`**: a ZIP with three entries sharing one base name: `NAME.mp3` (the recording, the instrumental), `NAME.lrc`
 (`[mm:ss.xx]` per line, `<mm:ss.xx>` before each word or syllable; `[ti:…]`/`[ar:…]` tags) and
-`NAME.nfo` (`Key : value` lines such as `Title`, `Artist`). Titles prefer `.nfo`, then LRC tags.
+`NAME.nfo` (`Key : value` lines such as `Title`, `Artist`). Titles prefer `.nfo`, then LRC tags. Since Kantahe Maker 1.1 a fourth,
+optional entry `NAME.vocals.mp3` holds the singer's voice alone (mono, same length and same start as the instrumental, so the two play
+in step; both are normalized to about -16 LUFS). **Entry names always come from the `.nfo`, never from the song**: the row `Instrumental`
+names the instrumental (a file of Maker 1.0.x has no such row, and its only `.mp3` is the instrumental) and the row `Vocals` names the
+vocals; no `Vocals` row, or a named entry that is missing or unusable, means no vocals (the song still plays, the problem is logged
+once). Unknown entries are ignored. Lyric times count from the start of both MP3s and need no offset.
 
 **Lyric timing** (computed on the server, D1; clients only compare times):
 * A word's colour wipe runs from its start to the next word's start (at least 50 ms).
@@ -293,7 +298,8 @@ half the memory), plain HTTP from the LAN. The agent measured with `adb` (`dumps
 
 * **Storage**: `--data DIR` holds the SQLite database, uploaded songs (`songs/`, named by SHA-256)
   and extracted MP3s (`media/`; MP3s inside a `.karmp3` ZIP are deflated, so they are extracted once
-  at import to allow HTTP Range). `--library DIR` (repeatable) are **watched folders**: files are
+  at import to allow HTTP Range; a `.karmp3` with a vocals track also gets `media/SHA.vocals.mp3`, recorded in
+  `songs.has_vocals`, kept and removed with the instrumental). `--library DIR` (repeatable) are **watched folders**: files are
   referenced in place, scanned at start, every 10 minutes and on the admin's "Rescan".
 * **Upload** (users with `uploader`): `UploadService.UploadSong(filename, bytes)`, one ConnectRPC call
   per `.kar` or `.karmp3`. A `.zip` of songs is unpacked **on the client** (web: fflate, as in the
@@ -397,6 +403,7 @@ service UploadService {       // users with the uploader role
 service CatalogService {
   rpc SearchSongs / ListArtists / GetSong / GetLyrics;
   rpc GetPlayback(GetPlaybackRequest) returns (Playback);          // signed URLs per the device's MIDI mode, lyrics
+                                                                   // Playback.vocals_url: the vocals track of an MP3 song that has one (Song.has_vocals)
   rpc GetBackground(GetBackgroundRequest) returns (GetBackgroundResponse);  // the enabled background videos in loop order, signed URLs (4.2)
 }
 service SessionService {      // always the caller's own user
@@ -417,7 +424,7 @@ service UserLibraryService {  // favourites, history, playlists of the caller
 ```
 
 Plain HTTP (everything else is ConnectRPC): `GET /media/song/{number}?exp=&sig=` (MP3 with Range,
-or the `.kar` file), `GET /media/soundfont/{number}.sf2?exp=&sig=` (per-song trimmed SoundFont),
+or the `.kar` file), `GET /media/vocals/{number}?exp=&sig=` (the vocals track of a `.karmp3` that has one, signed like the song, with Range; `404` for any other song), `GET /media/soundfont/{number}.sf2?exp=&sig=` (per-song trimmed SoundFont),
 `GET /media/rendered/{number}?exp=&sig=` (server-rendered MIDI audio with Range; `503` + `Retry-After`
 while rendering), `GET /media/video/{id}?exp=&sig=` (a background video with Range, 4.2), `GET /media/soundfont.sf2` (full bank) and `GET /media/fanfare/{1|2|3}.mp3` (cacheable, no
 secret content), and the static web app (with `/embed/player`).
@@ -435,7 +442,7 @@ secret content), and the static web app (with `/embed/player`).
 | `/queue` | Queue (remove, move to top), up next, now playing, **devices** with "Play here" / which one plays, Play/Pause/Skip. |
 | every page but `/queue` and `/player` | A slim **now-playing bar** under the menu (shown once the state has arrived and a song plays or songs wait): title and artist, "Playing on <device>" / "Paused on <device>", how many are coming up; a link to `/queue`. No new RPC and no clock (positions are not pushed). |
 | `/player` | Full-screen player: lyrics with colour wipe and count-in dots, title + badge, progress, Play/Pause/Skip, score screen with fanfare, "preparing…" while the SoundFont loads. Background videos (pictures only, never any sound) loop behind the lyrics on the device that plays, unless its Background video is off (section 4.2); a scrim keeps the lyrics readable, and the layer takes no focus and no pointer events. |
-| `/embed/player` | The same player without app navigation, for the Flutter WebView. Receives the device token from Flutter through a JavaScript channel (never in the URL). |
+| `/embed/player` | The same player without app navigation, for the Flutter WebView. Receives the device token from Flutter through a JavaScript channel (never in the URL), and the guide-vocals choice through `window.kantahe.setVocals(on, pct)`; it answers on the same channel with `KantaheVocals:<state>:<pct>` (state `off`, `loading`, `on` or `failed`). |
 | `/me` | Favourites, history, playlists, my devices, change password, score settings. |
 | `/admin` | Users (create, roles, reset password, revoke), songs (upload, edit title/artist, delete, rescan, import report), server settings. |
 
@@ -514,7 +521,10 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
 * **Splash**: the official one (`branding/kantahe-splash-logo.svg`: tile and wordmark on the flat background `#0a0e22`, dark in every theme) from the first frame the system draws until the first real screen. Android 12 and later draw the system splash (the tile in a circle, `splash-android12.png`); before 12 the window shows the logo (`splash-logo-native.png`, 240 dp); then `lib/bootstrap.dart` draws the same logo at once, before the stored address, the keystore and TV detection are read, and swaps to the app (or says "Kantahe could not start." with a Retry that the remote's Select presses). The window colour behind the app is `#0a0e22` too, so no black or white frame comes in between. The files come from `branding/build.py` through `scripts/sync-branding.sh`; the native files are regenerated by `scripts/sync-branding.sh --flutter`.
 * **Player**: a full-screen WebView loading `{server}/embed/player`; the device token is passed in via
   a JavaScript channel. Play/Pause/Skip are native controls that call `SessionService.Control`; the
-  embedded player reacts to the state stream like any other player. On Android TV the D-pad drives
+  embedded player reacts to the state stream like any other player. For a song with a vocals track
+  (`Song.has_vocals`, on the player device only) the native Vocals switch and its volume buttons call
+  `window.kantahe.setVocals(on, pct)`; the page plays the voice as a second audio track and reports its
+  state back (`KantaheVocals:…`); the choice is kept in memory only. On Android TV the D-pad drives
   the native controls; the WebView never needs focus. WebView settings: media playback without a user
   gesture; microphone permission forwarded for Microphone score mode.
 * **Android TV** (same app, `app/lib/tv/`): the app is a TV when the system reports the `leanback`
@@ -524,14 +534,15 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
   shows the **code sign-in** screen: `StartCodeLogin` (device type `ANDROID_TV`), the code in large type with
   a QR of `approve_url`, and `WaitCodeLogin` kept open (reopened with the same secret when the link drops);
   approved signs in, expired offers a New code button. The server screen is the same as on a phone (found servers are
-  chosen with the remote; an address, when none was found, is typed with the on-screen keyboard). After sign-in the destinations are a left **navigation rail** instead
+  chosen with the remote; an address, when none was found, is typed with the on-screen keyboard). After sign-in the destinations (Library, Queue, Player, Me) are a left **navigation rail** instead
   of a bottom bar, text is 1.25 times larger, and every focusable thing shows a thick ring (`FocusRing`,
   `tvTheme`); the first song of the library has the focus at the start and the arrow keys move it row by
   row, OK queues the song. The player screen keeps its Play/Pause button focused and the WebView out of the
   focus tree.
-  **A TV opens in the player**: once, as soon as the server's state is known, the player screen is pushed (it
+  **The app opens in the player** (every device, not only a TV): once, as soon as the server's state is known, the player screen is pushed (it
   sends no command, so nothing starts playing by itself); Close leaves it for Library/Queue/Me and it is not
-  opened again until the next start. While a song plays here and no key is pressed for 4 seconds the native Close,
+  opened again until the next start, except through the **Player** destination of the navigation (between Queue and Me), which pushes the
+  same screen again. While a song plays here and no key is pressed for 4 seconds the native Close,
   Play/Pause, Skip and Play here buttons fade out; any key (or touch) brings them back and is used up doing so, so
   a hidden button is never pressed. Play here is a native button of the player screen while this device is not
   the player, and the queue card has Open player when the server already lists this device as the player (after

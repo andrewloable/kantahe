@@ -184,6 +184,7 @@ func (s *Service) Verify(r *http.Request) (string, bool) {
 // Routes registers the media routes.
 func (s *Service) Routes(handle func(pattern string, h http.Handler)) {
 	handle("GET /media/song/{number}", http.HandlerFunc(s.song))
+	handle("GET /media/vocals/{number}", http.HandlerFunc(s.vocals))
 	handle("GET /media/video/{id}", http.HandlerFunc(s.video))
 	handle("GET /media/soundfont.sf2", http.HandlerFunc(s.fullSoundFont))
 	handle("GET /media/soundfont/{file}", http.HandlerFunc(s.songSoundFont))
@@ -223,6 +224,38 @@ func (s *Service) song(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.serveFile(w, r, file, contentType, "private, max-age=3600")
+}
+
+// vocals serves the vocals track of a .karmp3 that has one (Range supported), like song serves the instrumental. The file is the
+// instrumental's name with ".vocals.mp3" instead of ".mp3": the importer (library.vocalsPathOf) leaves them side by side.
+func (s *Service) vocals(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.Verify(r); !ok {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	number, ok := library.CanonicalNumber(r.PathValue("number"))
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	var hasVocals bool
+	var mediaPath string
+	err := s.db.QueryRowContext(r.Context(), `SELECT has_vocals <> 0, media_path FROM songs WHERE number = ? AND deleted = 0 AND failed = 0 AND metadata_done = 1`, number).
+		Scan(&hasVocals, &mediaPath)
+	if errors.Is(err, sql.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		s.logger.Error("vocals lookup failed", "err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	if !hasVocals || mediaPath == "" {
+		http.NotFound(w, r)
+		return
+	}
+	s.serveFile(w, r, strings.TrimSuffix(mediaPath, ".mp3")+".vocals.mp3", "audio/mpeg", "private, max-age=3600")
 }
 
 func (s *Service) serveFile(w http.ResponseWriter, r *http.Request, file, contentType, cacheControl string) {

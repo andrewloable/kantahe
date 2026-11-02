@@ -688,6 +688,148 @@ void main() {
     });
   });
 
+  group('vocals', () {
+    const me = 'me';
+    State withSong({bool hasVocals = true, Format format = Format.FORMAT_MP3, String player = me}) => stateOf(
+      status: PlayStatus.PLAY_STATUS_PLAYING,
+      player: player,
+      devices: [device(me, 'This device', isCaller: true), device('tv', 'TV')],
+      now: nowPlaying(song('1', 'A', 'B', format: format, hasVocals: hasVocals)),
+    );
+    Future<Rig> openWith(WidgetTester tester, State s, {bool tv = false}) {
+      // a wide screen: the buttons share one row, as on a TV
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      return open(tester, state: s, tv: tv);
+    }
+
+    Future<void> report(WidgetTester tester, Rig r, String text) async {
+      r.config!.onMessage(text);
+      await tester.pump(); // the bridge looks at the page's address first: that takes a moment
+      await tester.pump();
+    }
+
+    testWidgets('player_switch_hidden_without_vocals: a plain song, a MIDI song, and a song with vocals played by another device show nothing', (tester) async {
+      await openWith(tester, withSong(hasVocals: false));
+      expect(find.textContaining('Vocals'), findsNothing);
+      await openWith(tester, withSong(format: Format.FORMAT_MIDI));
+      expect(find.textContaining('Vocals'), findsNothing);
+      await openWith(tester, withSong(player: 'tv'));
+      expect(find.textContaining('Vocals'), findsNothing);
+    });
+
+    testWidgets('player_switch_shown_with_vocals: off, with no volume buttons yet', (tester) async {
+      await openWith(tester, withSong());
+      expect(find.text('Vocals: off'), findsOneWidget);
+      expect(find.text('Vocals quieter'), findsNothing);
+    });
+
+    testWidgets('toggle_on_sends_the_script_and_shows_what_the_page_reports', (tester) async {
+      final r = await openWith(tester, withSong());
+      await tester.tap(find.text('Vocals: off'));
+      await tester.pump();
+      expect(argsOf(r.host.scripts.single), [true, 60]);
+      expect(find.text('Vocals: off'), findsOneWidget); // until the page says so
+      await report(tester, r, 'KantaheVocals:loading:60');
+      expect(find.text('Vocals: loading…'), findsOneWidget);
+      await report(tester, r, 'KantaheVocals:on:60');
+      expect(find.text('Vocals: on'), findsOneWidget);
+      expect(find.text('Vocals volume 60%'), findsOneWidget);
+      expect(find.text('Vocals quieter'), findsOneWidget);
+      expect(find.text('Vocals louder'), findsOneWidget);
+    });
+
+    testWidgets('toggle_off: pressing the switch while it is on asks for off', (tester) async {
+      final r = await openWith(tester, withSong());
+      await report(tester, r, 'KantaheVocals:on:60');
+      await tester.tap(find.text('Vocals: on'));
+      await tester.pump();
+      expect(argsOf(r.host.scripts.last), [false, 60]);
+    });
+
+    testWidgets('volume_steps: 10 per press, stops at 0 and at 100, and each step is sent', (tester) async {
+      final r = await openWith(tester, withSong());
+      await report(tester, r, 'KantaheVocals:on:60');
+      await tester.tap(find.text('Vocals quieter'));
+      await tester.pump();
+      await tester.tap(find.text('Vocals quieter'));
+      await tester.pump();
+      expect(find.text('Vocals volume 40%'), findsOneWidget);
+      expect(argsOf(r.host.scripts.last), [true, 40]);
+      for (var i = 0; i < 8; i++) {
+        await tester.tap(find.text('Vocals quieter'));
+        await tester.pump();
+      }
+      expect(find.text('Vocals volume 0%'), findsOneWidget);
+      final sent = r.host.scripts.length;
+      await tester.tap(find.text('Vocals quieter'));
+      await tester.pump();
+      expect(r.host.scripts, hasLength(sent)); // nothing to change
+      for (var i = 0; i < 12; i++) {
+        await tester.tap(find.text('Vocals louder'));
+        await tester.pump();
+      }
+      expect(find.text('Vocals volume 100%'), findsOneWidget);
+      expect(argsOf(r.host.scripts.last), [true, 100]);
+    });
+
+    testWidgets('failed_report_switches_off_with_a_message', (tester) async {
+      final r = await openWith(tester, withSong());
+      await report(tester, r, 'KantaheVocals:loading:60');
+      await report(tester, r, 'KantaheVocals:failed:60');
+      await report(tester, r, 'KantaheVocals:off:60');
+      expect(find.text('Vocals: off'), findsOneWidget);
+      expect(find.textContaining('vocals could not be loaded'), findsOneWidget);
+      expect(find.text('Pause'), findsOneWidget);
+      expect(find.text('Skip'), findsOneWidget);
+    });
+
+    testWidgets('choice_survives_a_song_without_vocals: only a press or a failure changes it', (tester) async {
+      final r = await openWith(tester, withSong());
+      await tester.tap(find.text('Vocals: off'));
+      await tester.pump();
+      await report(tester, r, 'KantaheVocals:on:60');
+      // a song without vocals: the page reports off, the app shows nothing
+      r.q.setState(withSong(hasVocals: false));
+      await tester.pump();
+      await report(tester, r, 'KantaheVocals:off:60');
+      expect(find.textContaining('Vocals'), findsNothing);
+      // the page starts again (a reload): the next KantaheReady hands the choice over
+      r.host.scripts.clear();
+      r.config!.onMessage('KantaheReady');
+      await tester.pump();
+      expect(argsOf(r.host.scripts.last), [true, 60]);
+      r.q.setState(withSong());
+      await tester.pump();
+      expect(find.text('Vocals: off'), findsOneWidget); // the label follows the page, which reported off
+    });
+
+    testWidgets('a failed load forgets the choice', (tester) async {
+      final r = await openWith(tester, withSong());
+      await tester.tap(find.text('Vocals: off'));
+      await tester.pump();
+      await report(tester, r, 'KantaheVocals:failed:60');
+      r.host.scripts.clear();
+      r.config!.onMessage('KantaheReady');
+      await tester.pump();
+      expect(argsOf(r.host.scripts.last), [false, 60]);
+    });
+
+    testWidgets('tv_remote_reaches_the_vocals_buttons', (tester) async {
+      final r = await openWith(tester, withSong(), tv: true);
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight); // Pause, Skip, Volume down, Volume up, then Vocals
+      }
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'player: Vocals');
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      expect(argsOf(r.host.scripts.last), [true, 60]);
+    });
+  });
+
   group('connect a phone', () {
     const address = 'http://192.0.2.10:8080';
     double controlsOpacity(WidgetTester tester) => tester.widget<AnimatedOpacity>(find.byKey(const Key('player-controls'))).opacity;

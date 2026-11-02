@@ -78,12 +78,12 @@ func New(db *store.DB) *Catalog { return &Catalog{db: db, cache: newLRU(lyricsCa
 // visible limits every query to songs users may see: finished, not failed, not deleted.
 const visible = `s.deleted = 0 AND s.failed = 0 AND s.metadata_done = 1`
 
-const songColumns = `s.number, s.format, s.songbook_number, s.duration_ms, s.failed <> 0, s.display_title, s.display_artist`
+const songColumns = `s.number, s.format, s.songbook_number, s.duration_ms, s.failed <> 0, s.has_vocals <> 0, s.display_title, s.display_artist`
 
 func scanSong(row interface{ Scan(...any) error }) (library.SongInfo, error) {
 	var s library.SongInfo
 	var format int
-	err := row.Scan(&s.Number, &format, &s.Songbook, &s.DurationMs, &s.Failed, &s.Title, &s.Artist)
+	err := row.Scan(&s.Number, &format, &s.Songbook, &s.DurationMs, &s.Failed, &s.HasVocals, &s.Title, &s.Artist)
 	s.Format = library.Format(format)
 	return s, err
 }

@@ -36,7 +36,7 @@ import { Engine, Engines, MidiOptions } from './engines/engine';
 import { MicMeter } from './mic';
 
 export function playbackOf(
-  over: Partial<{ kind: PlaybackKind; ready: boolean; retryAfterMs: number; mode: MidiMode; lyrics: Lyrics; audioUrl: string; song: Song; gainDb: number }> = {},
+  over: Partial<{ kind: PlaybackKind; ready: boolean; retryAfterMs: number; mode: MidiMode; lyrics: Lyrics; audioUrl: string; song: Song; gainDb: number; vocalsUrl: string }> = {},
 ): Playback {
   return create(PlaybackSchema, {
     kind: over.kind ?? PlaybackKind.MIDI_SYNTH,
@@ -49,6 +49,7 @@ export function playbackOf(
     lyrics: over.lyrics,
     song: over.song,
     gainDb: over.gainDb,
+    vocalsUrl: over.vocalsUrl,
   });
 }
 

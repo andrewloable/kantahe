@@ -671,7 +671,10 @@ type Playback struct {
 	Lyrics            *Lyrics                `protobuf:"bytes,9,opt,name=lyrics,proto3" json:"lyrics,omitempty"`
 	// The gain in dB that brings this song to the common loudness (an MP3 song, once the server has measured it); the player adds it to the device's
 	// own volume. Absent: no gain is known and the song plays as it is.
-	GainDb        *float32 `protobuf:"fixed32,10,opt,name=gain_db,json=gainDb,proto3,oneof" json:"gain_db,omitempty"`
+	GainDb *float32 `protobuf:"fixed32,10,opt,name=gain_db,json=gainDb,proto3,oneof" json:"gain_db,omitempty"`
+	// The signed URL of the song's vocals track (the singer's voice alone, same start and length as audio_url, so the two play in step);
+	// it has the same signing and lifetime as audio_url. Empty when the song has none.
+	VocalsUrl     string `protobuf:"bytes,11,opt,name=vocals_url,json=vocalsUrl,proto3" json:"vocals_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -774,6 +777,13 @@ func (x *Playback) GetGainDb() float32 {
 		return *x.GainDb
 	}
 	return 0
+}
+
+func (x *Playback) GetVocalsUrl() string {
+	if x != nil {
+		return x.VocalsUrl
+	}
+	return ""
 }
 
 // The playback description.
@@ -957,7 +967,7 @@ const file_kantahe_v1_catalog_proto_rawDesc = "" +
 	"\x11GetLyricsResponse\x12*\n" +
 	"\x06lyrics\x18\x01 \x01(\v2\x12.kantahe.v1.LyricsR\x06lyrics\",\n" +
 	"\x12GetPlaybackRequest\x12\x16\n" +
-	"\x06number\x18\x01 \x01(\tR\x06number\"\x93\x03\n" +
+	"\x06number\x18\x01 \x01(\tR\x06number\"\xb2\x03\n" +
 	"\bPlayback\x12$\n" +
 	"\x04song\x18\x01 \x01(\v2\x10.kantahe.v1.SongR\x04song\x12,\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x18.kantahe.v1.PlaybackKindR\x04kind\x12\x1b\n" +
@@ -969,7 +979,9 @@ const file_kantahe_v1_catalog_proto_rawDesc = "" +
 	"\x0eretry_after_ms\x18\b \x01(\x05R\fretryAfterMs\x12*\n" +
 	"\x06lyrics\x18\t \x01(\v2\x12.kantahe.v1.LyricsR\x06lyrics\x12\x1c\n" +
 	"\again_db\x18\n" +
-	" \x01(\x02H\x00R\x06gainDb\x88\x01\x01B\n" +
+	" \x01(\x02H\x00R\x06gainDb\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"vocals_url\x18\v \x01(\tR\tvocalsUrlB\n" +
 	"\n" +
 	"\b_gain_db\"G\n" +
 	"\x13GetPlaybackResponse\x120\n" +

@@ -49,6 +49,8 @@ message Song {
   bool failed = 7;
   // Whether the calling user has favourited it; always scoped to the caller.
   bool favourite = 8;
+  // True when the song is a .karmp3 with a vocals track the player can offer as a guide; false for every other song.
+  bool has_vocals = 9;
 }
 
 // One lyric word with its wipe window in milliseconds (plan 3).

@@ -29,10 +29,21 @@ void main() {
     expect(find.text(playerScreen), findsOneWidget);
   });
 
-  testWidgets('on a phone or tablet it opens on the library as before', (tester) async {
+  testWidgets('on a phone or tablet the app opens in the player too', (tester) async {
     await open(tester, tv: false);
+    expect(find.text(playerScreen), findsOneWidget);
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.text('Search songs'), findsOneWidget); // Close leaves it for the library
+  });
+
+  testWidgets('on a phone it waits for the state and sends no command', (tester) async {
+    final r = await open(tester, tv: false, withState: false);
     expect(find.text(playerScreen), findsNothing);
-    expect(find.text('Search songs'), findsOneWidget);
+    r.setState(stateOf());
+    await tester.pumpAndSettle();
+    expect(find.text(playerScreen), findsOneWidget);
+    expect(r.server.controls, isEmpty);
   });
 
   testWidgets('it waits for the state: nothing opens while the server has not answered, then the player opens', (tester) async {

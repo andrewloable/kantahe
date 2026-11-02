@@ -75,6 +75,11 @@ func (im *Importer) referenced(ctx context.Context, path string, kind removalKin
 	var err error
 	switch kind {
 	case removeMedia:
+		if instrumental, vocals := strings.CutSuffix(path, ".vocals.mp3"); vocals {
+			// the vocals of a song go as long as the song names its instrumental and has vocals
+			err = im.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM songs WHERE media_path = ? AND has_vocals <> 0 AND deleted = 0`, instrumental+".mp3").Scan(&n)
+			break
+		}
 		err = im.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM songs WHERE media_path = ? AND deleted = 0`, path).Scan(&n)
 	case removeCache:
 		sha, ok := shaOfName(filepath.Base(path))
@@ -215,17 +220,18 @@ func hasAnyPrefix(name string, prefixes []string) bool {
 	return false
 }
 
-// liveSets reads which SHA-256 values and which extracted MP3 files the live songs use.
+// liveSets reads which SHA-256 values and which extracted MP3 files (instrumentals and vocals) the live songs use.
 func (im *Importer) liveSets(ctx context.Context) (live, media map[string]bool, err error) {
 	live, media = map[string]bool{}, map[string]bool{}
-	rows, err := im.db.QueryContext(ctx, `SELECT sha256, media_path FROM songs WHERE deleted = 0`)
+	rows, err := im.db.QueryContext(ctx, `SELECT sha256, media_path, has_vocals <> 0 FROM songs WHERE deleted = 0`)
 	if err != nil {
 		return nil, nil, fmt.Errorf("sweep: list songs: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var sha, mp sql.NullString
-		if err := rows.Scan(&sha, &mp); err != nil {
+		var vocals bool
+		if err := rows.Scan(&sha, &mp, &vocals); err != nil {
 			return nil, nil, fmt.Errorf("sweep: list songs: %w", err)
 		}
 		if sha.String != "" {
@@ -233,6 +239,9 @@ func (im *Importer) liveSets(ctx context.Context) (live, media map[string]bool, 
 		}
 		if mp.String != "" {
 			media[mp.String] = true
+			if vocals {
+				media[vocalsPathOf(mp.String)] = true
+			}
 		}
 	}
 	return live, media, rows.Err()

@@ -254,7 +254,9 @@ type Song struct {
 	// True when the file could not be read; such songs are excluded from random fill.
 	Failed bool `protobuf:"varint,7,opt,name=failed,proto3" json:"failed,omitempty"`
 	// Whether the calling user has favourited it; always scoped to the caller.
-	Favourite     bool `protobuf:"varint,8,opt,name=favourite,proto3" json:"favourite,omitempty"`
+	Favourite bool `protobuf:"varint,8,opt,name=favourite,proto3" json:"favourite,omitempty"`
+	// True when the song is a .karmp3 with a vocals track the player can offer as a guide; false for every other song.
+	HasVocals     bool `protobuf:"varint,9,opt,name=has_vocals,json=hasVocals,proto3" json:"has_vocals,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -341,6 +343,13 @@ func (x *Song) GetFailed() bool {
 func (x *Song) GetFavourite() bool {
 	if x != nil {
 		return x.Favourite
+	}
+	return false
+}
+
+func (x *Song) GetHasVocals() bool {
+	if x != nil {
+		return x.HasVocals
 	}
 	return false
 }
@@ -1002,7 +1011,7 @@ var File_kantahe_v1_common_proto protoreflect.FileDescriptor
 const file_kantahe_v1_common_proto_rawDesc = "" +
 	"\n" +
 	"\x17kantahe/v1/common.proto\x12\n" +
-	"kantahe.v1\"\xf8\x01\n" +
+	"kantahe.v1\"\x97\x02\n" +
 	"\x04Song\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\tR\x06number\x12*\n" +
 	"\x06format\x18\x02 \x01(\x0e2\x12.kantahe.v1.FormatR\x06format\x12\x14\n" +
@@ -1012,7 +1021,9 @@ const file_kantahe_v1_common_proto_rawDesc = "" +
 	"\vduration_ms\x18\x06 \x01(\x03R\n" +
 	"durationMs\x12\x16\n" +
 	"\x06failed\x18\a \x01(\bR\x06failed\x12\x1c\n" +
-	"\tfavourite\x18\b \x01(\bR\tfavourite\"Q\n" +
+	"\tfavourite\x18\b \x01(\bR\tfavourite\x12\x1d\n" +
+	"\n" +
+	"has_vocals\x18\t \x01(\bR\thasVocals\"Q\n" +
 	"\tLyricWord\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x19\n" +
 	"\bstart_ms\x18\x02 \x01(\x03R\astartMs\x12\x15\n" +

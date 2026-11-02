@@ -64,7 +64,8 @@ void main() {
     // 4. the right one signs in: the app opens, the token sits in the keystore, the state stream is live
     await tester.enterText(find.byKey(const Key('password')), userPassword);
     await tester.tap(find.text('Sign in').last);
-    await until(tester, () => find.text('Kantahe').evaluate().isNotEmpty, 'the signed-in app');
+    // the app opens in the player once the state is known (AppShell._openPlayerAtStart), which may cover the title
+    await until(tester, () => find.text('Kantahe').evaluate().isNotEmpty || find.text('Close').evaluate().isNotEmpty, 'the signed-in app');
     expect(services.auth.signedIn, isTrue);
     expect(await SecureStore().read('kantahe.token'), services.auth.token);
     await until(tester, () => services.state.connected, 'WatchState to deliver a state');

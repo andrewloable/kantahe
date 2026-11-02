@@ -30,7 +30,18 @@ type metadata struct {
 	title, artist string
 	durationMs    int64
 	mediaPath     string
+	hasVocals     bool   // the .karmp3 has a vocals track and it was extracted next to mediaPath
+	vocalsSkipped string // why a vocals track the file names was left out; the song is not failed for it
 	failedReason  string // non-empty marks the song failed
+}
+
+// vocalsPathOf is the extracted vocals track that goes with an extracted instrumental (<sha>.mp3 and <sha>.vocals.mp3 in the
+// media folder); "" for no instrumental. The server's media route derives the same name.
+func vocalsPathOf(mediaPath string) string {
+	if mediaPath == "" {
+		return ""
+	}
+	return strings.TrimSuffix(mediaPath, ".mp3") + ".vocals.mp3"
 }
 
 func shortReason(err error) string {
@@ -122,7 +133,27 @@ func (im *Importer) readMetadata(path, sha string, format Format) metadata {
 		return md
 	}
 	md.mediaPath = media
+	md.hasVocals, md.vocalsSkipped = im.extractVocals(f, st.Size(), sha)
 	return md
+}
+
+// extractVocals writes the vocals track of a .karmp3, when it has one, to <data>/media/<sha256>.vocals.mp3. A track that is named
+// but cannot be used is not an error: the song simply has no vocals, and skipped says why.
+func (im *Importer) extractVocals(f *os.File, size int64, sha string) (has bool, skipped string) {
+	a, err := karmp3.Open(f, size)
+	if err != nil {
+		return false, shortReason(err)
+	}
+	if err := a.VocalsProblem(); err != nil {
+		return false, shortReason(err)
+	}
+	if !a.HasVocals() {
+		return false, ""
+	}
+	if _, err := im.place(a, sha+".vocals.mp3", a.ExtractVocals); err != nil {
+		return false, shortReason(err)
+	}
+	return true, ""
 }
 
 // extractMP3 writes the MP3 of a .karmp3 to <data>/media/<sha256>.mp3 through a
@@ -132,6 +163,11 @@ func (im *Importer) extractMP3(f *os.File, size int64, sha string) (string, erro
 	if err != nil {
 		return "", err
 	}
+	return im.place(a, sha+".mp3", a.ExtractMP3)
+}
+
+// place writes what extract produces to <data>/media/<name> through a temporary file and returns the final path.
+func (im *Importer) place(a *karmp3.Archive, name string, extract func(io.Writer) (int64, error)) (string, error) {
 	if err := os.MkdirAll(im.mediaDir(), 0o750); err != nil {
 		return "", err
 	}
@@ -140,7 +176,7 @@ func (im *Importer) extractMP3(f *os.File, size int64, sha string) (string, erro
 		return "", err
 	}
 	defer os.Remove(tmp.Name()) // no-op after the rename
-	if _, err := a.ExtractMP3(tmp); err != nil {
+	if _, err := extract(tmp); err != nil {
 		tmp.Close()
 		return "", err
 	}
@@ -150,7 +186,7 @@ func (im *Importer) extractMP3(f *os.File, size int64, sha string) (string, erro
 	if err := os.Chmod(tmp.Name(), 0o640); err != nil {
 		return "", err
 	}
-	final := filepath.Join(im.mediaDir(), sha+".mp3")
+	final := filepath.Join(im.mediaDir(), name)
 	// the name is the SHA-256 of the song: a file that is there already is the same MP3 and stays (it may be playing)
 	if err := fsutil.Place(tmp.Name(), final, fsutil.PlaceBudget); err != nil {
 		return "", err
@@ -180,12 +216,15 @@ func (im *Importer) processMetadata(ctx context.Context, number string) error {
 	}
 	failed := md.failedReason != ""
 	if failed {
-		md.mediaPath = ""
+		md.mediaPath, md.hasVocals = "", false
+	}
+	if md.vocalsSkipped != "" && !failed {
+		im.logger.Warn("vocals track left out", "song", number, "reason", md.vocalsSkipped)
 	}
 	return im.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `UPDATE songs SET file_title = ?, file_artist = ?, duration_ms = ?, media_path = ?, failed = ?, failed_reason = ?, metadata_done = 1
+		res, err := tx.ExecContext(ctx, `UPDATE songs SET file_title = ?, file_artist = ?, duration_ms = ?, media_path = ?, has_vocals = ?, failed = ?, failed_reason = ?, metadata_done = 1
 			WHERE number = ? AND sha256 = ? AND deleted = 0`,
-			strings.TrimSpace(md.title), strings.TrimSpace(md.artist), md.durationMs, md.mediaPath, b2i(failed), md.failedReason, number, sha)
+			strings.TrimSpace(md.title), strings.TrimSpace(md.artist), md.durationMs, md.mediaPath, b2i(md.hasVocals), b2i(failed), md.failedReason, number, sha)
 		if err != nil {
 			return err
 		}

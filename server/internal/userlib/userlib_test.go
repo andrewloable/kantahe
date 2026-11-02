@@ -369,3 +369,27 @@ func TestPlayableSongsSkipUnplayable(t *testing.T) {
 		t.Fatalf("%v", numbers(got.Songs))
 	}
 }
+
+func TestFavouritesCarryHasVocals(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	e.song(t, "00001", "ok")
+	e.song(t, "00002", "ok")
+	if _, err := e.db.Exec(`UPDATE songs SET has_vocals = 1 WHERE number = '00001'`); err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range []string{"00001", "00002"} {
+		if err := e.l.SetFavourite(ctx, "ua", n, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, _, err := e.l.ListFavourites(ctx, "ua", 0, 50)
+	if err != nil || len(got) != 2 {
+		t.Fatalf("%v %v", got, err)
+	}
+	for _, s := range got {
+		if s.HasVocals != (s.Number == "00001") {
+			t.Errorf("%s HasVocals = %v", s.Number, s.HasVocals)
+		}
+	}
+}

@@ -152,6 +152,9 @@ func (s *CatalogServer) GetPlayback(ctx context.Context, req *connect.Request[ka
 	case library.FormatMP3:
 		pb.Kind = kantahev1.PlaybackKind_PLAYBACK_KIND_AUDIO
 		pb.AudioUrl = signed
+		if song.HasVocals {
+			pb.VocalsUrl = s.media.Sign("/media/vocals/"+song.Number, id.UserID, exp)
+		}
 		// the gain that brings the song to the common loudness, once the server has measured it
 		if g, ok, err := library.GainOf(ctx, s.d.DB, song.Number); err != nil {
 			return nil, internalErr(s.d.Logger, "GetPlayback", err)

@@ -9,6 +9,12 @@ import (
 // KARMP3 builds a .karmp3 (a deflated ZIP) holding base.mp3 and, when not
 // empty, base.lrc and base.nfo. Timestamps are fixed so output is deterministic.
 func KARMP3(base string, mp3 []byte, lrc, nfo string) []byte {
+	return KARMP3WithVocals(base, mp3, nil, lrc, nfo)
+}
+
+// KARMP3WithVocals is KARMP3 with, when vocals is not empty, a base.vocals.mp3 entry after the .nfo (the order of Kantahe Maker 1.1).
+// The test writes the .nfo text itself, so it decides which entry names the rows Instrumental and Vocals give.
+func KARMP3WithVocals(base string, mp3, vocals []byte, lrc, nfo string) []byte {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	add := func(name string, body []byte) {
@@ -30,6 +36,9 @@ func KARMP3(base string, mp3 []byte, lrc, nfo string) []byte {
 	}
 	if nfo != "" {
 		add(base+".nfo", []byte(nfo))
+	}
+	if len(vocals) > 0 {
+		add(base+".vocals.mp3", vocals)
 	}
 	if err := zw.Close(); err != nil {
 		panic(err)

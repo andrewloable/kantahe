@@ -72,6 +72,15 @@ song, the *MP3 songs* volume for an MP3 song, in steps of 5 percent from 0 to 20
 beside the buttons say which one it is. The Android, iOS and TV app have the same two buttons next to Skip (on a TV the remote reaches them like the
 others). It is the same setting as *Me → Devices*, so it is kept for this device.
 
+**Vocals.** A song that has a vocals track (a `.karmp3` made with Kantahe Maker 1.1 or later with the singer's voice included) shows a
+**Vocals** button next to the volume buttons, on the device that is playing; songs without one show nothing. It starts **off**, as
+every song always has. Switch it on and the singer's voice plays together with the music as a guide, starting where the music is now;
+the button says *Vocals: loading…* until the voice is ready, and the music keeps playing meanwhile. **Vocals quieter** and **Vocals
+louder** change how loud the voice is (steps of 10 percent from 0 to 100; it starts at 60, and it follows the song's volume above).
+The choice and the level are kept until you close the page or the app, and apply to the next song that has vocals. If the voice cannot be
+loaded the button switches itself off with a short message and the song goes on. The Android, iOS and TV app have the same buttons next
+to Skip.
+
 If the admin has added background videos, they play behind the lyrics, one after another and round again, without a gap, also
 while nothing is playing and while the score shows; a paused song pauses them. They are **pictures only: no sound ever comes
 from them.** The lyrics are on a dark layer over the picture so that they stay easy to read. Each device has a *Background
@@ -130,10 +139,12 @@ asking for a password:
 On the TV use the arrow keys and OK. Back goes back, and leaves the app from the first page. You can also queue songs from
 your phone while the TV plays.
 
-The **Android TV app opens in the player**, the screen that plays. Its buttons (Close, Play/Pause, Skip, and Play here when
+The **Android, iOS and TV app open in the player**, the screen that plays (once the server has answered; opening it never starts a
+song). The navigation, a bar at the bottom on a phone or tablet and a rail at the side on a TV, lists **Library, Queue, Player and
+Me**; *Player* opens the player again at any time. The player's buttons (Close, Play/Pause, Skip, and Play here when
 another device is the player) fade out after four seconds while a song plays; press any key on the remote to bring them
-back. *Close* leaves the player for the Library, Queue and Me; the player is opened again the next time the app starts, or
-with *Open player* on the Queue page. In a text box the arrow keys move the cursor, and Up and Down (or Left at the start,
+back. *Close* leaves the player for the screen you were on before (the Library at the start); the player is opened again with
+*Player* in the navigation, with *Open player* on the Queue page, or when the app starts next time. In a text box the arrow keys move the cursor, and Up and Down (or Left at the start,
 Right at the end) move on to the next control. *Me → Appearance* chooses *Auto (system)*, *Light* or *Dark*.
 
 **Background videos on the Android TV.** The picture plays behind the lyrics like on any other screen, and nothing but the song is

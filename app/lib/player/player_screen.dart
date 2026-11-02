@@ -39,17 +39,24 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   static const _volumeStep = 5;
   static const _volumeMax = 200;
   static const _volumePause = Duration(milliseconds: 300);
+  static const _vocalsStep = 10;
+  static const _vocalsMax = 100;
   // It wraps the whole screen, so the arrow keys must never move the focus onto it (from there none reaches a button): it takes the
   // focus only by code, in _hide.
   final FocusNode _wakeNode = FocusNode(debugLabel: 'player: receives the key that wakes the buttons', skipTraversal: true);
   final FocusNode _pauseNode = FocusNode(debugLabel: 'player: Play/Pause');
   final FocusNode _connectNode = FocusNode(debugLabel: 'player: Connect a phone');
+  final FocusNode _vocalsNode = FocusNode(debugLabel: 'player: Vocals');
   Timer? _hideTimer;
   Timer? _connectTimer;
   bool _connectOpen = false; // the card with the QR of the server address
   // Volumes chosen with the buttons (key: true for the MP3 volume): shown and sent after a short pause; dropped when the state shows them.
   final Map<bool, int> _movedVolume = {};
   final Map<bool, Timer> _volumeTimers = {};
+  // The guide vocals of a song that has them: what the page last reported (it plays the voice; the label follows it) and the level in percent.
+  // What the user chose is the bridge's vocalsChoice; the page forgets it when it starts again, and is given it after the token.
+  String _vocalsState = 'off';
+  int _vocalsPct = 60;
   bool _idle = false;
   bool _suspended = false; // the app is in the background: the song is paused and the page ended
   bool _bound = false;
@@ -66,6 +73,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     FocusManager.instance.addListener(_keepFocus);
     WidgetsBinding.instance.addObserver(this);
     _services.state.addListener(_onState);
+    _bridge.onVocals = _onVocals;
     _onState();
   }
 
@@ -99,6 +107,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     _wakeNode.dispose();
     _pauseNode.dispose();
     _connectNode.dispose();
+    _vocalsNode.dispose();
     if (_awake) widget.screenAwake.disable();
     super.dispose();
   }
@@ -148,6 +157,42 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
       if (_movedVolume[mp3] == pct) setState(() => _movedVolume.remove(mp3));
       _notify(problem(e, const {}), error: true);
     }
+  }
+
+  /// Whether the song that is current has a vocals track the page can play (a MIDI song never has).
+  bool get _hasVocals {
+    final s = _services.state.state;
+    return s != null && s.hasNow() && s.now.hasSong() && s.now.song.format != Format.FORMAT_MIDI && s.now.song.hasVocals;
+  }
+
+  void _toggleVocals() {
+    final on = _vocalsState == 'off'; // off: ask for on; loading or on: ask for off
+    unawaited(_bridge.setVocals(on, _vocalsPct));
+  }
+
+  void _changeVocals(int direction) {
+    final pct = (_vocalsPct + direction * _vocalsStep).clamp(0, _vocalsMax);
+    if (pct == _vocalsPct) return;
+    setState(() => _vocalsPct = pct);
+    unawaited(_bridge.setVocals(_vocalsState != 'off', pct));
+  }
+
+  /// What the page says about the vocals. A failed load switches them off, with a message, and the choice is forgotten; the song goes on.
+  void _onVocals(VocalsReport r) {
+    if (!mounted) return;
+    if (r.state == 'failed') {
+      _bridge.vocalsChoice = (on: false, pct: r.pct);
+      setState(() {
+        _vocalsState = 'off';
+        _vocalsPct = r.pct;
+      });
+      _notify('The vocals could not be loaded. The song plays without them.', error: true);
+      return;
+    }
+    setState(() {
+      _vocalsState = r.state;
+      _vocalsPct = r.pct;
+    });
   }
 
   void _scheduleHide() {
@@ -404,6 +449,34 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                                             FocusGrow(
                                               child: OutlinedButton(onPressed: () => _changeVolume(1), child: const Text('Volume up')),
                                             ),
+                                          ],
+                                          // the guide vocals of a song that has them, on the player only: the page plays the voice, these buttons drive it
+                                          if (isHere && _hasVocals) ...[
+                                            FocusGrow(
+                                              child: OutlinedButton(
+                                                focusNode: _vocalsNode,
+                                                onPressed: _toggleVocals,
+                                                child: Text(
+                                                  _vocalsState == 'on'
+                                                      ? 'Vocals: on'
+                                                      : _vocalsState == 'loading'
+                                                      ? 'Vocals: loading…'
+                                                      : 'Vocals: off',
+                                                ),
+                                              ),
+                                            ),
+                                            if (_vocalsState != 'off') ...[
+                                              FocusGrow(
+                                                child: OutlinedButton(onPressed: () => _changeVocals(-1), child: const Text('Vocals quieter')),
+                                              ),
+                                              Semantics(
+                                                liveRegion: true,
+                                                child: Text('Vocals volume $_vocalsPct%', style: const TextStyle(color: Colors.white, fontSize: 18)),
+                                              ),
+                                              FocusGrow(
+                                                child: OutlinedButton(onPressed: () => _changeVocals(1), child: const Text('Vocals louder')),
+                                              ),
+                                            ],
                                           ],
                                           // the page's own buttons cannot take the D-pad, so taking over from another device is a native button
                                           if (!isHere)

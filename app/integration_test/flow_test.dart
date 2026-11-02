@@ -53,7 +53,12 @@ void main() {
     await tester.enterText(find.byKey(const Key('email')), userEmail);
     await tester.enterText(find.byKey(const Key('password')), userPassword);
     await tester.tap(find.text('Sign in').last);
-    await until(tester, () => find.byType(NavigationBar).evaluate().isNotEmpty, 'the app after signing in');
+    await until(tester, () => find.byType(NavigationBar).evaluate().isNotEmpty || find.text('Close').evaluate().isNotEmpty, 'the app after signing in');
+    // the app opens in the player (AppShell._openPlayerAtStart) as soon as the server's state is known, and it covers the library:
+    // close it, as a person does, to reach the screens behind
+    await until(tester, () => find.text('Close').evaluate().isNotEmpty, 'the player that opens by itself');
+    await tester.tap(find.text('Close'));
+    await until(tester, () => find.text('Close').evaluate().isEmpty && find.byType(NavigationBar).evaluate().isNotEmpty, 'the library behind the player');
 
     // 3. search, then queue the MP3 and the MIDI entry of "Title 1" with a tap each
     await tester.enterText(find.byKey(const Key('search')), 'Title 1');

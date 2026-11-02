@@ -285,7 +285,7 @@ func resetSong(ctx context.Context, tx *sql.Tx, number string, c candidate) (sta
 		return "", err
 	}
 	_, err = tx.ExecContext(ctx, `UPDATE songs SET sha256 = ?, size = ?, mtime = ?, metadata_done = 0, failed = 0, failed_reason = '',
-		file_title = '', file_artist = '', duration_ms = 0, media_path = '', gain_db = NULL, loudness_done = 0 WHERE number = ?`, c.sha, c.size, c.mtime, number)
+		file_title = '', file_artist = '', duration_ms = 0, media_path = '', has_vocals = 0, gain_db = NULL, loudness_done = 0 WHERE number = ?`, c.sha, c.size, c.mtime, number)
 	if err != nil {
 		return "", err
 	}
@@ -302,6 +302,7 @@ func (im *Importer) removeMediaIfUnused(ctx context.Context, mediaPath string) {
 		return
 	}
 	im.removeDerived(mediaPath, removeMedia) // a file in use is swept later, the user's action does not fail
+	im.removeDerived(vocalsPathOf(mediaPath), removeMedia)
 }
 
 // Run scans at start and every 10 minutes and processes metadata in the

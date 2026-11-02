@@ -296,3 +296,169 @@ func TestEntryPathsAreNeverUsedOnDisk(t *testing.T) {
 		t.Fatal(err) // the name is irrelevant: bytes go to the caller's writer only
 	}
 }
+
+// nfoOf is the .nfo text of a Maker 1.1 file; an empty name leaves its row out.
+func nfoOf(instrumental, vocals string) string {
+	s := "Title          : T\nArtist         : A\nDuration       : 0:01\nAudio          : MP3, 44.1 kHz, 128 kbps\n"
+	if instrumental != "" {
+		s += "Instrumental   : " + instrumental + "\n"
+	}
+	if vocals != "" {
+		s += "Vocals         : " + vocals + "\nVocals audio   : MP3, 44.1 kHz, 64 kbps, mono\n"
+	}
+	return s + "Lyrics         : timed (.lrc, 1 lines)\n"
+}
+
+func extractBoth(t *testing.T, a *Archive) (inst, voc []byte, vocErr error) {
+	t.Helper()
+	var i, v bytes.Buffer
+	if _, err := a.ExtractMP3(&i); err != nil {
+		t.Fatal(err)
+	}
+	_, vocErr = a.ExtractVocals(&v)
+	return i.Bytes(), v.Bytes(), vocErr
+}
+
+func TestVocalsWithVocals(t *testing.T) {
+	inst, voc := testfix.MP3Frames(2), testfix.MP3Frames(3)
+	b := makeZip(t, map[string][]byte{
+		"00101 - A - T.mp3": inst, "00101 - A - T.lrc": []byte("[00:01.00]hi"),
+		"00101 - A - T.nfo": []byte(nfoOf("00101 - A - T.mp3", "00101 - A - T.vocals.mp3")), "00101 - A - T.vocals.mp3": voc,
+	}, "00101 - A - T.mp3", "00101 - A - T.lrc", "00101 - A - T.nfo", "00101 - A - T.vocals.mp3")
+	a := open(t, b)
+	if !a.HasVocals() || a.VocalsProblem() != nil {
+		t.Fatalf("HasVocals %v, problem %v", a.HasVocals(), a.VocalsProblem())
+	}
+	gotInst, gotVoc, err := extractBoth(t, a)
+	if err != nil || !bytes.Equal(gotInst, inst) || !bytes.Equal(gotVoc, voc) {
+		t.Fatalf("err %v, instrumental ok %v, vocals ok %v", err, bytes.Equal(gotInst, inst), bytes.Equal(gotVoc, voc))
+	}
+	s, err := Parse(bytes.NewReader(b), int64(len(b)))
+	if err != nil || !s.HasVocals || s.Title != "T" || len(s.Lines) != 1 {
+		t.Fatalf("Parse: %+v, %v", s, err)
+	}
+	if d, _ := a.Duration(); d != s.DurationMs || d == 0 {
+		t.Errorf("duration %d is not the instrumental's (%d)", d, s.DurationMs)
+	}
+}
+
+func TestVocalsWithoutVocalsRow(t *testing.T) {
+	inst := testfix.MP3Frames(2)
+	b := makeZip(t, map[string][]byte{"a.mp3": inst, "a.nfo": []byte(nfoOf("a.mp3", ""))}, "a.mp3", "a.nfo")
+	a := open(t, b)
+	if a.HasVocals() || a.VocalsProblem() != nil {
+		t.Fatalf("HasVocals %v, problem %v", a.HasVocals(), a.VocalsProblem())
+	}
+	gotInst, _, err := extractBoth(t, a)
+	if !errors.Is(err, ErrNoVocals) || !bytes.Equal(gotInst, inst) {
+		t.Fatalf("err %v", err)
+	}
+}
+
+func TestVocalsOldFile10(t *testing.T) {
+	b := testfix.KARMP3("x", testfix.MP3Frames(1000), "[00:01.00]<00:01.00>He<00:01.50>llo\n[00:05.00]Next", "Title : NFO title\nArtist : NFO artist")
+	a := open(t, b)
+	if a.HasVocals() || a.VocalsProblem() != nil {
+		t.Fatalf("HasVocals %v, problem %v", a.HasVocals(), a.VocalsProblem())
+	}
+	s, err := Parse(bytes.NewReader(b), int64(len(b)))
+	if err != nil || s.HasVocals || s.Title != "NFO title" || s.Artist != "NFO artist" || len(s.Lines) != 2 || s.DurationMs < 26121 || s.DurationMs > 26123 {
+		t.Fatalf("Parse: %+v, %v", s, err)
+	}
+}
+
+func TestVocalsRowButEntryMissing(t *testing.T) {
+	b := makeZip(t, map[string][]byte{"a.mp3": testfix.MP3Frames(2), "a.nfo": []byte(nfoOf("a.mp3", "a.vocals.mp3"))}, "a.mp3", "a.nfo")
+	a := open(t, b)
+	if a.HasVocals() || !errors.Is(a.VocalsProblem(), ErrVocalsMissing) {
+		t.Fatalf("HasVocals %v, problem %v", a.HasVocals(), a.VocalsProblem())
+	}
+	if s, err := Parse(bytes.NewReader(b), int64(len(b))); err != nil || s.HasVocals {
+		t.Fatalf("Parse: %+v, %v", s, err)
+	}
+}
+
+// setCentralFlag sets bit 0 (encrypted) of the n-th entry in the central directory.
+func setCentralFlag(b []byte, n int) {
+	from := 0
+	for i := 0; ; i++ {
+		at := bytes.Index(b[from:], []byte("PK\x01\x02"))
+		if at < 0 {
+			panic("no such entry")
+		}
+		at += from
+		if i == n {
+			b[at+8] |= 0x01
+			return
+		}
+		from = at + 1
+	}
+}
+
+func TestVocalsEntryEncryptedOrTooLarge(t *testing.T) {
+	inst, voc := testfix.MP3Frames(2), testfix.MP3Frames(100)
+	entries := map[string][]byte{"a.mp3": inst, "a.nfo": []byte(nfoOf("a.mp3", "a.vocals.mp3")), "a.vocals.mp3": voc}
+	order := []string{"a.mp3", "a.nfo", "a.vocals.mp3"}
+	b := makeZip(t, entries, order...)
+	setCentralFlag(b, 2)
+	if a := open(t, b); a.HasVocals() || !errors.Is(a.VocalsProblem(), ErrEncrypted) {
+		t.Fatalf("encrypted: HasVocals %v, problem %v", a.HasVocals(), a.VocalsProblem())
+	}
+	b = makeZip(t, entries, order...)
+	if a := open(t, b, WithMaxEntrySize(int64(len(inst)))); a.HasVocals() || !errors.Is(a.VocalsProblem(), ErrTooLarge) {
+		t.Fatalf("too large: HasVocals %v, problem %v", a.HasVocals(), a.VocalsProblem())
+	}
+}
+
+func TestVocalsEntryNotAnMP3(t *testing.T) {
+	inst := testfix.MP3Frames(2)
+	junk := bytes.Repeat([]byte{0x12, 0x34, 0x56}, 2000)
+	b := makeZip(t, map[string][]byte{"a.mp3": inst, "a.nfo": []byte(nfoOf("a.mp3", "a.vocals.mp3")), "a.vocals.mp3": junk}, "a.mp3", "a.nfo", "a.vocals.mp3")
+	a := open(t, b)
+	gotInst, _, err := extractBoth(t, a)
+	if !errors.Is(err, ErrNotMP3) || !bytes.Equal(gotInst, inst) {
+		t.Fatalf("err %v", err)
+	}
+}
+
+func TestVocalsNamesComeFromTheNFO(t *testing.T) {
+	inst, voc, decoy := testfix.MP3Frames(2), testfix.MP3Frames(3), testfix.MP3Frames(5)
+	const base = "00101 - Ñiño – Café"
+	const instName, vocName = "Inst – Ñiño – Café (mix).mp3", "Voz – Ñiño – Café.vocals.mp3"
+	b := makeZip(t, map[string][]byte{
+		base + ".mp3": decoy, base + ".lrc": []byte("[00:01.00]hi"), base + ".nfo": []byte(nfoOf(instName, vocName)),
+		instName: inst, vocName: voc,
+	}, base+".mp3", base+".lrc", base+".nfo", instName, vocName)
+	a := open(t, b)
+	gotInst, gotVoc, err := extractBoth(t, a)
+	if err != nil || !bytes.Equal(gotInst, inst) || !bytes.Equal(gotVoc, voc) {
+		t.Fatalf("err %v, instrumental ok %v, vocals ok %v", err, bytes.Equal(gotInst, inst), bytes.Equal(gotVoc, voc))
+	}
+}
+
+func TestVocalsUnknownEntriesIgnored(t *testing.T) {
+	inst, voc := testfix.MP3Frames(2), testfix.MP3Frames(3)
+	b := makeZip(t, map[string][]byte{
+		"a.mp3": inst, "a.nfo": []byte(nfoOf("a.mp3", "a.vocals.mp3")), "a.vocals.mp3": voc,
+		"cover.jpg": []byte("img"), "notes.txt": []byte("n"), "extra.mp3": testfix.MP3Frames(7),
+	}, "a.mp3", "cover.jpg", "a.nfo", "notes.txt", "extra.mp3", "a.vocals.mp3")
+	a := open(t, b)
+	gotInst, gotVoc, err := extractBoth(t, a)
+	if err != nil || !bytes.Equal(gotInst, inst) || !bytes.Equal(gotVoc, voc) {
+		t.Fatalf("err %v", err)
+	}
+}
+
+func TestVocalsInstrumentalRowNamesMissingEntry(t *testing.T) {
+	b := makeZip(t, map[string][]byte{"a.mp3": testfix.MP3Frames(2), "a.nfo": []byte(nfoOf("gone.mp3", ""))}, "a.mp3", "a.nfo")
+	if _, err := Open(bytes.NewReader(b), int64(len(b))); !errors.Is(err, ErrNoInstrumental) {
+		t.Fatalf("err = %v, want ErrNoInstrumental", err)
+	}
+}
+
+func TestVocalsSameNameAsInstrumental(t *testing.T) {
+	b := makeZip(t, map[string][]byte{"a.mp3": testfix.MP3Frames(2), "a.nfo": []byte(nfoOf("a.mp3", "a.mp3"))}, "a.mp3", "a.nfo")
+	if a := open(t, b); a.HasVocals() || a.VocalsProblem() != nil {
+		t.Fatalf("HasVocals %v, problem %v", a.HasVocals(), a.VocalsProblem())
+	}
+}

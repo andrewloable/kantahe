@@ -1,5 +1,6 @@
 import { computed, effect, inject, Injectable, OnDestroy, signal, untracked } from '@angular/core';
-import { CatalogService, Playback, PlaybackKind } from '../../gen/kantahe/v1/catalog_pb';
+import { create } from '@bufbuild/protobuf';
+import { CatalogService, Playback, PlaybackKind, PlaybackSchema } from '../../gen/kantahe/v1/catalog_pb';
 import { Format, MidiMode } from '../../gen/kantahe/v1/common_pb';
 import { ControlAction, PlayStatus, ScoreMode, SessionService } from '../../gen/kantahe/v1/session_pb';
 import { injectClient } from '../core/api';
@@ -11,6 +12,7 @@ import { deviceMemoryMb } from './device-report';
 import { DropoutMonitor } from './dropouts';
 import { CAN_PLAY_FLAC, CAN_SYNTHESIZE, Engine, ENGINES, MidiOptions } from './engines/engine';
 import { MIC_METER } from './mic';
+import { VOCALS_MAX, VOCALS_STEP, VocalsPrefs } from './vocals-prefs';
 
 const REPORT_POSITION_MS = 1000;
 const MIN_RETRY_MS = 500;
@@ -25,6 +27,10 @@ const VOLUME_STEP = 5;
 const MAX_VOLUME = 200;
 /** The pause after the last press of a volume button before it is sent (as on Me > My devices). */
 const VOLUME_PAUSE_MS = 300;
+/** The guide vocals follow the instrumental, the clock of the song: how often they are compared, how far apart they may be, and how often they are put right. */
+const DRIFT_CHECK_MS = 500;
+const DRIFT_LIMIT_MS = 150;
+const RESEEK_PAUSE_MS = 1000;
 
 type VolumeKind = 'mp3' | 'midi';
 
@@ -47,6 +53,7 @@ export class PlayerController implements OnDestroy {
   private readonly canSynthesize = inject(CAN_SYNTHESIZE);
   private readonly mic = inject(MIC_METER);
   private readonly toast = inject(ToastService);
+  private readonly prefs = inject(VocalsPrefs);
   private readonly catalog = injectClient(CatalogService);
   private readonly session = injectClient(SessionService);
 
@@ -80,6 +87,24 @@ export class PlayerController implements OnDestroy {
     const kind: VolumeKind = song.format === Format.MIDI ? 'midi' : 'mp3';
     return { kind, pct: this.volumePct(kind) };
   });
+
+  /**
+   * The singer's voice of a .karmp3 that has a vocals track, as a second audio engine next to the instrumental. It is made when the switch
+   * first goes on (lazy) and thrown away when it goes off or the song ends; the instrumental stays the clock, the lyrics follow it.
+   */
+  private vocals?: Engine;
+  private vocalsGeneration = 0;
+  private vocalsLoaded = false;
+  private instrumentalPlaying = false;
+  private driftTimer?: ReturnType<typeof setInterval>;
+  private lastReseek = -Infinity;
+  /** Whether the switch is offered: only the player device, only for an MP3 song whose server sent a vocals URL. */
+  readonly hasVocals = computed(() => {
+    const playback = this.playback();
+    return this.isPlayer() && !!playback?.vocalsUrl && playback.kind === PlaybackKind.AUDIO && playback.song?.format !== Format.MIDI;
+  });
+  readonly vocalsState = signal<'off' | 'loading' | 'on'>('off');
+  readonly vocalsPct = computed(() => this.prefs.pct());
 
   private engine?: Engine;
   private number?: string;
@@ -118,9 +143,17 @@ export class PlayerController implements OnDestroy {
       untracked(() => this.follow(player, now));
     });
     effect(() => {
+      const state = this.vocalsState();
+      untracked(() => this.prefs.state.set(state));
+    });
+    effect(() => {
       // the device's volume changed (from any device): the song that plays gets it at once
       const factor = this.volumeFactor(this.playback());
-      untracked(() => this.engine?.setVolume(factor));
+      const vocalsPct = this.prefs.pct();
+      untracked(() => {
+        this.engine?.setVolume(factor);
+        this.vocals?.setVolume((vocalsPct / 100) * factor);
+      });
     });
     effect(() => {
       // the server's state shows what the buttons chose: from now on the state is the truth (another device may change it)
@@ -294,7 +327,10 @@ export class PlayerController implements OnDestroy {
     }
     if (mine !== this.generation) return;
     const now = this.state()?.now;
-    if (now?.song?.number === number && now.positionMs > 0n) engine.seek(this.store.positionMs()); // a takeover or reload resumes
+    if (now?.song?.number === number && now.positionMs > 0n) {
+      engine.seek(this.store.positionMs()); // a takeover or reload resumes
+      this.syncVocals();
+    }
     this.timeMs.set(engine.timeMs());
     this.failures = 0;
     if (this.state()?.settings?.scoreMode === ScoreMode.MICROPHONE) {
@@ -308,6 +344,8 @@ export class PlayerController implements OnDestroy {
     this.phase.set('ready');
     this.loaded.set(true);
     this.applyStatus(this.playing());
+    // the choice made on an earlier song (or while this one loaded): the vocals start by themselves, and the song is not waiting for them
+    if (this.prefs.on() && this.hasVocals()) void this.startVocals();
   }
 
   /**
@@ -370,6 +408,8 @@ export class PlayerController implements OnDestroy {
       void this.play();
     } else {
       engine.pause();
+      this.instrumentalPlaying = false;
+      this.vocals?.pause();
       this.stopTimers();
       this.timeMs.set(engine.timeMs());
     }
@@ -390,7 +430,9 @@ export class PlayerController implements OnDestroy {
     }
     if (engine !== this.engine || !this.wantPlay) return;
     this.needsGesture.set(false);
+    this.instrumentalPlaying = true;
     this.startTimers(engine);
+    this.playVocals();
   }
 
   private startTimers(engine: Engine): void {
@@ -412,6 +454,8 @@ export class PlayerController implements OnDestroy {
     this.reportTimer = undefined;
     this.dropouts?.stop();
     this.dropouts = undefined;
+    clearInterval(this.driftTimer);
+    this.driftTimer = undefined;
     this.clockEngine = undefined;
     cancelAnimationFrame(this.frame);
     this.frame = 0;
@@ -477,9 +521,120 @@ export class PlayerController implements OnDestroy {
   private disposeEngine(): void {
     const engine = this.engine;
     this.engine = undefined;
+    this.instrumentalPlaying = false;
+    this.stopVocals();
     if (!engine) return;
     engine.pause();
     engine.dispose();
+  }
+
+  /** The vocals switch: on starts the voice at the instrumental's position, off lets it go. The choice is remembered for the next song. */
+  setVocals(on: boolean): void {
+    if (!this.hasVocals()) {
+      this.prefs.on.set(on); // no song with vocals now: only the choice is kept, for the next one
+      return;
+    }
+    if (on === (this.vocalsState() !== 'off')) return;
+    this.prefs.on.set(on);
+    if (!on) {
+      this.stopVocals();
+      return;
+    }
+    this.vocalsState.set('loading');
+    void this.startVocals();
+  }
+
+  /** The vocals volume buttons: one step of VOCALS_STEP percent, 0 to VOCALS_MAX; the song's own volume still applies on top. */
+  changeVocalsVolume(direction: 1 | -1): void {
+    const pct = Math.min(VOCALS_MAX, Math.max(0, this.prefs.pct() + direction * VOCALS_STEP));
+    this.prefs.pct.set(pct);
+    this.vocals?.setVolume(this.vocalsFactor());
+  }
+
+  /** The vocals' volume as a factor: their own percent of the song's volume. */
+  private vocalsFactor(): number {
+    return (this.prefs.pct() / 100) * this.volumeFactor(this.playback());
+  }
+
+  private async startVocals(): Promise<void> {
+    const engine = this.engine;
+    const url = this.playback()?.vocalsUrl;
+    if (this.vocals || !engine || !this.loaded() || !url) return; // a song that is still loading calls this again when it is ready
+    const mine = ++this.vocalsGeneration;
+    const vocals = this.engines.mp3();
+    this.vocals = vocals;
+    this.vocalsState.set('loading');
+    vocals.setVolume(this.vocalsFactor());
+    try {
+      await vocals.load(create(PlaybackSchema, { audioUrl: url }));
+    } catch {
+      if (mine === this.vocalsGeneration) this.vocalsFailed();
+      return;
+    }
+    if (mine !== this.vocalsGeneration) {
+      vocals.dispose(); // switched off, or the song changed, while it loaded
+      return;
+    }
+    this.vocalsLoaded = true;
+    this.vocalsState.set('on');
+    if (this.instrumentalPlaying) this.playVocals();
+    else vocals.seek(engine.timeMs());
+  }
+
+  /** Starts the voice at the instrumental's position; a voice that cannot play is dropped, the song is not touched. */
+  private playVocals(): void {
+    const vocals = this.vocals;
+    const engine = this.engine;
+    if (!vocals || !engine || !this.vocalsLoaded) return;
+    const mine = this.vocalsGeneration;
+    vocals.seek(engine.timeMs());
+    vocals.play().then(
+      () => {
+        if (mine === this.vocalsGeneration && this.instrumentalPlaying && !this.driftTimer) this.driftTimer = setInterval(() => this.checkDrift(), DRIFT_CHECK_MS);
+      },
+      (e: unknown) => {
+        // a pause that came while play was starting makes the browser abort the play: not a failure
+        if (mine === this.vocalsGeneration && (e as { name?: string }).name !== 'AbortError') this.vocalsFailed();
+      },
+    );
+  }
+
+  /** Puts the voice where the instrumental is, after the instrumental was moved. */
+  private syncVocals(): void {
+    if (this.vocals && this.vocalsLoaded && this.engine) this.vocals.seek(this.engine.timeMs());
+  }
+
+  /** The two clocks of a long song slowly part: the voice is moved back when it is more than DRIFT_LIMIT_MS away, at most once per RESEEK_PAUSE_MS. */
+  private checkDrift(): void {
+    const vocals = this.vocals;
+    const engine = this.engine;
+    if (!vocals || !engine || !this.vocalsLoaded) return;
+    const at = engine.timeMs();
+    const now = Date.now();
+    if (Math.abs(vocals.timeMs() - at) > DRIFT_LIMIT_MS && now - this.lastReseek >= RESEEK_PAUSE_MS) {
+      vocals.seek(at);
+      this.lastReseek = now;
+    }
+  }
+
+  private stopVocals(): void {
+    this.vocalsGeneration++;
+    clearInterval(this.driftTimer);
+    this.driftTimer = undefined;
+    const vocals = this.vocals;
+    this.vocals = undefined;
+    this.vocalsLoaded = false;
+    this.vocalsState.set('off');
+    vocals?.pause();
+    vocals?.dispose();
+  }
+
+  /** The voice could not be loaded or played: it is switched off, with a short message, and the song goes on. */
+  private vocalsFailed(): void {
+    this.prefs.on.set(false);
+    this.prefs.failures.update((n) => n + 1);
+    this.stopVocals();
+    this.toast.show('The vocals could not be loaded. The song plays without them.', 'error');
   }
 
   private sleep(ms: number): Promise<boolean> {

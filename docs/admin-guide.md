@@ -37,6 +37,12 @@ Two ways, both feeding one shared library:
 * **Watched folders**: songs in a folder given with `--library` (repeatable) are found when the server starts, every ten
   minutes, and at once when you press **Rescan** in *Admin → Songs*. They are used where they are.
 
+A `.karmp3` made with Kantahe Maker 1.1 or later may carry a **vocals track** (the singer's voice alone), which players can
+switch on as a guide. Such files are supported: nothing needs to be done for them. A file like that in a watched folder that an
+older version refused (it was listed as broken, "more than one .mp3 entry") is read again by itself at the first start of the new
+version; *Check for broken songs* brings back any that are left. A refused upload was never stored and must be uploaded again.
+If a file names a vocals track that is missing or damaged, the song still plays without it and the server log says so once.
+
 Only the songs matter to Kantahe: it ships none, and what you upload is your responsibility.
 
 ### Numbers

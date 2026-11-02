@@ -58,6 +58,76 @@ Future<({EmbedBridge bridge, FakeHost host, AuthStore auth})> make({bool signedI
 }
 
 void main() {
+  group('guide vocals', () {
+    test('buildSetVocalsScript_is_plain: a guarded call with a boolean and a whole number, rounded down to a step of 10 between 0 and 100', () {
+      expect(buildSetVocalsScript(true, 60), 'window.kantahe && window.kantahe.setVocals && window.kantahe.setVocals(true, 60);');
+      expect(argsOf(buildSetVocalsScript(false, 85)), [false, 80]);
+      expect(argsOf(buildSetVocalsScript(true, -5)), [true, 0]);
+      expect(argsOf(buildSetVocalsScript(true, 500)), [true, 100]);
+    });
+
+    test('parseVocalsMessage reads KantaheVocals:state:pct and nothing else', () {
+      final on = parseVocalsMessage('KantaheVocals:on:60');
+      expect([on?.state, on?.pct], ['on', 60]);
+      expect(parseVocalsMessage('KantaheVocals:failed:60')?.state, 'failed');
+      expect(parseVocalsMessage('KantaheVocals:off:0')?.pct, 0);
+      expect(parseVocalsMessage('KantaheVocals:loading:100')?.pct, 100);
+      for (final bad in [
+        'KantaheVocals:maybe:60',
+        'KantaheVocals:on:abc',
+        'KantaheVocals:on:101',
+        'KantaheVocals:on:-1',
+        'KantaheVocals:on',
+        'KantaheVocals:on:60:1',
+        'hello',
+        '',
+        'KantaheReady',
+      ]) {
+        expect(parseVocalsMessage(bad), isNull, reason: bad);
+      }
+    });
+
+    test('vocals_messages_reach_onVocals_only_from_the_server_page, and run no script', () async {
+      final m = await make();
+      final seen = <VocalsReport>[];
+      m.bridge.onVocals = seen.add;
+      await m.bridge.onMessage('KantaheVocals:on:60');
+      expect(seen.map((r) => r.state), ['on']);
+      m.host.url = 'about:blank';
+      await m.bridge.onMessage('KantaheVocals:on:60');
+      m.host.url = 'https://evil.example/';
+      await m.bridge.onMessage('KantaheVocals:on:60');
+      expect(seen, hasLength(1));
+      expect(m.host.scripts, isEmpty);
+    });
+
+    test('ready_hands_over_the_remembered_vocals_choice: setToken first, then setVocals', () async {
+      final m = await make();
+      await m.bridge.setVocals(true, 70);
+      expect(m.host.scripts, hasLength(1)); // set at once
+      m.host.scripts.clear();
+      await m.bridge.onMessage('KantaheReady');
+      expect(m.host.scripts, hasLength(2));
+      expect(m.host.scripts[0], contains('setToken'));
+      expect(argsOf(m.host.scripts[1]), [true, 70]);
+    });
+
+    test('without a remembered choice KantaheReady still hands over the token and nothing else', () async {
+      final m = await make();
+      await m.bridge.onMessage('KantaheReady');
+      expect(m.host.scripts, hasLength(1));
+      expect(m.host.scripts.single, contains('setToken'));
+    });
+
+    test('setVocals_without_a_host_only_remembers', () async {
+      final m = await make();
+      m.bridge.host = null;
+      await m.bridge.setVocals(false, 30);
+      expect(m.bridge.vocalsChoice, (on: false, pct: 30));
+      expect(m.host.scripts, isEmpty);
+    });
+  });
+
   group('playerUrl', () {
     test('no token in URL: the address of the player page, with no query or fragment', () {
       final url = playerUrl('http://10.0.2.2:8080');

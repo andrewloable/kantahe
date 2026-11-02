@@ -112,6 +112,9 @@ message Playback {
   // The gain in dB that brings this song to the common loudness (an MP3 song, once the server has measured it); the player adds it to the device's
   // own volume. Absent: no gain is known and the song plays as it is.
   optional float gain_db = 10;
+  // The signed URL of the song's vocals track (the singer's voice alone, same start and length as audio_url, so the two play in step);
+  // it has the same signing and lifetime as audio_url. Empty when the song has none.
+  string vocals_url = 11;
 }
 
 // The playback description.

@@ -733,6 +733,7 @@ class Playback extends $pb.GeneratedMessage {
     $core.int? retryAfterMs,
     $0.Lyrics? lyrics,
     $core.double? gainDb,
+    $core.String? vocalsUrl,
   }) {
     final result = Playback._();
     if (song != null) result.song = song;
@@ -745,6 +746,7 @@ class Playback extends $pb.GeneratedMessage {
     if (retryAfterMs != null) result.retryAfterMs = retryAfterMs;
     if (lyrics != null) result.lyrics = lyrics;
     if (gainDb != null) result.gainDb = gainDb;
+    if (vocalsUrl != null) result.vocalsUrl = vocalsUrl;
     return result;
   }
 
@@ -775,6 +777,7 @@ class Playback extends $pb.GeneratedMessage {
     ..aOM<$0.Lyrics>(9, _omitFieldNames ? '' : 'lyrics',
         subBuilder: $0.Lyrics.$_createMessage)
     ..aD(10, _omitFieldNames ? '' : 'gainDb', fieldType: $pb.PbFieldType.OF)
+    ..aOS(11, _omitFieldNames ? '' : 'vocalsUrl')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -892,6 +895,17 @@ class Playback extends $pb.GeneratedMessage {
   $core.bool hasGainDb() => $_has(9);
   @$pb.TagNumber(10)
   void clearGainDb() => $_clearField(10);
+
+  /// The signed URL of the song's vocals track (the singer's voice alone, same start and length as audio_url, so the two play in step);
+  /// it has the same signing and lifetime as audio_url. Empty when the song has none.
+  @$pb.TagNumber(11)
+  $core.String get vocalsUrl => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set vocalsUrl($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasVocalsUrl() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearVocalsUrl() => $_clearField(11);
 }
 
 /// The playback description.

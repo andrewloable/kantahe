@@ -32,6 +32,7 @@ class Song extends $pb.GeneratedMessage {
     $fixnum.Int64? durationMs,
     $core.bool? failed,
     $core.bool? favourite,
+    $core.bool? hasVocals,
   }) {
     final result = Song._();
     if (number != null) result.number = number;
@@ -42,6 +43,7 @@ class Song extends $pb.GeneratedMessage {
     if (durationMs != null) result.durationMs = durationMs;
     if (failed != null) result.failed = failed;
     if (favourite != null) result.favourite = favourite;
+    if (hasVocals != null) result.hasVocals = hasVocals;
     return result;
   }
 
@@ -66,6 +68,7 @@ class Song extends $pb.GeneratedMessage {
     ..aInt64(6, _omitFieldNames ? '' : 'durationMs')
     ..aOB(7, _omitFieldNames ? '' : 'failed')
     ..aOB(8, _omitFieldNames ? '' : 'favourite')
+    ..aOB(9, _omitFieldNames ? '' : 'hasVocals')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -161,6 +164,16 @@ class Song extends $pb.GeneratedMessage {
   $core.bool hasFavourite() => $_has(7);
   @$pb.TagNumber(8)
   void clearFavourite() => $_clearField(8);
+
+  /// True when the song is a .karmp3 with a vocals track the player can offer as a guide; false for every other song.
+  @$pb.TagNumber(9)
+  $core.bool get hasVocals => $_getBF(8);
+  @$pb.TagNumber(9)
+  set hasVocals($core.bool value) => $_setBool(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasHasVocals() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearHasVocals() => $_clearField(9);
 }
 
 /// One lyric word with its wipe window in milliseconds (plan 3).

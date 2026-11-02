@@ -383,3 +383,105 @@ func TestGetPlaybackWithoutSoundFont(t *testing.T) {
 		t.Fatalf("MP3: %v", err)
 	}
 }
+
+// seedVocals uploads a Kantahe Maker 1.1 file with a vocals track and returns its number.
+func (a *adminEnv) seedVocals(t *testing.T, name, title string) string {
+	t.Helper()
+	nfo := "Title : " + title + "\nArtist : Band\nInstrumental : x.mp3\nVocals : x.vocals.mp3\nVocals audio : MP3, 44.1 kHz, 64 kbps, mono\n"
+	file := testfix.KARMP3WithVocals("x", testfix.MP3Frames(200+len(title)), testfix.MP3Frames(150+len(title)), "[00:01.00]<00:01.00>He<00:01.50>llo\n[00:05.00]Next", nfo)
+	res, err := a.uploadAs(a.admin.Token, name, file)
+	if err != nil || res.Status != kantahev1.UploadStatus_UPLOAD_STATUS_ADDED {
+		t.Fatalf("seed %s: %+v %v", name, res, err)
+	}
+	return res.Song.Number
+}
+
+func (a *adminEnv) playback(t *testing.T, number string) *kantahev1.Playback {
+	t.Helper()
+	res, err := a.catalogClient().GetPlayback(context.Background(), with(connect.NewRequest(&kantahev1.GetPlaybackRequest{Number: number}), a.user.Token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return res.Msg.Playback
+}
+
+func TestGetPlaybackWithVocals(t *testing.T) {
+	a := newAdminEnv(t)
+	n := a.seedVocals(t, "Tune.karmp3", "Tune")
+	pb := a.playback(t, n)
+	if !strings.HasPrefix(pb.VocalsUrl, "/media/vocals/"+n+"?u="+url.QueryEscape(a.user.User.Id)+"&exp=") || !pb.Song.HasVocals {
+		t.Fatalf("%+v", pb)
+	}
+	if !strings.HasPrefix(pb.AudioUrl, "/media/song/"+n+"?u=") || pb.Kind != kantahev1.PlaybackKind_PLAYBACK_KIND_AUDIO || len(pb.Lyrics.Lines) != 2 {
+		t.Fatalf("the instrumental's playback changed: %+v", pb)
+	}
+	// the URL works for its user and gives the vocals, not the instrumental
+	r, vocals := fetch(t, a, pb.VocalsUrl, "Range", "bytes=0-9")
+	if r.StatusCode != 206 || len(vocals) != 10 {
+		t.Fatalf("status %d len %d", r.StatusCode, len(vocals))
+	}
+	_, audio := fetch(t, a, pb.AudioUrl)
+	_, allVocals := fetch(t, a, pb.VocalsUrl)
+	if len(allVocals) == 0 || len(allVocals) >= len(audio) {
+		t.Fatalf("vocals %d bytes, instrumental %d bytes: the vocals are the shorter test track", len(allVocals), len(audio))
+	}
+	// ... and for nobody else; it lives six hours like the audio URL
+	other := strings.Replace(pb.VocalsUrl, "u="+url.QueryEscape(a.user.User.Id), "u="+url.QueryEscape(a.admin.User.Id), 1)
+	if r, _ := fetch(t, a, other); r.StatusCode != 403 {
+		t.Fatalf("another user's id on the same signature: %d", r.StatusCode)
+	}
+	if d := time.Unix(regexpExp(t, pb.VocalsUrl), 0).Sub(a.clock.now()); d != 6*time.Hour {
+		t.Errorf("lifetime %v", d)
+	}
+}
+
+func TestGetPlaybackWithoutVocals(t *testing.T) {
+	a := newAdminEnv(t)
+	mp3 := a.seed(t, "Plain.karmp3", "Plain", "Band", false)
+	midi := a.seed(t, "Song.kar", "Song", "Artist", true)
+	for _, n := range []string{mp3, midi} {
+		if pb := a.playback(t, n); pb.VocalsUrl != "" || pb.Song.HasVocals {
+			t.Errorf("%s: %+v", n, pb)
+		}
+	}
+}
+
+func TestSongListsCarryHasVocals(t *testing.T) {
+	a := newAdminEnv(t)
+	with1 := a.seedVocals(t, "With.karmp3", "Withvocals")
+	without := a.seed(t, "Without.karmp3", "Withoutvocals", "Band", false)
+	res, err := a.catalogClient().SearchSongs(context.Background(), with(connect.NewRequest(&kantahev1.SearchSongsRequest{}), a.user.Token))
+	if err != nil || len(res.Msg.Songs) != 2 {
+		t.Fatalf("%v %v", res, err)
+	}
+	for _, s := range res.Msg.Songs {
+		if s.HasVocals != (s.Number == with1) || (s.Number != with1 && s.Number != without) {
+			t.Errorf("%+v", s)
+		}
+	}
+	got, err := a.catalogClient().GetSong(context.Background(), with(connect.NewRequest(&kantahev1.GetSongRequest{Number: with1}), a.user.Token))
+	if err != nil || !got.Msg.Song.HasVocals {
+		t.Fatalf("GetSong: %v %v", got, err)
+	}
+}
+
+func TestStateCarriesHasVocalsForTheQueueAndTheCurrentSong(t *testing.T) {
+	a := newAdminEnv(t)
+	with1 := a.seedVocals(t, "With.karmp3", "Withvocals")
+	without := a.seed(t, "Without.karmp3", "Withoutvocals", "Band", false)
+	a.addToQueue(t, a.user.Token, with1)
+	a.addToQueue(t, a.user.Token, without)
+	a.control(t, a.user.Token, kantahev1.ControlAction_CONTROL_ACTION_PLAY)
+	st := a.state(t, a.user.Token)
+	if st.Now == nil || st.Now.Song.Number != with1 || !st.Now.Song.HasVocals {
+		t.Fatalf("now: %+v", st.Now)
+	}
+	if len(st.Queue) == 0 {
+		t.Fatalf("queue: %+v", st)
+	}
+	for _, item := range st.Queue {
+		if item.Song.Number == without && item.Song.HasVocals {
+			t.Errorf("a song without vocals is shown with them: %+v", item.Song)
+		}
+	}
+}

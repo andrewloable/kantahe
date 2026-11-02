@@ -567,3 +567,22 @@ func TestSearchOrderIsStableAcrossPages(t *testing.T) {
 		}
 	}
 }
+
+func TestSongsCarryHasVocals(t *testing.T) {
+	e := newEnv(t)
+	e.add(t, "00001", "With", "Band")
+	e.add(t, "00002", "Without", "Band")
+	if _, err := e.db.Exec(`UPDATE songs SET has_vocals = 1 WHERE number = '00001'`); err != nil {
+		t.Fatal(err)
+	}
+	for number, want := range map[string]bool{"00001": true, "00002": false} {
+		s, err := e.c.Get(context.Background(), number)
+		if err != nil || s.HasVocals != want {
+			t.Errorf("Get(%s) = %+v, %v; want HasVocals %v", number, s, err, want)
+		}
+	}
+	songs, _, err := e.c.Search(context.Background(), SearchParams{Limit: 10})
+	if err != nil || len(songs) != 2 || !songs[0].HasVocals || songs[1].HasVocals {
+		t.Fatalf("Search: %+v, %v", songs, err)
+	}
+}

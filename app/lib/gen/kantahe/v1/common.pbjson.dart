@@ -105,6 +105,7 @@ const Song$json = {
     {'1': 'duration_ms', '3': 6, '4': 1, '5': 3, '10': 'durationMs'},
     {'1': 'failed', '3': 7, '4': 1, '5': 8, '10': 'failed'},
     {'1': 'favourite', '3': 8, '4': 1, '5': 8, '10': 'favourite'},
+    {'1': 'has_vocals', '3': 9, '4': 1, '5': 8, '10': 'hasVocals'},
   ],
 };
 
@@ -114,7 +115,8 @@ final $typed_data.Uint8List songDescriptor = $convert.base64Decode(
     'UudjEuRm9ybWF0UgZmb3JtYXQSFAoFdGl0bGUYAyABKAlSBXRpdGxlEhYKBmFydGlzdBgEIAEo'
     'CVIGYXJ0aXN0EicKD3Nvbmdib29rX251bWJlchgFIAEoCVIOc29uZ2Jvb2tOdW1iZXISHwoLZH'
     'VyYXRpb25fbXMYBiABKANSCmR1cmF0aW9uTXMSFgoGZmFpbGVkGAcgASgIUgZmYWlsZWQSHAoJ'
-    'ZmF2b3VyaXRlGAggASgIUglmYXZvdXJpdGU=');
+    'ZmF2b3VyaXRlGAggASgIUglmYXZvdXJpdGUSHQoKaGFzX3ZvY2FscxgJIAEoCFIJaGFzVm9jYW'
+    'xz');
 
 @$core.Deprecated('Use lyricWordDescriptor instead')
 const LyricWord$json = {

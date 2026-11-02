@@ -175,7 +175,7 @@ class BuildScript(unittest.TestCase):
 
     def test_with_the_cli_it_packages_the_staged_folder_into_the_dist_folder(self):
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as out:
-            self.fake_cli(bin_dir, "ares-package", 'echo PACKAGED "$@"; touch "$3/party.kantahe_1.0.0_all.ipk"')
+            self.fake_cli(bin_dir, "ares-package", 'echo PACKAGED "$@"; touch "$3/party.kantahe_1.1.0_all.ipk"')
             e = dict(os.environ, PATH=f"{bin_dir}:" + os.environ["PATH"], KANTAHE_BUILD_DIR=out, KANTAHE_DIST_DIR=out + "/dist")
             r = subprocess.run(["bash", str(BUILD)], capture_output=True, text=True, env=e, cwd=ROOT)
             self.assertEqual(r.returncode, 0, r.stderr)

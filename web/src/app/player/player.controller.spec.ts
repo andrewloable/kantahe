@@ -12,6 +12,7 @@ import { device, song, stateOf, StateInit } from '../queue/testing';
 import { CAN_PLAY_FLAC, CAN_SYNTHESIZE, ENGINES } from './engines/engine';
 import { MIC_METER } from './mic';
 import { PlayerController } from './player.controller';
+import { VocalsPrefs } from './vocals-prefs';
 import { asMic, FakeEngine, FakeMic, fakeEngines, fakePlayerServer, playbackOf } from './testing';
 
 const ME = 'me';
@@ -60,6 +61,310 @@ function setup(opts: { memory?: number; secure?: boolean; flac?: boolean; synth?
   };
   return { server, fake, mic, store, player, flush, push };
 }
+
+describe('PlayerController: guide vocals', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    TestBed.inject(StateStore).stop();
+    Reflect.deleteProperty(navigator, 'deviceMemory');
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  const MP3_SONG = song('21628', 'Hello', 'Adele', Format.MP3);
+  const NEXT_SONG = song('21630', 'Easy On Me', 'Adele', Format.MP3);
+  const PLAIN_SONG = song('21631', 'Plain', 'Adele', Format.MP3);
+  const MIDI_SONG = song('21629', 'Skyfall', 'Adele', Format.MIDI);
+  const vocalsPlayback = (number = '21628', s = MP3_SONG) =>
+    playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: `/media/song/${number}?sig=a`, vocalsUrl: `/media/vocals/${number}?sig=v`, song: s });
+  const stateWith = (s = MP3_SONG, over: Partial<StateInit> = {}): StateInit => ({ ...PLAYING, now: { song: s, positionMs: 0, positionAtMs: 1000 }, ...over });
+
+  /** A test that starts on a song with vocals; the vocals engine is created[1] once the switch is on. */
+  async function start() {
+    const t = setup();
+    t.server.handlers.playback = () => vocalsPlayback();
+    await t.push(stateWith());
+    return { ...t, inst: () => t.fake.created[0].engine, voc: () => t.fake.created[1].engine };
+  }
+
+  /** The vocals engine (the second one made) loads when release() is called. */
+  function slowVocalsLoad(fake: ReturnType<typeof fakeEngines>) {
+    let release: () => void = () => undefined;
+    let made = 1; // the instrumental exists already
+    fake.hooks.configure = (engine) => {
+      if (++made === 2) engine.load.mockImplementation(() => new Promise<void>((resolve) => (release = resolve)));
+    };
+    return () => release();
+  }
+
+  it('controller_hides_vocals_without_vocals_url: no vocals for a plain MP3 song, a MIDI song or a device that is not the player', async () => {
+    const { server, fake, push, player } = setup();
+    server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21631?sig=a', song: PLAIN_SONG });
+    await push(stateWith(PLAIN_SONG));
+    expect(player.hasVocals()).toBe(false);
+    player.setVocals(true);
+    await vi.advanceTimersByTimeAsync(50);
+    expect(fake.created.map((c) => c.kind)).toEqual(['mp3']);
+    expect(player.vocalsState()).toBe('off');
+    // a MIDI song, even if a URL were sent
+    server.handlers.playback = () => playbackOf({ kind: PlaybackKind.MIDI_SYNTH, song: MIDI_SONG, vocalsUrl: '/media/vocals/21629?sig=v' });
+    await push(stateWith(MIDI_SONG));
+    expect(player.hasVocals()).toBe(false);
+  });
+
+  it('controller_hides_vocals_without_vocals_url: a device that is not the player', async () => {
+    const { server, push, player } = setup();
+    server.handlers.playback = () => vocalsPlayback();
+    await push(stateWith(MP3_SONG, { player: 'tv' }));
+    expect(player.hasVocals()).toBe(false);
+    // the guard itself: even with a playback in hand, the switch is for the player device only
+    player.playback.set(vocalsPlayback());
+    expect(player.hasVocals()).toBe(false);
+  });
+
+  it('controller_offers_vocals_with_vocals_url: shown, off, and nothing is loaded before the switch goes on (lazy)', async () => {
+    const { fake, player } = await start();
+    expect(player.hasVocals()).toBe(true);
+    expect(player.vocalsState()).toBe('off');
+    expect(fake.created).toHaveLength(1);
+  });
+
+  it('toggle_on_starts_vocals_at_the_instrumental_position', async () => {
+    const { fake, flush, player, inst } = await start();
+    const release = slowVocalsLoad(fake);
+    inst().time = 42000;
+    player.setVocals(true);
+    await flush();
+    expect(player.vocalsState()).toBe('loading');
+    expect(inst().pause).not.toHaveBeenCalled();
+    expect(fake.created).toHaveLength(2);
+    expect(fake.created[1].engine.load).toHaveBeenCalledTimes(1);
+    expect(fake.created[1].engine.play).not.toHaveBeenCalled();
+    inst().time = 43500; // the song kept playing while the voice loaded
+    release();
+    await flush();
+    const voc = fake.created[1].engine;
+    expect(voc.seek).toHaveBeenLastCalledWith(43500);
+    expect(voc.play).toHaveBeenCalledTimes(1);
+    expect(player.vocalsState()).toBe('on');
+  });
+
+  it('toggle_off_stops_it, and leaves the song alone', async () => {
+    const { flush, player, inst, voc } = await start();
+    player.setVocals(true);
+    await flush();
+    expect(player.vocalsState()).toBe('on');
+    player.setVocals(false);
+    await flush();
+    expect(voc().pause).toHaveBeenCalled();
+    expect(voc().dispose).toHaveBeenCalledTimes(1);
+    expect(player.vocalsState()).toBe('off');
+    expect(inst().dispose).not.toHaveBeenCalled();
+    expect(inst().pause).not.toHaveBeenCalled();
+    // off is remembered: the next song with vocals starts without them
+  });
+
+  it('seek_and_pause_move_both_tracks', async () => {
+    const { push, flush, player, inst, voc } = await start();
+    player.setVocals(true);
+    await flush();
+    await push(stateWith(MP3_SONG, { status: PlayStatus.PAUSED }));
+    expect(inst().pause).toHaveBeenCalled();
+    expect(voc().pause).toHaveBeenCalled();
+    inst().time = 61000;
+    voc().play.mockClear();
+    await push(stateWith(MP3_SONG, { status: PlayStatus.PLAYING }));
+    expect(inst().play).toHaveBeenCalledTimes(2);
+    expect(voc().seek).toHaveBeenLastCalledWith(61000);
+    expect(voc().play).toHaveBeenCalledTimes(1);
+  });
+
+  it('switching the vocals on while the song is paused loads them but does not play them, and the next play starts both', async () => {
+    const { push, flush, player, inst, voc } = await start();
+    await push(stateWith(MP3_SONG, { status: PlayStatus.PAUSED }));
+    inst().time = 20000;
+    player.setVocals(true);
+    await flush();
+    expect(player.vocalsState()).toBe('on');
+    expect(voc().play).not.toHaveBeenCalled();
+    expect(voc().seek).toHaveBeenLastCalledWith(20000);
+    await push(stateWith(MP3_SONG, { status: PlayStatus.PLAYING }));
+    expect(voc().play).toHaveBeenCalledTimes(1);
+  });
+
+  it('song_change_and_stop_dispose_the_vocals, and a song without vocals ignores the remembered choice', async () => {
+    const { server, fake, push, flush, player, voc } = await start();
+    player.setVocals(true);
+    await flush();
+    const first = voc();
+    server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21631?sig=a', song: PLAIN_SONG });
+    await push(stateWith(PLAIN_SONG));
+    expect(first.dispose).toHaveBeenCalledTimes(1);
+    expect(fake.created.map((c) => c.kind)).toEqual(['mp3', 'mp3', 'mp3']); // instrumental, vocals, the next song's instrumental: no new vocals
+    expect(player.vocalsState()).toBe('off');
+    expect(player.hasVocals()).toBe(false);
+    expect(TestBed.inject(VocalsPrefs).on()).toBe(true); // remembered for the next song with vocals
+  });
+
+  it('drift_over_0_15s_reseeks_the_vocals', async () => {
+    const { flush, player, inst, voc } = await start();
+    player.setVocals(true);
+    await flush();
+    voc().seek.mockClear();
+    inst().time = 10000;
+    voc().time = 10200;
+    await vi.advanceTimersByTimeAsync(500);
+    expect(voc().seek).toHaveBeenCalledWith(10000);
+  });
+
+  it('drift_under_it_does_not: 100 ms and exactly 150 ms are in step', async () => {
+    const { flush, player, inst, voc } = await start();
+    player.setVocals(true);
+    await flush();
+    voc().seek.mockClear();
+    inst().time = 10000;
+    voc().time = 10100;
+    await vi.advanceTimersByTimeAsync(2500);
+    voc().time = 10150;
+    await vi.advanceTimersByTimeAsync(2500);
+    voc().time = 9850; // behind by exactly 150 ms
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(voc().seek).not.toHaveBeenCalled();
+  });
+
+  it('drift_reseek_is_limited_to_once_a_second', async () => {
+    const { flush, player, inst, voc } = await start();
+    player.setVocals(true);
+    await flush();
+    voc().seek.mockClear();
+    inst().time = 10000;
+    voc().time = 10300; // stays off: the fake does not move after a seek
+    await vi.advanceTimersByTimeAsync(900);
+    expect(voc().seek).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(voc().seek.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(voc().seek.mock.calls.length).toBeLessThanOrEqual(3);
+  });
+
+  it('no drift check runs while paused', async () => {
+    const { push, flush, player, inst, voc } = await start();
+    player.setVocals(true);
+    await flush();
+    await push(stateWith(MP3_SONG, { status: PlayStatus.PAUSED }));
+    voc().seek.mockClear();
+    inst().time = 10000;
+    voc().time = 12000;
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(voc().seek).not.toHaveBeenCalled();
+  });
+
+  it('no drift check outlives the controller', async () => {
+    const { flush, player, inst, voc } = await start();
+    player.setVocals(true);
+    await flush();
+    const seek = voc().seek;
+    TestBed.inject(StateStore).stop();
+    TestBed.resetTestingModule(); // the controller is destroyed with the injector
+    seek.mockClear();
+    inst().time = 10000;
+    voc().time = 12000;
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(seek).not.toHaveBeenCalled();
+    expect(voc().dispose).toHaveBeenCalled();
+  });
+
+  it('vocals_load_error_switches_off_and_song_keeps_playing', async () => {
+    const { fake, flush, player, inst } = await start();
+    fake.hooks.configure = (engine) => engine.load.mockRejectedValue(new Error('no'));
+    player.setVocals(true);
+    await flush();
+    expect(player.vocalsState()).toBe('off');
+    expect(TestBed.inject(VocalsPrefs).on()).toBe(false);
+    expect(TestBed.inject(ToastService).toasts().map((t) => t.message)).toEqual(['The vocals could not be loaded. The song plays without them.']);
+    expect(inst().pause).not.toHaveBeenCalled();
+    expect(inst().dispose).not.toHaveBeenCalled();
+    expect(player.phase()).toBe('ready');
+    // a later try loads again
+    fake.hooks.configure = undefined;
+    player.setVocals(true);
+    await flush();
+    expect(player.vocalsState()).toBe('on');
+  });
+
+  it('vocals_play_refused_switches_off, without asking for a tap', async () => {
+    const { fake, flush, player, inst } = await start();
+    fake.hooks.configure = (engine) => engine.play.mockRejectedValue(new DOMException('tap', 'NotAllowedError'));
+    player.setVocals(true);
+    await flush();
+    expect(player.vocalsState()).toBe('off');
+    expect(player.needsGesture()).toBe(false);
+    expect(inst().pause).not.toHaveBeenCalled();
+    expect(player.phase()).toBe('ready');
+  });
+
+  it('choice_and_volume_are_remembered_for_the_next_song', async () => {
+    const { server, fake, push, flush, player } = await start();
+    player.setVocals(true);
+    await flush();
+    player.changeVocalsVolume(-1);
+    player.changeVocalsVolume(-1);
+    expect(player.vocalsPct()).toBe(40);
+    server.handlers.playback = () => vocalsPlayback('21630', NEXT_SONG);
+    await push(stateWith(NEXT_SONG));
+    expect(fake.created).toHaveLength(4); // instrumental, vocals, next instrumental, next vocals
+    const next = fake.created[3].engine;
+    expect(next.load).toHaveBeenCalledTimes(1);
+    expect(next.load.mock.calls[0][0].audioUrl).toBe('/media/vocals/21630?sig=v');
+    expect(next.setVolume).toHaveBeenCalledWith(expect.closeTo(0.4, 5));
+    expect(player.vocalsState()).toBe('on');
+  });
+
+  it('vocals_volume_follows_the_song_volume', async () => {
+    const { push, flush, player, voc } = await start();
+    await push(stateWith(MP3_SONG, { devices: [device(ME, 'This browser', { isCaller: true, mp3VolumePct: 50 }), device('tv', 'TV')] }));
+    player.setVocals(true);
+    await flush();
+    expect(voc().setVolume).toHaveBeenLastCalledWith(expect.closeTo(0.3, 5)); // 60 percent of 50 percent
+    await push(stateWith(MP3_SONG, { devices: [device(ME, 'This browser', { isCaller: true, mp3VolumePct: 100 }), device('tv', 'TV')] }));
+    expect(voc().setVolume).toHaveBeenLastCalledWith(expect.closeTo(0.6, 5));
+  });
+
+  it('vocals_volume_steps_stop_at_0_and_100', async () => {
+    const { player } = await start();
+    for (let i = 0; i < 12; i++) player.changeVocalsVolume(-1);
+    expect(player.vocalsPct()).toBe(0);
+    for (let i = 0; i < 12; i++) player.changeVocalsVolume(1);
+    expect(player.vocalsPct()).toBe(100);
+  });
+
+  it('vocals_switched_off_while_loading_discards_the_load', async () => {
+    const { fake, flush, player, inst } = await start();
+    const release = slowVocalsLoad(fake);
+    player.setVocals(true);
+    await flush();
+    expect(player.vocalsState()).toBe('loading');
+    player.setVocals(false);
+    await flush();
+    release();
+    await flush();
+    const voc = fake.created[1].engine;
+    expect(voc.dispose).toHaveBeenCalled();
+    expect(voc.play).not.toHaveBeenCalled();
+    expect(player.vocalsState()).toBe('off');
+    expect(inst().dispose).not.toHaveBeenCalled();
+  });
+
+  it('a choice made while the song is still loading starts the vocals once it is ready', async () => {
+    const { server, fake, push, flush, player } = setup();
+    server.handlers.playback = () => vocalsPlayback();
+    TestBed.inject(VocalsPrefs).on.set(true);
+    await push(stateWith());
+    await flush();
+    expect(fake.created).toHaveLength(2);
+    expect(player.vocalsState()).toBe('on');
+    expect(fake.created[1].engine.play).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('PlayerController', () => {
   beforeEach(() => vi.useFakeTimers());

@@ -8,10 +8,10 @@ import 'package:kantahe/core/state_store.dart';
 import 'package:kantahe/queue/queue_screen.dart';
 import 'package:kantahe/tv/focus.dart';
 
-/// What the app shows once signed in: Library, Queue and Me behind a navigation bar. The screens are kept
-/// while another one is shown (what was typed or scrolled stays). Play here on the queue opens the player.
-/// A TV opens in the player (it is the screen that plays), once, as soon as the server's state is known;
-/// Close leaves it for the library, and it is not opened again until the next start. Opening it sends no
+/// What the app shows once signed in: Library, Queue and Me behind a navigation bar (a rail at the side on a TV), with Player between Queue and
+/// Me. The screens are kept while another one is shown (what was typed or scrolled stays). Player, and Play here on the queue, open the player
+/// screen over them; Close returns to the screen that was shown. The app opens in the player (it is the screen that plays), once, as soon as
+/// the server's state is known; Close leaves it for the library, and it is not opened again until the next start. Opening it sends no
 /// command: nothing starts playing by itself.
 class AppShell extends StatefulWidget {
   const AppShell({super.key, this.playerBuilder = _player});
@@ -26,38 +26,61 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  int _index = 0;
+  int _screen = 0; // the screen shown behind the navigation: 0 Library, 1 Queue, 2 Me
+  bool _playerOpen = false; // a player route pushed from here is on the stack
   StateStore? _watching;
 
   static const _destinations = [
     (icon: Icons.library_music_outlined, selected: Icons.library_music, label: 'Library'),
     (icon: Icons.queue_music_outlined, selected: Icons.queue_music, label: 'Queue'),
+    (icon: Icons.play_circle_outline, selected: Icons.play_circle, label: 'Player'),
     (icon: Icons.person_outline, selected: Icons.person, label: 'Me'),
   ];
+
+  /// The screen each destination shows; null: the destination opens the player over the screens instead of replacing one of them.
+  static const _screenOf = [0, 1, null, 2];
+
+  int get _selectedDestination => _screenOf.indexOf(_screen);
+
+  void _select(int destination) {
+    final screen = _screenOf[destination];
+    if (screen == null) {
+      _openPlayer();
+    } else {
+      setState(() => _screen = screen);
+    }
+  }
+
+  /// Opens the player screen over the others, unless one pushed from here is open already.
+  void _openPlayer() {
+    if (_playerOpen) return;
+    _playerOpen = true;
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: widget.playerBuilder)).whenComplete(() => _playerOpen = false);
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final services = AppScope.of(context);
-    if (_watching != null || !services.isTv) return;
+    if (_watching != null) return;
     _watching = services.state;
-    _watching!.addListener(_openPlayerOnTv);
-    _openPlayerOnTv();
+    _watching!.addListener(_openPlayerAtStart);
+    _openPlayerAtStart();
   }
 
   @override
   void dispose() {
-    _watching?.removeListener(_openPlayerOnTv);
+    _watching?.removeListener(_openPlayerAtStart);
     super.dispose();
   }
 
-  void _openPlayerOnTv() {
+  void _openPlayerAtStart() {
     final store = _watching;
     if (store == null || store.state == null) return; // the server has not answered yet
-    store.removeListener(_openPlayerOnTv);
+    store.removeListener(_openPlayerAtStart);
     _watching = null; // once per start
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Navigator.of(context).push(MaterialPageRoute<void>(builder: widget.playerBuilder));
+      if (mounted) _openPlayer();
     });
   }
 
@@ -76,7 +99,7 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final screens = IndexedStack(
-      index: _index,
+      index: _screen,
       children: [
         const LibraryScreen(),
         QueueScreen(playerBuilder: widget.playerBuilder),
@@ -94,8 +117,8 @@ class _AppShellState extends State<AppShell> {
                 skipTraversal: true,
                 onKeyEvent: _keepUpDownInRail,
                 child: NavigationRail(
-                  selectedIndex: _index,
-                  onDestinationSelected: (i) => setState(() => _index = i),
+                  selectedIndex: _selectedDestination,
+                  onDestinationSelected: _select,
                   labelType: NavigationRailLabelType.all,
                   destinations: [
                     for (final d in _destinations)
@@ -113,8 +136,8 @@ class _AppShellState extends State<AppShell> {
     return Scaffold(
       body: screens,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        selectedIndex: _selectedDestination,
+        onDestinationSelected: _select,
         destinations: [for (final d in _destinations) NavigationDestination(icon: Icon(d.icon), selectedIcon: Icon(d.selected), label: d.label)],
       ),
     );

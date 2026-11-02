@@ -12,7 +12,7 @@ import (
 func toProtoSong(s library.SongInfo, favourite bool) *kantahev1.Song {
 	return &kantahev1.Song{
 		Number: s.Number, Format: kantahev1.Format(s.Format), Title: s.Title, Artist: s.Artist,
-		SongbookNumber: s.Songbook, DurationMs: s.DurationMs, Failed: s.Failed, Favourite: favourite,
+		SongbookNumber: s.Songbook, DurationMs: s.DurationMs, Failed: s.Failed, Favourite: favourite, HasVocals: s.HasVocals,
 	}
 }
 

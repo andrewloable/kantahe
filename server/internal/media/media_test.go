@@ -399,3 +399,109 @@ func TestSongResponsesCarryLastModifiedAndHonourConditionalRequests(t *testing.T
 		t.Fatalf("conditional request: %d", res.StatusCode)
 	}
 }
+
+// addVocalsSong adds an MP3 song whose vocals file sits next to its instrumental, as the importer leaves them.
+func (e *testEnv) addVocalsSong(t *testing.T, number string, inst, voc []byte) {
+	t.Helper()
+	mp3 := filepath.Join(e.data, "sha"+number+".mp3")
+	_ = os.WriteFile(mp3, inst, 0o640)
+	if voc != nil {
+		_ = os.WriteFile(filepath.Join(e.data, "sha"+number+".vocals.mp3"), voc, 0o640)
+	}
+	e.addSong(t, number, 1, "/zip/"+number, mp3, false, false)
+	if voc != nil {
+		if _, err := e.db.Exec(`UPDATE songs SET has_vocals = 1 WHERE number = ?`, number); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestVocalsRouteServesRange(t *testing.T) {
+	e, clock := newEnv(t, "")
+	e.addUser(t, "u1", false)
+	voc := testfix.MP3Frames(200)
+	e.addVocalsSong(t, "00001", testfix.MP3Frames(300), voc)
+	signed := e.svc.Sign("/media/vocals/00001", "u1", clock.t.Add(time.Hour))
+	res := e.get(t, signed, "Range", "bytes=0-99")
+	b := body(t, res)
+	if res.StatusCode != 206 || !bytes.Equal(b, voc[:100]) || res.Header.Get("Content-Type") != "audio/mpeg" {
+		t.Fatalf("status %d type %q len %d", res.StatusCode, res.Header.Get("Content-Type"), len(b))
+	}
+	if cr := res.Header.Get("Content-Range"); cr != "bytes 0-99/"+strconv.Itoa(len(voc)) {
+		t.Errorf("Content-Range = %q", cr)
+	}
+	if cc := res.Header.Get("Cache-Control"); cc != "private, max-age=3600" {
+		t.Errorf("Cache-Control = %q", cc)
+	}
+	res = e.get(t, signed, "Range", "bytes=100-199")
+	if b := body(t, res); res.StatusCode != 206 || !bytes.Equal(b, voc[100:200]) {
+		t.Fatalf("middle range: %d", res.StatusCode)
+	}
+	res = e.get(t, signed)
+	if b := body(t, res); res.StatusCode != 200 || !bytes.Equal(b, voc) {
+		t.Fatalf("full read: %d", res.StatusCode)
+	}
+	req, _ := http.NewRequest("HEAD", e.srv.URL+signed, nil)
+	hres, _ := e.srv.Client().Do(req)
+	hres.Body.Close()
+	if hres.StatusCode != 200 || hres.Header.Get("Content-Length") != strconv.Itoa(len(voc)) {
+		t.Fatalf("HEAD: %d %s", hres.StatusCode, hres.Header.Get("Content-Length"))
+	}
+	// the instrumental route still serves the instrumental
+	inst := e.get(t, e.svc.Sign("/media/song/00001", "u1", clock.t.Add(time.Hour)))
+	if got := body(t, inst); inst.StatusCode != 200 || bytes.Equal(got, voc) {
+		t.Fatalf("instrumental: %d", inst.StatusCode)
+	}
+}
+
+func TestVocalsRouteRefusals(t *testing.T) {
+	e, clock := newEnv(t, "")
+	e.addUser(t, "u1", false)
+	e.addVocalsSong(t, "00001", testfix.MP3Frames(30), testfix.MP3Frames(20))
+	e.addVocalsSong(t, "00002", testfix.MP3Frames(30), nil) // no vocals
+	_ = os.WriteFile(filepath.Join(e.data, "sha00002.vocals.mp3"), testfix.MP3Frames(20), 0o640) // a stray file: the row says no vocals
+	e.addVocalsSong(t, "00003", testfix.MP3Frames(30), testfix.MP3Frames(20))
+	_ = os.Remove(filepath.Join(e.data, "sha00003.vocals.mp3")) // the row says vocals, the file is gone
+	mid := filepath.Join(e.data, "m.kar")
+	_ = os.WriteFile(mid, []byte("MThd"), 0o640)
+	e.addSong(t, "00004", 2, mid, "", false, false)
+	exp := clock.t.Add(time.Hour)
+	status := func(path string) int {
+		res := e.get(t, e.svc.Sign(path, "u1", exp))
+		res.Body.Close()
+		return res.StatusCode
+	}
+	if got := e.get(t, "/media/vocals/00001"); got.StatusCode != 403 {
+		t.Errorf("no signature: %d", got.StatusCode)
+	}
+	// a signature for the song route must not open the vocals route
+	song := e.svc.Sign("/media/song/00001", "u1", exp)
+	if got := e.get(t, strings.Replace(song, "/media/song/", "/media/vocals/", 1)); got.StatusCode != 403 {
+		t.Errorf("the song signature on the vocals route: %d", got.StatusCode)
+	}
+	for path, want := range map[string]int{
+		"/media/vocals/00002": 404, // no vocals
+		"/media/vocals/00003": 404, // file missing
+		"/media/vocals/00004": 404, // MIDI
+		"/media/vocals/99999": 404, // unknown
+		"/media/vocals/abc":   404, // not a number
+		"/media/vocals/1":     200, // a short number is read as 00001, as on the song route
+		"/media/vocals/00001": 200,
+	} {
+		if got := status(path); got != want {
+			t.Errorf("%s = %d, want %d", path, got, want)
+		}
+	}
+}
+
+func TestVocalsRouteIsBoundToTheUser(t *testing.T) {
+	e, clock := newEnv(t, "")
+	e.addUser(t, "u1", false)
+	e.addUser(t, "u2", false)
+	e.addVocalsSong(t, "00001", testfix.MP3Frames(30), testfix.MP3Frames(20))
+	signed := e.svc.Sign("/media/vocals/00001", "u1", clock.t.Add(time.Hour))
+	other := strings.Replace(signed, "u=u1", "u=u2", 1)
+	if res := e.get(t, other); res.StatusCode != 403 {
+		t.Fatalf("another user's id on the same signature: %d", res.StatusCode)
+	}
+}

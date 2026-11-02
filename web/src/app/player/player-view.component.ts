@@ -86,6 +86,16 @@ const IDLE_MS = 3000;
                 <span class="level" role="status" aria-live="polite">{{ v.kind === 'midi' ? 'MIDI' : 'MP3' }} volume {{ v.pct }}%</span>
                 <button type="button" (click)="c.changeVolume(1)">Volume up</button>
               }
+              @if (c.hasVocals()) {
+                <button type="button" class="vocals" [attr.aria-pressed]="c.vocalsState() !== 'off'" (click)="c.setVocals(c.vocalsState() === 'off')">
+                  {{ vocalsLabel() }}
+                </button>
+                @if (c.vocalsState() !== 'off') {
+                  <button type="button" (click)="c.changeVocalsVolume(-1)">Vocals quieter</button>
+                  <span class="level" role="status" aria-live="polite">Vocals volume {{ c.vocalsPct() }}%</span>
+                  <button type="button" (click)="c.changeVocalsVolume(1)">Vocals louder</button>
+                }
+              }
             </div>
           }
         </div>
@@ -257,6 +267,17 @@ export class PlayerViewComponent {
   protected readonly c = inject(PlayerController);
   /** Inside the app's WebView: the same player without anything around it. */
   readonly embedded = input(false);
+
+  /** The text of the vocals switch: the state is told in words, never by colour alone. */
+  protected vocalsLabel(): string {
+    const state = this.c.vocalsState();
+    return state === 'on' ? 'Vocals: on' : state === 'loading' ? 'Vocals: loading…' : 'Vocals: off';
+  }
+
+  /** The app (through the embedded page) turns the vocals on or off. */
+  setVocals(on: boolean): void {
+    this.c.setVocals(on);
+  }
 
   protected readonly Action = ControlAction;
   /** The browser can fill the screen with the page (the app's WebView is full screen already). */

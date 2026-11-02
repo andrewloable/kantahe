@@ -15,8 +15,8 @@ import 'package:fixnum/fixnum.dart';
 import 'package:kantahe/gen/kantahe/v1/session.connect.spec.dart';
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart';
 
-Song song(String number, String title, String artist, {Format format = Format.FORMAT_MP3, int durationMs = 0}) =>
-    Song(number: number, title: title, artist: artist, format: format, durationMs: Int64(durationMs));
+Song song(String number, String title, String artist, {Format format = Format.FORMAT_MP3, int durationMs = 0, bool hasVocals = false}) =>
+    Song(number: number, title: title, artist: artist, format: format, durationMs: Int64(durationMs), hasVocals: hasVocals);
 
 QueueItem item(String id, Song s) => QueueItem(id: id, song: s);
 

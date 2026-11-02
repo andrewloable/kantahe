@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/andrewloable/kantahe/server/internal/song/kar"
+	"github.com/andrewloable/kantahe/server/internal/song/karmp3"
 	"github.com/andrewloable/kantahe/server/internal/store"
 )
 
@@ -28,6 +29,7 @@ type checkRow struct {
 	format                   Format
 	failed                   bool
 	reason                   string
+	hasVocals                bool
 }
 
 // verdict is what the check finds out about one song.
@@ -35,6 +37,7 @@ type verdict struct {
 	failed bool
 	reason string // why, when failed
 	media  string // the extracted MP3 of a .karmp3 (kept or re-extracted)
+	vocals bool   // the .karmp3 has a vocals track and it is extracted next to media
 }
 
 // judge re-evaluates one song from its file: the rules of the import (the file is there and can be read, a MIDI file has audible notes,
@@ -79,7 +82,21 @@ func (im *Importer) judge(r checkRow) verdict {
 			return verdict{failed: true, reason: shortReason(err), media: r.media}
 		}
 	}
-	return verdict{media: media}
+	return verdict{media: media, vocals: im.vocalsReady(f, st.Size(), r.sha, media)}
+}
+
+// vocalsReady says whether the .karmp3 has a vocals track and it is extracted next to media; a missing extracted file is made again.
+// A vocals track that cannot be used is no reason to call the song broken.
+func (im *Importer) vocalsReady(f *os.File, size int64, sha, media string) bool {
+	a, err := karmp3.Open(f, size)
+	if err != nil || !a.HasVocals() {
+		return false
+	}
+	if st, err := os.Stat(vocalsPathOf(media)); err == nil && st.Size() > 0 {
+		return true
+	}
+	has, _ := im.extractVocals(f, size, sha)
+	return has
 }
 
 // CheckLibrary re-judges every finished live song, marks the broken ones failed (they leave searches and lists at once, as import
@@ -101,8 +118,8 @@ func (im *Importer) CheckLibrary(ctx context.Context, progress func(checked, tot
 		}
 		err := im.db.WriteTx(ctx, func(tx *sql.Tx) error {
 			for _, c := range pending {
-				res, err := tx.ExecContext(ctx, `UPDATE songs SET failed = ?, failed_reason = ?, media_path = ? WHERE number = ? AND sha256 = ? AND deleted = 0`,
-					b2i(c.v.failed), c.v.reason, c.v.media, c.row.number, c.row.sha)
+				res, err := tx.ExecContext(ctx, `UPDATE songs SET failed = ?, failed_reason = ?, media_path = ?, has_vocals = ? WHERE number = ? AND sha256 = ? AND deleted = 0`,
+					b2i(c.v.failed), c.v.reason, c.v.media, b2i(c.v.vocals), c.row.number, c.row.sha)
 				if err != nil {
 					return err
 				}
@@ -130,7 +147,7 @@ func (im *Importer) CheckLibrary(ctx context.Context, progress func(checked, tot
 		if v.failed {
 			broken++
 		}
-		if v.failed != r.failed || v.reason != r.reason || v.media != r.media {
+		if v.failed != r.failed || v.reason != r.reason || v.media != r.media || v.vocals != r.hasVocals {
 			pending = append(pending, change{r, v})
 			if len(pending) >= checkBatchRows {
 				if err := flush(); err != nil {
@@ -155,7 +172,7 @@ func (im *Importer) CheckLibrary(ctx context.Context, progress func(checked, tot
 }
 
 func (im *Importer) checkRows(ctx context.Context) ([]checkRow, error) {
-	rows, err := im.db.QueryContext(ctx, `SELECT number, path, sha256, media_path, format, failed <> 0, failed_reason FROM songs WHERE deleted = 0 AND metadata_done = 1 ORDER BY number`)
+	rows, err := im.db.QueryContext(ctx, `SELECT number, path, sha256, media_path, format, failed <> 0, failed_reason, has_vocals <> 0 FROM songs WHERE deleted = 0 AND metadata_done = 1 ORDER BY number`)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +181,7 @@ func (im *Importer) checkRows(ctx context.Context) ([]checkRow, error) {
 	for rows.Next() {
 		var r checkRow
 		var format int
-		if err := rows.Scan(&r.number, &r.path, &r.sha, &r.media, &format, &r.failed, &r.reason); err != nil {
+		if err := rows.Scan(&r.number, &r.path, &r.sha, &r.media, &format, &r.failed, &r.reason, &r.hasVocals); err != nil {
 			return nil, err
 		}
 		r.format = Format(format)

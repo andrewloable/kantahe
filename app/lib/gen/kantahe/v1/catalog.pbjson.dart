@@ -280,6 +280,7 @@ const Playback$json = {
       '10': 'gainDb',
       '17': true
     },
+    {'1': 'vocals_url', '3': 11, '4': 1, '5': 9, '10': 'vocalsUrl'},
   ],
   '8': [
     {'1': '_gain_db'},
@@ -295,7 +296,7 @@ final $typed_data.Uint8List playbackDescriptor = $convert.base64Decode(
     'dGFoZS52MS5NaWRpTW9kZVIRZWZmZWN0aXZlTWlkaU1vZGUSFAoFcmVhZHkYByABKAhSBXJlYW'
     'R5EiQKDnJldHJ5X2FmdGVyX21zGAggASgFUgxyZXRyeUFmdGVyTXMSKgoGbHlyaWNzGAkgASgL'
     'MhIua2FudGFoZS52MS5MeXJpY3NSBmx5cmljcxIcCgdnYWluX2RiGAogASgCSABSBmdhaW5EYo'
-    'gBAUIKCghfZ2Fpbl9kYg==');
+    'gBARIdCgp2b2NhbHNfdXJsGAsgASgJUgl2b2NhbHNVcmxCCgoIX2dhaW5fZGI=');
 
 @$core.Deprecated('Use getPlaybackResponseDescriptor instead')
 const GetPlaybackResponse$json = {

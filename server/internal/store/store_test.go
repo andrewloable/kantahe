@@ -543,3 +543,69 @@ func TestDeviceVolumeMigrationKeepsExistingDevices(t *testing.T) {
 		t.Fatalf("volumes = %d, %d; want 100, 100", mp3, midi)
 	}
 }
+
+func TestSongVocalsMigrationRequeuesTheRefusedFiles(t *testing.T) {
+	db := rawDB(t)
+	all, err := migrationFiles.ReadDir("migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	upTo := func(last string) fstest.MapFS {
+		m := fstest.MapFS{}
+		for _, f := range all {
+			if f.Name() <= last {
+				body, _ := migrationFiles.ReadFile("migrations/" + f.Name())
+				m[f.Name()] = &fstest.MapFile{Data: body}
+			}
+		}
+		return m
+	}
+	if err := migrateFS(context.Background(), db, upTo("0012_render_gain.sql")); err != nil {
+		t.Fatal(err)
+	}
+	const twoMP3 = "karmp3: the archive has more than one .mp3 entry"
+	// a live .karmp3 refused for its two MP3s, one failed for another reason, a deleted one refused for two MP3s, and a MIDI song that failed
+	rows := []struct {
+		number, reason  string
+		format, deleted int
+	}{{"00001", twoMP3, 1, 0}, {"00002", "karmp3: not an MP3", 1, 0}, {"00003", twoMP3, 1, 1}, {"00004", twoMP3, 2, 0}}
+	for _, r := range rows {
+		if _, err := db.Exec(`INSERT INTO songs(number, format, source, path, sha256, size, mtime, original_name, metadata_done, failed, failed_reason, deleted, created_at)
+			VALUES (?, ?, 2, ?, 'h', 1, 1, 'x', 1, 1, ?, ?, 1)`, r.number, r.format, "p"+r.number, r.reason, r.deleted); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := migrateFS(context.Background(), db, upTo("9999_x.sql")); err != nil {
+		t.Fatal(err)
+	}
+	type state struct {
+		done, failed int
+		reason       string
+		vocals       int
+	}
+	got := map[string]state{}
+	rs, err := db.Query(`SELECT number, metadata_done, failed, failed_reason, has_vocals FROM songs`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rs.Close()
+	for rs.Next() {
+		var n string
+		var s state
+		if err := rs.Scan(&n, &s.done, &s.failed, &s.reason, &s.vocals); err != nil {
+			t.Fatal(err)
+		}
+		got[n] = s
+	}
+	want := map[string]state{
+		"00001": {0, 0, "", 0},                   // queued for import again
+		"00002": {1, 1, "karmp3: not an MP3", 0}, // another reason: untouched
+		"00003": {1, 1, twoMP3, 0},               // deleted: untouched
+		"00004": {1, 1, twoMP3, 0},               // MIDI: untouched
+	}
+	for n, w := range want {
+		if got[n] != w {
+			t.Errorf("song %s = %+v, want %+v", n, got[n], w)
+		}
+	}
+}

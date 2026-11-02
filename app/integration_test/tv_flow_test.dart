@@ -74,7 +74,7 @@ void main() {
     final approved = await phone.auth.approveCode(ApproveCodeRequest(code: code));
     expect(approved.deviceName, isNotEmpty);
     await until(tester, () => services.auth.signedIn && find.byType(NavigationRail).evaluate().isNotEmpty, 'the signed-in TV app');
-    // a TV opens the player by itself, once per start (AppShell._openPlayerOnTv), and it covers the library: the test
+    // a TV opens the player by itself, once per start (AppShell._openPlayerAtStart), and it covers the library: the test
     // notes that on purpose, then closes it with the remote as a person does
     await until(tester, () => find.text('Close').evaluate().isNotEmpty, 'the player that opens by itself');
     expect(find.text('Close'), findsOneWidget);

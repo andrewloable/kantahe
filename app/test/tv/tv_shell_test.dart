@@ -20,8 +20,8 @@ Future<QueueRig> open(WidgetTester tester, {bool tv = true}) async {
     ),
   );
   await tester.pumpAndSettle();
-  // a TV opens in the player: leave it, as Close does, to reach the screens behind
-  if (tv && find.text('PLAYER SCREEN').evaluate().isNotEmpty) {
+  // the app opens in the player: leave it, as Close does, to reach the screens behind
+  if (find.text('PLAYER SCREEN').evaluate().isNotEmpty) {
     tester.state<NavigatorState>(find.byType(Navigator)).pop();
     await tester.pumpAndSettle();
   }
@@ -33,7 +33,7 @@ void main() {
     await open(tester);
     expect(find.byType(NavigationRail), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
-    for (final label in ['Library', 'Queue', 'Me']) {
+    for (final label in ['Library', 'Queue', 'Player', 'Me']) {
       expect(find.descendant(of: find.byType(NavigationRail), matching: find.text(label)), findsOneWidget);
     }
   });
@@ -52,6 +52,19 @@ void main() {
     await tester.tap(find.descendant(of: find.byType(NavigationRail), matching: find.text('Library')));
     await tester.pumpAndSettle();
     expect(find.text('Search songs'), findsOneWidget);
+  });
+
+  testWidgets('the remote reaches Player in the rail (Library, Queue, then Player) and OK opens the player', (tester) async {
+    await open(tester);
+    Focus.of(tester.element(find.descendant(of: find.byType(NavigationRail), matching: find.text('Library')))).requestFocus();
+    await tester.pump();
+    for (var i = 0; i < 2; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+    }
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pumpAndSettle();
+    expect(find.text('PLAYER SCREEN'), findsOneWidget);
   });
 
   testWidgets('the remote drives the rail: arrow down to Queue, OK opens it', (tester) async {
@@ -99,7 +112,13 @@ void main() {
       expect(FocusManager.instance.primaryFocus, same(railNode(tester, 'Queue')));
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pump();
+      expect(FocusManager.instance.primaryFocus, same(railNode(tester, 'Player')));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
       expect(FocusManager.instance.primaryFocus, same(railNode(tester, 'Me')));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus, same(railNode(tester, 'Player')));
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.pump();
       expect(FocusManager.instance.primaryFocus, same(railNode(tester, 'Queue')));
