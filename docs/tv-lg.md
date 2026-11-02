@@ -42,18 +42,18 @@ bash scripts/build-webos.sh
 
 It builds the `webos` configuration of the web app, assembles `build/webos/` (the build, `tv/webos/appinfo.json` and the
 two icons), checks the `appinfo.json` (`scripts/check-webos-appinfo.py`: the keys webOS needs, the icon files and their
-sizes), and runs `ares-package build/webos -o dist`, which leaves `dist/com.loabletech.kantahe_1.0.0_all.ipk`. Without
+sizes), and runs `ares-package build/webos -o dist`, which leaves `dist/party.kantahe_1.0.0_all.ipk`. Without
 `ares-package` the script stops at once and says so. `bash scripts/build-webos.sh --stage-only` assembles and checks
 the folder without packaging.
 
 ## 4. Install and start it
 
 ```sh
-ares-install --device tv dist/com.loabletech.kantahe_1.0.0_all.ipk
-ares-launch --device tv com.loabletech.kantahe
+ares-install --device tv dist/party.kantahe_1.0.0_all.ipk
+ares-launch --device tv party.kantahe
 ```
 
-Kantahe is then in the TV's app list. To remove it: `ares-install --device tv --remove com.loabletech.kantahe`.
+Kantahe is then in the TV's app list. To remove it: `ares-install --device tv --remove party.kantahe`.
 
 ## 5. First start
 

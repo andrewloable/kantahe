@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-const _channel = MethodChannel('tech.loable.kantahe/platform');
+const _channel = MethodChannel('party.kantahe/platform');
 
 /// True on an Android TV (the system has the leanback feature). Any other platform, or a platform that does
 /// not answer, is not a TV.

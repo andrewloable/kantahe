@@ -5,7 +5,7 @@ import 'package:kantahe/tv/tv_detect.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  const channel = MethodChannel('tech.loable.kantahe/platform');
+  const channel = MethodChannel('party.kantahe/platform');
   final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   int calls = 0;
 

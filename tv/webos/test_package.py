@@ -39,7 +39,7 @@ class AppInfo(unittest.TestCase):
 
     def test_fields(self):
         i = self.info()
-        self.assertEqual(i["id"], "com.loabletech.kantahe")
+        self.assertEqual(i["id"], "party.kantahe")
         self.assertEqual(i["type"], "web")
         self.assertEqual(i["main"], "index.html")
         self.assertEqual(i["title"], "Kantahe")
@@ -122,13 +122,13 @@ class Checker(unittest.TestCase):
     def test_regression_rules_of_the_webos_reference(self):
         # LG's appinfo.json reference: no leading zeros in the version, ids of lower-case letters, digits, minus signs
         # and periods that do not begin with the reserved com.palm or com.lge, titles of at most 20 characters
-        for key, value in (("version", "01.0.0"), ("version", "1.00.0"), ("id", "com.lge.kantahe"), ("id", "com.palm.kantahe"), ("id", "com.Loable.Kantahe"), ("id", "com.loable.kanta_he"), ("title", "K" * 21)):
+        for key, value in (("version", "01.0.0"), ("version", "1.00.0"), ("id", "com.lge.kantahe"), ("id", "com.palm.kantahe"), ("id", "com.Example.Kantahe"), ("id", "com.example.kanta_he"), ("title", "K" * 21)):
             self.edit(lambda i, k=key, v=value: i.update({k: v}))
             self.assertNotEqual(check(self.path).returncode, 0, f"{key}={value!r} must be refused")
             copy_package(self.dir)
 
     def test_regression_valid_values_the_reference_allows(self):
-        for key, value in (("id", "com.loable-tech.kantahe"), ("version", "10.20.0"), ("version", "0.0.1"), ("title", "K" * 20)):
+        for key, value in (("id", "com.example-co.kantahe"), ("version", "10.20.0"), ("version", "0.0.1"), ("title", "K" * 20)):
             self.edit(lambda i, k=key, v=value: i.update({k: v}))
             self.assertEqual(check(self.path).returncode, 0, f"{key}={value!r} must be accepted")
             copy_package(self.dir)
@@ -175,7 +175,7 @@ class BuildScript(unittest.TestCase):
 
     def test_with_the_cli_it_packages_the_staged_folder_into_the_dist_folder(self):
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as out:
-            self.fake_cli(bin_dir, "ares-package", 'echo PACKAGED "$@"; touch "$3/com.loabletech.kantahe_1.0.0_all.ipk"')
+            self.fake_cli(bin_dir, "ares-package", 'echo PACKAGED "$@"; touch "$3/party.kantahe_1.0.0_all.ipk"')
             e = dict(os.environ, PATH=f"{bin_dir}:" + os.environ["PATH"], KANTAHE_BUILD_DIR=out, KANTAHE_DIST_DIR=out + "/dist")
             r = subprocess.run(["bash", str(BUILD)], capture_output=True, text=True, env=e, cwd=ROOT)
             self.assertEqual(r.returncode, 0, r.stderr)

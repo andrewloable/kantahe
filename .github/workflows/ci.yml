@@ -97,6 +97,7 @@ jobs:
       - run: python3 -m unittest discover -s scripts -p 'test_release_checks.py'
       - run: python3 -m unittest discover -s scripts -p 'test_smoke_windows.py'
       - run: python3 -m unittest discover -s scripts -p 'test_verify_release.py'
+      - run: python3 -m unittest discover -s scripts -p 'test_project_names.py'
       # the splash logo in web/src/index.html is the one that branding/kantahe-splash-logo.svg gives
       - run: scripts/sync-branding.sh --check
       - run: python3 scripts/check-links.py

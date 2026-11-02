@@ -85,14 +85,14 @@ folder in `ReadWritePaths`; otherwise the program cannot see it.
 sudo install -m 755 kantahe-VERSION-darwin-arm64 /usr/local/bin/kantahe     # darwin-amd64 on Intel Macs
 sudo xattr -c /usr/local/bin/kantahe                                   # clears the download quarantine; the program is not signed
 mkdir -p ~/Music/Karaoke
-cp deploy/launchd/com.loabletech.kantahe.plist ~/Library/LaunchAgents/
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.loabletech.kantahe.plist
+cp deploy/launchd/party.kantahe.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/party.kantahe.plist
 ```
 
 It starts when you log in and restarts if it stops with an error. Data is in
 `~/Library/Application Support/Kantahe`, the log in `~/Library/Logs/kantahe.log`, the library in
 `~/Music/Karaoke`; edit the plist to change them. Stop it with
-`launchctl bootout gui/$(id -u)/com.loabletech.kantahe`. To try it without installing, just run
+`launchctl bootout gui/$(id -u)/party.kantahe`. To try it without installing, just run
 `kantahe --data ./data --library ~/Music/Karaoke`.
 
 ## Windows

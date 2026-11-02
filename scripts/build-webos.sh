@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the LG TV (webOS) package of the web app.
 #
-#   scripts/build-webos.sh               build, then package with the webOS CLI -> dist/com.loabletech.kantahe_VERSION_all.ipk
+#   scripts/build-webos.sh               build, then package with the webOS CLI -> dist/party.kantahe_VERSION_all.ipk
 #   scripts/build-webos.sh --stage-only  build and assemble build/webos/ without the CLI (what gets packaged)
 #
 # KANTAHE_BUILD_DIR moves the build folder (default: build/ at the repository root), KANTAHE_DIST_DIR the folder

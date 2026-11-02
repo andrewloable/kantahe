@@ -192,6 +192,7 @@ job_scripts_and_docs() {
   run . "python3 -m unittest discover -s scripts -p 'test_release_checks.py'" || return 1
   run . "python3 -m unittest discover -s scripts -p 'test_smoke_windows.py'" || return 1
   run . "python3 -m unittest discover -s scripts -p 'test_verify_release.py'" || return 1
+  run . "python3 -m unittest discover -s scripts -p 'test_project_names.py'" || return 1
   run . 'scripts/sync-branding.sh --check' || return 1
   run . 'python3 scripts/check-links.py' || return 1
 }

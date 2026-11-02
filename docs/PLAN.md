@@ -499,7 +499,7 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
   signs it with the owner's certificate profile through the Tizen CLI (`--stage-only` skips the CLI). Certificates are
   never in the repository.
 * **LG package** (`tv/webos/`, `scripts/build-webos.sh`, `scripts/check-webos-appinfo.py`, `docs/tv-lg.md`):
-  `appinfo.json` (id `com.loabletech.kantahe`, type web, 1920x1080, `disableBackHistoryAPI` false so webOS handles Back
+  `appinfo.json` (id `party.kantahe`, type web, 1920x1080, `disableBackHistoryAPI` false so webOS handles Back
   through the app's history and exits from the first page), the brand icon at 80 and 130 px, a checker for the file and
   its icons, and a script that builds the `webos` configuration, assembles and checks `build/webos/` and runs
   `ares-package` (`--stage-only` skips the CLI). Device keys are never in the repository.
@@ -564,7 +564,7 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
   listen port is the reachable one (change it with `KANTAHE_LISTEN`, not a `-p` remap), and set `KANTAHE_NAME`
   (the host name inside a container is its id). On a bridge network the Flutter apps find nothing and fall back to
   typing the address; a TV still finds a server published on host port 8080 or 80.
-* **Service files**: `deploy/systemd/kantahe.service` (dedicated user, hardened), `deploy/launchd/com.loabletech.kantahe.plist`
+* **Service files**: `deploy/systemd/kantahe.service` (dedicated user, hardened), `deploy/launchd/party.kantahe.plist`
   (login item), and for Windows a real service (`sc.exe create Kantahe ... start= auto`, `docs/install.md`): when the
   Windows service manager starts the program (`svc.IsWindowsService`), `main` runs it under `golang.org/x/sys/windows/svc`
   (`server/cmd/kantahe/service_windows.go`). The Stop and Shutdown requests cancel the context the server runs in

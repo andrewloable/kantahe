@@ -1,4 +1,4 @@
-package tech.loable.kantahe.kantahe_s3
+package party.kantahe.spike.kantahe_s2
 
 import io.flutter.embedding.android.FlutterActivity
 
