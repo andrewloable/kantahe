@@ -365,13 +365,15 @@ func TestGetPlaybackWithoutSoundFont(t *testing.T) {
 	// a server started without --soundfont
 	mux := http.NewServeMux()
 	deps := Deps{DB: a.db, Version: "x", Now: a.clock.now, Logger: a.logger, DataDir: a.dataDir, Importer: a.importer, HashCost: auth.CheapCost}
-	if _, err := Mount(mux.Handle, deps); err != nil {
+	m2, err := Mount(mux.Handle, deps)
+	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = m2.Close() })
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	c := kantahev1connect.NewCatalogServiceClient(srv.Client(), srv.URL)
-	_, err := c.GetPlayback(context.Background(), with(connect.NewRequest(&kantahev1.GetPlaybackRequest{Number: n}), a.user.Token))
+	_, err = c.GetPlayback(context.Background(), with(connect.NewRequest(&kantahev1.GetPlaybackRequest{Number: n}), a.user.Token))
 	if code(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("err = %v", err)
 	}

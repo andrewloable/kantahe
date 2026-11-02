@@ -269,27 +269,37 @@ func TestCodeLoginWaitCancelReleasesTheStream(t *testing.T) {
 	}
 	cancel()
 	<-done
-	// the server side ends too: a new stream is accepted again and gets the approval
-	deadline := time.Now().Add(3 * time.Second)
+	// the server side ends too: a new stream is accepted again and gets the approval. The server lets go of the old stream a moment after the
+	// client cancelled (on a slow machine, such as a Windows runner, a longer moment): while it still holds it the new stream ends at once
+	// with Aborted, and the test tries again with the same sign-in; approval is asked only of a stream that stays open.
+	deadline := time.Now().Add(5 * time.Second)
 	for {
-		ctx2, cancel2 := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
 		got := make(chan error, 1)
 		go func() { _, err := a.waitCode(ctx2, start.LoginId); got <- err }()
-		time.Sleep(50 * time.Millisecond)
-		if _, err := a.approve(a.user.Token, start.Code); err == nil {
-			err := <-got
+		select {
+		case err := <-got:
 			cancel2()
-			if err != nil {
-				t.Fatalf("reconnected stream: %v", err)
+			if code(err) != connect.CodeAborted {
+				t.Fatalf("the reconnected stream ended before the approval: %v", err)
 			}
-			return
+			if time.Now().After(deadline) {
+				t.Fatal("the server kept the cancelled stream")
+			}
+			time.Sleep(20 * time.Millisecond)
+			continue
+		case <-time.After(150 * time.Millisecond):
 		}
+		if _, err := a.approve(a.user.Token, start.Code); err != nil {
+			cancel2()
+			t.Fatalf("approve: %v", err)
+		}
+		err := <-got
 		cancel2()
-		<-got
-		if time.Now().After(deadline) {
-			t.Fatal("the server kept the cancelled stream")
+		if err != nil {
+			t.Fatalf("reconnected stream: %v", err)
 		}
-		start = a.startCode(t, "")
+		return
 	}
 }
 

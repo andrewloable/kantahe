@@ -53,6 +53,8 @@ func newEnv(t *testing.T, soundfont string) (*testEnv, *clockBox) {
 	svc.Routes(mux.Handle)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
+	// the service holds the SoundFont open: on Windows the data folder cannot be removed while it does
+	t.Cleanup(func() { _ = svc.Close() })
 	return &testEnv{db, svc, srv, clock.t, data}, clock
 }
 

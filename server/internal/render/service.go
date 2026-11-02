@@ -242,7 +242,12 @@ func (s *Service) Run(ctx context.Context) {
 		return
 	}
 	s.cache.Cleanup()
-	go s.backfillGains(ctx) // renders from before the gain existed
+	// renders from before the gain existed; Run does not return before the backfill has let go of its files (on Windows a file that is open
+	// cannot be removed)
+	var backfill sync.WaitGroup
+	backfill.Add(1)
+	go func() { defer backfill.Done(); s.backfillGains(ctx) }()
+	defer backfill.Wait()
 	t := time.NewTicker(cleanupInterval)
 	defer t.Stop()
 	for {
@@ -364,11 +369,16 @@ func measureFLAC(path string) (m *loudness.Meter, err error) {
 			m, err = nil, fmt.Errorf("damaged file: %v", r)
 		}
 	}()
-	st, err := flac.Open(path)
+	// the file is opened and closed here, whatever the decoder does with it: a handle left open blocks removing the file on Windows
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer st.Close()
+	defer f.Close()
+	st, err := flac.New(f)
+	if err != nil {
+		return nil, err
+	}
 	if st.Info.NChannels != 2 || st.Info.BitsPerSample != 16 {
 		return nil, fmt.Errorf("not a 16-bit stereo render")
 	}

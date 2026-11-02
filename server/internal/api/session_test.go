@@ -336,9 +336,11 @@ func TestPersistenceAcrossRestart(t *testing.T) {
 	deps := a.deps
 	deps.Session.Clock = &msClock{}
 	deps.Session.Clock.(*msClock).v.Store(5)
-	if _, err := Mount(mux.Handle, deps); err != nil {
+	m2, err := Mount(mux.Handle, deps)
+	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = m2.Close() }) // it holds the SoundFont open: on Windows the data folder cannot be removed meanwhile
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	res, err := kantahev1connect.NewSessionServiceClient(srv.Client(), srv.URL).GetState(context.Background(), with(connect.NewRequest(&kantahev1.GetStateRequest{}), a.admin.Token))
@@ -579,9 +581,11 @@ func TestReportDeviceStepsDownTwiceWithARenderer(t *testing.T) {
 	a := newAdminEnv(t)
 	a.deps.Render = renderOn{}
 	mux := http.NewServeMux()
-	if _, err := Mount(mux.Handle, a.deps); err != nil {
+	m2, err := Mount(mux.Handle, a.deps)
+	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = m2.Close() }) // it holds the SoundFont open: on Windows the data folder cannot be removed meanwhile
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	c := kantahev1connect.NewSessionServiceClient(srv.Client(), srv.URL)

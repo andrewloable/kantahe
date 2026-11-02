@@ -431,6 +431,18 @@ test('/admin/songs delete-question: the page is not wider than the window at tab
   none(await layout(browser, info, '/admin/songs:delete-question', 'tablet-744x1133', (r) => r), 'horizontalOverflow');
 });
 
+// REGRESSION (CI, Linux): a wide font (DejaVu Sans there, Verdana here) made the table 797 px wide in a 744 px window, because a long word in a
+// title kept its column wide. The other tests above pass with the narrower fonts of a Mac.
+for (const state of ['/admin/songs:many', '/admin/songs:long-text', '/admin/songs:delete-question']) {
+  test(`${state}: the page is not wider than the window with a wide font at tablet-744x1133`, async ({ browser }, info) => {
+    await layout(browser, info, state, 'tablet-744x1133', async (_raw, page) => {
+      await page.addStyleTag({ content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important; }' });
+      const width = await page.evaluate(() => document.documentElement.scrollWidth);
+      expect(width, 'scrollWidth').toBeLessThanOrEqual(744);
+    });
+  });
+}
+
 // the blocks come sooner with a larger text size: a table that needs 44rem no longer fits (the case a media query in rem cannot see)
 test('/admin/songs many: the page is not wider than the window at tablet-768x1024-zoom200', async ({ browser }, info) => {
   none(await layout(browser, info, '/admin/songs:many', 'tablet-768x1024-zoom200', (r) => r), 'horizontalOverflow');

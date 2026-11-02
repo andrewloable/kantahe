@@ -156,6 +156,10 @@ const MAX_SELECTED = 1000;
       text-align: left;
       border-bottom: 1px solid var(--line);
     }
+    /* a long word in a title or an artist breaks instead of making the table wider than the page (a wide font makes it likelier) */
+    td {
+      overflow-wrap: anywhere;
+    }
     .actions {
       display: flex;
       flex-wrap: wrap;

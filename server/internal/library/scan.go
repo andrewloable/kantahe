@@ -104,6 +104,14 @@ func (im *Importer) scanOnce(ctx context.Context) (ScanResult, error) {
 			if d.IsDir() && p != resolved {
 				return im.walkDirectory(r, p)
 			}
+			if d.Type()&fs.ModeIrregular != 0 {
+				// since Go 1.23 the walk reports a Windows junction as irregular, not as a directory, and never enters it; the link is said
+				// to be one, as for the directories above
+				if st, serr := os.Stat(p); serr == nil && st.IsDir() {
+					im.reportLink(p)
+				}
+				return nil
+			}
 			if d.Type()&fs.ModeSymlink != 0 || d.IsDir() {
 				return nil // symlinks are never followed
 			}
@@ -258,16 +266,21 @@ func (im *Importer) walkDirectory(r *root, dir string) error {
 		r.incomplete = append(r.incomplete, dir)
 		return fs.SkipDir
 	case linked:
-		im.pmu.Lock()
-		first := !im.linksSeen[dir]
-		im.linksSeen[dir] = true
-		im.pmu.Unlock()
-		if first {
-			im.logger.Warn("a folder inside a watched folder is a link (junction or symlink); links are never followed, its songs are not listed", "path", dir)
-		}
+		im.reportLink(dir)
 		return fs.SkipDir
 	}
 	return nil
+}
+
+// reportLink says once per folder that a directory inside a watched folder is a link and is not followed.
+func (im *Importer) reportLink(dir string) {
+	im.pmu.Lock()
+	first := !im.linksSeen[dir]
+	im.linksSeen[dir] = true
+	im.pmu.Unlock()
+	if first {
+		im.logger.Warn("a folder inside a watched folder is a link (junction or symlink); links are never followed, its songs are not listed", "path", dir)
+	}
 }
 
 // missingPaths lists known folder files that are no longer on disk, judged only
