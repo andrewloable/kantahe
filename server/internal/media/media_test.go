@@ -458,7 +458,7 @@ func TestVocalsRouteRefusals(t *testing.T) {
 	e, clock := newEnv(t, "")
 	e.addUser(t, "u1", false)
 	e.addVocalsSong(t, "00001", testfix.MP3Frames(30), testfix.MP3Frames(20))
-	e.addVocalsSong(t, "00002", testfix.MP3Frames(30), nil) // no vocals
+	e.addVocalsSong(t, "00002", testfix.MP3Frames(30), nil)                                      // no vocals
 	_ = os.WriteFile(filepath.Join(e.data, "sha00002.vocals.mp3"), testfix.MP3Frames(20), 0o640) // a stray file: the row says no vocals
 	e.addVocalsSong(t, "00003", testfix.MP3Frames(30), testfix.MP3Frames(20))
 	_ = os.Remove(filepath.Join(e.data, "sha00003.vocals.mp3")) // the row says vocals, the file is gone
