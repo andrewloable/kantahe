@@ -74,6 +74,9 @@ const (
 	// SessionServiceSetBackgroundModeProcedure is the fully-qualified name of the SessionService's
 	// SetBackgroundMode RPC.
 	SessionServiceSetBackgroundModeProcedure = "/kantahe.v1.SessionService/SetBackgroundMode"
+	// SessionServiceSetVolumeProcedure is the fully-qualified name of the SessionService's SetVolume
+	// RPC.
+	SessionServiceSetVolumeProcedure = "/kantahe.v1.SessionService/SetVolume"
 )
 
 // SessionServiceClient is a client for the kantahe.v1.SessionService service.
@@ -108,6 +111,8 @@ type SessionServiceClient interface {
 	SetMidiMode(context.Context, *connect.Request[v1.SetMidiModeRequest]) (*connect.Response[v1.SetMidiModeResponse], error)
 	// Signed-in user. Sets the background video mode of one of the caller's devices; NOT_FOUND for another user's device.
 	SetBackgroundMode(context.Context, *connect.Request[v1.SetBackgroundModeRequest]) (*connect.Response[v1.SetBackgroundModeResponse], error)
+	// Signed-in user. Sets how loud one of the caller's devices plays MP3 songs and MIDI songs (percent, 0 to 200; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field.
+	SetVolume(context.Context, *connect.Request[v1.SetVolumeRequest]) (*connect.Response[v1.SetVolumeResponse], error)
 }
 
 // NewSessionServiceClient constructs a client for the kantahe.v1.SessionService service. By
@@ -211,6 +216,12 @@ func NewSessionServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sessionServiceMethods.ByName("SetBackgroundMode")),
 			connect.WithClientOptions(opts...),
 		),
+		setVolume: connect.NewClient[v1.SetVolumeRequest, v1.SetVolumeResponse](
+			httpClient,
+			baseURL+SessionServiceSetVolumeProcedure,
+			connect.WithSchema(sessionServiceMethods.ByName("SetVolume")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -231,6 +242,7 @@ type sessionServiceClient struct {
 	reportDevice       *connect.Client[v1.ReportDeviceRequest, v1.ReportDeviceResponse]
 	setMidiMode        *connect.Client[v1.SetMidiModeRequest, v1.SetMidiModeResponse]
 	setBackgroundMode  *connect.Client[v1.SetBackgroundModeRequest, v1.SetBackgroundModeResponse]
+	setVolume          *connect.Client[v1.SetVolumeRequest, v1.SetVolumeResponse]
 }
 
 // WatchState calls kantahe.v1.SessionService.WatchState.
@@ -308,6 +320,11 @@ func (c *sessionServiceClient) SetBackgroundMode(ctx context.Context, req *conne
 	return c.setBackgroundMode.CallUnary(ctx, req)
 }
 
+// SetVolume calls kantahe.v1.SessionService.SetVolume.
+func (c *sessionServiceClient) SetVolume(ctx context.Context, req *connect.Request[v1.SetVolumeRequest]) (*connect.Response[v1.SetVolumeResponse], error) {
+	return c.setVolume.CallUnary(ctx, req)
+}
+
 // SessionServiceHandler is an implementation of the kantahe.v1.SessionService service.
 type SessionServiceHandler interface {
 	// Signed-in user. Streams the caller's full State at once and after every change (positions never push).
@@ -340,6 +357,8 @@ type SessionServiceHandler interface {
 	SetMidiMode(context.Context, *connect.Request[v1.SetMidiModeRequest]) (*connect.Response[v1.SetMidiModeResponse], error)
 	// Signed-in user. Sets the background video mode of one of the caller's devices; NOT_FOUND for another user's device.
 	SetBackgroundMode(context.Context, *connect.Request[v1.SetBackgroundModeRequest]) (*connect.Response[v1.SetBackgroundModeResponse], error)
+	// Signed-in user. Sets how loud one of the caller's devices plays MP3 songs and MIDI songs (percent, 0 to 200; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field.
+	SetVolume(context.Context, *connect.Request[v1.SetVolumeRequest]) (*connect.Response[v1.SetVolumeResponse], error)
 }
 
 // NewSessionServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -439,6 +458,12 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sessionServiceMethods.ByName("SetBackgroundMode")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sessionServiceSetVolumeHandler := connect.NewUnaryHandler(
+		SessionServiceSetVolumeProcedure,
+		svc.SetVolume,
+		connect.WithSchema(sessionServiceMethods.ByName("SetVolume")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/kantahe.v1.SessionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SessionServiceWatchStateProcedure:
@@ -471,6 +496,8 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 			sessionServiceSetMidiModeHandler.ServeHTTP(w, r)
 		case SessionServiceSetBackgroundModeProcedure:
 			sessionServiceSetBackgroundModeHandler.ServeHTTP(w, r)
+		case SessionServiceSetVolumeProcedure:
+			sessionServiceSetVolumeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -538,4 +565,8 @@ func (UnimplementedSessionServiceHandler) SetMidiMode(context.Context, *connect.
 
 func (UnimplementedSessionServiceHandler) SetBackgroundMode(context.Context, *connect.Request[v1.SetBackgroundModeRequest]) (*connect.Response[v1.SetBackgroundModeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.SessionService.SetBackgroundMode is not implemented"))
+}
+
+func (UnimplementedSessionServiceHandler) SetVolume(context.Context, *connect.Request[v1.SetVolumeRequest]) (*connect.Response[v1.SetVolumeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.SessionService.SetVolume is not implemented"))
 }

@@ -99,6 +99,70 @@ describe('MyDevicesComponent', () => {
     expect(server.calls.midi).toEqual([{ deviceId: 'tv', mode: MidiMode.FULL }]);
   });
 
+  describe('Volume', () => {
+    const range = (li: HTMLElement, kind: 'mp3' | 'midi') => li.querySelector<HTMLInputElement>(`input.volume-${kind}`)!;
+    const move = (input: HTMLInputElement, value: number) => {
+      input.value = String(value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    it('REGRESSION: each device has an MP3 and a MIDI volume range, 0 to 200 in steps of 5, with names, from the live state (100 when the server sends none)', async () => {
+      const { row, fixture } = await setup();
+      TestBed.inject(StateStore).state.set(
+        stateOf({
+          devices: [device('me', 'This browser', { isCaller: true, mp3VolumePct: 50, midiVolumePct: 150 }), device('tv', 'Living room TV', { type: DeviceType.ANDROID_TV })],
+        }),
+      );
+      fixture.detectChanges();
+      const mp3 = range(row('This browser'), 'mp3');
+      const midi = range(row('This browser'), 'midi');
+      expect([mp3.min, mp3.max, mp3.step, mp3.type]).toEqual(['0', '200', '5', 'range']);
+      expect(mp3.getAttribute('aria-label')).toBe('MP3 songs volume of This browser');
+      expect(midi.getAttribute('aria-label')).toBe('MIDI songs volume of This browser');
+      expect([mp3.value, midi.value]).toEqual(['50', '150']);
+      expect(row('This browser').textContent).toContain('50 %');
+      expect(row('This browser').textContent).toContain('150 %');
+      expect([range(row('Living room TV'), 'mp3').value, range(row('Living room TV'), 'midi').value]).toEqual(['100', '100']);
+      expect(row('This browser').querySelector('label[for="mp3-volume-me"]')?.textContent).toContain('MP3 songs volume');
+    });
+
+    it('moving one shows the value at once and sends SetVolume once, after a short pause, with only that field', async () => {
+      const { row, server, fixture } = await setup();
+      const midi = range(row('Living room TV'), 'midi');
+      move(midi, 120);
+      fixture.detectChanges();
+      expect(row('Living room TV').textContent).toContain('120 %');
+      expect(server.calls.volume).toEqual([]);
+      await wait(450);
+      expect(server.calls.volume).toEqual([{ deviceId: 'tv', mp3: undefined, midi: 120 }]);
+      fixture.detectChanges();
+      expect(row('Living room TV').textContent, 'it stays shown once the server accepted it').toContain('120 %');
+    });
+
+    it('several moves in a row send one call with the last value', async () => {
+      const { row, server } = await setup();
+      const mp3 = range(row('This browser'), 'mp3');
+      move(mp3, 90);
+      move(mp3, 70);
+      move(mp3, 60);
+      await wait(450);
+      expect(server.calls.volume).toEqual([{ deviceId: 'me', mp3: 60, midi: undefined }]);
+    });
+
+    it('a refusal puts the value back and says so', async () => {
+      const { row, server, fixture } = await setup();
+      server.failNext(new ConnectError('down', Code.Unavailable));
+      const mp3 = range(row('This browser'), 'mp3');
+      move(mp3, 30);
+      await wait(450);
+      fixture.detectChanges();
+      expect(mp3.value).toBe('100');
+      expect(row('This browser').textContent).toContain('100 %');
+      expect(TestBed.inject(ToastService).toasts().length).toBeGreaterThan(0);
+    });
+  });
+
   describe('Background video', () => {
     const bgSelect = (li: HTMLElement) => li.querySelector<HTMLSelectElement>('.background select')!;
 

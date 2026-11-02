@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kantahe/core/app_scope.dart';
+import 'package:kantahe/core/errors.dart';
+import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart' hide State;
+import 'package:kantahe/player/connect_card.dart';
 import 'package:kantahe/player/embed_bridge.dart';
 import 'package:kantahe/player/platform.dart';
 import 'package:kantahe/player/web_embed.dart';
@@ -32,11 +35,21 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   late final EmbedBridge _bridge = EmbedBridge(auth: _services.auth, serverUrl: _services.serverUrl);
   late final QueueActions _actions = QueueActions(api: _services.api, notify: _notify);
   static const _hideAfter = Duration(seconds: 4);
+  static const _connectCardTime = Duration(seconds: 10);
+  static const _volumeStep = 5;
+  static const _volumeMax = 200;
+  static const _volumePause = Duration(milliseconds: 300);
   // It wraps the whole screen, so the arrow keys must never move the focus onto it (from there none reaches a button): it takes the
   // focus only by code, in _hide.
   final FocusNode _wakeNode = FocusNode(debugLabel: 'player: receives the key that wakes the buttons', skipTraversal: true);
   final FocusNode _pauseNode = FocusNode(debugLabel: 'player: Play/Pause');
+  final FocusNode _connectNode = FocusNode(debugLabel: 'player: Connect a phone');
   Timer? _hideTimer;
+  Timer? _connectTimer;
+  bool _connectOpen = false; // the card with the QR of the server address
+  // Volumes chosen with the buttons (key: true for the MP3 volume): shown and sent after a short pause; dropped when the state shows them.
+  final Map<bool, int> _movedVolume = {};
+  final Map<bool, Timer> _volumeTimers = {};
   bool _idle = false;
   bool _suspended = false; // the app is in the background: the song is paused and the page ended
   bool _bound = false;
@@ -77,8 +90,15 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
       }
     }
     _hideTimer?.cancel();
+    _connectTimer?.cancel();
+    // a step chosen just before leaving is still sent
+    for (final entry in _volumeTimers.entries.toList()) {
+      entry.value.cancel();
+      unawaited(_sendVolume(entry.key, _movedVolume[entry.key]!));
+    }
     _wakeNode.dispose();
     _pauseNode.dispose();
+    _connectNode.dispose();
     if (_awake) widget.screenAwake.disable();
     super.dispose();
   }
@@ -88,9 +108,67 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     return s != null && s.status == PlayStatus.PLAY_STATUS_PLAYING && s.playerDeviceId.isNotEmpty && s.playerDeviceId == _services.auth.deviceId;
   }
 
+  /// The kind of volume the buttons change: true for the MP3 volume, false for the MIDI volume (also when the server rendered the song);
+  /// null when no song is current.
+  bool? get _volumeIsMp3 {
+    final s = _services.state.state;
+    if (s == null || !s.hasNow() || !s.now.hasSong()) return null;
+    return s.now.song.format != Format.FORMAT_MIDI;
+  }
+
+  /// This device's volume of the kind in percent: what was just chosen, else the state, else 100 (an older server sends none).
+  int _volumePct(bool mp3) => _movedVolume[mp3] ?? _liveVolume(mp3) ?? 100;
+
+  int? _liveVolume(bool mp3) {
+    final mine = _services.state.state?.devices.where((d) => d.id == _services.auth.deviceId).firstOrNull;
+    if (mine == null) return null;
+    if (mp3) return mine.hasMp3VolumePct() ? mine.mp3VolumePct : null;
+    return mine.hasMidiVolumePct() ? mine.midiVolumePct : null;
+  }
+
+  void _changeVolume(int direction) {
+    final mp3 = _volumeIsMp3;
+    if (mp3 == null) return;
+    final now = _volumePct(mp3);
+    final pct = (now + direction * _volumeStep).clamp(0, _volumeMax);
+    if (pct == now) return;
+    setState(() => _movedVolume[mp3] = pct);
+    _volumeTimers[mp3]?.cancel();
+    _volumeTimers[mp3] = Timer(_volumePause, () => _sendVolume(mp3, pct));
+  }
+
+  Future<void> _sendVolume(bool mp3, int pct) async {
+    _volumeTimers.remove(mp3);
+    final id = _services.auth.deviceId;
+    if (id == null) return;
+    try {
+      await _services.api.session.setVolume(mp3 ? SetVolumeRequest(deviceId: id, mp3Pct: pct) : SetVolumeRequest(deviceId: id, midiPct: pct));
+    } catch (e) {
+      if (!mounted) return;
+      if (_movedVolume[mp3] == pct) setState(() => _movedVolume.remove(mp3));
+      _notify(problem(e, const {}), error: true);
+    }
+  }
+
   void _scheduleHide() {
     _hideTimer?.cancel();
-    if (_playingHere && _loadError.isEmpty) _hideTimer = Timer(_hideAfter, _hide);
+    // the buttons stay while the card is open: the focus is on one of them
+    if (_playingHere && _loadError.isEmpty && !_connectOpen) _hideTimer = Timer(_hideAfter, _hide);
+  }
+
+  /// Shows the card (or starts its 10 seconds again when it is open): it closes by itself.
+  void _showConnect() {
+    _connectTimer?.cancel();
+    _hideTimer?.cancel();
+    _connectTimer = Timer(_connectCardTime, _closeConnect);
+    if (!_connectOpen) setState(() => _connectOpen = true);
+  }
+
+  void _closeConnect() {
+    _connectTimer?.cancel();
+    if (!mounted || !_connectOpen) return;
+    setState(() => _connectOpen = false);
+    _scheduleHide(); // the focus never left the button that opened the card
   }
 
   void _hide() {
@@ -156,6 +234,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
 
   // The screen stays on while a song plays on this device.
   void _onState() {
+    // the state shows what the buttons chose: from now on the state is the truth (another device may change it)
+    for (final mp3 in [true, false]) {
+      if (_movedVolume[mp3] != null && _movedVolume[mp3] == _liveVolume(mp3)) _movedVolume.remove(mp3);
+    }
     if (_suspended) return; // the state is stale while the app is in the background
     final shouldBeAwake = _playingHere;
     if (!shouldBeAwake) {
@@ -197,11 +279,17 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   @override
   Widget build(BuildContext context) {
     final server = _services.serverUrl.value;
-    return Focus(
-      focusNode: _wakeNode,
-      onKeyEvent: _onKey,
-      // a touch anywhere shows the buttons; while they are hidden it reaches no button (IgnorePointer below)
-      child: Listener(behavior: HitTestBehavior.translucent, onPointerDown: (_) => _wake(), child: _scaffold(context, server)),
+    return PopScope(
+      canPop: !_connectOpen, // Back closes the card first, then the player
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _closeConnect();
+      },
+      child: Focus(
+        focusNode: _wakeNode,
+        onKeyEvent: _onKey,
+        // a touch anywhere shows the buttons; while they are hidden it reaches no button (IgnorePointer below)
+        child: Listener(behavior: HitTestBehavior.translucent, onPointerDown: (_) => _wake(), child: _scaffold(context, server)),
+      ),
     );
   }
 
@@ -282,6 +370,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                                       final isHere = playerId.isNotEmpty && playerId == _services.auth.deviceId;
                                       return Wrap(
                                         spacing: 12,
+                                        runSpacing: 8,
+                                        crossAxisAlignment: WrapCrossAlignment.center,
                                         children: [
                                           // all the buttons are one quiet kind: only the one with the focus stands out (tvTheme)
                                           FocusGrow(
@@ -299,6 +389,22 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                                               child: const Text('Skip'),
                                             ),
                                           ),
+                                          // this device's volume: only while this device is the player (the song that plays elsewhere is not affected)
+                                          if (isHere && _volumeIsMp3 != null) ...[
+                                            FocusGrow(
+                                              child: OutlinedButton(onPressed: () => _changeVolume(-1), child: const Text('Volume down')),
+                                            ),
+                                            Semantics(
+                                              liveRegion: true,
+                                              child: Text(
+                                                '${_volumeIsMp3! ? 'MP3' : 'MIDI'} volume ${_volumePct(_volumeIsMp3!)}%',
+                                                style: const TextStyle(color: Colors.white, fontSize: 18),
+                                              ),
+                                            ),
+                                            FocusGrow(
+                                              child: OutlinedButton(onPressed: () => _changeVolume(1), child: const Text('Volume up')),
+                                            ),
+                                          ],
                                           // the page's own buttons cannot take the D-pad, so taking over from another device is a native button
                                           if (!isHere)
                                             FocusGrow(
@@ -306,6 +412,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                                                 onPressed: () => _actions.control(ControlAction.CONTROL_ACTION_PLAY_HERE),
                                                 child: const Text('Play here'),
                                               ),
+                                            ),
+                                          // for the people in the room: the server's address as a QR, to queue songs from a phone or tablet
+                                          if (AppScope.isTvOf(context))
+                                            FocusGrow(
+                                              child: OutlinedButton(focusNode: _connectNode, onPressed: _showConnect, child: const Text('Connect a phone')),
                                             ),
                                         ],
                                       );
@@ -320,6 +431,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                     ),
                   ),
                 ),
+                // above the controls and above the lyrics; it takes no focus: the focus stays on the button that opened it
+                if (_connectOpen)
+                  Center(
+                    child: ExcludeFocus(child: ConnectCard(address: server)),
+                  ),
               ],
             ),
     );

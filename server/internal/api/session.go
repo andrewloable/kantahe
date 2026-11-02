@@ -540,6 +540,58 @@ func (s *SessionServer) SetBackgroundMode(ctx context.Context, req *connect.Requ
 	return connect.NewResponse(&kantahev1.SetBackgroundModeResponse{Device: pd}), nil
 }
 
+const maxVolumePct = 200 // a device plays a song at 0 to 200 percent of its level
+
+// SetVolume stores how loud one of the caller's own devices plays MP3 songs and MIDI songs (percent, 0 to 200). A field that is not given is
+// left as it is; at least one must be given.
+func (s *SessionServer) SetVolume(ctx context.Context, req *connect.Request[kantahev1.SetVolumeRequest]) (*connect.Response[kantahev1.SetVolumeResponse], error) {
+	id, err := identity(ctx)
+	if err != nil {
+		return nil, err
+	}
+	m := req.Msg
+	if m.Mp3Pct == nil && m.MidiPct == nil {
+		return nil, invalidArgument("give mp3_pct, midi_pct or both")
+	}
+	var mp3, midi *int
+	for _, c := range []struct {
+		name string
+		in   *int32
+		out  **int
+	}{{"mp3_pct", m.Mp3Pct, &mp3}, {"midi_pct", m.MidiPct, &midi}} {
+		if c.in == nil {
+			continue
+		}
+		if *c.in < 0 || *c.in > maxVolumePct {
+			return nil, invalidArgument(c.name + " must be 0 to 200")
+		}
+		v := int(*c.in)
+		*c.out = &v
+	}
+	var found bool
+	err = s.d.DB.WriteTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		found, err = users.SetDeviceVolume(ctx, tx, id.UserID, m.DeviceId, mp3, midi)
+		return err
+	})
+	if err != nil {
+		return nil, s.fail("SetVolume", err)
+	}
+	if !found {
+		return nil, newErr(connect.CodeNotFound, "device not found")
+	}
+	dev, err := users.DeviceByID(ctx, s.d.DB, id.UserID, m.DeviceId)
+	if err != nil {
+		return nil, s.fail("SetVolume", err)
+	}
+	if err := s.svc.Notify(ctx, id.UserID); err != nil {
+		return nil, s.fail("SetVolume", err)
+	}
+	pd := toProtoDevice(dev, id.DeviceID, s.d.Modes)
+	pd.Online = s.svc.IsOnline(id.UserID, dev.ID)
+	return connect.NewResponse(&kantahev1.SetVolumeResponse{Device: pd}), nil
+}
+
 const maxMemoryMB = 1 << 20 // 1 TB: anything larger is a bad report
 
 // AddPlaylistToQueue appends every playable song of one of the caller's playlists, in order, in one change.

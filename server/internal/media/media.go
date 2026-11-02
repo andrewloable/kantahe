@@ -68,6 +68,8 @@ type Renderer interface {
 	Path(ctx context.Context, number string) (string, error)
 	Prepare(number string)
 	Touch(path string)
+	// Gain is the gain in dB that brings the cached render to the common loudness; false when it has none (yet).
+	Gain(ctx context.Context, number string) (float64, bool)
 }
 
 // New prepares the service. A configured SoundFont that cannot be read is an error.

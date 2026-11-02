@@ -11,6 +11,8 @@ export interface Engine {
   play(): Promise<void>;
   pause(): void;
   seek(ms: number): void;
+  /** How loud the song plays, as a factor of its own level (1 is as it is, 0 silence, up to 2). Can be set before load and while it plays. */
+  setVolume(factor: number): void;
   timeMs(): number;
   onEnded(cb: () => void): void;
   /** Seconds of audio produced so far; only engines that can tell (the synth) have it. */

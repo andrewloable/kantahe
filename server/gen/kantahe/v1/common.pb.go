@@ -646,8 +646,12 @@ type Device struct {
 	// What the user chose; effective_background is what the server resolved from it (whether this device plays the background videos).
 	BackgroundMode      BackgroundMode `protobuf:"varint,11,opt,name=background_mode,json=backgroundMode,proto3,enum=kantahe.v1.BackgroundMode" json:"background_mode,omitempty"`
 	EffectiveBackground bool           `protobuf:"varint,12,opt,name=effective_background,json=effectiveBackground,proto3" json:"effective_background,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// How loud this device plays MP3 songs and MIDI songs (a MIDI song also when the server renders it to audio), in percent: 0 to 200, 100 by default.
+	// optional: a client talking to an older server sees no value and plays at 100.
+	Mp3VolumePct  *int32 `protobuf:"varint,13,opt,name=mp3_volume_pct,json=mp3VolumePct,proto3,oneof" json:"mp3_volume_pct,omitempty"`
+	MidiVolumePct *int32 `protobuf:"varint,14,opt,name=midi_volume_pct,json=midiVolumePct,proto3,oneof" json:"midi_volume_pct,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Device) Reset() {
@@ -762,6 +766,20 @@ func (x *Device) GetEffectiveBackground() bool {
 		return x.EffectiveBackground
 	}
 	return false
+}
+
+func (x *Device) GetMp3VolumePct() int32 {
+	if x != nil && x.Mp3VolumePct != nil {
+		return *x.Mp3VolumePct
+	}
+	return 0
+}
+
+func (x *Device) GetMidiVolumePct() int32 {
+	if x != nil && x.MidiVolumePct != nil {
+		return *x.MidiVolumePct
+	}
+	return 0
 }
 
 // A background video uploaded by the admin (plan 4.2). url is a signed URL (ListVideos: 1 hour, for the admin preview; GetBackground: 6 hours).
@@ -1016,7 +1034,7 @@ const file_kantahe_v1_common_proto_rawDesc = "" +
 	"\x05admin\x18\x04 \x01(\bR\x05admin\x12\x1a\n" +
 	"\buploader\x18\x05 \x01(\bR\buploader\x120\n" +
 	"\x14must_change_password\x18\x06 \x01(\bR\x12mustChangePassword\x12\x1a\n" +
-	"\bdisabled\x18\a \x01(\bR\bdisabled\"\xe6\x03\n" +
+	"\bdisabled\x18\a \x01(\bR\bdisabled\"\xe5\x04\n" +
 	"\x06Device\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12*\n" +
@@ -1030,7 +1048,11 @@ const file_kantahe_v1_common_proto_rawDesc = "" +
 	"\x0elast_seen_unix\x18\n" +
 	" \x01(\x03R\flastSeenUnix\x12C\n" +
 	"\x0fbackground_mode\x18\v \x01(\x0e2\x1a.kantahe.v1.BackgroundModeR\x0ebackgroundMode\x121\n" +
-	"\x14effective_background\x18\f \x01(\bR\x13effectiveBackground\"\xf6\x02\n" +
+	"\x14effective_background\x18\f \x01(\bR\x13effectiveBackground\x12)\n" +
+	"\x0emp3_volume_pct\x18\r \x01(\x05H\x00R\fmp3VolumePct\x88\x01\x01\x12+\n" +
+	"\x0fmidi_volume_pct\x18\x0e \x01(\x05H\x01R\rmidiVolumePct\x88\x01\x01B\x11\n" +
+	"\x0f_mp3_volume_pctB\x12\n" +
+	"\x10_midi_volume_pct\"\xf6\x02\n" +
 	"\x05Video\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1d\n" +
@@ -1131,6 +1153,7 @@ func file_kantahe_v1_common_proto_init() {
 	if File_kantahe_v1_common_proto != nil {
 		return
 	}
+	file_kantahe_v1_common_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

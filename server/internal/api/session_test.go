@@ -912,3 +912,104 @@ func TestReportDeviceDropoutsTurnTheAutoBackgroundOffAndTheStateSaysSo(t *testin
 		return false
 	})
 }
+
+func (a *adminEnv) setVolume(token, deviceID string, mp3, midi *int32) (*kantahev1.SetVolumeResponse, error) {
+	res, err := a.sessionClient().SetVolume(context.Background(), with(connect.NewRequest(&kantahev1.SetVolumeRequest{DeviceId: deviceID, Mp3Pct: mp3, MidiPct: midi}), token))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg, nil
+}
+
+func pct(n int32) *int32 { return &n }
+
+func TestNewDeviceVolumesAre100(t *testing.T) {
+	a := newAdminEnv(t)
+	res, err := a.auth.ListMyDevices(context.Background(), with(connect.NewRequest(&kantahev1.ListMyDevicesRequest{}), a.admin.Token))
+	if err != nil || len(res.Msg.Devices) == 0 {
+		t.Fatalf("%v %v", res, err)
+	}
+	for _, d := range res.Msg.Devices {
+		if d.Mp3VolumePct == nil || d.MidiVolumePct == nil || *d.Mp3VolumePct != 100 || *d.MidiVolumePct != 100 {
+			t.Errorf("device %s: %v and %v, want 100 and 100", d.Name, d.Mp3VolumePct, d.MidiVolumePct)
+		}
+	}
+}
+
+func TestSetVolume(t *testing.T) {
+	a := newAdminEnv(t)
+	d2 := a.secondDevice(t)
+	// a phone sets the levels of the TV: both at once
+	res, err := a.setVolume(a.admin.Token, d2.DeviceId, pct(50), pct(150))
+	if err != nil || res.Device.GetMp3VolumePct() != 50 || res.Device.GetMidiVolumePct() != 150 || res.Device.IsCaller {
+		t.Fatalf("%v %v", res, err)
+	}
+	// only the field that is given changes
+	res, err = a.setVolume(a.admin.Token, d2.DeviceId, nil, pct(0))
+	if err != nil || res.Device.GetMp3VolumePct() != 50 || res.Device.GetMidiVolumePct() != 0 {
+		t.Fatalf("midi only: %v %v", res, err)
+	}
+	res, err = a.setVolume(a.admin.Token, d2.DeviceId, pct(200), nil)
+	if err != nil || res.Device.GetMp3VolumePct() != 200 || res.Device.GetMidiVolumePct() != 0 {
+		t.Fatalf("mp3 only: %v %v", res, err)
+	}
+	// the other settings of the device were not touched
+	var midi, bg int
+	_ = a.db.QueryRow(`SELECT midi_mode, background_mode FROM devices WHERE id=?`, d2.DeviceId).Scan(&midi, &bg)
+	if midi != 1 || bg != 1 {
+		t.Fatalf("midi_mode = %d, background_mode = %d", midi, bg)
+	}
+	// a pushed state reaches the open streams
+	w := a.watch(t, a.admin.Token)
+	w.next(t, 2*time.Second)
+	if _, err := a.setVolume(a.admin.Token, d2.DeviceId, pct(75), nil); err != nil {
+		t.Fatal(err)
+	}
+	w.nextWhere(t, time.Second, func(s *kantahev1.State) bool {
+		for _, d := range s.Devices {
+			if d.Id == d2.DeviceId && d.GetMp3VolumePct() == 75 {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+func TestSetVolumeRejectsWhatIsOutOfRange(t *testing.T) {
+	a := newAdminEnv(t)
+	d2 := a.secondDevice(t)
+	for name, c := range map[string][2]*int32{"201": {pct(201), nil}, "minus one": {nil, pct(-1)}, "both bad": {pct(300), pct(-5)}, "neither field": {nil, nil}} {
+		if _, err := a.setVolume(a.admin.Token, d2.DeviceId, c[0], c[1]); code(err) != connect.CodeInvalidArgument {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	for name, c := range map[string][2]*int32{"0 and 200": {pct(0), pct(200)}} {
+		if _, err := a.setVolume(a.admin.Token, d2.DeviceId, c[0], c[1]); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	// a refused request changed nothing: the last good values stand
+	var mp3, midi int
+	_ = a.db.QueryRow(`SELECT mp3_volume_pct, midi_volume_pct FROM devices WHERE id=?`, d2.DeviceId).Scan(&mp3, &midi)
+	if mp3 != 0 || midi != 200 {
+		t.Fatalf("stored %d and %d", mp3, midi)
+	}
+	if _, err := a.setVolume("", d2.DeviceId, pct(50), nil); code(err) != connect.CodeUnauthenticated {
+		t.Errorf("no token: %v", err)
+	}
+}
+
+func TestSetVolumeOtherUsersDevice(t *testing.T) {
+	a := newAdminEnv(t)
+	if _, err := a.setVolume(a.admin.Token, a.user.DeviceId, pct(10), pct(10)); code(err) != connect.CodeNotFound {
+		t.Fatalf("err = %v", err)
+	}
+	if _, err := a.setVolume(a.admin.Token, "nope", pct(10), nil); code(err) != connect.CodeNotFound {
+		t.Fatalf("unknown: %v", err)
+	}
+	var mp3, midi int
+	_ = a.db.QueryRow(`SELECT mp3_volume_pct, midi_volume_pct FROM devices WHERE id=?`, a.user.DeviceId).Scan(&mp3, &midi)
+	if mp3 != 100 || midi != 100 {
+		t.Fatalf("the other user's device was changed: %d and %d", mp3, midi)
+	}
+}

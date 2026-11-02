@@ -19,29 +19,18 @@ class RemoveScope extends $pb.ProtobufEnum {
   static const RemoveScope REMOVE_SCOPE_UNSPECIFIED =
       RemoveScope._(0, _omitEnumNames ? '' : 'REMOVE_SCOPE_UNSPECIFIED');
 
-  /// Every song.
-  static const RemoveScope REMOVE_SCOPE_ALL =
-      RemoveScope._(1, _omitEnumNames ? '' : 'REMOVE_SCOPE_ALL');
-
-  /// MIDI songs whose file has no audible instrument notes (only lyric timing); they play as silence.
-  static const RemoveScope REMOVE_SCOPE_NO_MUSIC =
-      RemoveScope._(2, _omitEnumNames ? '' : 'REMOVE_SCOPE_NO_MUSIC');
-
   /// Every live song that is marked broken (by CheckLibrary or at import).
   static const RemoveScope REMOVE_SCOPE_BROKEN =
       RemoveScope._(3, _omitEnumNames ? '' : 'REMOVE_SCOPE_BROKEN');
 
   static const $core.List<RemoveScope> values = <RemoveScope>[
     REMOVE_SCOPE_UNSPECIFIED,
-    REMOVE_SCOPE_ALL,
-    REMOVE_SCOPE_NO_MUSIC,
     REMOVE_SCOPE_BROKEN,
   ];
 
-  static final $core.List<RemoveScope?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 3);
-  static RemoveScope? valueOf($core.int value) =>
-      value < 0 || value >= _byValue.length ? null : _byValue[value];
+  static final $core.Map<$core.int, RemoveScope> _byValue =
+      $pb.ProtobufEnum.initByValue(values);
+  static RemoveScope? valueOf($core.int value) => _byValue[value];
 
   const RemoveScope._(super.value, super.name);
 }

@@ -732,6 +732,7 @@ class Playback extends $pb.GeneratedMessage {
     $core.bool? ready,
     $core.int? retryAfterMs,
     $0.Lyrics? lyrics,
+    $core.double? gainDb,
   }) {
     final result = Playback._();
     if (song != null) result.song = song;
@@ -743,6 +744,7 @@ class Playback extends $pb.GeneratedMessage {
     if (ready != null) result.ready = ready;
     if (retryAfterMs != null) result.retryAfterMs = retryAfterMs;
     if (lyrics != null) result.lyrics = lyrics;
+    if (gainDb != null) result.gainDb = gainDb;
     return result;
   }
 
@@ -772,6 +774,7 @@ class Playback extends $pb.GeneratedMessage {
     ..aI(8, _omitFieldNames ? '' : 'retryAfterMs')
     ..aOM<$0.Lyrics>(9, _omitFieldNames ? '' : 'lyrics',
         subBuilder: $0.Lyrics.$_createMessage)
+    ..aD(10, _omitFieldNames ? '' : 'gainDb', fieldType: $pb.PbFieldType.OF)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -878,6 +881,17 @@ class Playback extends $pb.GeneratedMessage {
   void clearLyrics() => $_clearField(9);
   @$pb.TagNumber(9)
   $0.Lyrics ensureLyrics() => $_ensure(8);
+
+  /// The gain in dB that brings this song to the common loudness (an MP3 song, once the server has measured it); the player adds it to the device's
+  /// own volume. Absent: no gain is known and the song plays as it is.
+  @$pb.TagNumber(10)
+  $core.double get gainDb => $_getN(9);
+  @$pb.TagNumber(10)
+  set gainDb($core.double value) => $_setFloat(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasGainDb() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearGainDb() => $_clearField(10);
 }
 
 /// The playback description.

@@ -91,6 +91,55 @@ describe('PlayerViewComponent', () => {
     expect(button('Skip')).toBeUndefined();
   });
 
+  describe('volume buttons', () => {
+    it('on the player: Volume down, Volume up and a read-out of the kind and level; a press shows the new level at once', async () => {
+      const { el, push, button, fixture } = setup();
+      await push(PLAYING);
+      expect(button('Volume down')).toBeDefined();
+      expect(button('Volume up')).toBeDefined();
+      const readout = () => el.querySelector('.controls [role="status"]')?.textContent?.replace(/\s+/g, ' ').trim();
+      expect(readout()).toBe('MIDI volume 100%');
+      button('Volume up')!.click();
+      fixture.detectChanges();
+      expect(readout()).toBe('MIDI volume 105%');
+      button('Volume down')!.click();
+      button('Volume down')!.click();
+      fixture.detectChanges();
+      expect(readout()).toBe('MIDI volume 95%');
+    });
+
+    it('an MP3 song says MP3 volume and the level of the MP3 setting', async () => {
+      const { el, push } = setup();
+      await push({
+        ...PLAYING,
+        devices: [device(ME, 'This browser', { isCaller: true, mp3VolumePct: 60 }), device('tv', 'Living room TV')],
+        now: { song: song('21629', 'Skyfall', 'Adele', Format.MP3), positionMs: 0, positionAtMs: 1000 },
+      });
+      expect(el.querySelector('.controls [role="status"]')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('MP3 volume 60%');
+    });
+
+    it('the buttons are among the controls that fade with the others', async () => {
+      const { push, button } = setup();
+      await push(PLAYING);
+      expect(button('Volume up')!.closest('.controls')).not.toBeNull();
+    });
+
+    it('REGRESSION: inside the app (embedded) there are no volume buttons: the app has its own', async () => {
+      const { fixture, el, push, button } = setup();
+      fixture.componentRef.setInput('embedded', true);
+      await push(PLAYING);
+      expect(el.textContent).toContain('Hello');
+      expect(button('Volume up')).toBeUndefined();
+      expect(button('Volume down')).toBeUndefined();
+    });
+
+    it('with no song current there are no volume buttons', async () => {
+      const { push, button } = setup();
+      await push({ ...PLAYING, now: undefined });
+      expect(button('Volume up')).toBeUndefined();
+    });
+  });
+
   describe('full screen', () => {
     const doc = document as Document & { fullscreenEnabled: boolean; fullscreenElement: Element | null };
     let request: ReturnType<typeof vi.fn>;

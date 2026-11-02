@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/core/messages.dart';
@@ -19,6 +21,9 @@ class QueueScreen extends StatefulWidget {
   State<QueueScreen> createState() => _QueueScreenState();
 }
 
+/// The height of the message bar (one line and its action): the list ends above it while it shows.
+const _barRoom = 64.0;
+
 class _QueueScreenState extends State<QueueScreen> {
   QueueActions? _actions;
 
@@ -28,9 +33,25 @@ class _QueueScreenState extends State<QueueScreen> {
     _actions ??= QueueActions(api: AppScope.of(context).api, notify: _notify);
   }
 
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? _bar;
+
   void _notify(String message, {bool error = false, String? actionLabel, VoidCallback? onAction}) {
     if (!mounted) return;
-    showMessage(context, message, error: error, actionLabel: actionLabel, onAction: onAction);
+    final bar = showMessage(context, message, error: error, actionLabel: actionLabel, onAction: onAction);
+    if (bar == null) return;
+    setState(() => _bar = bar);
+    // the message bar covers the bottom of the screen: the list ends above it while it shows, and the focused control is scrolled into view
+    WidgetsBinding.instance.addPostFrameCallback((_) => _keepFocusVisible());
+    unawaited(
+      bar.closed.then((_) {
+        if (mounted && identical(_bar, bar)) setState(() => _bar = null);
+      }),
+    );
+  }
+
+  void _keepFocusVisible() {
+    final focused = FocusManager.instance.primaryFocus?.context;
+    if (mounted && focused != null && focused.mounted) Scrollable.ensureVisible(focused);
   }
 
   void _openPlayer() {
@@ -49,27 +70,30 @@ class _QueueScreenState extends State<QueueScreen> {
         builder: (context, _) {
           final state = store.state;
           if (state == null) return const Padding(padding: EdgeInsets.all(16), child: Text('Connecting…'));
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              if (!store.connected)
-                Semantics(
-                  liveRegion: true,
-                  child: const Padding(padding: EdgeInsets.only(bottom: 8), child: Text('Reconnecting… Showing the last known state.')),
-                ),
-              NowPlayingCard(actions: actions, onPlayHere: _openPlayer),
-              const SizedBox(height: 16),
-              Text('Coming up', style: Theme.of(context).textTheme.titleMedium),
-              if (state.queue.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text('The queue is empty. Add songs from the library, or let the next one be picked at random.'),
-                )
-              else
-                for (final (i, q) in state.queue.indexed) _QueueRow(item: q, first: i == 0, actions: actions),
-              const SizedBox(height: 16),
-              const DevicesList(),
-            ],
+          return Padding(
+            padding: EdgeInsets.only(bottom: _bar == null ? 0 : _barRoom),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (!store.connected)
+                  Semantics(
+                    liveRegion: true,
+                    child: const Padding(padding: EdgeInsets.only(bottom: 8), child: Text('Reconnecting… Showing the last known state.')),
+                  ),
+                NowPlayingCard(actions: actions, onPlayHere: _openPlayer),
+                const SizedBox(height: 16),
+                Text('Coming up', style: Theme.of(context).textTheme.titleMedium),
+                if (state.queue.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text('The queue is empty. Add songs from the library, or let the next one be picked at random.'),
+                  )
+                else
+                  for (final (i, q) in state.queue.indexed) _QueueRow(item: q, first: i == 0, actions: actions),
+                const SizedBox(height: 16),
+                const DevicesList(),
+              ],
+            ),
           );
         },
       ),

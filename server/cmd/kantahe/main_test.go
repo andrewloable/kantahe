@@ -339,3 +339,22 @@ func TestDiscoveryOffAnnouncesNothing(t *testing.T) {
 		t.Fatalf("announced %v with --discovery=false", calls)
 	}
 }
+
+// Without a SoundFont (no --soundfont and none embedded: a build that never ran go generate) MIDI songs cannot be played and the apps would
+// wait on "Preparing": the server says so at start-up, and says how to fix it.
+func TestWarnNoSoundFont(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+	warnNoSoundFont(logger, "")
+	out := buf.String()
+	for _, want := range []string{"level=WARN", "no SoundFont", "go generate ./internal/assets", "--soundfont"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the warning %q lacks %q", out, want)
+		}
+	}
+	buf.Reset()
+	warnNoSoundFont(logger, "/data/soundfont/default.sf2")
+	if buf.Len() != 0 {
+		t.Errorf("a server with a SoundFont logged %q", buf.String())
+	}
+}

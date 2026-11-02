@@ -244,6 +244,44 @@ func TestGetPlaybackMP3(t *testing.T) {
 	}
 }
 
+func TestGetPlaybackGain(t *testing.T) {
+	a := newAdminEnv(t)
+	n := a.seed(t, "Tune.karmp3", "Tune", "Band", false)
+	c := a.catalogClient()
+	playback := func(number string) *kantahev1.Playback {
+		res, err := c.GetPlayback(context.Background(), with(connect.NewRequest(&kantahev1.GetPlaybackRequest{Number: number}), a.user.Token))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Msg.Playback
+	}
+	// not measured yet: no gain is sent, the song plays as it is
+	if pb := playback(n); pb.GainDb != nil {
+		t.Fatalf("an unmeasured song has a gain: %v", *pb.GainDb)
+	}
+	if _, err := a.db.Exec(`UPDATE songs SET gain_db = -3.5, loudness_done = 1 WHERE number = ?`, n); err != nil {
+		t.Fatal(err)
+	}
+	if pb := playback(n); pb.GainDb == nil || *pb.GainDb != -3.5 {
+		t.Fatalf("gain = %v, want -3.5", pb.GainDb)
+	}
+	// a song that cannot be measured has none
+	if _, err := a.db.Exec(`UPDATE songs SET gain_db = NULL WHERE number = ?`, n); err != nil {
+		t.Fatal(err)
+	}
+	if pb := playback(n); pb.GainDb != nil {
+		t.Fatalf("a song with no loudness has a gain: %v", *pb.GainDb)
+	}
+	// a MIDI song has none: its loudness follows the synthesizer and the MIDI volume of the device
+	m := a.seed(t, "Song.kar", "Song", "Artist", true)
+	if _, err := a.db.Exec(`UPDATE songs SET gain_db = 4 WHERE number = ?`, m); err != nil {
+		t.Fatal(err)
+	}
+	if pb := playback(m); pb.GainDb != nil {
+		t.Fatalf("a MIDI song has a gain: %v", *pb.GainDb)
+	}
+}
+
 func regexpExp(t *testing.T, u string) int64 {
 	t.Helper()
 	parsed, err := url.Parse(u)
@@ -272,6 +310,9 @@ func TestGetPlaybackMIDI(t *testing.T) {
 	if pb.Kind != kantahev1.PlaybackKind_PLAYBACK_KIND_MIDI_SYNTH || pb.AudioUrl != "" || !strings.HasPrefix(pb.SoundfontUrl, "/media/soundfont/"+n+".sf2?u=") ||
 		pb.EffectiveMidiMode != kantahev1.MidiMode_MIDI_MODE_FULL || pb.Lyrics == nil || pb.Lyrics.Source != "kar" {
 		t.Fatalf("%+v", pb)
+	}
+	if pb.GainDb != nil {
+		t.Errorf("a MIDI song played by the device's synthesizer has no gain: %v", *pb.GainDb)
 	}
 	// the first request starts the build: not ready yet, retry in 500 ms (unless the worker was very fast)
 	deadline := time.Now().Add(5 * time.Second)

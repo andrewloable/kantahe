@@ -308,15 +308,6 @@ func TestRemoveBrokenKeepsFilesUnlessAskedAndNeverTouchesAnOutsideFile(t *testin
 	}
 }
 
-func TestRemoveSongsFilesRefusesToDeleteFilesForTheOtherScopes(t *testing.T) {
-	e := newEnv(t)
-	for _, s := range []RemoveScope{ScopeAll, ScopeNoMusic} {
-		if _, err := e.im.RemoveSongsFiles(context.Background(), s, true); err == nil {
-			t.Fatalf("scope %d must refuse deleteFiles", s)
-		}
-	}
-}
-
 func TestCheckLibraryIsIdempotent(t *testing.T) {
 	e, _ := brokenFive(t)
 	first, _ := e.check(t)

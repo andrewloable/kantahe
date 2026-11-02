@@ -1065,8 +1065,7 @@ class RemoveSongsRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(1)
   void clearScope() => $_clearField(1);
 
-  /// Also delete the song files (only inside the data and library folders). Allowed only with scope BROKEN; INVALID_ARGUMENT otherwise,
-  /// so that ALL and NO_MUSIC keep their promise never to delete a file.
+  /// Also delete the song files (only inside the data and library folders).
   @$pb.TagNumber(2)
   $core.bool get deleteFiles => $_getBF(1);
   @$pb.TagNumber(2)
@@ -1075,6 +1074,165 @@ class RemoveSongsRequest extends $pb.GeneratedMessage {
   $core.bool hasDeleteFiles() => $_has(1);
   @$pb.TagNumber(2)
   void clearDeleteFiles() => $_clearField(2);
+}
+
+/// The songs the admin chose to remove.
+class RemoveSelectedSongsRequest extends $pb.GeneratedMessage {
+  factory RemoveSelectedSongsRequest({
+    $core.Iterable<$core.String>? numbers,
+    $core.bool? deleteFiles,
+  }) {
+    final result = RemoveSelectedSongsRequest._();
+    if (numbers != null) result.numbers.addAll(numbers);
+    if (deleteFiles != null) result.deleteFiles = deleteFiles;
+    return result;
+  }
+
+  RemoveSelectedSongsRequest._();
+
+  factory RemoveSelectedSongsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RemoveSelectedSongsRequest()..mergeFromBuffer(data, registry);
+  factory RemoveSelectedSongsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RemoveSelectedSongsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RemoveSelectedSongsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: RemoveSelectedSongsRequest.$_createMessage)
+    ..pPS(1, _omitFieldNames ? '' : 'numbers')
+    ..aOB(2, _omitFieldNames ? '' : 'deleteFiles')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveSelectedSongsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveSelectedSongsRequest copyWith(
+          void Function(RemoveSelectedSongsRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as RemoveSelectedSongsRequest))
+          as RemoveSelectedSongsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RemoveSelectedSongsRequest() / RemoveSelectedSongsRequest.new instead')
+  static RemoveSelectedSongsRequest create() => RemoveSelectedSongsRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      RemoveSelectedSongsRequest._();
+  @$core.override
+  RemoveSelectedSongsRequest createEmptyInstance() =>
+      RemoveSelectedSongsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static RemoveSelectedSongsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RemoveSelectedSongsRequest>(
+          RemoveSelectedSongsRequest.$_createMessage);
+  static RemoveSelectedSongsRequest? _defaultInstance;
+
+  /// The numbers of the songs: 1 to 1000, each of at least 5 digits.
+  @$pb.TagNumber(1)
+  $pb.PbList<$core.String> get numbers => $_getList(0);
+
+  /// Also delete the song files (only inside the data and library folders; the others are counted in files_failed of the answer).
+  @$pb.TagNumber(2)
+  $core.bool get deleteFiles => $_getBF(1);
+  @$pb.TagNumber(2)
+  set deleteFiles($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasDeleteFiles() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDeleteFiles() => $_clearField(2);
+}
+
+/// How many of the chosen songs left the list, and what happened to their files (with delete_files).
+class RemoveSelectedSongsResponse extends $pb.GeneratedMessage {
+  factory RemoveSelectedSongsResponse({
+    $core.int? removed,
+    $core.int? filesDeleted,
+    $core.int? filesFailed,
+  }) {
+    final result = RemoveSelectedSongsResponse._();
+    if (removed != null) result.removed = removed;
+    if (filesDeleted != null) result.filesDeleted = filesDeleted;
+    if (filesFailed != null) result.filesFailed = filesFailed;
+    return result;
+  }
+
+  RemoveSelectedSongsResponse._();
+
+  factory RemoveSelectedSongsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RemoveSelectedSongsResponse()..mergeFromBuffer(data, registry);
+  factory RemoveSelectedSongsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RemoveSelectedSongsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RemoveSelectedSongsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: RemoveSelectedSongsResponse.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'removed')
+    ..aI(2, _omitFieldNames ? '' : 'filesDeleted')
+    ..aI(3, _omitFieldNames ? '' : 'filesFailed')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveSelectedSongsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveSelectedSongsResponse copyWith(
+          void Function(RemoveSelectedSongsResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as RemoveSelectedSongsResponse))
+          as RemoveSelectedSongsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RemoveSelectedSongsResponse() / RemoveSelectedSongsResponse.new instead')
+  static RemoveSelectedSongsResponse create() =>
+      RemoveSelectedSongsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      RemoveSelectedSongsResponse._();
+  @$core.override
+  RemoveSelectedSongsResponse createEmptyInstance() =>
+      RemoveSelectedSongsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static RemoveSelectedSongsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RemoveSelectedSongsResponse>(
+          RemoveSelectedSongsResponse.$_createMessage);
+  static RemoveSelectedSongsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get removed => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set removed($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRemoved() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRemoved() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get filesDeleted => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set filesDeleted($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFilesDeleted() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFilesDeleted() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get filesFailed => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set filesFailed($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasFilesFailed() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearFilesFailed() => $_clearField(3);
 }
 
 /// How many songs left the list.
@@ -2605,6 +2763,12 @@ class AdminServiceApi {
           $pb.ClientContext? ctx, RemoveSongsRequest request) =>
       _client.invoke<RemoveSongsResponse>(
           ctx, 'AdminService', 'RemoveSongs', request, RemoveSongsResponse());
+
+  /// Admin only. Takes the chosen songs off the list (at most 1000 numbers); with delete_files their files are deleted too (only inside the data and library folders). Numbers that are unknown or already removed are skipped.
+  $async.Future<RemoveSelectedSongsResponse> removeSelectedSongs(
+          $pb.ClientContext? ctx, RemoveSelectedSongsRequest request) =>
+      _client.invoke<RemoveSelectedSongsResponse>(ctx, 'AdminService',
+          'RemoveSelectedSongs', request, RemoveSelectedSongsResponse());
 
   /// Admin only. Re-judges every live song (file missing, MIDI without music, unparsable, a .karmp3 whose audio cannot be read), marks the
   /// broken ones as failed (they leave every user's lists and searches) and clears the mark of repaired ones. Streams its progress; the

@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { Format } from '../../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from '../../core/api';
-import { fakeAdminSongs, RemoveScope, song } from '../testing';
+import { fakeAdminSongs, song } from '../testing';
 import { SongsAdminPage } from './songs-admin.page';
 
 const SONGS = [song('00001', 'Alpha', 'Abba', Format.MP3), song('00002', 'Bravo', 'Beatles', Format.MIDI), song('00003', 'Charlie', 'Cher', Format.MIDI)];
@@ -35,7 +35,7 @@ describe('SongsAdminPage', () => {
   it('lists songs page by page with number, title, artist and format', async () => {
     const { el, settle, server } = await setup();
     await settle();
-    expect(Array.from(el.querySelectorAll('tbody tr')).map((r) => r.querySelectorAll('td')[0].textContent?.trim())).toEqual(['00001', '00002', '00003']);
+    expect(Array.from(el.querySelectorAll('tbody tr')).map((r) => r.querySelectorAll('td')[1].textContent?.trim())).toEqual(['00001', '00002', '00003']);
     expect(el.textContent).toContain('MP3');
     expect(server.calls.search.map((c) => c.pageToken)).toEqual(['', '2']); // the second page is read ahead by itself
   });
@@ -44,7 +44,7 @@ describe('SongsAdminPage', () => {
     const many = Array.from({ length: 500 }, (_, i) => song(String(10000 + i), `Song ${i}`, 'Artist', Format.MP3));
     const { el, settle, button, fixture } = await setup(many, 50);
     await settle(10);
-    const rows = () => Array.from(el.querySelectorAll('tbody tr')).map((r) => r.querySelectorAll('td')[1].textContent);
+    const rows = () => Array.from(el.querySelectorAll('tbody tr')).map((r) => r.querySelectorAll('td')[2].textContent);
     expect(rows().length).toBe(50);
     expect(rows()[0]).toBe('Song 0');
     button(el, 'Next').click();
@@ -56,12 +56,11 @@ describe('SongsAdminPage', () => {
     expect(rows()[0]).toBe('Song 0');
   });
 
-  it('has the section "Check the library" above the removal buttons', async () => {
+  it('has the section "Check the library"', async () => {
     const { el, settle } = await setup();
     await settle();
     const headings = Array.from(el.querySelectorAll('h3')).map((h) => h.textContent?.trim());
     expect(headings.indexOf('Check the library')).toBeGreaterThanOrEqual(0);
-    expect(headings.indexOf('Check the library')).toBeLessThan(headings.indexOf('Remove songs from the list'));
   });
 
   it('searches 250 ms after the last key', async () => {
@@ -233,54 +232,155 @@ describe('SongsAdminPage', () => {
     expect(server.calls.search.map((c) => c.pageToken)).toEqual(['', '2']); // from the first page again, then the page ahead
   });
 
-  describe('removing many songs from the list', () => {
-    const askFor = async (label: string) => {
-      const env = await setup();
-      env.button(env.el, label).click();
-      await env.settle();
-      return env;
+  it('REGRESSION: the page has no button Remove all songs and none for songs with no music: songs are removed by choosing them', async () => {
+    const { el } = await setup();
+    const labels = Array.from(el.querySelectorAll('button')).map((b) => b.textContent?.trim());
+    expect(labels).not.toContain('Remove all songs');
+    expect(labels).not.toContain('Remove songs with no music');
+    expect(el.textContent).not.toMatch(/remove all songs|songs with no music/i);
+  });
+
+  describe('choosing songs to remove', () => {
+    const box = (row: HTMLElement) => row.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    const pageBox = (el: HTMLElement) => el.querySelector<HTMLInputElement>('thead input[type="checkbox"]')!;
+    const tick = (input: HTMLInputElement, fixture: { detectChanges(): void }, on = true) => {
+      input.checked = on;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      fixture.detectChanges();
     };
+    const bar = (el: HTMLElement) => el.querySelector<HTMLElement>('.selection');
 
-    it('asks first, says the files stay, and sends nothing until it is confirmed', async () => {
-      const { el, server } = await askFor('Remove songs with no music');
-      expect(el.querySelector('.bulk [role="alert"]')?.textContent).toContain('The files stay where they are');
-      expect(server.calls.removeSongs).toEqual([]);
+    it('REGRESSION: every row has a checkbox named Select song <number>, and there is no bar while nothing is chosen', async () => {
+      const { el, row } = await setup();
+      for (const n of ['00001', '00002', '00003']) {
+        expect(box(row(n)).getAttribute('aria-label')).toBe(`Select song ${n}`);
+        expect(box(row(n)).checked).toBe(false);
+      }
+      expect(bar(el)).toBeNull();
     });
 
-    it('Cancel closes the question and sends nothing', async () => {
-      const { el, server, button, settle } = await askFor('Remove all songs');
-      button(el.querySelector('.bulk')!, 'Cancel').click();
+    it('the header checkbox chooses the page, shows indeterminate when some are chosen, and clears them again', async () => {
+      const { el, row, fixture } = await setup();
+      expect(pageBox(el).getAttribute('aria-label') ?? el.querySelector('label[for="select-page"]')?.textContent).toMatch(/select all songs on this page/i);
+      tick(box(row('00002')), fixture);
+      expect(pageBox(el).indeterminate).toBe(true);
+      expect(pageBox(el).checked).toBe(false);
+      tick(pageBox(el), fixture);
+      for (const n of ['00001', '00002', '00003']) expect(box(row(n)).checked, n).toBe(true);
+      expect(pageBox(el).indeterminate).toBe(false);
+      expect(pageBox(el).checked).toBe(true);
+      tick(pageBox(el), fixture, false);
+      for (const n of ['00001', '00002', '00003']) expect(box(row(n)).checked, n).toBe(false);
+      expect(bar(el)).toBeNull();
+    });
+
+    it('the bar says how many are chosen (singular and plural) and can clear the choice', async () => {
+      const { el, row, fixture, button } = await setup();
+      tick(box(row('00001')), fixture);
+      expect(bar(el)?.textContent).toContain('1 song selected');
+      tick(box(row('00003')), fixture);
+      expect(bar(el)?.textContent).toContain('2 songs selected');
+      button(bar(el)!, 'Clear selection').click();
+      fixture.detectChanges();
+      expect(bar(el)).toBeNull();
+      expect(box(row('00001')).checked).toBe(false);
+    });
+
+    it('the choice survives going to the next page and back, and a search', async () => {
+      const many = Array.from({ length: 120 }, (_, i) => song(String(10000 + i), `Song ${i}`, 'Artist', Format.MP3));
+      const { el, row, fixture, button, settle, type } = await setup(many, 50);
+      await settle(10);
+      tick(box(row('10002')), fixture);
+      button(el, 'Next').click();
+      fixture.detectChanges();
+      tick(box(row('10055')), fixture);
+      expect(bar(el)?.textContent).toContain('2 songs selected');
+      button(el, 'Previous').click();
+      fixture.detectChanges();
+      expect(box(row('10002')).checked).toBe(true);
+      type('admin-search', 'Song 1');
+      await vi.advanceTimersByTimeAsync(300);
+      await settle(10);
+      expect(bar(el)?.textContent).toContain('2 songs selected');
+    });
+
+    it('Remove from list asks first, then sends the chosen numbers with delete_files false, clears the choice and reads the list again', async () => {
+      const { el, row, fixture, button, settle, server } = await setup();
+      tick(box(row('00001')), fixture);
+      tick(box(row('00003')), fixture);
+      button(bar(el)!, 'Remove from list').click();
       await settle();
-      expect(el.querySelector('.bulk [role="alert"]')).toBeNull();
-      expect(server.calls.removeSongs).toEqual([]);
-    });
-
-    it('songs with no music: the scope is NO_MUSIC, the result is shown and the list is read again', async () => {
-      const { el, server, button, settle } = await askFor('Remove songs with no music');
+      expect(bar(el)?.querySelector('[role="alert"]')?.textContent).toContain('Take 2 songs off the list');
+      expect(server.calls.removeSelected).toEqual([]);
       server.calls.search.length = 0;
-      button(el.querySelector('.bulk')!, 'Remove').click();
+      button(bar(el)!, 'Yes, remove').click();
       await settle();
-      expect(server.calls.removeSongs).toEqual([RemoveScope.NO_MUSIC]);
-      expect(el.querySelector('.bulk [role="status"]')?.textContent).toContain('Removed 5 songs from the list. Their files were kept.');
+      expect(server.calls.removeSelected).toHaveLength(1);
+      expect([...server.calls.removeSelected[0].numbers].sort()).toEqual(['00001', '00003']);
+      expect(server.calls.removeSelected[0].deleteFiles).toBe(false);
+      expect(bar(el)?.textContent ?? '').not.toContain('selected');
+      expect(el.querySelector('.selection-result')?.textContent).toContain('Removed 2 songs from the list. Their files were kept.');
       expect(server.calls.search.length).toBeGreaterThan(0);
     });
 
-    it('all songs: the scope is ALL; one song is said in the singular', async () => {
-      const { el, server, button, settle } = await askFor('Remove all songs');
-      expect(el.querySelector('.bulk [role="alert"]')?.textContent).toContain('every song');
-      server.handlers.removeSongs.removed = 1;
-      button(el.querySelector('.bulk')!, 'Remove').click();
+    it('Delete files too has its own question and sends delete_files true; the result counts the files that could not be deleted', async () => {
+      const { el, row, fixture, button, settle, server } = await setup();
+      server.handlers.removeSelected = { removed: 2, filesDeleted: 1, filesFailed: 1 };
+      tick(box(row('00001')), fixture);
+      tick(box(row('00002')), fixture);
+      button(bar(el)!, 'Delete files too').click();
       await settle();
-      expect(server.calls.removeSongs).toEqual([RemoveScope.ALL]);
-      expect(el.querySelector('.bulk [role="status"]')?.textContent).toContain('Removed 1 song from the list. Its file was kept.');
+      expect(bar(el)?.querySelector('[role="alert"]')?.textContent).toContain('Delete 2 songs and their files? This cannot be undone.');
+      button(bar(el)!, 'Yes, delete').click();
+      await settle();
+      expect(server.calls.removeSelected[0].deleteFiles).toBe(true);
+      const result = el.querySelector('.selection-result')?.textContent ?? '';
+      expect(result).toContain('Removed 2 songs from the list');
+      expect(result).toContain('1 file deleted');
+      expect(result).toContain('1 file could not be deleted');
     });
 
-    it('a failure is shown and nothing else changes', async () => {
-      const { el, server, button, settle } = await askFor('Remove all songs');
-      server.failNext(new ConnectError('boom', Code.Internal));
-      button(el.querySelector('.bulk')!, 'Remove').click();
+    it('Cancel sends nothing and keeps the choice', async () => {
+      const { el, row, fixture, button, settle, server } = await setup();
+      tick(box(row('00002')), fixture);
+      button(bar(el)!, 'Remove from list').click();
       await settle();
-      expect(el.querySelector('.bulk .error')?.textContent).toBeTruthy();
+      button(bar(el)!, 'Cancel').click();
+      await settle();
+      expect(server.calls.removeSelected).toEqual([]);
+      expect(bar(el)?.textContent).toContain('1 song selected');
+      expect(bar(el)?.querySelector('[role="alert"]')).toBeNull();
+    });
+
+    it('a refusal is shown and the choice stays', async () => {
+      const { el, row, fixture, button, settle, server } = await setup();
+      tick(box(row('00001')), fixture);
+      button(bar(el)!, 'Remove from list').click();
+      await settle();
+      server.failNext(new ConnectError('boom', Code.Internal));
+      button(bar(el)!, 'Yes, remove').click();
+      await settle();
+      expect(bar(el)?.querySelector('.error')?.textContent).toBeTruthy();
+      expect(bar(el)?.textContent).toContain('1 song selected');
+    });
+
+    it('at 1000 chosen no more can be added and the bar says so', async () => {
+      const many = Array.from({ length: 1001 }, (_, i) => song(String(10000 + i), `Song ${i}`, 'Artist', Format.MP3));
+      const { el, fixture, settle, server, button } = await setup(many, 200);
+      await settle(10);
+      // twenty pages of fifty, each chosen with its header checkbox
+      for (let page = 0; page < 20; page++) {
+        tick(pageBox(el), fixture);
+        button(el, 'Next').click();
+        await settle(10);
+      }
+      expect(bar(el)?.textContent).toContain('1000 songs selected');
+      const last = el.querySelector<HTMLInputElement>('tbody input[type="checkbox"]')!;
+      tick(last, fixture);
+      expect(last.checked).toBe(false);
+      expect(bar(el)?.textContent).toContain('1000 songs selected');
+      expect(bar(el)?.textContent).toMatch(/at most 1000/i);
+      expect(server.calls.removeSelected).toEqual([]);
     });
   });
 

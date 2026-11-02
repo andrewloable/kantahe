@@ -20,8 +20,15 @@ Song song(String number, String title, String artist, {Format format = Format.FO
 
 QueueItem item(String id, Song s) => QueueItem(id: id, song: s);
 
-Device device(String id, String name, {DeviceType type = DeviceType.DEVICE_TYPE_ANDROID, bool online = true, bool isCaller = false}) =>
-    Device(id: id, name: name, type: type, online: online, isCaller: isCaller);
+Device device(
+  String id,
+  String name, {
+  DeviceType type = DeviceType.DEVICE_TYPE_ANDROID,
+  bool online = true,
+  bool isCaller = false,
+  int? mp3VolumePct,
+  int? midiVolumePct,
+}) => Device(id: id, name: name, type: type, online: online, isCaller: isCaller, mp3VolumePct: mp3VolumePct, midiVolumePct: midiVolumePct);
 
 State stateOf({
   PlayStatus status = PlayStatus.PLAY_STATUS_PAUSED,
@@ -52,11 +59,13 @@ class FakeQueueServer {
   final removes = <String>[];
   final moves = <String>[];
   final adds = <String>[];
+  final volumes = <SetVolumeRequest>[];
 
   FutureOr<void> Function(ControlAction action)? onControl;
   FutureOr<void> Function(String id)? onRemove;
   FutureOr<void> Function(String id)? onMove;
   FutureOr<void> Function(String number)? onAdd;
+  FutureOr<void> Function(SetVolumeRequest req)? onVolume;
 
   Transport build() => FakeTransportBuilder()
       .unary(SessionService.control, (req, ctx) async {
@@ -78,6 +87,11 @@ class FakeQueueServer {
         adds.add(req.number);
         await onAdd?.call(req.number);
         return AddToQueueResponse();
+      })
+      .unary(SessionService.setVolume, (req, ctx) async {
+        volumes.add(req);
+        await onVolume?.call(req);
+        return SetVolumeResponse();
       })
       .build();
 }

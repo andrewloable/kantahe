@@ -77,6 +77,19 @@ of the unit), Docker when the daemon is not running, other tool versions than yo
 CI uses Node 24 and the Go of `server/go.mod`). `scripts/test_ci_local.py` fails when a step is added to `ci.yml` without
 its counterpart in the script.
 
+## The default SoundFont in your own builds
+
+Release binaries embed the default SoundFont (GeneralUser GS, pinned with its SHA-256 in `scripts/soundfont.lock`). A plain `go build` or
+`go run` of the server has none unless the file is in `server/internal/assets/soundfont/` (git-ignored). Put it there once per checkout:
+
+```sh
+cd server && go generate ./internal/assets   # runs scripts/fetch-soundfont.sh: a cached, checksum-checked download; nothing happens if it is there
+```
+
+`scripts/build-release.sh` calls the same script. A binary built without it still starts, logs a warning that names this command and
+`--soundfont`, and cannot play MIDI songs until it has a SoundFont. The tests do not need it. (On Windows run the script with Git Bash:
+`bash scripts/fetch-soundfont.sh`.)
+
 ## When a test fails in CI but not on your machine
 
 The checks are made to show such tests, not to hide them: the Go tests run with `-race -shuffle=on`, and the Go, web and Flutter tests run

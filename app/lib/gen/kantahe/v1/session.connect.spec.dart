@@ -130,4 +130,12 @@ abstract final class SessionService {
     kantahev1session.SetBackgroundModeRequest.new,
     kantahev1session.SetBackgroundModeResponse.new,
   );
+
+  /// Signed-in user. Sets how loud one of the caller's devices plays MP3 songs and MIDI songs (percent, 0 to 200; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field.
+  static const setVolume = connect.Spec(
+    '/$name/SetVolume',
+    connect.StreamType.unary,
+    kantahev1session.SetVolumeRequest.new,
+    kantahev1session.SetVolumeResponse.new,
+  );
 }

@@ -80,6 +80,12 @@ Kantahe is then in the TV's app list. To remove it: `ares-install --device tv --
 * **Not working?** `ares-setup-device --list` must show the TV and `ares-install` must find it. A blank screen on start
   means the web engine could not load the app: note the TV model and year in the S1 table as "did not run".
 
+* **Background videos on this TV.** The player plays the admin's background videos behind the lyrics (picture only, no sound), with
+  the same page as every other device. **This has not been tried on a real LG TV yet** (PLAN section 4.2 lists it as "not tested"): the
+  TV decodes the video next to the MIDI synthesizer, so if the picture stutters or the song's sound breaks up, set this device's
+  *Background video* to **Off** under *Me → Devices* and tell us the model and year. The safe encoding is H.264 High, 1920x1080
+  or smaller, 30 fps or less, about 6 Mbps, `yuv420p`, `-movflags +faststart` (admin guide, *Background videos*).
+
 ## Acceptance (owner)
 
 Not done yet. On a real LG TV: install the `.ipk`, connect, sign in with a code, then sing one MP3 and one MIDI song, press

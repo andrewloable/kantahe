@@ -271,6 +271,18 @@ const Playback$json = {
       '6': '.kantahe.v1.Lyrics',
       '10': 'lyrics'
     },
+    {
+      '1': 'gain_db',
+      '3': 10,
+      '4': 1,
+      '5': 2,
+      '9': 0,
+      '10': 'gainDb',
+      '17': true
+    },
+  ],
+  '8': [
+    {'1': '_gain_db'},
   ],
 };
 
@@ -282,7 +294,8 @@ final $typed_data.Uint8List playbackDescriptor = $convert.base64Decode(
     'wYBSABKAlSDHNvdW5kZm9udFVybBJEChNlZmZlY3RpdmVfbWlkaV9tb2RlGAYgASgOMhQua2Fu'
     'dGFoZS52MS5NaWRpTW9kZVIRZWZmZWN0aXZlTWlkaU1vZGUSFAoFcmVhZHkYByABKAhSBXJlYW'
     'R5EiQKDnJldHJ5X2FmdGVyX21zGAggASgFUgxyZXRyeUFmdGVyTXMSKgoGbHlyaWNzGAkgASgL'
-    'MhIua2FudGFoZS52MS5MeXJpY3NSBmx5cmljcw==');
+    'MhIua2FudGFoZS52MS5MeXJpY3NSBmx5cmljcxIcCgdnYWluX2RiGAogASgCSABSBmdhaW5EYo'
+    'gBAUIKCghfZ2Fpbl9kYg==');
 
 @$core.Deprecated('Use getPlaybackResponseDescriptor instead')
 const GetPlaybackResponse$json = {

@@ -28,13 +28,15 @@ import {
   SessionService,
   SetMidiModeRequest,
   SetMidiModeResponseSchema,
+  SetVolumeRequest,
+  SetVolumeResponseSchema,
   State,
 } from '../../gen/kantahe/v1/session_pb';
 import { Engine, Engines, MidiOptions } from './engines/engine';
 import { MicMeter } from './mic';
 
 export function playbackOf(
-  over: Partial<{ kind: PlaybackKind; ready: boolean; retryAfterMs: number; mode: MidiMode; lyrics: Lyrics; audioUrl: string; song: Song }> = {},
+  over: Partial<{ kind: PlaybackKind; ready: boolean; retryAfterMs: number; mode: MidiMode; lyrics: Lyrics; audioUrl: string; song: Song; gainDb: number }> = {},
 ): Playback {
   return create(PlaybackSchema, {
     kind: over.kind ?? PlaybackKind.MIDI_SYNTH,
@@ -46,6 +48,7 @@ export function playbackOf(
     audioUrl: over.audioUrl ?? '/media/song/1?sig=a',
     lyrics: over.lyrics,
     song: over.song,
+    gainDb: over.gainDb,
   });
 }
 
@@ -60,6 +63,7 @@ export function fakePlayerServer() {
     mic: [] as ReportMicRequest[],
     control: [] as ControlRequest[],
     mode: [] as SetMidiModeRequest[],
+    volume: [] as SetVolumeRequest[],
     background: 0,
   };
   const pending: State[] = [];
@@ -69,6 +73,8 @@ export function fakePlayerServer() {
     ready: (() => undefined) as (req: ReadyRequest) => void,
     control: (() => undefined) as (req: ControlRequest) => void,
     setMidiMode: (() => undefined) as (req: SetMidiModeRequest) => void,
+    /** Throw to make SetVolume fail. */
+    setVolume: (() => undefined) as (req: SetVolumeRequest) => void,
     /** The list of background videos; none and switched off until a test says otherwise. */
     background: (() => create(GetBackgroundResponseSchema, { enabled: false })) as () => GetBackgroundResponse | Promise<GetBackgroundResponse>,
   };
@@ -123,6 +129,11 @@ export function fakePlayerServer() {
         handlers.setMidiMode(req);
         return create(SetMidiModeResponseSchema, {});
       },
+      setVolume(req) {
+        calls.volume.push(req);
+        handlers.setVolume(req);
+        return create(SetVolumeResponseSchema, {});
+      },
     });
   });
   return {
@@ -146,6 +157,7 @@ export class FakeEngine implements Engine {
   pause = vi.fn();
   seek = vi.fn();
   dispose = vi.fn();
+  setVolume = vi.fn();
   timeMs() {
     return this.time;
   }

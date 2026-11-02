@@ -54,6 +54,9 @@ const (
 	// AdminServiceRemoveSongsProcedure is the fully-qualified name of the AdminService's RemoveSongs
 	// RPC.
 	AdminServiceRemoveSongsProcedure = "/kantahe.v1.AdminService/RemoveSongs"
+	// AdminServiceRemoveSelectedSongsProcedure is the fully-qualified name of the AdminService's
+	// RemoveSelectedSongs RPC.
+	AdminServiceRemoveSelectedSongsProcedure = "/kantahe.v1.AdminService/RemoveSelectedSongs"
 	// AdminServiceCheckLibraryProcedure is the fully-qualified name of the AdminService's CheckLibrary
 	// RPC.
 	AdminServiceCheckLibraryProcedure = "/kantahe.v1.AdminService/CheckLibrary"
@@ -101,6 +104,8 @@ type AdminServiceClient interface {
 	DeleteSong(context.Context, *connect.Request[v1.DeleteSongRequest]) (*connect.Response[v1.DeleteSongResponse], error)
 	// Admin only. Removes many songs from the list at once. The song files are never deleted, except with scope BROKEN and delete_files.
 	RemoveSongs(context.Context, *connect.Request[v1.RemoveSongsRequest]) (*connect.Response[v1.RemoveSongsResponse], error)
+	// Admin only. Takes the chosen songs off the list (at most 1000 numbers); with delete_files their files are deleted too (only inside the data and library folders). Numbers that are unknown or already removed are skipped.
+	RemoveSelectedSongs(context.Context, *connect.Request[v1.RemoveSelectedSongsRequest]) (*connect.Response[v1.RemoveSelectedSongsResponse], error)
 	// Admin only. Re-judges every live song (file missing, MIDI without music, unparsable, a .karmp3 whose audio cannot be read), marks the
 	// broken ones as failed (they leave every user's lists and searches) and clears the mark of repaired ones. Streams its progress; the
 	// last message has done = true. FAILED_PRECONDITION when a check is already running.
@@ -188,6 +193,12 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(adminServiceMethods.ByName("RemoveSongs")),
 			connect.WithClientOptions(opts...),
 		),
+		removeSelectedSongs: connect.NewClient[v1.RemoveSelectedSongsRequest, v1.RemoveSelectedSongsResponse](
+			httpClient,
+			baseURL+AdminServiceRemoveSelectedSongsProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("RemoveSelectedSongs")),
+			connect.WithClientOptions(opts...),
+		),
 		checkLibrary: connect.NewClient[v1.CheckLibraryRequest, v1.CheckLibraryResponse](
 			httpClient,
 			baseURL+AdminServiceCheckLibraryProcedure,
@@ -256,6 +267,7 @@ type adminServiceClient struct {
 	updateSong           *connect.Client[v1.UpdateSongRequest, v1.UpdateSongResponse]
 	deleteSong           *connect.Client[v1.DeleteSongRequest, v1.DeleteSongResponse]
 	removeSongs          *connect.Client[v1.RemoveSongsRequest, v1.RemoveSongsResponse]
+	removeSelectedSongs  *connect.Client[v1.RemoveSelectedSongsRequest, v1.RemoveSelectedSongsResponse]
 	checkLibrary         *connect.Client[v1.CheckLibraryRequest, v1.CheckLibraryResponse]
 	listBrokenSongs      *connect.Client[v1.ListBrokenSongsRequest, v1.ListBrokenSongsResponse]
 	listVideos           *connect.Client[v1.ListVideosRequest, v1.ListVideosResponse]
@@ -310,6 +322,11 @@ func (c *adminServiceClient) DeleteSong(ctx context.Context, req *connect.Reques
 // RemoveSongs calls kantahe.v1.AdminService.RemoveSongs.
 func (c *adminServiceClient) RemoveSongs(ctx context.Context, req *connect.Request[v1.RemoveSongsRequest]) (*connect.Response[v1.RemoveSongsResponse], error) {
 	return c.removeSongs.CallUnary(ctx, req)
+}
+
+// RemoveSelectedSongs calls kantahe.v1.AdminService.RemoveSelectedSongs.
+func (c *adminServiceClient) RemoveSelectedSongs(ctx context.Context, req *connect.Request[v1.RemoveSelectedSongsRequest]) (*connect.Response[v1.RemoveSelectedSongsResponse], error) {
+	return c.removeSelectedSongs.CallUnary(ctx, req)
 }
 
 // CheckLibrary calls kantahe.v1.AdminService.CheckLibrary.
@@ -377,6 +394,8 @@ type AdminServiceHandler interface {
 	DeleteSong(context.Context, *connect.Request[v1.DeleteSongRequest]) (*connect.Response[v1.DeleteSongResponse], error)
 	// Admin only. Removes many songs from the list at once. The song files are never deleted, except with scope BROKEN and delete_files.
 	RemoveSongs(context.Context, *connect.Request[v1.RemoveSongsRequest]) (*connect.Response[v1.RemoveSongsResponse], error)
+	// Admin only. Takes the chosen songs off the list (at most 1000 numbers); with delete_files their files are deleted too (only inside the data and library folders). Numbers that are unknown or already removed are skipped.
+	RemoveSelectedSongs(context.Context, *connect.Request[v1.RemoveSelectedSongsRequest]) (*connect.Response[v1.RemoveSelectedSongsResponse], error)
 	// Admin only. Re-judges every live song (file missing, MIDI without music, unparsable, a .karmp3 whose audio cannot be read), marks the
 	// broken ones as failed (they leave every user's lists and searches) and clears the mark of repaired ones. Streams its progress; the
 	// last message has done = true. FAILED_PRECONDITION when a check is already running.
@@ -460,6 +479,12 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(adminServiceMethods.ByName("RemoveSongs")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminServiceRemoveSelectedSongsHandler := connect.NewUnaryHandler(
+		AdminServiceRemoveSelectedSongsProcedure,
+		svc.RemoveSelectedSongs,
+		connect.WithSchema(adminServiceMethods.ByName("RemoveSelectedSongs")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminServiceCheckLibraryHandler := connect.NewServerStreamHandler(
 		AdminServiceCheckLibraryProcedure,
 		svc.CheckLibrary,
@@ -534,6 +559,8 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 			adminServiceDeleteSongHandler.ServeHTTP(w, r)
 		case AdminServiceRemoveSongsProcedure:
 			adminServiceRemoveSongsHandler.ServeHTTP(w, r)
+		case AdminServiceRemoveSelectedSongsProcedure:
+			adminServiceRemoveSelectedSongsHandler.ServeHTTP(w, r)
 		case AdminServiceCheckLibraryProcedure:
 			adminServiceCheckLibraryHandler.ServeHTTP(w, r)
 		case AdminServiceListBrokenSongsProcedure:
@@ -595,6 +622,10 @@ func (UnimplementedAdminServiceHandler) DeleteSong(context.Context, *connect.Req
 
 func (UnimplementedAdminServiceHandler) RemoveSongs(context.Context, *connect.Request[v1.RemoveSongsRequest]) (*connect.Response[v1.RemoveSongsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.RemoveSongs is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) RemoveSelectedSongs(context.Context, *connect.Request[v1.RemoveSelectedSongsRequest]) (*connect.Response[v1.RemoveSelectedSongsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.RemoveSelectedSongs is not implemented"))
 }
 
 func (UnimplementedAdminServiceHandler) CheckLibrary(context.Context, *connect.Request[v1.CheckLibraryRequest], *connect.ServerStream[v1.CheckLibraryResponse]) error {

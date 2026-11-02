@@ -25,6 +25,10 @@ const BACKGROUNDS: { value: BackgroundMode; label: string; explain: string }[] =
   { value: BackgroundMode.OFF, label: 'Off', explain: 'A plain background behind the lyrics. Easier on a weak device.' },
 ];
 
+type VolumeKind = 'mp3' | 'midi';
+/** The pause after the last move of a volume range before it is sent. */
+const VOLUME_PAUSE_MS = 300;
+
 @Component({
   selector: 'app-my-devices',
   template: `
@@ -60,6 +64,25 @@ const BACKGROUNDS: { value: BackgroundMode; label: string; explain: string }[] =
             </select>
             <span class="explain">{{ explainBackground(d) }}</span>
             <span class="effective">Now using: {{ effectiveBackground(d) }}</span>
+          </span>
+          <span class="volumes" role="group" [attr.aria-label]="'Volume of ' + d.name">
+            @for (v of volumeKinds; track v.kind) {
+              <span class="volume">
+                <label [for]="v.kind + '-volume-' + d.id" class="what">{{ v.label }}</label>
+                <input
+                  [id]="v.kind + '-volume-' + d.id"
+                  [class]="'volume-' + v.kind"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="5"
+                  [attr.aria-label]="v.label + ' of ' + d.name"
+                  [value]="volume(d, v.kind)"
+                  (input)="setVolume(d, v.kind, $event)"
+                />
+                <span class="effective">{{ volume(d, v.kind) }} %</span>
+              </span>
+            }
           </span>
           @if (confirming() === d.id) {
             <span class="ask" role="group">
@@ -120,6 +143,24 @@ const BACKGROUNDS: { value: BackgroundMode; label: string; explain: string }[] =
       min-height: 2.75rem;
       max-width: 14rem;
     }
+    /* the two volumes: a row each, the range takes the room, the value is read beside it */
+    .volumes {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex-basis: 100%;
+    }
+    .volume {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.75rem;
+    }
+    .volume input[type='range'] {
+      flex: 1 1 10rem;
+      min-height: 2.75rem;
+      max-width: 20rem;
+    }
     .sr-only {
       position: absolute;
       width: 1px;
@@ -139,6 +180,13 @@ export class MyDevicesComponent {
 
   protected readonly modes = MODES;
   protected readonly backgrounds = BACKGROUNDS;
+  protected readonly volumeKinds: { kind: VolumeKind; label: string }[] = [
+    { kind: 'mp3', label: 'MP3 songs volume' },
+    { kind: 'midi', label: 'MIDI songs volume' },
+  ];
+  /** Volumes moved here: shown at once, sent after a short pause, and kept when the server accepts them (put back when it refuses). */
+  private readonly moved = signal<Map<string, number>>(new Map());
+  private readonly volumeTimers = new Map<string, ReturnType<typeof setTimeout>>();
   protected readonly listed = signal<Device[]>([]);
   protected readonly confirming = signal<string | undefined>(undefined);
   /** Modes chosen here and accepted by the server, for devices the live state does not show. */
@@ -150,7 +198,10 @@ export class MyDevicesComponent {
   protected readonly devices = computed(() => this.listed());
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => (this.gone = true));
+    inject(DestroyRef).onDestroy(() => {
+      this.gone = true;
+      for (const t of this.volumeTimers.values()) clearTimeout(t);
+    });
     void this.load();
   }
 
@@ -216,6 +267,38 @@ export class MyDevicesComponent {
       this.chosenBackground.update((m) => new Map(m).set(d.id, { mode: res.device?.backgroundMode ?? mode, effective: res.device?.effectiveBackground ?? false }));
     } catch (e) {
       select.value = String(before);
+      this.toast.show(problem(e, {}), 'error');
+    }
+  }
+
+  /** The volume in percent: what was just moved here, else the live state, else the list; 100 when the server sends none. */
+  protected volume(d: Device, kind: VolumeKind): number {
+    const moved = this.moved().get(`${d.id}:${kind}`);
+    if (moved !== undefined) return moved;
+    const live = this.live(d);
+    const value = kind === 'mp3' ? (live ?? d).mp3VolumePct : (live ?? d).midiVolumePct;
+    return value ?? 100;
+  }
+
+  protected setVolume(d: Device, kind: VolumeKind, event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    const key = `${d.id}:${kind}`;
+    const before = this.volume(d, kind);
+    this.moved.update((m) => new Map(m).set(key, value));
+    clearTimeout(this.volumeTimers.get(key));
+    this.volumeTimers.set(
+      key,
+      setTimeout(() => void this.sendVolume(d, kind, key, value, before), VOLUME_PAUSE_MS),
+    );
+  }
+
+  private async sendVolume(d: Device, kind: VolumeKind, key: string, value: number, before: number): Promise<void> {
+    this.volumeTimers.delete(key);
+    try {
+      await this.session.setVolume(kind === 'mp3' ? { deviceId: d.id, mp3Pct: value } : { deviceId: d.id, midiPct: value });
+      // accepted: the value stays as shown (like the MIDI mode chosen here, it wins over a list that was read before)
+    } catch (e) {
+      if (this.moved().get(key) === value) this.moved.update((m) => new Map(m).set(key, before));
       this.toast.show(problem(e, {}), 'error');
     }
   }

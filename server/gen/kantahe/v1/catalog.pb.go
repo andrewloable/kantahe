@@ -669,8 +669,11 @@ type Playback struct {
 	Ready             bool                   `protobuf:"varint,7,opt,name=ready,proto3" json:"ready,omitempty"`
 	RetryAfterMs      int32                  `protobuf:"varint,8,opt,name=retry_after_ms,json=retryAfterMs,proto3" json:"retry_after_ms,omitempty"`
 	Lyrics            *Lyrics                `protobuf:"bytes,9,opt,name=lyrics,proto3" json:"lyrics,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The gain in dB that brings this song to the common loudness (an MP3 song, once the server has measured it); the player adds it to the device's
+	// own volume. Absent: no gain is known and the song plays as it is.
+	GainDb        *float32 `protobuf:"fixed32,10,opt,name=gain_db,json=gainDb,proto3,oneof" json:"gain_db,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Playback) Reset() {
@@ -764,6 +767,13 @@ func (x *Playback) GetLyrics() *Lyrics {
 		return x.Lyrics
 	}
 	return nil
+}
+
+func (x *Playback) GetGainDb() float32 {
+	if x != nil && x.GainDb != nil {
+		return *x.GainDb
+	}
+	return 0
 }
 
 // The playback description.
@@ -947,7 +957,7 @@ const file_kantahe_v1_catalog_proto_rawDesc = "" +
 	"\x11GetLyricsResponse\x12*\n" +
 	"\x06lyrics\x18\x01 \x01(\v2\x12.kantahe.v1.LyricsR\x06lyrics\",\n" +
 	"\x12GetPlaybackRequest\x12\x16\n" +
-	"\x06number\x18\x01 \x01(\tR\x06number\"\xe9\x02\n" +
+	"\x06number\x18\x01 \x01(\tR\x06number\"\x93\x03\n" +
 	"\bPlayback\x12$\n" +
 	"\x04song\x18\x01 \x01(\v2\x10.kantahe.v1.SongR\x04song\x12,\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x18.kantahe.v1.PlaybackKindR\x04kind\x12\x1b\n" +
@@ -957,7 +967,11 @@ const file_kantahe_v1_catalog_proto_rawDesc = "" +
 	"\x13effective_midi_mode\x18\x06 \x01(\x0e2\x14.kantahe.v1.MidiModeR\x11effectiveMidiMode\x12\x14\n" +
 	"\x05ready\x18\a \x01(\bR\x05ready\x12$\n" +
 	"\x0eretry_after_ms\x18\b \x01(\x05R\fretryAfterMs\x12*\n" +
-	"\x06lyrics\x18\t \x01(\v2\x12.kantahe.v1.LyricsR\x06lyrics\"G\n" +
+	"\x06lyrics\x18\t \x01(\v2\x12.kantahe.v1.LyricsR\x06lyrics\x12\x1c\n" +
+	"\again_db\x18\n" +
+	" \x01(\x02H\x00R\x06gainDb\x88\x01\x01B\n" +
+	"\n" +
+	"\b_gain_db\"G\n" +
 	"\x13GetPlaybackResponse\x120\n" +
 	"\bplayback\x18\x01 \x01(\v2\x14.kantahe.v1.PlaybackR\bplayback\"\x16\n" +
 	"\x14GetBackgroundRequest\"v\n" +
@@ -1060,6 +1074,7 @@ func file_kantahe_v1_catalog_proto_init() {
 		return
 	}
 	file_kantahe_v1_common_proto_init()
+	file_kantahe_v1_catalog_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

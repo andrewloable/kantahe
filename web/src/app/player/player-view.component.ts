@@ -81,6 +81,11 @@ const IDLE_MS = 3000;
                 <button type="button" (click)="c.control(Action.PLAY)">Play</button>
               }
               <button type="button" (click)="c.control(Action.SKIP)">Skip</button>
+              @if (c.volume(); as v) {
+                <button type="button" (click)="c.changeVolume(-1)">Volume down</button>
+                <span class="level" role="status" aria-live="polite">{{ v.kind === 'midi' ? 'MIDI' : 'MP3' }} volume {{ v.pct }}%</span>
+                <button type="button" (click)="c.changeVolume(1)">Volume up</button>
+              }
             </div>
           }
         </div>
@@ -220,6 +225,12 @@ const IDLE_MS = 3000;
       min-width: 8rem;
       min-height: 3.5rem;
       font-size: 1.25rem;
+    }
+    .level {
+      align-self: center;
+      min-width: 11rem;
+      font-size: 1.25rem;
+      text-align: center;
     }
     .elsewhere {
       font-size: 1.5rem;

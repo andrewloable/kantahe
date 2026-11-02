@@ -105,6 +105,8 @@ import {
   ListBrokenSongsRequest,
   ListBrokenSongsResponseSchema,
   RemoveScope,
+  RemoveSelectedSongsRequest,
+  RemoveSelectedSongsResponseSchema,
   RemoveSongsRequest,
   RemoveSongsResponseSchema,
   RescanResponseSchema,
@@ -137,9 +139,10 @@ export function fakeAdminSongs(seed: { songs?: Song[]; broken?: { song: Song; re
     remove: [] as string[],
     /** keepFile of each DeleteSong, in the order of remove. */
     removeKeep: [] as boolean[],
-    removeSongs: [] as RemoveScope[],
     /** The whole RemoveSongs request, scope and deleteFiles. */
     removeRequests: [] as RemoveSongsRequest[],
+    /** Each RemoveSelectedSongs request. */
+    removeSelected: [] as RemoveSelectedSongsRequest[],
     checks: 0,
     listBroken: [] as ListBrokenSongsRequest[],
     rescan: 0,
@@ -161,7 +164,8 @@ export function fakeAdminSongs(seed: { songs?: Song[]; broken?: { song: Song; re
       index: number,
     ) => UploadReply | Promise<UploadReply>,
     rescan: { added: 3, updated: 1, removed: 0, failed: 2 },
-    removeSongs: { removed: 5 },
+    /** The answer of RemoveSelectedSongs; without removed it counts the numbers sent. */
+    removeSelected: {} as { removed?: number; filesDeleted?: number; filesFailed?: number },
     /** What CheckLibrary streams: the songs checked at each step (the last one is the total) and how many are broken at the end. */
     check: { steps: [2, 4], broken: 1 },
   };
@@ -210,8 +214,18 @@ export function fakeAdminSongs(seed: { songs?: Song[]; broken?: { song: Song; re
         broken = broken.filter((b) => b.song.number !== req.number);
         return create(DeleteSongResponseSchema, {});
       },
+      removeSelectedSongs(req) {
+        calls.removeSelected.push(req);
+        maybeFail();
+        const gone = new Set(req.numbers);
+        for (let i = songs.length - 1; i >= 0; i--) if (gone.has(songs[i].number)) songs.splice(i, 1);
+        return create(RemoveSelectedSongsResponseSchema, {
+          removed: handlers.removeSelected.removed ?? req.numbers.length,
+          filesDeleted: handlers.removeSelected.filesDeleted ?? (req.deleteFiles ? req.numbers.length : 0),
+          filesFailed: handlers.removeSelected.filesFailed ?? 0,
+        });
+      },
       removeSongs(req) {
-        calls.removeSongs.push(req.scope);
         calls.removeRequests.push(req);
         maybeFail();
         if (req.scope === RemoveScope.BROKEN) {
@@ -219,7 +233,7 @@ export function fakeAdminSongs(seed: { songs?: Song[]; broken?: { song: Song; re
           broken = [];
           return create(RemoveSongsResponseSchema, { removed, filesDeleted: req.deleteFiles ? removed : 0, filesFailed: 0 });
         }
-        return create(RemoveSongsResponseSchema, handlers.removeSongs);
+        return create(RemoveSongsResponseSchema, {});
       },
       async *checkLibrary() {
         calls.checks++;

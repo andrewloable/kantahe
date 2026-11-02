@@ -238,6 +238,13 @@ export function states(selftest = false): RouteState[] {
     at('/admin/users', 'many', 'admin', '/admin/users', { after: ({ page }) => expect(page.locator('tbody tr').nth(3)).toBeVisible() }),
     at('/admin/users', 'delete-question', 'admin', '/admin/users', { after: ({ page }) => click(page, /^Delete a-very-long-address/) }),
     at('/admin/users', 'reset-question', 'admin', '/admin/users', { after: ({ page }) => click(page, /^Reset password of a-very-long-address/) }),
+    at('/admin/users', 'temp-password', 'admin', '/admin/users', {
+      after: async ({ page }) => {
+        await click(page, /^Reset password of a-very-long-address/);
+        await click(page, 'Yes, reset');
+        await expect(page.getByRole('region', { name: 'Temporary password' })).toBeVisible();
+      },
+    }),
     at('/admin/users', 'error', 'admin', '/admin/users', { ...failing('AdminService/ListUsers') }),
     // no video is in the seed (a real MP4 would have to be made): the empty and the failed page; the list with videos is checked in a real browser by hand
     at('/admin/videos', 'empty', 'admin', '/admin/videos', { after: ({ page }) => expect(page.getByText('No background videos yet.')).toBeVisible() }),
@@ -262,6 +269,23 @@ export function states(selftest = false): RouteState[] {
         await expect(page.getByRole('dialog')).toBeVisible();
       },
     }),
+    at('/admin/songs', 'selected', 'admin', '/admin/songs', {
+      after: async ({ page }) => {
+        const boxes = page.getByRole('checkbox', { name: /^Select song/ });
+        await boxes.nth(0).check();
+        await boxes.nth(1).check();
+        await expect(page.getByText('2 songs selected')).toBeVisible();
+      },
+    }),
+    at('/admin/songs', 'bulk-question', 'admin', '/admin/songs', {
+      after: async ({ page }) => {
+        const boxes = page.getByRole('checkbox', { name: /^Select song/ });
+        await boxes.nth(0).check();
+        await boxes.nth(1).check();
+        await click(page, 'Delete files too');
+        await expect(page.getByText(/Delete 2 songs and their files/)).toBeVisible();
+      },
+    }),
     at('/admin/songs', 'delete-question', 'admin', '/admin/songs', {
       after: async ({ page }) => {
         await expect(page.locator('tbody tr').first()).toBeVisible();
@@ -282,7 +306,6 @@ export function states(selftest = false): RouteState[] {
         await expect(page.getByText(/deleted for good/)).toBeVisible();
       },
     }),
-    at('/admin/songs', 'remove-all-question', 'admin', '/admin/songs', { after: ({ page }) => click(page, 'Remove all songs') }),
     at('/admin/songs', 'error', 'admin', '/admin/songs', { ...failing('CatalogService/SearchSongs') }),
     at('/admin/settings', 'form', 'admin', '/admin/settings'),
     at('/admin/settings', 'error', 'admin', '/admin/settings', { ...failing('AdminService/GetServerSettings') }),

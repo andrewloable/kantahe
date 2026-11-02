@@ -96,30 +96,59 @@ func (s *AdminServer) DeleteSong(ctx context.Context, req *connect.Request[kanta
 	return connect.NewResponse(&kantahev1.DeleteSongResponse{}), nil
 }
 
-// RemoveSongs takes many songs off the list. Their files are never deleted, except with scope BROKEN and delete_files.
+// RemoveSongs takes the broken songs off the list (the only scope left); with delete_files their files are deleted too, inside the managed folders.
 func (s *AdminServer) RemoveSongs(ctx context.Context, req *connect.Request[kantahev1.RemoveSongsRequest]) (*connect.Response[kantahev1.RemoveSongsResponse], error) {
 	if _, err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	var scope library.RemoveScope
 	switch req.Msg.Scope {
-	case kantahev1.RemoveScope_REMOVE_SCOPE_ALL:
-		scope = library.ScopeAll
-	case kantahev1.RemoveScope_REMOVE_SCOPE_NO_MUSIC:
-		scope = library.ScopeNoMusic
 	case kantahev1.RemoveScope_REMOVE_SCOPE_BROKEN:
 		scope = library.ScopeBroken
 	default:
 		return nil, invalidArgument("choose which songs to remove")
-	}
-	if req.Msg.DeleteFiles && scope != library.ScopeBroken {
-		return nil, invalidArgument("files are deleted only when removing the broken songs")
 	}
 	res, err := s.d.Importer.RemoveSongsFiles(ctx, scope, req.Msg.DeleteFiles)
 	if err != nil {
 		return nil, internalErr(s.d.Logger, "RemoveSongs", err)
 	}
 	return connect.NewResponse(&kantahev1.RemoveSongsResponse{Removed: int32(res.Removed), FilesDeleted: int32(res.FilesDeleted), FilesFailed: int32(res.FilesFailed)}), nil
+}
+
+// maxSelectedSongs is the most songs one RemoveSelectedSongs call takes.
+const maxSelectedSongs = 1000
+
+// RemoveSelectedSongs takes the songs the admin chose off the list, and with delete_files deletes their files too (only inside the managed folders).
+func (s *AdminServer) RemoveSelectedSongs(ctx context.Context, req *connect.Request[kantahev1.RemoveSelectedSongsRequest]) (*connect.Response[kantahev1.RemoveSelectedSongsResponse], error) {
+	if _, err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	numbers := req.Msg.Numbers
+	if len(numbers) == 0 || len(numbers) > maxSelectedSongs {
+		return nil, invalidArgument("choose 1 to 1000 songs")
+	}
+	for _, n := range numbers {
+		if !validSongNumber(n) {
+			return nil, invalidArgument("a song number is five or more digits")
+		}
+	}
+	res, err := s.d.Importer.RemoveSelected(ctx, numbers, req.Msg.DeleteFiles)
+	if err != nil {
+		return nil, internalErr(s.d.Logger, "RemoveSelectedSongs", err)
+	}
+	return connect.NewResponse(&kantahev1.RemoveSelectedSongsResponse{Removed: int32(res.Removed), FilesDeleted: int32(res.FilesDeleted), FilesFailed: int32(res.FilesFailed)}), nil
+}
+
+func validSongNumber(n string) bool {
+	if len(n) < 5 {
+		return false
+	}
+	for _, c := range n {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // CheckLibrary re-judges every song and streams its progress; the last message has done = true. One check at a time.

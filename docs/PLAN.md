@@ -32,7 +32,7 @@ Song formats: `.kar` (Standard MIDI file with lyrics as text events) and `.karmp
 * No PostgreSQL: SQLite only.
 * Server-side audio rendering only as a per-device fallback for weak devices: MIDI is synthesized by
   the client by default (section 4, D2).
-* Not in the MVP: volume, key change, tempo.
+* Volume: each device has a MIDI-songs volume and an MP3-songs volume (0 to 200 percent, default 100), set on *Me → Devices* and by the Volume down / Volume up buttons of the player; the server also measures the loudness of each MP3, and of each MIDI song it renders to audio for a device in server mode, and the player applies a per-song gain (at most +9 dB and -12 dB, target -16 LUFS). Not in the MVP: key change, tempo.
 * Background videos (section 4.2) are admin-uploaded H.264 MP4 only: no transcoding on the server, no video sound,
   no per-song or per-singer videos.
 
@@ -205,7 +205,7 @@ numbers stay provisional and `auto` follows them.
 
 ### 4.2 Background videos
 
-*Status: built for the server, the admin page and the web player (epic kantahe-pwh); what is still to be checked is the decoding and the Auto threshold on the real TVs and WebViews (kantahe-pwh.17).*
+*Status: built for the server, the admin page and the web player (epic kantahe-pwh). Checked on one real device, an Android TV (table at the end of this section, kantahe-pwh.17); the Samsung, LG, iOS, phone and desktop rows are still "not tested".*
 
 Videoke machines show moving pictures behind the lyrics. Kantahe ships none (like songs, the project bundles no videos and no
 video file is ever committed): the admin uploads them.
@@ -246,6 +246,29 @@ video file is ever committed): the admin uploads them.
   `effective_background`: `auto` is off when the device's effective MIDI mode is low power or server, when the device reports less than
   1.5 GB (1536 MB), and on a TV that reports no memory at all, and on otherwise (a video decoding next to the synth can make a cheap TV box
   stutter). `on` and `off` are used as chosen. Like the thresholds in 4.1, these are estimates until they are measured on the TV.
+
+**Real-device results (kantahe-pwh.17, 2026-11-02).** Scratch server and scratch library, 30 s clips made with ffmpeg and not committed
+(H.264 High, `yuv420p`, `+faststart`, a loud sine tone in the audio track), a debug build of the Android TV app (its release build uses about
+half the memory), plain HTTP from the LAN. The agent measured with `adb` (`dumpsys meminfo`, `dumpsys cpuinfo`, `logcat`) and read the player page's
+`<video>` elements through the WebView's devtools; a person must still judge by eye that the loop is smooth (the owner, kantahe-pwh.17).
+
+| Device | Clip | Result | MIDI mode in use | `effective_background` |
+|---|---|---|---|---|
+| Sony BRAVIA 4K (Android TV, 3 GB RAM, MediaTek decoder, Android WebView) | 1080p30 6 Mbps and 720p30 3 Mbps, two videos looping, 10 min with MIDI songs | plays; app memory (PSS) 220-240 MB and steady, app CPU about 105 % of the 4 cores (the video decode), no MIDI mode step-down, no audio or codec error in the log, 1.6-1.7 % janky UI frames | server render (the page is HTTP, so the synth cannot run) | `true` with Background video **On**; `false` under **Auto** (a device on server render is "lighter") |
+| same | the same two videos, 10 min with MP3 songs | the same: PSS 234-239 MB, CPU about 108 % | not used | the same |
+| same | 3840x2160 H.264 20 Mbps (the server's widest accepted) | plays (`readyState` 4, `videoWidth` 3840) | | |
+| same | 1280x720 H.264 High 10 (10-bit) | plays | | |
+| same | HEVC, WebM, 4096 px wide | refused at upload: "the video codec hvc1 is not supported: re-encode it as H.264 (see the admin guide)", "unsupported file type: use an .mp4, .m4v or .mov file", "the video is wider than 3840 px" | | |
+| desktop Chrome, an Android phone or emulator, iOS, Samsung Tizen, LG webOS | | not tested | | |
+
+* **No sound from a video** (owner requirement): with a clip whose audio track is a loud tone, the app had exactly one active audio player
+  (the song's) in `dumpsys audio` while a song played; the video elements are muted, volume 0, without controls.
+* **The Auto threshold stays at `BackgroundMinMemoryMB` = 1536**: the one device class tested (3 GB) did not stutter by any measure the agent has,
+  so there is nothing to move it on. It is still a guess for the weaker boxes, which are not tested.
+* **Auto on an HTTP LAN is off**: the page cannot run the synthesizer (it needs HTTPS, 4.1), so a TV on plain HTTP renders MIDI on the
+  server, counts as using a lighter sound mode, and under Auto shows no video; set the device's Background video to **On** to see them.
+* **A TV runtime change is not needed**: no packaging file was changed (the Android WebView plays inline with no user gesture already, and
+  the Tizen and webOS packages are untested, so none was touched).
 
 ## 5. Accounts and sign-in
 
@@ -359,7 +382,8 @@ service AdminService {        // admin only
   rpc ListUsers / CreateUser / UpdateUser / ResetPassword / DeleteUser / RevokeUserDevices;
   rpc UpdateSong(UpdateSongRequest) returns (Song);                // title, artist
   rpc DeleteSong(DeleteSongRequest) returns (DeleteSongResponse);  // keep_file: only take it off the list, the file stays
-  rpc RemoveSongs(RemoveSongsRequest) returns (RemoveSongsResponse);  // scope ALL, NO_MUSIC or BROKEN; deletes song files only with BROKEN and delete_files
+  rpc RemoveSongs(RemoveSongsRequest) returns (RemoveSongsResponse);  // scope BROKEN only; deletes song files with delete_files
+  rpc RemoveSelectedSongs(RemoveSelectedSongsRequest) returns (RemoveSelectedSongsResponse);  // the chosen song numbers (1..1000); delete_files deletes their files too
   rpc CheckLibrary(CheckLibraryRequest) returns (stream CheckLibraryResponse);  // re-judges every song, marks the broken ones failed; progress; one at a time
   rpc ListBrokenSongs(ListBrokenSongsRequest) returns (ListBrokenSongsResponse); // the failed songs with the reason, paged
   rpc Rescan(RescanRequest) returns (RescanResponse);
@@ -657,7 +681,7 @@ Phases 0–3 are the **MVP** (server + web). Each phase has an exit check.
 | **5 Server render + Android TV** | Server-render fallback (pure-Go synth, encoding, render cache, `/media/rendered`, `auto` step-down to server); Flutter Android TV: D-pad navigation, code sign-in, TV layout. | On the owner's cheap box: sign in with a code, queue from a phone, sing MP3 and MIDI songs without dropouts (in whatever mode `auto` picks). |
 | **6 Samsung Tizen + LG webOS** | Package the Angular app; server address screen, code sign-in, D-pad. | Installs and plays MP3 and MIDI songs on one Samsung and one LG TV. |
 | **7 Polish** | README, user and admin guides, store listings, licence notices (`THIRD_PARTY_NOTICES.md`, generated and checked by `scripts/licenses.sh`; links checked by `scripts/check-links.py`) (GeneralUser GS, spessasynth, fanfares), app icons and splash from `branding/`. | A stranger installs the server and an app from the docs alone. |
-| **Later** | Offline downloads, email password reset, single sign-on, shared/party queues, guests, volume, key/tempo, real pitch scoring. | — |
+| **Later** | Offline downloads, email password reset, single sign-on, shared/party queues, guests, key/tempo, real pitch scoring. | — |
 
 ## 13. Decisions recorded and open items
 
@@ -680,9 +704,10 @@ Decided by the owner:
 | Database | SQLite only. |
 | Offline | Not in the MVP. |
 | API | ConnectRPC (connect-go, connect-es, connect-dart) between the server and every frontend, including uploads (one file per call, ZIPs unpacked on the client); only audio media is plain HTTP. |
-| Deleting songs | Asks: remove from the list (the file stays) or delete the file too, also in watched folders. Bulk: all songs, or MIDI songs with no music, never deleting files; and the broken songs found by *Check the library* (file missing, no music, unreadable, damaged), with or without their files. |
+| Deleting songs | Asks: remove from the list (the file stays) or delete the file too, also in watched folders. Bulk: the songs the admin ticks in the list (up to 1000), with or without their files; and the broken songs found by *Check the library* (file missing, no music, unreadable, damaged), with or without their files. There is no "remove all songs" and no separate "songs with no music" action: such songs are refused at upload and caught by the check. |
 | Sign-in tokens | Expire after 90 days unused; revocable any time. |
 | Defaults | GeneralUser GS embedded as the default SoundFont (replaceable); player gone 30 s → paused at the last position, resumable on any device; port 8080; upload limit 50 MB per file. |
+| Domain | kantahe.party is the project's domain (website and project address). The server itself is self-hosted and needs no domain; HTTPS for a user's own domain is the user's reverse proxy (D10). |
 | Build order | Server → Angular web → packaging → Flutter Android/iOS → Android TV → Samsung/LG. |
 | Fanfares | The three clips in `server/internal/assets/fanfare/`. |
 

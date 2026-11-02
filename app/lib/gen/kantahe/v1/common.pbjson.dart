@@ -254,6 +254,28 @@ const Device$json = {
       '5': 8,
       '10': 'effectiveBackground'
     },
+    {
+      '1': 'mp3_volume_pct',
+      '3': 13,
+      '4': 1,
+      '5': 5,
+      '9': 0,
+      '10': 'mp3VolumePct',
+      '17': true
+    },
+    {
+      '1': 'midi_volume_pct',
+      '3': 14,
+      '4': 1,
+      '5': 5,
+      '9': 1,
+      '10': 'midiVolumePct',
+      '17': true
+    },
+  ],
+  '8': [
+    {'1': '_mp3_volume_pct'},
+    {'1': '_midi_volume_pct'},
   ],
 };
 
@@ -267,7 +289,10 @@ final $typed_data.Uint8List deviceDescriptor = $convert.base64Decode(
     '9kZVIRZWZmZWN0aXZlTWlkaU1vZGUSGwoJaXNfY2FsbGVyGAkgASgIUghpc0NhbGxlchIkCg5s'
     'YXN0X3NlZW5fdW5peBgKIAEoA1IMbGFzdFNlZW5Vbml4EkMKD2JhY2tncm91bmRfbW9kZRgLIA'
     'EoDjIaLmthbnRhaGUudjEuQmFja2dyb3VuZE1vZGVSDmJhY2tncm91bmRNb2RlEjEKFGVmZmVj'
-    'dGl2ZV9iYWNrZ3JvdW5kGAwgASgIUhNlZmZlY3RpdmVCYWNrZ3JvdW5k');
+    'dGl2ZV9iYWNrZ3JvdW5kGAwgASgIUhNlZmZlY3RpdmVCYWNrZ3JvdW5kEikKDm1wM192b2x1bW'
+    'VfcGN0GA0gASgFSABSDG1wM1ZvbHVtZVBjdIgBARIrCg9taWRpX3ZvbHVtZV9wY3QYDiABKAVI'
+    'AVINbWlkaVZvbHVtZVBjdIgBAUIRCg9fbXAzX3ZvbHVtZV9wY3RCEgoQX21pZGlfdm9sdW1lX3'
+    'BjdA==');
 
 @$core.Deprecated('Use videoDescriptor instead')
 const Video$json = {

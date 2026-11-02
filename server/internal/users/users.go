@@ -36,6 +36,7 @@ type Device struct {
 	ID, UserID, Name, TokenHash string
 	Type, MidiMode, MemoryMB    int
 	BackgroundMode              int
+	Mp3VolumePct, MidiVolumePct int // 0 to 200, 100 by default
 	MicAvailable, Revoked       bool
 	CreatedAt, LastSeen         int64
 }
@@ -118,7 +119,7 @@ func CreateDevice(ctx context.Context, q Querier, d Device) error {
 
 // ListDevices returns the user's devices that are not revoked, oldest first.
 func ListDevices(ctx context.Context, q Querier, userID string) ([]Device, error) {
-	rows, err := q.QueryContext(ctx, `SELECT id, user_id, name, type, token_hash, created_at, last_seen, revoked <> 0, midi_mode, memory_mb, mic_available <> 0, background_mode
+	rows, err := q.QueryContext(ctx, `SELECT id, user_id, name, type, token_hash, created_at, last_seen, revoked <> 0, midi_mode, memory_mb, mic_available <> 0, background_mode, mp3_volume_pct, midi_volume_pct
 		FROM devices WHERE user_id = ? AND revoked = 0 ORDER BY created_at, id`, userID)
 	if err != nil {
 		return nil, err
@@ -127,7 +128,7 @@ func ListDevices(ctx context.Context, q Querier, userID string) ([]Device, error
 	var out []Device
 	for rows.Next() {
 		var d Device
-		if err := rows.Scan(&d.ID, &d.UserID, &d.Name, &d.Type, &d.TokenHash, &d.CreatedAt, &d.LastSeen, &d.Revoked, &d.MidiMode, &d.MemoryMB, &d.MicAvailable, &d.BackgroundMode); err != nil {
+		if err := rows.Scan(&d.ID, &d.UserID, &d.Name, &d.Type, &d.TokenHash, &d.CreatedAt, &d.LastSeen, &d.Revoked, &d.MidiMode, &d.MemoryMB, &d.MicAvailable, &d.BackgroundMode, &d.Mp3VolumePct, &d.MidiVolumePct); err != nil {
 			return nil, err
 		}
 		out = append(out, d)
@@ -237,9 +238,9 @@ func DeviceActive(ctx context.Context, q Querier, userID, deviceID string) (bool
 // DeviceByID finds one of the user's devices that is not revoked.
 func DeviceByID(ctx context.Context, q Querier, userID, deviceID string) (Device, error) {
 	var d Device
-	err := q.QueryRowContext(ctx, `SELECT id, user_id, name, type, token_hash, created_at, last_seen, revoked <> 0, midi_mode, memory_mb, mic_available <> 0, background_mode
+	err := q.QueryRowContext(ctx, `SELECT id, user_id, name, type, token_hash, created_at, last_seen, revoked <> 0, midi_mode, memory_mb, mic_available <> 0, background_mode, mp3_volume_pct, midi_volume_pct
 		FROM devices WHERE id = ? AND user_id = ? AND revoked = 0`, deviceID, userID).
-		Scan(&d.ID, &d.UserID, &d.Name, &d.Type, &d.TokenHash, &d.CreatedAt, &d.LastSeen, &d.Revoked, &d.MidiMode, &d.MemoryMB, &d.MicAvailable, &d.BackgroundMode)
+		Scan(&d.ID, &d.UserID, &d.Name, &d.Type, &d.TokenHash, &d.CreatedAt, &d.LastSeen, &d.Revoked, &d.MidiMode, &d.MemoryMB, &d.MicAvailable, &d.BackgroundMode, &d.Mp3VolumePct, &d.MidiVolumePct)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Device{}, ErrNotFound
 	}
@@ -259,6 +260,18 @@ func SetDeviceMemory(ctx context.Context, q Querier, userID, deviceID string, me
 // SetDeviceBackgroundMode stores the user's background video choice for one of their devices; false when it is not theirs.
 func SetDeviceBackgroundMode(ctx context.Context, q Querier, userID, deviceID string, mode int) (bool, error) {
 	res, err := q.ExecContext(ctx, `UPDATE devices SET background_mode = ? WHERE id = ? AND user_id = ? AND revoked = 0`, mode, deviceID, userID)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
+
+// SetDeviceVolume stores the MP3 and/or MIDI volume (percent) of one of the user's devices; a nil value is left as it is. False when the
+// device is not theirs.
+func SetDeviceVolume(ctx context.Context, q Querier, userID, deviceID string, mp3, midi *int) (bool, error) {
+	res, err := q.ExecContext(ctx, `UPDATE devices SET mp3_volume_pct = COALESCE(?, mp3_volume_pct), midi_volume_pct = COALESCE(?, midi_volume_pct)
+		WHERE id = ? AND user_id = ? AND revoked = 0`, mp3, midi, deviceID, userID)
 	if err != nil {
 		return false, err
 	}

@@ -7,6 +7,7 @@ import {
   AddToQueueResponseSchema,
   SessionService,
   SetBackgroundModeResponseSchema,
+  SetVolumeResponseSchema,
   SetMidiModeResponseSchema,
   UpdateUserSettingsRequest,
   UpdateUserSettingsResponseSchema,
@@ -60,6 +61,7 @@ export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; 
     add: [] as string[],
     midi: [] as { deviceId: string; mode: MidiMode }[],
     background: [] as { deviceId: string; mode: BackgroundMode }[],
+    volume: [] as { deviceId: string; mp3?: number; midi?: number }[],
     settings: [] as UpdateUserSettingsRequest[],
     revoke: [] as string[],
     listDevices: 0,
@@ -151,6 +153,12 @@ export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; 
         calls.background.push({ deviceId: req.deviceId, mode: req.mode });
         devices = devices.map((d) => (d.id === req.deviceId ? { ...d, backgroundMode: req.mode, effectiveBackground: req.mode === BackgroundMode.ON } : d));
         return create(SetBackgroundModeResponseSchema, { device: devices.find((d) => d.id === req.deviceId) });
+      },
+      setVolume(req) {
+        maybeFail();
+        calls.volume.push({ deviceId: req.deviceId, mp3: req.mp3Pct, midi: req.midiPct });
+        devices = devices.map((d) => (d.id === req.deviceId ? { ...d, mp3VolumePct: req.mp3Pct ?? d.mp3VolumePct, midiVolumePct: req.midiPct ?? d.midiVolumePct } : d));
+        return create(SetVolumeResponseSchema, { device: devices.find((d) => d.id === req.deviceId) });
       },
       setMidiMode(req) {
         maybeFail();

@@ -162,7 +162,16 @@ export function pageChecks(options: Options): Raw[] {
     }
   }
 
-  // (d) two targets side by side with a gap of less than the minimum; targets that touch are one group, not tight
+  // a control drawn as a box: a visible fill or a visible border
+  const hasBox = (el: Element) => {
+    const cs = getComputedStyle(el);
+    const fill = cs.backgroundColor;
+    const filled = fill !== 'transparent' && !/^rgba\(.*,\s*0\)$/.test(fill);
+    const bordered = ['Top', 'Right', 'Bottom', 'Left'].some((side) => parseFloat(cs.getPropertyValue(`border-${side.toLowerCase()}-width`)) > 0 && cs.getPropertyValue(`border-${side.toLowerCase()}-style`) !== 'none');
+    return filled || bordered;
+  };
+
+  // (d) two targets side by side with a gap of less than the minimum, touching ones included: nothing in the app is meant to be joined edge to edge
   for (let i = 0; i < targets.length; i++) {
     for (let j = i + 1; j < targets.length; j++) {
       const a = targets[i];
@@ -172,7 +181,9 @@ export function pageChecks(options: Options): Raw[] {
       const rb = b.getBoundingClientRect();
       const gapX = Math.max(ra.left - rb.right, rb.left - ra.right);
       const gapY = Math.max(ra.top - rb.bottom, rb.top - ra.bottom);
-      const tight = (gap: number, other: number) => other < 0 && gap >= 0.5 && gap < options.minGap;
+      // touching counts only for controls that are drawn as boxes (a fill or a border): rows of plain text links touch their own boxes and look spaced
+      const touching = (gap: number) => gap < 0.5 && (!hasBox(a) || !hasBox(b));
+      const tight = (gap: number, other: number) => other < 0 && gap >= -0.5 && gap < options.minGap && !touching(gap);
       if (tight(gapX, gapY) || tight(gapY, gapX)) {
         out.push({ check: 'tightTargets', selector: `${selectorOf(a)} + ${selectorOf(b)}`, text: `${textOf(a)} | ${textOf(b)}`, rect: rectOf(ra), detail: `${round(Math.max(gapX, gapY))} px apart` });
       }

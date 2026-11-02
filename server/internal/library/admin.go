@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/andrewloable/kantahe/server/internal/fsutil"
-	"github.com/andrewloable/kantahe/server/internal/song/kar"
 )
 
 // RemoveError means a song's file could not be deleted, so the song was kept.
@@ -158,9 +157,7 @@ type RemoveScope int
 
 // Scopes of RemoveSongs.
 const (
-	ScopeAll     RemoveScope = iota + 1 // every song
-	ScopeNoMusic                        // MIDI songs whose file has no audible notes
-	ScopeBroken                         // every song marked failed
+	ScopeBroken RemoveScope = iota + 1 // every song marked failed
 )
 
 type goneSong struct{ number, sha, media, path string }
@@ -183,17 +180,40 @@ func (im *Importer) RemoveSongs(ctx context.Context, scope RemoveScope) (int, er
 // removed song is deleted too, but only inside the data directory and the watched folders (an outside file is left and counted in
 // FilesFailed). The files go after the songs left the list, outside the transaction, so that one file in use cannot hold the others.
 func (im *Importer) RemoveSongsFiles(ctx context.Context, scope RemoveScope, deleteFiles bool) (RemoveResult, error) {
-	if scope != ScopeAll && scope != ScopeNoMusic && scope != ScopeBroken {
+	if scope != ScopeBroken {
 		return RemoveResult{}, fmt.Errorf("library: unknown remove scope %d", scope)
-	}
-	if deleteFiles && scope != ScopeBroken {
-		return RemoveResult{}, errors.New("library: files are deleted only with the scope broken")
 	}
 	candidates, err := im.removeCandidates(ctx, scope)
 	if err != nil {
 		return RemoveResult{}, err
 	}
+	return im.removeSongs(ctx, candidates, deleteFiles)
+}
+
+// RemoveSelected takes the chosen songs off the list in one go, like RemoveSongsFiles, and with deleteFiles deletes their files (only inside the
+// data directory and the watched folders; an outside file is left and counted in FilesFailed, its song is off the list all the same). A number
+// that is unknown or already removed is skipped and not counted (a repeated one is removed once: the second removal finds the song changed).
+func (im *Importer) RemoveSelected(ctx context.Context, numbers []string, deleteFiles bool) (RemoveResult, error) {
+	var candidates []goneSong
+	for _, n := range numbers {
+		var g goneSong
+		err := im.db.QueryRowContext(ctx, `SELECT number, sha256, media_path, path FROM songs WHERE number = ? AND deleted = 0`, n).Scan(&g.number, &g.sha, &g.media, &g.path)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return RemoveResult{}, err
+		}
+		candidates = append(candidates, g)
+	}
+	return im.removeSongs(ctx, candidates, deleteFiles)
+}
+
+// removeSongs takes the candidates off the list in one transaction and then, outside it, removes their derived files and, with deleteFiles, the
+// song files.
+func (im *Importer) removeSongs(ctx context.Context, candidates []goneSong, deleteFiles bool) (RemoveResult, error) {
 	var gone []goneSong
+	var err error
 	err = im.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		gone = gone[:0]
 		for _, c := range candidates {
@@ -238,17 +258,12 @@ func (im *Importer) RemoveSongsFiles(ctx context.Context, scope RemoveScope, del
 	return res, nil
 }
 
-// removeCandidates lists the live songs a scope covers. For no-music it reads
-// each MIDI file; one that cannot be read is left alone.
+// removeCandidates lists the live songs a scope covers (only the broken ones: every live song that is marked failed).
 func (im *Importer) removeCandidates(ctx context.Context, scope RemoveScope) ([]goneSong, error) {
-	query := `SELECT number, sha256, media_path, path FROM songs WHERE deleted = 0`
-	switch scope {
-	case ScopeNoMusic:
-		query += ` AND format = ` + fmt.Sprint(int(FormatMIDI))
-	case ScopeBroken:
-		query += ` AND failed <> 0`
+	if scope != ScopeBroken {
+		return nil, fmt.Errorf("library: unknown remove scope %d", scope)
 	}
-	rows, err := im.db.QueryContext(ctx, query+` ORDER BY number`)
+	rows, err := im.db.QueryContext(ctx, `SELECT number, sha256, media_path, path FROM songs WHERE deleted = 0 AND failed <> 0 ORDER BY number`)
 	if err != nil {
 		return nil, err
 	}
@@ -259,31 +274,9 @@ func (im *Importer) removeCandidates(ctx context.Context, scope RemoveScope) ([]
 		if err := rows.Scan(&g.number, &g.sha, &g.media, &g.path); err != nil {
 			return nil, err
 		}
-		if scope == ScopeNoMusic {
-			if err := ctx.Err(); err != nil {
-				return nil, err
-			}
-			if !silentMIDI(g.path) {
-				continue
-			}
-		}
 		out = append(out, g)
 	}
 	return out, rows.Err()
-}
-
-// silentMIDI reports whether the MIDI file at path can be read and has no audible note.
-func silentMIDI(path string) bool {
-	st, err := os.Stat(path)
-	if err != nil || st.Size() > maxMIDIBytes {
-		return false
-	}
-	body, err := os.ReadFile(path)
-	if err != nil {
-		return false
-	}
-	music, err := kar.HasAudibleNotes(body)
-	return err == nil && !music
 }
 
 // removeCachedFilesOf deletes the files of dir named after one of the songs (their

@@ -152,6 +152,13 @@ func (s *CatalogServer) GetPlayback(ctx context.Context, req *connect.Request[ka
 	case library.FormatMP3:
 		pb.Kind = kantahev1.PlaybackKind_PLAYBACK_KIND_AUDIO
 		pb.AudioUrl = signed
+		// the gain that brings the song to the common loudness, once the server has measured it
+		if g, ok, err := library.GainOf(ctx, s.d.DB, song.Number); err != nil {
+			return nil, internalErr(s.d.Logger, "GetPlayback", err)
+		} else if ok {
+			gain := float32(g)
+			pb.GainDb = &gain
+		}
 	default:
 		fonts := s.media.Fonts()
 		if fonts == nil {
@@ -176,6 +183,10 @@ func (s *CatalogServer) GetPlayback(ctx context.Context, req *connect.Request[ka
 					rd.Prepare(song.Number)
 					pb.Ready = false
 					pb.RetryAfterMs = 1000
+				} else if g, ok := rd.Gain(ctx, song.Number); ok {
+					// the gain that brings the rendered song to the common loudness
+					gain := float32(g)
+					pb.GainDb = &gain
 				}
 			}
 		}

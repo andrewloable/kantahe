@@ -285,7 +285,7 @@ func resetSong(ctx context.Context, tx *sql.Tx, number string, c candidate) (sta
 		return "", err
 	}
 	_, err = tx.ExecContext(ctx, `UPDATE songs SET sha256 = ?, size = ?, mtime = ?, metadata_done = 0, failed = 0, failed_reason = '',
-		file_title = '', file_artist = '', duration_ms = 0, media_path = '' WHERE number = ?`, c.sha, c.size, c.mtime, number)
+		file_title = '', file_artist = '', duration_ms = 0, media_path = '', gain_db = NULL, loudness_done = 0 WHERE number = ?`, c.sha, c.size, c.mtime, number)
 	if err != nil {
 		return "", err
 	}
@@ -352,6 +352,14 @@ func (im *Importer) worker(ctx context.Context) {
 				return
 			case <-time.After(workerBackoff):
 			}
+			continue
+		}
+		// the loudness of the songs that have their audio now, after the metadata: new songs come first
+		interrupted, err := im.ProcessLoudness(ctx)
+		if err != nil && ctx.Err() == nil {
+			im.logger.Error("loudness pass failed", "err", err)
+		}
+		if interrupted {
 			continue
 		}
 		select {

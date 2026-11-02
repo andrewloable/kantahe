@@ -62,12 +62,11 @@ what you want:
   nothing changes and you are told why. Mount the folder read-only (`:ro` in Docker) if you do not want anyone to be able
   to delete files from it.
 
-*Admin → Songs → Remove songs from the list* works on many songs at once, after a confirmation, and **never deletes a
-file**:
-
-* **Remove songs with no music** takes off every MIDI song that has no instrument notes, only lyric timing. Such files
-  play as silence. (New uploads of that kind are refused, and a watched-folder file like that is marked as failed.)
-* **Remove all songs** empties the list.
+**Choosing several songs.** Every row has a checkbox, and the box in the header chooses all the songs of the page on show (it
+looks half-filled when only some are chosen). The choice stays while you turn pages and search, up to 1000 songs. A bar
+above the list says how many are chosen and offers **Remove from list** (the files stay), **Delete files too** (the files are
+deleted as well, only inside the data and the watched folders; a file elsewhere is left and counted) and **Clear selection**.
+Both removals ask first, and deleting files cannot be undone.
 
 ### Checking the library for broken songs
 
@@ -87,7 +86,7 @@ after a confirmation that names how many songs it is about:
   folders; a song whose file lies elsewhere, or is in use, is taken off the list all the same and the result says how many files
   could not be deleted.
 
-Only one check runs at a time. *Remove all songs* and *Remove songs with no music* still never delete a file.
+Only one check runs at a time.
 
 A song's number is never used again, so a song that is added back later gets a new number. A song in a watched folder is
 added again at the next scan while its file is still in the folder; move the file out, or delete it, to keep it off the
@@ -119,6 +118,10 @@ ffmpeg -i in.mov -c:v libx264 -profile:v high -level 4.1 -pix_fmt yuv420p -vf sc
 (`-an` leaves the sound out, which makes the file smaller; it is not required.) 1920×1080, 30 frames a second or less and about
 6 Mbps are comfortable for a TV box. A file wider than 1920 px is accepted with a warning (a TV box may stutter), and so is one
 whose index comes after the picture data (it starts playing more slowly; `-movflags +faststart` fixes that).
+
+The recommendation above is the safe one: it was tried for ten minutes, next to MIDI and MP3 songs, on one Android TV (Sony, 3 GB) and
+played without trouble; that TV also played a 3840x2160 and a 10-bit H.264 clip, but weaker boxes, phones, Samsung and LG TVs have not been
+tried, so keep to 1080p30 for anything you do not know. HEVC, VP9, WebM and files wider than 3840 px are refused at upload.
 
 **The list.** The videos play one after another in the order of the list, over and over; the numbers show the order. *Move up* and
 *Move down* change it. *Play this video* switches one off without deleting it. *Rename* changes the name shown here. *Preview*

@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:connectrpc/connect.dart';
 import 'package:flutter/material.dart' hide State;
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart';
 import 'package:kantahe/queue/queue_screen.dart';
 
+import '../tv/ring_helper.dart';
 import 'fakes.dart';
 
 Future<QueueRig> open(WidgetTester tester, {State? state, bool connected = true, WidgetBuilder? playerBuilder}) async {
@@ -209,6 +211,74 @@ void main() {
       await tester.tap(find.text('Play here'));
       await tester.pumpAndSettle();
       expect(rig.server.controls, [ControlAction.CONTROL_ACTION_PLAY_HERE]);
+    });
+  });
+
+  group('snack bar and focus', () {
+    State manySongs() => stateOf(queue: [for (var i = 1; i <= 14; i++) item('i$i', song(i.toString().padLeft(5, '0'), 'Song $i', 'Artist'))]);
+
+    Future<void> removeFirstWithTheRemote(WidgetTester tester) async {
+      focusNodeInside(tester, find.byTooltip('Remove Song 1 from the queue')).requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await settle(tester);
+      await tester.pump(const Duration(milliseconds: 500)); // the bar slides in
+      await tester.pump();
+      expect(find.byType(SnackBar), findsOneWidget);
+    }
+
+    double barTop(WidgetTester tester) => tester.getTopLeft(find.byType(SnackBar)).dy;
+
+    testWidgets('REGRESSION: moving the focus down never leaves it under the snack bar', (tester) async {
+      await open(tester, state: manySongs());
+      await removeFirstWithTheRemote(tester);
+      var last = FocusManager.instance.primaryFocus;
+      var moved = 0;
+      var reachedUndo = false;
+      for (var i = 0; i < 40; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300)); // the list scrolls to the focus
+        final now = FocusManager.instance.primaryFocus;
+        if (identical(now, last)) break;
+        last = now;
+        moved++;
+        if (now!.rect.top >= barTop(tester) - 0.5) {
+          reachedUndo = true; // the last row hands the focus on to the Undo button of the bar itself
+          break;
+        }
+        expect(now.rect.bottom, lessThanOrEqualTo(barTop(tester) + 0.5), reason: 'step $i: the focused control is covered by the snack bar');
+      }
+      expect(moved, greaterThan(10), reason: 'the focus walked down the list');
+      expect(reachedUndo, isTrue, reason: 'and from the last row on to Undo');
+    });
+
+    testWidgets('the control that had the focus when the bar appeared is scrolled above it', (tester) async {
+      await open(tester, state: manySongs());
+      // put the focus on a row at the bottom edge of the list, then show a bar
+      focusNodeInside(tester, find.byTooltip('Remove Song 1 from the queue')).requestFocus();
+      await tester.pump();
+      for (var i = 0; i < 6; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+      await tester.sendKeyEvent(LogicalKeyboardKey.select); // removes the focused row's song (or moves it): a bar shows either way
+      await settle(tester);
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(FocusManager.instance.primaryFocus!.rect.bottom, lessThanOrEqualTo(barTop(tester) + 0.5));
+    });
+
+    testWidgets('once the bar is gone the list gets its room back', (tester) async {
+      await open(tester, state: manySongs());
+      await removeFirstWithTheRemote(tester);
+      await tester.pump(const Duration(seconds: 9));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump();
+      expect(find.byType(SnackBar), findsNothing);
+      final listBottom = tester.getBottomLeft(find.byType(ListView)).dy;
+      expect(listBottom, tester.getSize(find.byType(Scaffold).first).height, reason: 'the list reaches the bottom of the screen again');
     });
   });
 }

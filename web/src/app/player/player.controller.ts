@@ -20,6 +20,13 @@ const SKIP_AFTER_ERROR_MS = 3000;
 const MAX_AUTO_SKIPS = 3;
 const LOW_POWER: MidiOptions = { sampleRate: 22050, voiceCap: 32, effects: false };
 const FULL_POWER: MidiOptions = { effects: true };
+/** The volume buttons move the volume by this many percent, between 0 and MAX_VOLUME. */
+const VOLUME_STEP = 5;
+const MAX_VOLUME = 200;
+/** The pause after the last press of a volume button before it is sent (as on Me > My devices). */
+const VOLUME_PAUSE_MS = 300;
+
+type VolumeKind = 'mp3' | 'midi';
 
 export type PlayerPhase = 'idle' | 'preparing' | 'loading' | 'ready' | 'error';
 
@@ -63,6 +70,17 @@ export class PlayerController implements OnDestroy {
     return this.state()?.devices.find((d) => d.id === id)?.name ?? '';
   });
 
+  /** Volumes chosen with the buttons here, shown and applied at once; dropped when the server's state shows them or refuses them. */
+  private readonly moved = signal<Partial<Record<VolumeKind, number>>>({});
+  private readonly volumeTimers = new Map<VolumeKind, ReturnType<typeof setTimeout>>();
+  /** The volume the buttons change: the MIDI volume for a MIDI song (also when the server rendered it), else the MP3 volume; none when no song is current. */
+  readonly volume = computed<{ kind: VolumeKind; pct: number } | undefined>(() => {
+    const song = this.state()?.now?.song;
+    if (!song) return undefined;
+    const kind: VolumeKind = song.format === Format.MIDI ? 'midi' : 'mp3';
+    return { kind, pct: this.volumePct(kind) };
+  });
+
   private engine?: Engine;
   private number?: string;
   private generation = 0;
@@ -100,6 +118,21 @@ export class PlayerController implements OnDestroy {
       untracked(() => this.follow(player, now));
     });
     effect(() => {
+      // the device's volume changed (from any device): the song that plays gets it at once
+      const factor = this.volumeFactor(this.playback());
+      untracked(() => this.engine?.setVolume(factor));
+    });
+    effect(() => {
+      // the server's state shows what the buttons chose: from now on the state is the truth (another device may change it)
+      const live = { mp3: this.livePct('mp3'), midi: this.livePct('midi') };
+      untracked(() => {
+        const m = this.moved();
+        for (const kind of ['mp3', 'midi'] as const) {
+          if (m[kind] !== undefined && m[kind] === live[kind]) this.moved.update((all) => ({ ...all, [kind]: undefined }));
+        }
+      });
+    });
+    effect(() => {
       const playing = this.playing();
       this.loaded();
       untracked(() => this.applyStatus(playing));
@@ -113,6 +146,7 @@ export class PlayerController implements OnDestroy {
 
   ngOnDestroy(): void {
     document.removeEventListener('visibilitychange', this.onVisibility);
+    for (const t of this.volumeTimers.values()) clearTimeout(t);
     this.stop();
     this.mic.dispose();
   }
@@ -242,6 +276,7 @@ export class PlayerController implements OnDestroy {
     }
     this.phase.set('loading');
     const engine = this.makeEngine(playback);
+    engine.setVolume(this.volumeFactor(playback)); // before the song loads: an MP3 then asks for its media with CORS when it needs a gain node
     this.engine = engine; // from here on stop() can dispose it, even while it loads
     try {
       await engine.load(playback);
@@ -273,6 +308,53 @@ export class PlayerController implements OnDestroy {
     this.phase.set('ready');
     this.loaded.set(true);
     this.applyStatus(this.playing());
+  }
+
+  /**
+   * How loud this device plays the song: the MIDI volume for a MIDI song (also when the server rendered it to audio), else the MP3 volume, in
+   * percent of the song's own level, times the song's measured gain. A server that sends none (older) means 100 and no gain.
+   */
+  private volumeFactor(playback: Playback | undefined): number {
+    const format = playback?.song?.format ?? this.state()?.now?.song?.format;
+    // the device's own level, and the gain the server measured to bring this song to the common loudness (dB; absent: none known)
+    return (this.volumePct(format === Format.MIDI ? 'midi' : 'mp3') / 100) * 10 ** ((playback?.gainDb ?? 0) / 20);
+  }
+
+  /** This device's volume of the kind in percent: what the buttons just chose, else the state, else 100 (an older server sends none). */
+  private volumePct(kind: VolumeKind): number {
+    return this.moved()[kind] ?? this.livePct(kind) ?? 100;
+  }
+
+  private livePct(kind: VolumeKind): number | undefined {
+    const mine = this.state()?.devices.find((d) => d.id === this.auth.deviceId());
+    return kind === 'midi' ? mine?.midiVolumePct : mine?.mp3VolumePct;
+  }
+
+  /** The volume buttons: one step up or down for the song that is current; shown at once, sent after a short pause. */
+  changeVolume(direction: 1 | -1): void {
+    const v = this.volume();
+    if (!v) return;
+    const pct = Math.min(MAX_VOLUME, Math.max(0, v.pct + direction * VOLUME_STEP));
+    if (pct === v.pct) return;
+    this.moved.update((m) => ({ ...m, [v.kind]: pct }));
+    clearTimeout(this.volumeTimers.get(v.kind));
+    this.volumeTimers.set(
+      v.kind,
+      setTimeout(() => void this.sendVolume(v.kind, pct), VOLUME_PAUSE_MS),
+    );
+  }
+
+  private async sendVolume(kind: VolumeKind, pct: number): Promise<void> {
+    this.volumeTimers.delete(kind);
+    const deviceId = this.auth.deviceId();
+    if (!deviceId) return;
+    try {
+      await this.session.setVolume(kind === 'mp3' ? { deviceId, mp3Pct: pct } : { deviceId, midiPct: pct });
+      // accepted: the state that follows shows it, and then the chosen value is dropped (see the effect in the constructor)
+    } catch (e) {
+      if (this.moved()[kind] === pct) this.moved.update((m) => ({ ...m, [kind]: undefined }));
+      this.toast.show(problem(e, {}), 'error');
+    }
   }
 
   private makeEngine(playback: Playback): Engine {

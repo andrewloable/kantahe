@@ -36,6 +36,8 @@ service SessionService {
   rpc SetMidiMode(SetMidiModeRequest) returns (SetMidiModeResponse);
   // Signed-in user. Sets the background video mode of one of the caller's devices; NOT_FOUND for another user's device.
   rpc SetBackgroundMode(SetBackgroundModeRequest) returns (SetBackgroundModeResponse);
+  // Signed-in user. Sets how loud one of the caller's devices plays MP3 songs and MIDI songs (percent, 0 to 200; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field.
+  rpc SetVolume(SetVolumeRequest) returns (SetVolumeResponse);
 }
 
 // Whether the current song is playing or paused.
@@ -212,6 +214,18 @@ message SetBackgroundModeRequest {
 
 // The device after the change.
 message SetBackgroundModeResponse {
+  Device device = 1;
+}
+
+// The device and the volumes to set; a field that is not given is left as it is.
+message SetVolumeRequest {
+  string device_id = 1;
+  optional int32 mp3_pct = 2;
+  optional int32 midi_pct = 3;
+}
+
+// The device after the change.
+message SetVolumeResponse {
   Device device = 1;
 }
 

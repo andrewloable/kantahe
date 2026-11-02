@@ -67,6 +67,11 @@ touch the screen or press a key and they come back. **Full screen** (where the b
 screen. **Back to Kantahe** returns to the library (and **Admin** to the admin pages, for administrators); leaving the
 player pauses the song if this device was playing it.
 
+**Volume down** and **Volume up** change how loud this device plays the song that is on: the *MIDI songs* volume for a MIDI
+song, the *MP3 songs* volume for an MP3 song, in steps of 5 percent from 0 to 200 (100 is the song's own level). The words
+beside the buttons say which one it is. The Android, iOS and TV app have the same two buttons next to Skip (on a TV the remote reaches them like the
+others). It is the same setting as *Me → Devices*, so it is kept for this device.
+
 If the admin has added background videos, they play behind the lyrics, one after another and round again, without a gap, also
 while nothing is playing and while the score shows; a paused song pauses them. They are **pictures only: no sound ever comes
 from them.** The lyrics are on a dark layer over the picture so that they stay easy to read. Each device has a *Background
@@ -130,6 +135,11 @@ another device is the player) fade out after four seconds while a song plays; pr
 back. *Close* leaves the player for the Library, Queue and Me; the player is opened again the next time the app starts, or
 with *Open player* on the Queue page. In a text box the arrow keys move the cursor, and Up and Down (or Left at the start,
 Right at the end) move on to the next control. *Me → Appearance* chooses *Auto (system)*, *Light* or *Dark*.
+
+**Background videos on the Android TV.** The picture plays behind the lyrics like on any other screen, and nothing but the song is
+heard. On a TV that reaches your server over plain `http://` the page cannot run the MIDI synthesizer, so the server renders MIDI songs
+and the device counts as using a lighter sound mode: under *Auto* it then shows **no** video. Choose *Me → My devices → Background video →
+On* for that TV to see them. One Sony Android TV (3 GB) played 1080p and 720p loops for ten minutes next to MIDI and MP3 songs without trouble.
 
 ## When something is wrong
 

@@ -127,9 +127,33 @@ test.describe('tightTargets', () => {
   test('two 44 px buttons 8 px apart are clean', async ({ page }) => {
     expect(of(await run(page, two(8)), 'tightTargets')).toHaveLength(0);
   });
-  test('7 px apart is reported, buttons that touch are one group and clean', async ({ page }) => {
+  test('7 px apart is reported', async ({ page }) => {
     expect(of(await run(page, two(7)), 'tightTargets')).toHaveLength(1);
-    expect(of(await run(page, two(0)), 'tightTargets')).toHaveLength(0);
+  });
+  test('REGRESSION: buttons that touch are reported (a pair with no space between them is a defect, not a group)', async ({ page }) => {
+    const touching = of(await run(page, two(0)), 'tightTargets');
+    expect(touching).toHaveLength(1);
+    expect(touching[0].detail).toContain('0 px apart');
+  });
+  test('REGRESSION: a gap under half a pixel is reported too', async ({ page }) => {
+    expect(of(await run(page, two(0.3)), 'tightTargets')).toHaveLength(1);
+  });
+  test('REGRESSION: stacked buttons that touch are reported', async ({ page }) => {
+    expect(of(await run(page, button(44, 44, 0, 0, 'A') + button(44, 44, 0, 44, 'B')), 'tightTargets')).toHaveLength(1);
+  });
+  test('touching links with no fill and no border (a row of text links under a title) are clean', async ({ page }) => {
+    const link = (top: number) => `<a href="#x" style="position:absolute;left:0;top:${top}px;width:90px;height:44px;display:block">link</a>`;
+    expect(of(await run(page, link(0) + link(44)), 'tightTargets')).toHaveLength(0);
+  });
+  test('REGRESSION: touching controls with a border but no fill are reported', async ({ page }) => {
+    const box = (left: number) => `<button style="position:absolute;left:${left}px;top:0;width:44px;height:44px;background:transparent;border:2px solid #000">x</button>`;
+    expect(of(await run(page, box(0) + box(44)), 'tightTargets')).toHaveLength(1);
+  });
+  test('a box that touches a plain link is clean (only boxes against boxes look joined)', async ({ page }) => {
+    expect(of(await run(page, button(44, 44, 0, 0, 'A') + '<a href="#x" style="position:absolute;left:44px;top:0;width:44px;height:44px;display:block">l</a>'), 'tightTargets')).toHaveLength(0);
+  });
+  test('buttons that overlap in both directions by more than half a pixel are not this check (they are not side by side)', async ({ page }) => {
+    expect(of(await run(page, button(44, 44, 0, 0, 'A') + button(44, 44, 40, 40, 'B')), 'tightTargets')).toHaveLength(0);
   });
   test('one above the other counts too', async ({ page }) => {
     expect(of(await run(page, button(44, 44, 0, 0, 'A') + button(44, 44, 0, 48, 'B')), 'tightTargets')).toHaveLength(1);
@@ -143,7 +167,7 @@ test.describe('controls behind a modal dialog', () => {
   const page2 = (dialog: boolean) =>
     button(44, 44, 0, 0, 'A') + button(44, 44, 46, 0, 'B') +
     (dialog
-      ? '<div style="position:fixed;inset:0;background:#0006"></div><div role="dialog" aria-modal="true" style="position:fixed;left:100px;top:200px;width:250px;background:#fff"><input style="height:44px;width:200px"><button style="width:30px;height:30px">x</button></div>'
+      ? '<div style="position:fixed;inset:0;background:#0006"></div><div role="dialog" aria-modal="true" style="position:fixed;left:100px;top:200px;width:250px;background:#fff"><input style="height:44px;width:200px"><button style="width:30px;height:30px;margin-left:8px">x</button></div>'
       : '');
   test('two buttons 2 px apart are reported without a dialog', async ({ page }) => {
     expect(of(await run(page, page2(false)), 'tightTargets')).toHaveLength(1);

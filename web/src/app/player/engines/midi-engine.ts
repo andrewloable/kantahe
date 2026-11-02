@@ -19,8 +19,14 @@ interface SequencerLike {
   skipToFirstNoteOn: boolean;
 }
 
+interface GainLike {
+  gain: { value: number };
+  connect(node: unknown): unknown;
+}
+
 interface ContextLike {
   state: string;
+  createGain(): GainLike;
   currentTime: number;
   destination: unknown;
   audioWorklet: { addModule(url: string): Promise<void> };
@@ -61,6 +67,8 @@ export class MidiEngine implements Engine {
   private ctx?: ContextLike;
   private synth?: SynthLike;
   private seq?: SequencerLike;
+  private gain?: GainLike;
+  private factor = 1;
   private ended?: () => void;
   private disposed = false;
   private wantPlay = false;
@@ -84,7 +92,12 @@ export class MidiEngine implements Engine {
       this.assertAlive();
       const synth = new lib.WorkletSynthesizer(ctx);
       this.synth = synth;
-      synth.connect(ctx.destination);
+      // through a gain node: the volume of MIDI songs
+      const gain = ctx.createGain();
+      gain.gain.value = this.factor;
+      synth.connect(gain);
+      gain.connect(ctx.destination);
+      this.gain = gain;
       await synth.soundBankManager.addSoundBank(soundFont, 'main');
       await synth.isReady;
       this.assertAlive();
@@ -127,6 +140,11 @@ export class MidiEngine implements Engine {
   pause(): void {
     this.wantPlay = false;
     this.seq?.pause();
+  }
+
+  setVolume(factor: number): void {
+    this.factor = factor;
+    if (this.gain) this.gain.gain.value = factor;
   }
 
   seek(ms: number): void {

@@ -39,6 +39,8 @@ abstract class AdminServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $1.DeleteSongRequest request);
   $async.Future<$1.RemoveSongsResponse> removeSongs(
       $pb.ServerContext ctx, $1.RemoveSongsRequest request);
+  $async.Future<$1.RemoveSelectedSongsResponse> removeSelectedSongs(
+      $pb.ServerContext ctx, $1.RemoveSelectedSongsRequest request);
   $async.Future<$1.CheckLibraryResponse> checkLibrary(
       $pb.ServerContext ctx, $1.CheckLibraryRequest request);
   $async.Future<$1.ListBrokenSongsResponse> listBrokenSongs(
@@ -78,6 +80,8 @@ abstract class AdminServiceBase extends $pb.GeneratedService {
         return $1.DeleteSongRequest();
       case 'RemoveSongs':
         return $1.RemoveSongsRequest();
+      case 'RemoveSelectedSongs':
+        return $1.RemoveSelectedSongsRequest();
       case 'CheckLibrary':
         return $1.CheckLibraryRequest();
       case 'ListBrokenSongs':
@@ -122,6 +126,9 @@ abstract class AdminServiceBase extends $pb.GeneratedService {
         return deleteSong(ctx, request as $1.DeleteSongRequest);
       case 'RemoveSongs':
         return removeSongs(ctx, request as $1.RemoveSongsRequest);
+      case 'RemoveSelectedSongs':
+        return removeSelectedSongs(
+            ctx, request as $1.RemoveSelectedSongsRequest);
       case 'CheckLibrary':
         return checkLibrary(ctx, request as $1.CheckLibraryRequest);
       case 'ListBrokenSongs':

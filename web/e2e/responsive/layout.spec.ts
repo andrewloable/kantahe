@@ -527,3 +527,50 @@ test('/admin/songs edit-dialog: the dialog does not chain its scrolling to the p
     expect(await page.getByRole('dialog').evaluate((el) => getComputedStyle(el).overscrollBehaviorY)).toBe('contain');
   });
 });
+
+// kantahe-dk8.68: buttons with no space between them (a touching pair of boxes is a defect, the audit's tightTargets check now says so)
+for (const viewport of ['phone-390x844', 'phone-320x568', 'desktop-1280x800']) {
+  test(`/admin/songs edit-dialog: Save and Cancel are at least 8 px apart and the hint has room above them at ${viewport}`, async ({ browser }, info) => {
+    await layout(browser, info, '/admin/songs:edit-dialog', viewport, async (raw, page) => {
+      none(raw, 'tightTargets', 'div.dialog');
+      const hint = await page.locator('.dialog p.hint').boundingBox();
+      const save = await page.getByRole('button', { name: 'Save', exact: true }).boundingBox();
+      expect(save!.y - (hint!.y + hint!.height), 'room between the hint and the buttons').toBeGreaterThanOrEqual(8);
+    });
+  });
+
+  test(`/player playing: the volume buttons and the other controls are at least 8 px apart at ${viewport}`, async ({ browser }, info) => {
+    none(await layout(browser, info, '/player:playing', viewport, (r) => r), 'tightTargets', '.controls');
+  });
+
+  test(`/admin/users temp-password: Copy and Close are at least 8 px apart at ${viewport}`, async ({ browser }, info) => {
+    none(await layout(browser, info, '/admin/users:temp-password', viewport, (r) => r), 'tightTargets', 'section.panel');
+  });
+
+  test(`/admin/users many: the Generate button is at least 8 px from the password box at ${viewport}`, async ({ browser }, info) => {
+    none(await layout(browser, info, '/admin/users:many', viewport, (r) => r), 'tightTargets', 'new-password');
+  });
+
+  test(`/me/playlists rename: the name box, Save and Cancel are at least 8 px apart at ${viewport}`, async ({ browser }, info) => {
+    none(await layout(browser, info, '/me/playlists:rename', viewport, (r) => r), 'tightTargets', 'span.edit');
+  });
+
+  test(`/me/playlists delete-question: Yes, delete and Cancel are at least 8 px apart at ${viewport}`, async ({ browser }, info) => {
+    none(await layout(browser, info, '/me/playlists:delete-question', viewport, (r) => r), 'tightTargets', 'span.ask');
+  });
+}
+
+// kantahe-b16: the checkboxes and the bar of the chosen songs
+for (const viewport of ['phone-390x844', 'phone-320x568', 'desktop-1280x800']) {
+  test(`/admin/songs selected: the checkboxes are at least 44 px and nothing in the bar or the rows touches at ${viewport}`, async ({ browser }, info) => {
+    const raw = await layout(browser, info, '/admin/songs:selected', viewport, (r) => r);
+    none(raw, 'smallTargets', 'input');
+    none(raw, 'tightTargets', 'section.selection');
+    none(raw, 'tightTargets', 'tbody');
+    none(raw, 'horizontalOverflow');
+  });
+
+  test(`/admin/songs bulk-question: the question and its buttons are at least 8 px apart at ${viewport}`, async ({ browser }, info) => {
+    none(await layout(browser, info, '/admin/songs:bulk-question', viewport, (r) => r), 'tightTargets', 'section.selection');
+  });
+}

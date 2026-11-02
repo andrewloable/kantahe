@@ -111,6 +111,18 @@ func TestGetPlaybackServerMode(t *testing.T) {
 	if pb.RetryAfterMs != 0 {
 		t.Errorf("ready but RetryAfterMs = %d", pb.RetryAfterMs)
 	}
+	// the test SoundFont is silent: no gain. A measured one (the render service stores it with the file, see the render package) is sent.
+	if pb.GainDb != nil {
+		t.Errorf("a silent render has no gain: %v", *pb.GainDb)
+	}
+	base := strings.TrimSuffix(filepath.Base(r.renderedFiles()[0]), ".flac")
+	sha, tag, _ := strings.Cut(base, "-")
+	if _, err := r.db.Exec(`INSERT OR REPLACE INTO render_gain(sha256, tag, gain_db) VALUES (?, ?, 3.5)`, sha, tag); err != nil {
+		t.Fatal(err)
+	}
+	if pb = r.playback(t, r.admin.Token, n); pb.GainDb == nil || *pb.GainDb != 3.5 {
+		t.Errorf("REGRESSION: the gain of the ready render must be in GetPlayback: %v", pb.GainDb)
+	}
 	res, body := r.get(t, pb.AudioUrl)
 	if res.StatusCode != 200 || res.Header.Get("Content-Type") != "audio/flac" || !strings.HasPrefix(string(body), "fLaC") {
 		t.Fatalf("status %d type %q", res.StatusCode, res.Header.Get("Content-Type"))

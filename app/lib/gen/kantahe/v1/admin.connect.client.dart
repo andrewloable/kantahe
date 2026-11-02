@@ -171,6 +171,24 @@ extension type AdminServiceClient (connect.Transport _transport) {
     );
   }
 
+  /// Admin only. Takes the chosen songs off the list (at most 1000 numbers); with delete_files their files are deleted too (only inside the data and library folders). Numbers that are unknown or already removed are skipped.
+  Future<kantahev1admin.RemoveSelectedSongsResponse> removeSelectedSongs(
+    kantahev1admin.RemoveSelectedSongsRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.AdminService.removeSelectedSongs,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
   /// Admin only. Re-judges every live song (file missing, MIDI without music, unparsable, a .karmp3 whose audio cannot be read), marks the
   /// broken ones as failed (they leave every user's lists and searches) and clears the mark of repaired ones. Streams its progress; the
   /// last message has done = true. FAILED_PRECONDITION when a check is already running.

@@ -70,6 +70,184 @@ describe('PlayerController', () => {
     vi.useRealTimers();
   });
 
+  describe('volume of this device', () => {
+    const MP3_SONG = song('21628', 'Hello', 'Adele', Format.MP3);
+    const MIDI_SONG = song('21629', 'Skyfall', 'Adele', Format.MIDI);
+    const withVolumes = (mp3?: number, midi?: number, now = MP3_SONG): StateInit => ({
+      ...PLAYING,
+      devices: [device(ME, 'This browser', { isCaller: true, mp3VolumePct: mp3, midiVolumePct: midi }), device('tv', 'Living room TV')],
+      now: { song: now, positionMs: 0, positionAtMs: 1000 },
+    });
+
+    it('REGRESSION: an MP3 song plays at the MP3 volume of this device, set before the song loads', async () => {
+      const { fake, push } = setup();
+      await push(withVolumes(50, 150));
+      expect(fake.last().setVolume).toHaveBeenLastCalledWith(0.5);
+      expect(fake.last().setVolume.mock.invocationCallOrder[0]).toBeLessThan(fake.last().load.mock.invocationCallOrder[0]);
+    });
+
+    it('a MIDI song played by the browser synthesizer uses the MIDI volume', async () => {
+      const { server, fake, push } = setup();
+      server.handlers.playback = () => playbackOf({ song: MIDI_SONG });
+      await push(withVolumes(50, 150, MIDI_SONG));
+      expect(fake.created.map((c) => c.kind)).toEqual(['midi']);
+      expect(fake.last().setVolume).toHaveBeenLastCalledWith(1.5);
+    });
+
+    it('a MIDI song the server renders to audio (an audio engine) still uses the MIDI volume, not the MP3 one', async () => {
+      const { server, fake, push } = setup();
+      server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, mode: MidiMode.SERVER, audioUrl: '/media/rendered/21629?sig=r', song: MIDI_SONG });
+      await push(withVolumes(50, 150, MIDI_SONG));
+      expect(fake.created.map((c) => c.kind)).toEqual(['mp3']);
+      expect(fake.last().setVolume).toHaveBeenLastCalledWith(1.5);
+    });
+
+    it('a change in the state is applied to the song that plays, without loading it again', async () => {
+      const { fake, push } = setup();
+      await push(withVolumes(100, 100));
+      expect(fake.created).toHaveLength(1);
+      await push(withVolumes(30, 100));
+      expect(fake.created).toHaveLength(1);
+      expect(fake.last().load).toHaveBeenCalledTimes(1);
+      expect(fake.last().setVolume).toHaveBeenLastCalledWith(0.3);
+    });
+
+    it('REGRESSION: the gain the server measured for the song is added to the device volume (-6 dB is a factor of 0.501; 50 percent and -6 dB is half of that)', async () => {
+      const { server, fake, push } = setup();
+      server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21628?sig=a', song: MP3_SONG, gainDb: -6 });
+      await push(withVolumes(100, 100));
+      expect(fake.last().setVolume).toHaveBeenLastCalledWith(expect.closeTo(0.501, 3));
+      await push(withVolumes(50, 100));
+      expect(fake.last().setVolume).toHaveBeenLastCalledWith(expect.closeTo(0.2506, 3));
+    });
+
+    it('a quiet song is boosted: +6 dB is a factor of 1.995', async () => {
+      const { server, fake, push } = setup();
+      server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21628?sig=a', song: MP3_SONG, gainDb: 6 });
+      await push(withVolumes(100, 100));
+      expect(fake.last().setVolume).toHaveBeenLastCalledWith(expect.closeTo(1.995, 3));
+    });
+
+    it('a song with no gain from the server plays at the device volume alone', async () => {
+      const { server, fake, push } = setup();
+      server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21628?sig=a', song: MP3_SONG });
+      await push(withVolumes(80, 100));
+      expect(fake.last().setVolume).toHaveBeenLastCalledWith(0.8);
+    });
+
+    it('a server that sends no volumes (older) means 100 percent, and 0 percent is silence', async () => {
+      const { fake, push } = setup();
+      await push(withVolumes(undefined, undefined));
+      expect(fake.last().setVolume).toHaveBeenLastCalledWith(1);
+      await push(withVolumes(0, 100));
+      expect(fake.last().setVolume).toHaveBeenLastCalledWith(0);
+    });
+  });
+
+  describe('volume buttons of the player', () => {
+    const MP3_SONG = song('21628', 'Hello', 'Adele', Format.MP3);
+    const MIDI_SONG = song('21629', 'Skyfall', 'Adele', Format.MIDI);
+    const withVolumes = (mp3?: number, midi?: number, now: ReturnType<typeof song> | null = MP3_SONG): StateInit => ({
+      ...PLAYING,
+      devices: [device(ME, 'This browser', { isCaller: true, mp3VolumePct: mp3, midiVolumePct: midi }), device('tv', 'Living room TV')],
+      now: now ? { song: now, positionMs: 0, positionAtMs: 1000 } : undefined,
+    });
+
+    it('a MIDI song: +5 shows 105 at once, and after 300 ms one request with midiPct 105 and no mp3Pct', async () => {
+      const { server, push, player, flush } = setup();
+      await push(withVolumes(100, 100, MIDI_SONG));
+      expect(player.volume()).toEqual({ kind: 'midi', pct: 100 });
+      player.changeVolume(1);
+      expect(player.volume()).toEqual({ kind: 'midi', pct: 105 });
+      expect(server.calls.volume).toEqual([]);
+      await flush(300);
+      expect(server.calls.volume).toHaveLength(1);
+      expect(server.calls.volume[0].deviceId).toBe(ME);
+      expect(server.calls.volume[0].midiPct).toBe(105);
+      expect(server.calls.volume[0].mp3Pct).toBeUndefined();
+    });
+
+    it('an MP3 song: two steps down within the pause make ONE request with mp3Pct 40', async () => {
+      const { server, push, player, flush } = setup();
+      await push(withVolumes(50, 100));
+      player.changeVolume(-1);
+      await flush(100);
+      player.changeVolume(-1);
+      await flush(299);
+      expect(server.calls.volume).toEqual([]);
+      await flush(10);
+      expect(server.calls.volume).toHaveLength(1);
+      expect(server.calls.volume[0].mp3Pct).toBe(40);
+      expect(server.calls.volume[0].midiPct).toBeUndefined();
+    });
+
+    it('the playing song gets the new level at once, before the server is asked', async () => {
+      const { fake, push, player, flush } = setup();
+      await push(withVolumes(100, 100));
+      player.changeVolume(1);
+      await flush(0);
+      expect(fake.last().setVolume).toHaveBeenLastCalledWith(1.05);
+    });
+
+    it('stops at 200 and at 0, and sends nothing when the value did not change', async () => {
+      const { server, push, player, flush } = setup();
+      await push(withVolumes(200, 0));
+      player.changeVolume(1);
+      await flush(400);
+      expect(player.volume()?.pct).toBe(200);
+      await push(withVolumes(200, 0, MIDI_SONG));
+      player.changeVolume(-1);
+      await flush(400);
+      expect(player.volume()).toEqual({ kind: 'midi', pct: 0 });
+      expect(server.calls.volume).toEqual([]);
+    });
+
+    it('a server that sends no volumes (older) starts at 100', async () => {
+      const { push, player } = setup();
+      await push(withVolumes(undefined, undefined));
+      expect(player.volume()).toEqual({ kind: 'mp3', pct: 100 });
+    });
+
+    it('REGRESSION: a refused request puts the old value back and shows an error', async () => {
+      const { server, push, player, flush } = setup();
+      server.handlers.setVolume = () => {
+        throw new ConnectError('no', Code.PermissionDenied);
+      };
+      await push(withVolumes(100, 100));
+      player.changeVolume(1);
+      await flush(400);
+      expect(server.calls.volume).toHaveLength(1);
+      expect(player.volume()?.pct).toBe(100);
+      expect(TestBed.inject(ToastService).toasts().some((t) => t.kind === 'error')).toBe(true);
+    });
+
+    it('nothing is current: there is no volume', async () => {
+      const { push, player } = setup();
+      await push(withVolumes(100, 100, null));
+      expect(player.volume()).toBeUndefined();
+      player.changeVolume(1);
+    });
+
+    it('a MIDI song the server rendered to audio still moves the MIDI volume', async () => {
+      const { server, push, player, flush } = setup();
+      server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, mode: MidiMode.SERVER, audioUrl: '/media/rendered/21629?sig=r', song: MIDI_SONG });
+      await push(withVolumes(50, 100, MIDI_SONG));
+      player.changeVolume(1);
+      await flush(400);
+      expect(server.calls.volume[0].midiPct).toBe(105);
+    });
+
+    it('a value the server later shows differently (another device changed it) is not hidden by the earlier step', async () => {
+      const { push, player, flush } = setup();
+      await push(withVolumes(100, 100));
+      player.changeVolume(1);
+      await flush(400);
+      await push(withVolumes(105, 100));
+      await push(withVolumes(60, 100));
+      expect(player.volume()?.pct).toBe(60);
+    });
+  });
+
   describe('when this device is the player', () => {
     it('loads the song, tells the server it is ready once, and plays', async () => {
       const { server, fake, push, player } = setup();

@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	connectrpc.com/connect v1.21.0
 	connectrpc.com/cors v0.1.0
+	github.com/hajimehoshi/go-mp3 v0.3.4
 	github.com/libp2p/zeroconf/v2 v2.2.0
 	github.com/mewkiz/flac v1.0.14
 	github.com/rs/cors v1.11.1

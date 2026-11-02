@@ -10,8 +10,10 @@ let nextId = 1;
       <label [for]="id">Temporary password for {{ email() }}</label>
       <input [id]="id" type="text" readonly autocomplete="off" [value]="password()" (focus)="select($event)" />
       <p>This password is shown only now. Give it to the user; they must change it when they first sign in.</p>
-      <button type="button" (click)="copy()">Copy</button>
-      <button type="button" (click)="closed.emit()">Close</button>
+      <div class="buttons">
+        <button type="button" (click)="copy()">Copy</button>
+        <button type="button" (click)="closed.emit()">Close</button>
+      </div>
       <p role="status">{{ message() }}</p>
     </section>
   `,
@@ -21,6 +23,11 @@ let nextId = 1;
       padding: 1rem;
       border: 2px solid var(--sung);
       border-radius: 0.5rem;
+    }
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
     }
     input {
       width: 100%;

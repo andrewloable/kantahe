@@ -15,40 +15,23 @@ webdist=server/internal/webui/dist
 fontdir=server/internal/assets/soundfont
 
 sha256() { if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
-lock() { sed -n "s/^$1=//p" scripts/soundfont.lock; }
 
+# a developer's own copy (from go generate) is not ours to delete
+had_font=$(find "$fontdir" -maxdepth 1 -name '*.sf2' | head -1)
 placeholder=$(mktemp)
 grep -q 'Web app not built' "$webdist/index.html" ||
   { echo "build-release: $webdist/index.html is not the placeholder page; put it back first" >&2; exit 1; }
 cp "$webdist/index.html" "$placeholder"
 clean() {
   find "$webdist" -mindepth 1 -not -name .gitkeep -delete
-  find "$fontdir" -mindepth 1 -name '*.sf2' -delete
+  [ -n "$had_font" ] || find "$fontdir" -mindepth 1 -name '*.sf2' -delete
   cp "$placeholder" "$webdist/index.html"
   rm -f "$placeholder"
 }
 trap clean EXIT
 
 echo "== SoundFont"
-want=$(lock SHA256)
-cache=${XDG_CACHE_HOME:-$HOME/.cache}/kantahe-build
-mkdir -p "$cache"
-font=$cache/GeneralUser-GS-$want.sf2
-got=
-[ -f "$font" ] && got=$(sha256 "$font" | cut -d' ' -f1)
-if [ "$got" != "$want" ]; then
-  # one network blip must not fail a release: retry 3 times (BUILD_RELEASE_RETRY_DELAY seconds apart, 5 by default; the
-  # tests set 1; 0 would mean curl's own backoff), also on connection errors, and never wait more than 5 minutes for the file. The checksum below is checked as ever
-  curl -fsSL --retry 3 --retry-delay "${BUILD_RELEASE_RETRY_DELAY:-5}" --retry-all-errors --max-time 300 -o "$font.part" "$(lock URL)"
-  got=$(sha256 "$font.part" | cut -d' ' -f1)
-  if [ "$got" != "$want" ]; then
-    rm -f "$font.part"
-    echo "build-release: SoundFont checksum mismatch (got $got, want $want)" >&2
-    exit 1
-  fi
-  mv "$font.part" "$font"
-fi
-cp "$font" "$fontdir/GeneralUser-GS.sf2"
+scripts/fetch-soundfont.sh "$fontdir"
 
 echo "== web app"
 (cd web && npm ci && npx ng build)

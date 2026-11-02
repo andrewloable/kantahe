@@ -83,6 +83,14 @@ abstract final class AdminService {
     kantahev1admin.RemoveSongsResponse.new,
   );
 
+  /// Admin only. Takes the chosen songs off the list (at most 1000 numbers); with delete_files their files are deleted too (only inside the data and library folders). Numbers that are unknown or already removed are skipped.
+  static const removeSelectedSongs = connect.Spec(
+    '/$name/RemoveSelectedSongs',
+    connect.StreamType.unary,
+    kantahev1admin.RemoveSelectedSongsRequest.new,
+    kantahev1admin.RemoveSelectedSongsResponse.new,
+  );
+
   /// Admin only. Re-judges every live song (file missing, MIDI without music, unparsable, a .karmp3 whose audio cannot be read), marks the
   /// broken ones as failed (they leave every user's lists and searches) and clears the mark of repaired ones. Streams its progress; the
   /// last message has done = true. FAILED_PRECONDITION when a check is already running.

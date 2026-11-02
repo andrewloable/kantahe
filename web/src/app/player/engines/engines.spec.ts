@@ -96,10 +96,152 @@ describe('Mp3Engine', () => {
     expect(ended).not.toHaveBeenCalled();
     engine.dispose(); // twice is fine
   });
+  describe('volume', () => {
+    class FakeNode {
+      gain = { value: 1 };
+      connect = vi.fn();
+    }
+    class FakeAudioContext {
+      state = 'running';
+      destination = {};
+      nodes: FakeNode[] = [];
+      sources: { el: unknown; connect: ReturnType<typeof vi.fn> }[] = [];
+      createGain = vi.fn(() => {
+        const n = new FakeNode();
+        this.nodes.push(n);
+        return n;
+      });
+      createMediaElementSource = vi.fn((el: unknown) => {
+        const src = { el, connect: vi.fn() };
+        this.sources.push(src);
+        return src;
+      });
+      resume = vi.fn().mockResolvedValue(undefined);
+      close = vi.fn().mockResolvedValue(undefined);
+    }
+    function withContext() {
+      const ctx = new FakeAudioContext();
+      const made = vi.fn(() => ctx as never);
+      const audio = document.createElement('audio');
+      audio.play = vi.fn().mockResolvedValue(undefined);
+      audio.pause = vi.fn();
+      audio.load = vi.fn();
+      const engine = new Mp3Engine(BASE, audio, made);
+      const playback = create(PlaybackSchema, { kind: PlaybackKind.AUDIO, audioUrl: '/media/song/1052?exp=9&sig=zz', ready: true });
+      const loaded = async () => {
+        const p = engine.load(playback);
+        audio.dispatchEvent(new Event('canplay'));
+        await p;
+      };
+      return { ctx, made, audio, engine, playback, loaded };
+    }
+
+    it('REGRESSION: an MP3 song at 50 percent plays through a gain node of 0.5 (the media element feeds the context, the gain feeds the speakers)', async () => {
+      const { ctx, audio, engine, loaded } = withContext();
+      engine.setVolume(0.5);
+      await loaded();
+      expect(ctx.sources).toHaveLength(1);
+      expect(ctx.sources[0].el).toBe(audio);
+      expect(ctx.nodes).toHaveLength(1);
+      expect(ctx.nodes[0].gain.value).toBe(0.5);
+      expect(ctx.sources[0].connect).toHaveBeenCalledWith(ctx.nodes[0]);
+      expect(ctx.nodes[0].connect).toHaveBeenCalledWith(ctx.destination);
+      expect(audio.crossOrigin, 'the media may come from another origin: the context needs it to be readable').toBe('anonymous');
+    });
+
+    it('at 100 percent nothing is created: the element plays as before', async () => {
+      const { made, audio, engine, loaded } = withContext();
+      engine.setVolume(1);
+      await loaded();
+      expect(made).not.toHaveBeenCalled();
+      expect(audio.crossOrigin).toBeNull();
+    });
+
+    it('a change while the song plays sets the gain of the same node', async () => {
+      const { ctx, engine, loaded } = withContext();
+      engine.setVolume(0.5);
+      await loaded();
+      engine.setVolume(1.5);
+      expect(ctx.nodes).toHaveLength(1);
+      expect(ctx.nodes[0].gain.value).toBe(1.5);
+      engine.setVolume(1);
+      expect(ctx.nodes[0].gain.value).toBe(1);
+    });
+
+    it('a change from 100 percent in the middle of a same-origin song builds the gain node then', async () => {
+      const { ctx, audio, engine, loaded } = withContext();
+      await loaded();
+      Object.defineProperty(audio, 'src', { value: `${location.origin}/media/song/1`, configurable: true });
+      engine.setVolume(0.8);
+      expect(ctx.nodes).toHaveLength(1);
+      expect(ctx.nodes[0].gain.value).toBe(0.8);
+    });
+
+    it('a change in the middle of a song from another origin, loaded without CORS, only lowers the element: a context would play silence', async () => {
+      const { ctx, audio, engine, loaded } = withContext();
+      await loaded();
+      engine.setVolume(0.5);
+      expect(ctx.nodes).toHaveLength(0);
+      expect(audio.volume).toBe(0.5);
+      engine.setVolume(1.5);
+      expect(audio.volume, 'a boost is not possible without the context').toBe(1);
+    });
+
+    it('without an AudioContext 50 percent sets the element volume and 150 percent leaves it at the top', async () => {
+      const audio = document.createElement('audio');
+      audio.play = vi.fn().mockResolvedValue(undefined);
+      audio.load = vi.fn();
+      const engine = new Mp3Engine(BASE, audio, () => undefined);
+      engine.setVolume(0.5);
+      expect(audio.volume).toBe(0.5);
+      engine.setVolume(1.5);
+      expect(audio.volume).toBe(1);
+    });
+
+    it('play resumes a context that is not running, and a context that stays suspended asks for a tap', async () => {
+      const { ctx, engine, loaded } = withContext();
+      engine.setVolume(0.5);
+      await loaded();
+      ctx.state = 'suspended';
+      ctx.resume = vi.fn().mockImplementation(async () => {
+        ctx.state = 'running';
+      });
+      await engine.play();
+      expect(ctx.resume).toHaveBeenCalled();
+      ctx.state = 'suspended';
+      ctx.resume = vi.fn().mockResolvedValue(undefined); // the browser does not let it start
+      vi.useFakeTimers();
+      const refused = engine.play();
+      const check = expect(refused).rejects.toMatchObject({ name: 'NotAllowedError' });
+      await vi.advanceTimersByTimeAsync(2000);
+      await check;
+      vi.useRealTimers();
+    });
+
+    it('dispose closes the context once, a second dispose is safe', async () => {
+      const { ctx, engine, loaded } = withContext();
+      engine.setVolume(0.5);
+      await loaded();
+      engine.dispose();
+      engine.dispose();
+      expect(ctx.close).toHaveBeenCalledTimes(1);
+    });
+  });
 });
+
+class FakeGain {
+  gain = { value: 1 };
+  connect = vi.fn();
+}
 
 class FakeContext {
   state = 'running';
+  gains: FakeGain[] = [];
+  createGain = () => {
+    const g = new FakeGain();
+    this.gains.push(g);
+    return g;
+  };
   sampleRate: number | undefined;
   currentTime = 0;
   destination = {};
@@ -172,7 +314,10 @@ describe('MidiEngine', () => {
     await m.engine.load(m.playback);
     expect(m.ctx.audioWorklet.addModule).toHaveBeenCalledWith('https://k.example/assets/spessasynth/spessasynth_processor.min.js');
     expect([...m.fetched].sort()).toEqual(['https://k.example/media/song/21628?exp=9&sig=m', 'https://k.example/media/soundfont/21628.sf2?exp=9&sig=s']);
-    expect(m.synth.connect).toHaveBeenCalledWith(m.ctx.destination);
+    // the synthesizer goes through a gain node (the volume of MIDI songs) to the speakers
+    expect(m.ctx.gains).toHaveLength(1);
+    expect(m.synth.connect).toHaveBeenCalledWith(m.ctx.gains[0]);
+    expect(m.ctx.gains[0].connect).toHaveBeenCalledWith(m.ctx.destination);
     expect(m.synth.soundBankManager.addSoundBank).toHaveBeenCalledTimes(1);
     const [bank, id] = m.synth.soundBankManager.addSoundBank.mock.calls[0];
     expect(new TextDecoder().decode(bank)).toBe('https://k.example/media/soundfont/21628.sf2?exp=9&sig=s');
@@ -308,5 +453,30 @@ describe('MidiEngine', () => {
       await m.engine.play();
       expect(m.seq.play).toHaveBeenCalled();
     });
+  });
+});
+
+describe('MidiEngine volume', () => {
+  it('REGRESSION: a volume of 150 percent set before the song loads is the gain of the node between the synth and the speakers', async () => {
+    const m = midiSetup({ effects: true });
+    m.engine.setVolume(1.5);
+    await m.engine.load(m.playback);
+    expect(m.ctx.gains[0].gain.value).toBe(1.5);
+  });
+
+  it('a change while the song plays sets the same gain node', async () => {
+    const m = midiSetup({ effects: true });
+    await m.engine.load(m.playback);
+    expect(m.ctx.gains[0].gain.value).toBe(1);
+    m.engine.setVolume(0.25);
+    expect(m.ctx.gains).toHaveLength(1);
+    expect(m.ctx.gains[0].gain.value).toBe(0.25);
+  });
+
+  it('a volume set before load and 0 percent: silence is a gain of 0, not a skipped node', async () => {
+    const m = midiSetup({ effects: true });
+    m.engine.setVolume(0);
+    await m.engine.load(m.playback);
+    expect(m.ctx.gains[0].gain.value).toBe(0);
   });
 });

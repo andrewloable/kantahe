@@ -549,6 +549,8 @@ class Device extends $pb.GeneratedMessage {
     $fixnum.Int64? lastSeenUnix,
     BackgroundMode? backgroundMode,
     $core.bool? effectiveBackground,
+    $core.int? mp3VolumePct,
+    $core.int? midiVolumePct,
   }) {
     final result = Device._();
     if (id != null) result.id = id;
@@ -564,6 +566,8 @@ class Device extends $pb.GeneratedMessage {
     if (backgroundMode != null) result.backgroundMode = backgroundMode;
     if (effectiveBackground != null)
       result.effectiveBackground = effectiveBackground;
+    if (mp3VolumePct != null) result.mp3VolumePct = mp3VolumePct;
+    if (midiVolumePct != null) result.midiVolumePct = midiVolumePct;
     return result;
   }
 
@@ -596,6 +600,8 @@ class Device extends $pb.GeneratedMessage {
     ..aE<BackgroundMode>(11, _omitFieldNames ? '' : 'backgroundMode',
         enumValues: BackgroundMode.values)
     ..aOB(12, _omitFieldNames ? '' : 'effectiveBackground')
+    ..aI(13, _omitFieldNames ? '' : 'mp3VolumePct')
+    ..aI(14, _omitFieldNames ? '' : 'midiVolumePct')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -727,6 +733,26 @@ class Device extends $pb.GeneratedMessage {
   $core.bool hasEffectiveBackground() => $_has(11);
   @$pb.TagNumber(12)
   void clearEffectiveBackground() => $_clearField(12);
+
+  /// How loud this device plays MP3 songs and MIDI songs (a MIDI song also when the server renders it to audio), in percent: 0 to 200, 100 by default.
+  /// optional: a client talking to an older server sees no value and plays at 100.
+  @$pb.TagNumber(13)
+  $core.int get mp3VolumePct => $_getIZ(12);
+  @$pb.TagNumber(13)
+  set mp3VolumePct($core.int value) => $_setSignedInt32(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasMp3VolumePct() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearMp3VolumePct() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $core.int get midiVolumePct => $_getIZ(13);
+  @$pb.TagNumber(14)
+  set midiVolumePct($core.int value) => $_setSignedInt32(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasMidiVolumePct() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearMidiVolumePct() => $_clearField(14);
 }
 
 /// A background video uploaded by the admin (plan 4.2). url is a signed URL (ListVideos: 1 hour, for the admin preview; GetBackground: 6 hours).

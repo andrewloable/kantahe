@@ -66,6 +66,7 @@ func runContext(ctx context.Context, args []string, stdout io.Writer) int {
 		logger.Error("cannot prepare the default SoundFont", "err", err)
 		return 1
 	}
+	warnNoSoundFont(logger, soundFont)
 	imp := library.NewImporter(db, cfg.DataDir, cfg.Libraries, logger)
 	srv := app.New(cfg, logger)
 	mounted, err := mountServices(srv, api.Deps{DB: db, Version: version, Name: cfg.Name, Now: time.Now, Logger: logger, TrustedProxies: cfg.TrustedProxies,
@@ -109,6 +110,14 @@ func runContext(ctx context.Context, args []string, stdout io.Writer) int {
 
 // advertiseOnLAN is the network announcement; tests replace it.
 var advertiseOnLAN = discovery.Advertise
+
+// warnNoSoundFont says at start-up that MIDI songs cannot be played when the server has no SoundFont (none given, none embedded in this build).
+func warnNoSoundFont(logger *slog.Logger, soundFont string) {
+	if soundFont != "" {
+		return
+	}
+	logger.Warn("no SoundFont: MIDI songs cannot be played. Run go generate ./internal/assets before building (the build then embeds the default one), or pass --soundfont")
+}
 
 // advertise announces the server on the local network once it is listening (with the port it really bound, so a
 // listen address of ":0" works too) and takes the announcement back when ctx ends. A host that cannot announce

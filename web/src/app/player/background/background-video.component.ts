@@ -79,8 +79,8 @@ export class BackgroundVideoComponent {
   /** The pictures move: true while a song plays, while nothing plays and on the score screen; false while a song is paused. */
   readonly playing = input(true);
   protected readonly scrim = SCRIM_CSS;
-  /** Which of the two elements is shown. */
-  protected readonly front = signal<'a' | 'b'>('a');
+  /** The element on show: none until a video is playing (an element with no picture is drawn by a WebView as a play-icon placeholder). */
+  protected readonly front = signal<'a' | 'b' | undefined>(undefined);
 
   private readonly a = viewChild<ElementRef<HTMLVideoElement>>('a');
   private readonly b = viewChild<ElementRef<HTMLVideoElement>>('b');
@@ -140,13 +140,13 @@ export class BackgroundVideoComponent {
       el.disableRemotePlayback = true;
       this.on(el, 'timeupdate', () => this.onTime(el));
       this.on(el, 'playing', () => this.onPlaying(el));
+      this.on(el, 'loadeddata', () => this.onLoaded(el));
       this.on(el, 'ended', () => this.onEnded(el));
       this.on(el, 'error', () => this.fail(el));
       this.on(el, 'waiting', () => this.playing() && this.armStall(el));
       this.on(el, 'stalled', () => this.playing() && this.armStall(el));
       this.on(el, 'volumechange', () => this.silence(el));
     }
-    this.front.set('a');
     this.begin();
   }
 
@@ -171,6 +171,7 @@ export class BackgroundVideoComponent {
 
   private reset(): void {
     this.cur = this.nxt = undefined;
+    this.front.set(undefined);
     this.pass = [];
     this.pos = this.pendingPos = -1;
     this.currentId = undefined;
@@ -197,7 +198,6 @@ export class BackgroundVideoComponent {
     this.pos = this.pendingPos = 0;
     this.currentId = this.lastId = this.pass[0];
     this.cur = this.els[0];
-    this.front.set('a');
     this.playOn(this.cur, this.urlOf(this.pass[0]));
   }
 
@@ -266,6 +266,16 @@ export class BackgroundVideoComponent {
     this.disarmStall(el);
     this.succeeded();
     if (el === this.nxt) this.swap(el);
+    else if (el === this.cur) this.show(el);
+  }
+
+  /** The first frame of the video that is waiting for a paused song is there: it shows (a playing video shows from 'playing'). */
+  private onLoaded(el: HTMLVideoElement): void {
+    if (el === this.cur && this.front() === undefined) this.show(el);
+  }
+
+  private show(el: HTMLVideoElement): void {
+    this.front.set(el === this.els?.[0] ? 'a' : 'b');
   }
 
   /** The video that was made ready is playing: show it, and let the old one go once the fade is over. */
@@ -276,7 +286,7 @@ export class BackgroundVideoComponent {
     this.pos = this.pendingPos;
     this.currentId = this.lastId = this.pendingId;
     this.silence(el);
-    this.front.set(el === this.els?.[0] ? 'a' : 'b');
+    this.show(el);
     if (!old) return;
     const t = setTimeout(() => {
       this.fades.delete(t);

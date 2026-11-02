@@ -43,7 +43,10 @@ const List<_BackgroundInfo> _backgrounds = [
   (value: BackgroundMode.BACKGROUND_MODE_OFF, label: 'Off', explain: 'A plain background behind the lyrics. Easier on a weak device.'),
 ];
 
-/// The user's devices: type, online, the MIDI mode and the background video choice of each, and signing a device out.
+/// The levels a volume dropdown offers, in percent of the song's own level; a value set elsewhere (the web page has a slider) is listed too.
+const _volumeSteps = [0, 25, 50, 75, 100, 125, 150, 200];
+
+/// The user's devices: type, online, the MIDI mode, the background video choice and the MP3 and MIDI volume of each, and signing a device out.
 class MyDevicesScreen extends StatefulWidget {
   const MyDevicesScreen({super.key});
 
@@ -58,6 +61,9 @@ class _MyDevicesScreenState extends State<MyDevicesScreen> {
 
   /// Modes chosen here and accepted by the server, for devices the live state does not show.
   final Map<String, MidiMode> _chosen = {};
+
+  /// Volumes chosen here and accepted by the server (key: device id and kind).
+  final Map<String, int> _volumes = {};
 
   /// The same for the background video choice, with what the server resolved from it.
   final Map<String, ({BackgroundMode mode, bool effective})> _chosenBackground = {};
@@ -98,6 +104,53 @@ class _MyDevicesScreenState extends State<MyDevicesScreen> {
     final live = _live(d);
     final on = live != null ? live.effectiveBackground : (_chosenBackground[d.id]?.effective ?? d.effectiveBackground);
     return on ? 'On' : 'Off';
+  }
+
+  /// The volume in percent: what was chosen here, else the live state, else the list; 100 when the server sends none (an older one).
+  int _volume(Device d, bool mp3) {
+    final chosen = _volumes['${d.id}:${mp3 ? 'mp3' : 'midi'}'];
+    if (chosen != null) return chosen;
+    final live = _live(d) ?? d;
+    if (mp3) return live.hasMp3VolumePct() ? live.mp3VolumePct : 100;
+    return live.hasMidiVolumePct() ? live.midiVolumePct : 100;
+  }
+
+  Future<void> _setVolume(Device d, bool mp3, int pct) async {
+    try {
+      final res = await _services.api.session.setVolume(mp3 ? SetVolumeRequest(deviceId: d.id, mp3Pct: pct) : SetVolumeRequest(deviceId: d.id, midiPct: pct));
+      if (!mounted) return;
+      final accepted = res.hasDevice()
+          ? (mp3 ? (res.device.hasMp3VolumePct() ? res.device.mp3VolumePct : pct) : (res.device.hasMidiVolumePct() ? res.device.midiVolumePct : pct))
+          : pct;
+      setState(() => _volumes['${d.id}:${mp3 ? 'mp3' : 'midi'}'] = accepted);
+    } catch (e) {
+      if (mounted) showMessage(context, problem(e, const {}), error: true);
+    }
+  }
+
+  Widget _volumeDropdown(Device d, {required bool mp3}) {
+    final label = mp3 ? 'MP3 songs volume' : 'MIDI songs volume';
+    final current = _volume(d, mp3);
+    final steps = {..._volumeSteps, current}.toList()..sort();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        FocusRing(
+          radius: 8,
+          child: DropdownButton<int>(
+            key: Key('${mp3 ? 'mp3' : 'midi'}-volume-${d.id}'),
+            value: current,
+            isExpanded: true,
+            hint: Text('$label of ${d.name}'),
+            items: [for (final p in steps) DropdownMenuItem(value: p, child: Text('$p %'))],
+            onChanged: (p) {
+              if (p != null) _setVolume(d, mp3, p);
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _setBackground(Device d, BackgroundMode mode) async {
@@ -212,6 +265,10 @@ class _MyDevicesScreenState extends State<MyDevicesScreen> {
                       ),
                       Text(_explainBackground(d), style: TextStyle(color: muted, fontSize: 13)),
                       Text('Now using: ${_effectiveBackground(d)}'),
+                      const SizedBox(height: 8),
+                      _volumeDropdown(d, mp3: true),
+                      const SizedBox(height: 8),
+                      _volumeDropdown(d, mp3: false),
                       Align(
                         alignment: Alignment.centerRight,
                         child: IconButton(tooltip: 'Sign out ${d.name}', icon: const Icon(Icons.logout), onPressed: () => _revoke(d)),

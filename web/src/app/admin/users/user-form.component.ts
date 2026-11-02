@@ -35,7 +35,7 @@ export interface CreatedUser {
       <div class="field">
         <label for="new-password">Temporary password</label>
         <input #password id="new-password" type="text" autocomplete="off" spellcheck="false" [value]="temp()" (input)="temp.set(value($event))" [attr.aria-invalid]="errors().password ? true : null" />
-        <button type="button" (click)="generate()">Generate</button>
+        <button type="button" class="generate" (click)="generate()">Generate</button>
         @if (errors().password) {
           <p class="error" role="alert">{{ errors().password }}</p>
         }
@@ -59,6 +59,10 @@ export interface CreatedUser {
       align-items: center;
       gap: 0.5rem;
       margin-bottom: 1rem;
+    }
+    /* the password box takes the whole row, so Generate sits below it: with room above, or the box and the button look like one control */
+    .generate {
+      margin-top: 0.5rem;
     }
     .roles label {
       display: inline-flex;

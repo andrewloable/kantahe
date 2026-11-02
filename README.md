@@ -6,6 +6,8 @@ own queue, and any of their devices can be the screen while the others are remot
 
 Kantahe is open source (MIT). It ships **no songs**: you bring your own.
 
+The domain of the project is **kantahe.party**.
+
 ## What it does
 
 * **Songs**: `.kar` (a MIDI file with lyrics) and `.karmp3` (an MP3 with timed lyrics) files, uploaded in the browser or

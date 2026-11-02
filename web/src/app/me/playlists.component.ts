@@ -80,6 +80,14 @@ import { ToastService } from '../core/toast';
     .count {
       color: var(--muted);
     }
+    /* the delete question and the rename box are rows of their own: a gap between the words, the box and the buttons */
+    .ask,
+    .edit {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
     @media (max-width: 30rem) {
       li a {
         flex-basis: 100%;

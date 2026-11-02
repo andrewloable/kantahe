@@ -90,8 +90,10 @@ describe('BackgroundVideoComponent', () => {
     const [a, b] = videos();
     expect(src(a)).toBe(url('v1'));
     expect(src(b)).toBeNull();
-    expect(a.classList.contains('show')).toBe(true);
+    expect(a.classList.contains('show'), 'not shown before it is playing').toBe(false);
     send(a, 'playing');
+    await settle();
+    expect(a.classList.contains('show')).toBe(true);
     at(a, 10, 5); // plenty left: nothing is prepared
     await settle();
     expect(src(b)).toBeNull();
@@ -263,6 +265,57 @@ describe('BackgroundVideoComponent', () => {
       await settle();
       expect(src(a), 'the third video is tried').toBe(url('v3'));
       expect(warn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('what is on show', () => {
+    const shown = (vs: HTMLVideoElement[]) => vs.filter((v) => v.classList.contains('show'));
+
+    it('REGRESSION: nothing is shown until the first video is playing (an element without a picture is drawn by a WebView as a play-icon placeholder)', async () => {
+      const { settle, videos, src } = setup();
+      await settle();
+      const [a] = videos();
+      expect(src(a)).toBe(url('v1'));
+      expect(shown(videos())).toHaveLength(0);
+      send(a, 'playing');
+      await settle();
+      expect(shown(videos())).toEqual([a]);
+    });
+
+    it('REGRESSION: a video that never starts leaves nothing on show, once every video has failed', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const { settle, tick, videos, src } = setup({ ids: ['v1'] });
+      await settle();
+      const [a, b] = videos();
+      send(a, 'waiting');
+      await tick(10_500); // not started within 10 s: failed, and it is the only video
+      await settle();
+      expect(src(a)).toBeNull();
+      expect(src(b)).toBeNull();
+      expect(shown(videos())).toHaveLength(0);
+    });
+
+    it('REGRESSION: a video that was playing and then fails, with no other to take over, is taken off the screen', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const { settle, videos } = setup({ ids: ['v1'] });
+      await settle();
+      const [a] = videos();
+      send(a, 'playing');
+      await settle();
+      expect(shown(videos())).toEqual([a]);
+      send(a, 'error'); // the only video: every video has failed
+      await settle();
+      expect(shown(videos())).toHaveLength(0);
+    });
+
+    it('a paused song shows the first frame once it is loaded, not before', async () => {
+      const { settle, videos } = setup({ playing: false });
+      await settle();
+      const [a] = videos();
+      expect(shown(videos())).toHaveLength(0);
+      send(a, 'loadeddata');
+      await settle();
+      expect(shown(videos())).toEqual([a]);
     });
   });
 

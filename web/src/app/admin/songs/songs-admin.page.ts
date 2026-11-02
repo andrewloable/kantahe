@@ -1,6 +1,6 @@
-import { Component, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
 import { Code, ConnectError } from '@connectrpc/connect';
-import { AdminService, RemoveScope } from '../../../gen/kantahe/v1/admin_pb';
+import { AdminService } from '../../../gen/kantahe/v1/admin_pb';
 import { CatalogService } from '../../../gen/kantahe/v1/catalog_pb';
 import { Song } from '../../../gen/kantahe/v1/common_pb';
 import { injectClient } from '../../core/api';
@@ -13,6 +13,8 @@ import { Pager } from '../../library/paged';
 import { PageWindow } from '../../library/page-window';
 
 const SEARCH_DELAY_MS = 250;
+/** The most songs one removal takes (the server's limit). */
+const MAX_SELECTED = 1000;
 
 @Component({
   selector: 'app-songs-admin-page',
@@ -33,39 +35,48 @@ const SEARCH_DELAY_MS = 250;
       }
     </p>
     <app-broken-songs />
-    <section class="bulk" aria-labelledby="bulk-title">
-      <h3 id="bulk-title">Remove songs from the list</h3>
-      <p class="hint">The song files are never deleted.</p>
-      @if (bulkAsk(); as ask) {
-        <div class="confirm" role="alert">
-          <span>
-            @if (ask === 'all') {
-              Take every song off the list?
-            } @else {
-              Take every MIDI song that has no instruments, only lyric timing, off the list?
-            }
-            The files stay where they are.
-          </span>
-          <button type="button" (click)="removeSongs(ask)" [disabled]="bulkBusy()">Remove</button>
-          <button type="button" (click)="bulkAsk.set(undefined)" [disabled]="bulkBusy()">Cancel</button>
-        </div>
-      } @else {
-        <button type="button" (click)="bulkAsk.set('noMusic')">Remove songs with no music</button>
-        <button type="button" (click)="bulkAsk.set('all')">Remove all songs</button>
-      }
-      @if (bulkResult()) {
-        <p role="status">{{ bulkResult() }}</p>
-      }
-      @if (bulkError()) {
-        <p class="error" role="alert">{{ bulkError() }}</p>
-      }
-    </section>
     @if (pager.error()) {
       <p class="error" role="alert">{{ pager.error() }} <button type="button" (click)="pager.retry()">Try again</button></p>
+    }
+    @if (selectedCount() > 0) {
+      <section class="selection" aria-label="Chosen songs">
+        <p role="status">{{ selectedCount() }} {{ selectedCount() === 1 ? 'song' : 'songs' }} selected</p>
+        @if (selectedLimit()) {
+          <p class="hint">At most {{ maxSelected }} songs can be chosen at once.</p>
+        }
+        @if (selAsk(); as ask) {
+          <div class="confirm" role="alert">
+            @if (ask === 'files') {
+              <span>Delete {{ selectedCount() }} {{ selectedCount() === 1 ? 'song' : 'songs' }} and their files? This cannot be undone.</span>
+              <button type="button" (click)="removeSelected(true)" [disabled]="selBusy()">Yes, delete</button>
+            } @else {
+              <span>Take {{ selectedCount() }} {{ selectedCount() === 1 ? 'song' : 'songs' }} off the list? The files stay where they are.</span>
+              <button type="button" (click)="removeSelected(false)" [disabled]="selBusy()">Yes, remove</button>
+            }
+            <button type="button" (click)="selAsk.set(undefined)" [disabled]="selBusy()">Cancel</button>
+          </div>
+        } @else {
+          <div class="buttons">
+            <button type="button" (click)="selAsk.set('list')">Remove from list</button>
+            <button type="button" (click)="selAsk.set('files')">Delete files too</button>
+            <button type="button" (click)="clearSelection()">Clear selection</button>
+          </div>
+        }
+        @if (selError()) {
+          <p class="error" role="alert">{{ selError() }}</p>
+        }
+      </section>
+    }
+    @if (selResult()) {
+      <p class="selection-result" role="status">{{ selResult() }}</p>
     }
     <table role="table">
       <thead role="rowgroup">
         <tr role="row">
+          <th scope="col" role="columnheader" class="pick">
+            <input id="select-page" type="checkbox" [checked]="allOnPage()" [indeterminate]="someOnPage()" (change)="togglePage($event)" />
+            <label for="select-page" class="sr-only">Select all songs on this page</label>
+          </th>
           <th scope="col" role="columnheader">Number</th>
           <th scope="col" role="columnheader">Title</th>
           <th scope="col" role="columnheader">Artist</th>
@@ -76,7 +87,10 @@ const SEARCH_DELAY_MS = 250;
       <tbody role="rowgroup">
         @for (s of win.rows(); track s.number) {
           <tr role="row">
-            <td role="cell">{{ s.number }}</td>
+            <td role="cell" class="pick">
+              <input type="checkbox" [checked]="selected().has(s.number)" [attr.aria-label]="'Select song ' + s.number" (change)="toggle(s.number, $event)" />
+            </td>
+            <td role="cell" class="number">{{ s.number }}</td>
             <td role="cell">{{ s.title }}</td>
             <td role="cell">{{ s.artist }}</td>
             <td role="cell"><app-format-badge [format]="s.format" /></td>
@@ -120,8 +134,10 @@ const SEARCH_DELAY_MS = 250;
         @if (editError()) {
           <p class="error" role="alert">{{ editError() }}</p>
         }
-        <button type="button" (click)="save(e)" [disabled]="saving()">Save</button>
-        <button type="button" (click)="editing.set(undefined)">Cancel</button>
+        <div class="buttons">
+          <button type="button" (click)="save(e)" [disabled]="saving()">Save</button>
+          <button type="button" (click)="editing.set(undefined)">Cancel</button>
+        </div>
       </div>
     }
   `,
@@ -144,6 +160,38 @@ const SEARCH_DELAY_MS = 250;
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
+    }
+    /* the checkbox of a row: a 44 px target, the box centred in it */
+    .pick input[type='checkbox'] {
+      width: 2.75rem;
+      height: 2.75rem;
+      margin: 0;
+    }
+    .pick {
+      width: 1%;
+    }
+    .selection {
+      margin: 0.75rem 0;
+    }
+    .selection .confirm {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    /* the buttons of a dialog or a section: a gap between them and room above them */
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
     }
     /* on a phone each song is a block: number and title, artist, format, then the buttons; the header row stays for screen readers */
     /* the width of the page's own box, in rem: with a larger text size a table that needs 44rem no longer fits, and the blocks come sooner */
@@ -170,7 +218,7 @@ const SEARCH_DELAY_MS = 250;
         border-bottom: 0;
         overflow-wrap: anywhere;
       }
-      td:first-child {
+      td.number {
         color: var(--muted);
         font-variant-numeric: tabular-nums;
       }
@@ -195,12 +243,6 @@ const SEARCH_DELAY_MS = 250;
       border-radius: 0.75rem;
       background: var(--panel);
       box-shadow: 0 8px 30px rgb(0 0 0 / 0.4);
-    }
-    .bulk {
-      margin: 1rem 0;
-    }
-    .bulk h3 {
-      margin: 0;
     }
     .confirm {
       display: flex;
@@ -243,10 +285,19 @@ export class SongsAdminPage {
   protected readonly saving = signal(false);
   protected readonly deleting = signal<string | undefined>(undefined);
   protected readonly rowError = signal<Record<string, string>>({});
-  protected readonly bulkAsk = signal<'all' | 'noMusic' | undefined>(undefined);
-  protected readonly bulkBusy = signal(false);
-  protected readonly bulkResult = signal('');
-  protected readonly bulkError = signal('');
+  /** The songs chosen with the checkboxes: kept across pages and searches, cleared after a removal. */
+  protected readonly selected = signal<ReadonlySet<string>>(new Set());
+  protected readonly selectedCount = computed(() => this.selected().size);
+  protected readonly maxSelected = MAX_SELECTED;
+  protected readonly selectedLimit = signal(false);
+  protected readonly selAsk = signal<'list' | 'files' | undefined>(undefined);
+  protected readonly selBusy = signal(false);
+  protected readonly selResult = signal('');
+  protected readonly selError = signal('');
+  /** The songs of the page on show that are chosen: none, some or all of them. */
+  protected readonly onPageChosen = computed(() => this.win.rows().filter((s) => this.selected().has(s.number)).length);
+  protected readonly allOnPage = computed(() => this.win.rows().length > 0 && this.onPageChosen() === this.win.rows().length);
+  protected readonly someOnPage = computed(() => this.onPageChosen() > 0 && !this.allOnPage());
   protected readonly scanning = signal(false);
   protected readonly scanResult = signal('');
   protected readonly scanError = signal('');
@@ -303,6 +354,73 @@ export class SongsAdminPage {
     }
   }
 
+  protected toggle(number: string, event: Event): void {
+    const on = (event.target as HTMLInputElement).checked;
+    const next = new Set(this.selected());
+    if (on) {
+      if (next.size >= MAX_SELECTED) {
+        (event.target as HTMLInputElement).checked = false;
+        this.selectedLimit.set(true);
+        return;
+      }
+      next.add(number);
+    } else {
+      next.delete(number);
+    }
+    this.selectedLimit.set(false);
+    this.setSelected(next);
+  }
+
+  /** The header checkbox: the songs of the page on show, up to the limit. */
+  protected togglePage(event: Event): void {
+    const on = (event.target as HTMLInputElement).checked;
+    const next = new Set(this.selected());
+    for (const s of this.win.rows()) {
+      if (!on) next.delete(s.number);
+      else if (next.size < MAX_SELECTED) next.add(s.number);
+      else this.selectedLimit.set(true);
+    }
+    if (!on) this.selectedLimit.set(false);
+    this.setSelected(next);
+  }
+
+  protected clearSelection(): void {
+    this.selectedLimit.set(false);
+    this.setSelected(new Set());
+  }
+
+  private setSelected(next: Set<string>): void {
+    this.selected.set(next);
+    this.selAsk.set(undefined);
+    this.selError.set('');
+    this.selResult.set('');
+  }
+
+  /** Takes the chosen songs off the list; with deleteFiles their files are deleted too (the server does that only inside its folders). */
+  protected async removeSelected(deleteFiles: boolean): Promise<void> {
+    const numbers = [...this.selected()];
+    this.selBusy.set(true);
+    this.selError.set('');
+    try {
+      const r = await this.admins.removeSelectedSongs({ numbers, deleteFiles });
+      const songs = r.removed === 1 ? '1 song' : `${r.removed} songs`;
+      let text = deleteFiles ? `Removed ${songs} from the list.` : `Removed ${songs} from the list. ${r.removed === 1 ? 'Its file was' : 'Their files were'} kept.`;
+      if (deleteFiles) {
+        text += ` ${r.filesDeleted === 1 ? '1 file deleted' : `${r.filesDeleted} files deleted`}.`;
+        if (r.filesFailed > 0) text += ` ${r.filesFailed === 1 ? '1 file could not be deleted' : `${r.filesFailed} files could not be deleted`} (outside the song folders or in use).`;
+      }
+      this.selected.set(new Set());
+      this.selectedLimit.set(false);
+      this.selAsk.set(undefined);
+      this.selResult.set(text);
+      void this.pager.reset();
+    } catch (e) {
+      this.selError.set(problem(e, { [Code.InvalidArgument]: fromServer, [Code.PermissionDenied]: fromServer }));
+    } finally {
+      this.selBusy.set(false);
+    }
+  }
+
   /** keepFile: only take the song off the list; otherwise its file is deleted too. */
   protected async remove(s: Song, keepFile: boolean): Promise<void> {
     this.rowError.update((m) => ({ ...m, [s.number]: '' }));
@@ -318,23 +436,6 @@ export class SongsAdminPage {
         return;
       }
       this.rowError.update((m) => ({ ...m, [s.number]: problem(e, { [Code.FailedPrecondition]: fromServer }) }));
-    }
-  }
-
-  /** Takes many songs off the list; the server never deletes a song file for this. */
-  protected async removeSongs(which: 'all' | 'noMusic'): Promise<void> {
-    this.bulkBusy.set(true);
-    this.bulkResult.set('');
-    this.bulkError.set('');
-    try {
-      const r = await this.admins.removeSongs({ scope: which === 'all' ? RemoveScope.ALL : RemoveScope.NO_MUSIC });
-      this.bulkResult.set(r.removed === 1 ? 'Removed 1 song from the list. Its file was kept.' : `Removed ${r.removed} songs from the list. Their files were kept.`);
-      this.bulkAsk.set(undefined);
-      void this.pager.reset();
-    } catch (e) {
-      this.bulkError.set(problem(e, {}));
-    } finally {
-      this.bulkBusy.set(false);
     }
   }
 

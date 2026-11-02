@@ -55,6 +55,7 @@ def release_run(server, sha=SHA):
     root = Path(tempfile.mkdtemp(prefix="kantahe-test-release."))
     (root / "scripts").mkdir()
     shutil.copy(ROOT / "scripts" / "build-release.sh", root / "scripts")
+    shutil.copy(ROOT / "scripts" / "fetch-soundfont.sh", root / "scripts")  # build-release.sh calls it
     (root / "scripts" / "soundfont.lock").write_text(f"URL={server.url}\nSHA256={sha}\n")
     (root / "server" / "internal" / "webui" / "dist").mkdir(parents=True)
     (root / "server" / "internal" / "webui" / "dist" / "index.html").write_text("Web app not built")

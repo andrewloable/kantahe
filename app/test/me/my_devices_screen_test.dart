@@ -17,6 +17,8 @@ Device dev(
   MidiMode effective = MidiMode.MIDI_MODE_FULL,
   BackgroundMode background = BackgroundMode.BACKGROUND_MODE_AUTO,
   bool effectiveBackground = true,
+  int? mp3Volume,
+  int? midiVolume,
 }) => Device(
   id: id,
   name: name,
@@ -27,6 +29,8 @@ Device dev(
   effectiveMidiMode: effective,
   backgroundMode: background,
   effectiveBackground: effectiveBackground,
+  mp3VolumePct: mp3Volume,
+  midiVolumePct: midiVolume,
 );
 
 Future<MeRig> open(WidgetTester tester, List<Device> devices, {String me = 'me'}) async {
@@ -55,7 +59,71 @@ Future<void> chooseBackground(WidgetTester tester, String device, String label) 
   await tester.pumpAndSettle();
 }
 
+Future<void> chooseVolume(WidgetTester tester, String key, String label) async {
+  await tester.ensureVisible(find.byKey(Key(key)));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(Key(key)));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(label).last);
+  await tester.pumpAndSettle();
+}
+
+String? volumeShown(WidgetTester tester, String key) => tester.widget<DropdownButton<int>>(find.byKey(Key(key))).value?.toString();
+
 void main() {
+  group('volume', () {
+    testWidgets('REGRESSION: each device has an MP3 and a MIDI volume dropdown, with the stored percent (100 when the server sends none)', (tester) async {
+      await open(tester, [dev('me', 'Phone', isCaller: true, mp3Volume: 50, midiVolume: 150), dev('tv', 'TV')]);
+      expect(shows('MP3 songs volume'), isTrue);
+      expect(shows('MIDI songs volume'), isTrue);
+      expect(volumeShown(tester, 'mp3-volume-me'), '50');
+      expect(volumeShown(tester, 'midi-volume-me'), '150');
+      expect(volumeShown(tester, 'mp3-volume-tv'), '100');
+      expect(volumeShown(tester, 'midi-volume-tv'), '100');
+    });
+
+    testWidgets('choosing 75 percent for MP3 sends SetVolume for that device with only that field', (tester) async {
+      final r = await open(tester, [dev('me', 'Phone', isCaller: true), dev('tv', 'TV', mp3Volume: 100, midiVolume: 100)]);
+      r.server.onVolume = (req) => dev(req.deviceId, 'TV', mp3Volume: req.mp3Pct, midiVolume: 100);
+      await chooseVolume(tester, 'mp3-volume-tv', '75 %');
+      expect(r.server.volumes, hasLength(1));
+      expect(r.server.volumes.single.deviceId, 'tv');
+      expect(r.server.volumes.single.mp3Pct, 75);
+      expect(r.server.volumes.single.hasMidiPct(), isFalse);
+      expect(volumeShown(tester, 'mp3-volume-tv'), '75');
+    });
+
+    testWidgets('the MIDI dropdown sends only the MIDI field', (tester) async {
+      final r = await open(tester, [dev('me', 'Phone', isCaller: true)]);
+      r.server.onVolume = (req) => dev('me', 'Phone', mp3Volume: 100, midiVolume: req.midiPct);
+      await chooseVolume(tester, 'midi-volume-me', '150 %');
+      expect(r.server.volumes.single.midiPct, 150);
+      expect(r.server.volumes.single.hasMp3Pct(), isFalse);
+    });
+
+    testWidgets('a value set elsewhere (120 percent from the web page) is listed and shown, not an error', (tester) async {
+      await open(tester, [dev('me', 'Phone', isCaller: true, mp3Volume: 120, midiVolume: 100)]);
+      expect(volumeShown(tester, 'mp3-volume-me'), '120');
+    });
+
+    testWidgets('a refused change is shown and the value goes back', (tester) async {
+      final r = await open(tester, [dev('me', 'Phone', isCaller: true, mp3Volume: 100, midiVolume: 100)]);
+      r.server.onVolume = (_) => throw ConnectException(Code.unavailable, 'down');
+      await chooseVolume(tester, 'mp3-volume-me', '25 %');
+      expect(shows('Could not reach the server'), isTrue);
+      expect(volumeShown(tester, 'mp3-volume-me'), '100');
+    });
+
+    testWidgets("the remote's focus on a volume dropdown shows the ring", (tester) async {
+      await open(tester, [dev('me', 'Phone', isCaller: true)]);
+      for (final key in ['mp3-volume-me', 'midi-volume-me']) {
+        final dropdown = find.byKey(Key(key));
+        await expectNoRingWhenNotFocused(tester, dropdown);
+        await expectRingOnFocus(tester, dropdown);
+      }
+    });
+  });
+
   testWidgets('lists the devices with their type; this one is marked', (tester) async {
     await open(tester, [dev('me', 'Phone', isCaller: true), dev('tv', 'Living room TV', type: DeviceType.DEVICE_TYPE_ANDROID_TV)]);
     expect(find.text('Phone'), findsOneWidget);

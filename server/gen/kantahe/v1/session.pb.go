@@ -1609,6 +1609,112 @@ func (x *SetBackgroundModeResponse) GetDevice() *Device {
 	return nil
 }
 
+// The device and the volumes to set; a field that is not given is left as it is.
+type SetVolumeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DeviceId      string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	Mp3Pct        *int32                 `protobuf:"varint,2,opt,name=mp3_pct,json=mp3Pct,proto3,oneof" json:"mp3_pct,omitempty"`
+	MidiPct       *int32                 `protobuf:"varint,3,opt,name=midi_pct,json=midiPct,proto3,oneof" json:"midi_pct,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetVolumeRequest) Reset() {
+	*x = SetVolumeRequest{}
+	mi := &file_kantahe_v1_session_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetVolumeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetVolumeRequest) ProtoMessage() {}
+
+func (x *SetVolumeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_session_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetVolumeRequest.ProtoReflect.Descriptor instead.
+func (*SetVolumeRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *SetVolumeRequest) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
+}
+
+func (x *SetVolumeRequest) GetMp3Pct() int32 {
+	if x != nil && x.Mp3Pct != nil {
+		return *x.Mp3Pct
+	}
+	return 0
+}
+
+func (x *SetVolumeRequest) GetMidiPct() int32 {
+	if x != nil && x.MidiPct != nil {
+		return *x.MidiPct
+	}
+	return 0
+}
+
+// The device after the change.
+type SetVolumeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Device        *Device                `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetVolumeResponse) Reset() {
+	*x = SetVolumeResponse{}
+	mi := &file_kantahe_v1_session_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetVolumeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetVolumeResponse) ProtoMessage() {}
+
+func (x *SetVolumeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_session_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetVolumeResponse.ProtoReflect.Descriptor instead.
+func (*SetVolumeResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *SetVolumeResponse) GetDevice() *Device {
+	if x != nil {
+		return x.Device
+	}
+	return nil
+}
+
 // One entry of the caller's queue.
 type QueueItem struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1620,7 +1726,7 @@ type QueueItem struct {
 
 func (x *QueueItem) Reset() {
 	*x = QueueItem{}
-	mi := &file_kantahe_v1_session_proto_msgTypes[30]
+	mi := &file_kantahe_v1_session_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1632,7 +1738,7 @@ func (x *QueueItem) String() string {
 func (*QueueItem) ProtoMessage() {}
 
 func (x *QueueItem) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_session_proto_msgTypes[30]
+	mi := &file_kantahe_v1_session_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1645,7 +1751,7 @@ func (x *QueueItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueItem.ProtoReflect.Descriptor instead.
 func (*QueueItem) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{30}
+	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *QueueItem) GetId() string {
@@ -1675,7 +1781,7 @@ type NowPlaying struct {
 
 func (x *NowPlaying) Reset() {
 	*x = NowPlaying{}
-	mi := &file_kantahe_v1_session_proto_msgTypes[31]
+	mi := &file_kantahe_v1_session_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1687,7 +1793,7 @@ func (x *NowPlaying) String() string {
 func (*NowPlaying) ProtoMessage() {}
 
 func (x *NowPlaying) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_session_proto_msgTypes[31]
+	mi := &file_kantahe_v1_session_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1700,7 +1806,7 @@ func (x *NowPlaying) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NowPlaying.ProtoReflect.Descriptor instead.
 func (*NowPlaying) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{31}
+	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *NowPlaying) GetSong() *Song {
@@ -1742,7 +1848,7 @@ type UpNext struct {
 
 func (x *UpNext) Reset() {
 	*x = UpNext{}
-	mi := &file_kantahe_v1_session_proto_msgTypes[32]
+	mi := &file_kantahe_v1_session_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1754,7 +1860,7 @@ func (x *UpNext) String() string {
 func (*UpNext) ProtoMessage() {}
 
 func (x *UpNext) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_session_proto_msgTypes[32]
+	mi := &file_kantahe_v1_session_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1767,7 +1873,7 @@ func (x *UpNext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpNext.ProtoReflect.Descriptor instead.
 func (*UpNext) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{32}
+	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *UpNext) GetSong() *Song {
@@ -1795,7 +1901,7 @@ type UserSettings struct {
 
 func (x *UserSettings) Reset() {
 	*x = UserSettings{}
-	mi := &file_kantahe_v1_session_proto_msgTypes[33]
+	mi := &file_kantahe_v1_session_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1807,7 +1913,7 @@ func (x *UserSettings) String() string {
 func (*UserSettings) ProtoMessage() {}
 
 func (x *UserSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_session_proto_msgTypes[33]
+	mi := &file_kantahe_v1_session_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1820,7 +1926,7 @@ func (x *UserSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserSettings.ProtoReflect.Descriptor instead.
 func (*UserSettings) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{33}
+	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *UserSettings) GetScoreMode() ScoreMode {
@@ -1853,7 +1959,7 @@ type Score struct {
 
 func (x *Score) Reset() {
 	*x = Score{}
-	mi := &file_kantahe_v1_session_proto_msgTypes[34]
+	mi := &file_kantahe_v1_session_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1865,7 +1971,7 @@ func (x *Score) String() string {
 func (*Score) ProtoMessage() {}
 
 func (x *Score) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_session_proto_msgTypes[34]
+	mi := &file_kantahe_v1_session_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1878,7 +1984,7 @@ func (x *Score) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Score.ProtoReflect.Descriptor instead.
 func (*Score) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{34}
+	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *Score) GetNumber() string {
@@ -1948,7 +2054,7 @@ type State struct {
 
 func (x *State) Reset() {
 	*x = State{}
-	mi := &file_kantahe_v1_session_proto_msgTypes[35]
+	mi := &file_kantahe_v1_session_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1960,7 +2066,7 @@ func (x *State) String() string {
 func (*State) ProtoMessage() {}
 
 func (x *State) ProtoReflect() protoreflect.Message {
-	mi := &file_kantahe_v1_session_proto_msgTypes[35]
+	mi := &file_kantahe_v1_session_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1973,7 +2079,7 @@ func (x *State) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use State.ProtoReflect.Descriptor instead.
 func (*State) Descriptor() ([]byte, []int) {
-	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{35}
+	return file_kantahe_v1_session_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *State) GetStatus() PlayStatus {
@@ -2107,6 +2213,15 @@ const file_kantahe_v1_session_proto_rawDesc = "" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12.\n" +
 	"\x04mode\x18\x02 \x01(\x0e2\x1a.kantahe.v1.BackgroundModeR\x04mode\"G\n" +
 	"\x19SetBackgroundModeResponse\x12*\n" +
+	"\x06device\x18\x01 \x01(\v2\x12.kantahe.v1.DeviceR\x06device\"\x86\x01\n" +
+	"\x10SetVolumeRequest\x12\x1b\n" +
+	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12\x1c\n" +
+	"\amp3_pct\x18\x02 \x01(\x05H\x00R\x06mp3Pct\x88\x01\x01\x12\x1e\n" +
+	"\bmidi_pct\x18\x03 \x01(\x05H\x01R\amidiPct\x88\x01\x01B\n" +
+	"\n" +
+	"\b_mp3_pctB\v\n" +
+	"\t_midi_pct\"?\n" +
+	"\x11SetVolumeResponse\x12*\n" +
 	"\x06device\x18\x01 \x01(\v2\x12.kantahe.v1.DeviceR\x06device\"A\n" +
 	"\tQueueItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12$\n" +
@@ -2170,7 +2285,8 @@ const file_kantahe_v1_session_proto_rawDesc = "" +
 	"\x13CONTROL_ACTION_PLAY\x10\x01\x12\x1c\n" +
 	"\x18CONTROL_ACTION_PLAY_HERE\x10\x02\x12\x18\n" +
 	"\x14CONTROL_ACTION_PAUSE\x10\x03\x12\x17\n" +
-	"\x13CONTROL_ACTION_SKIP\x10\x042\xcb\t\n" +
+	"\x13CONTROL_ACTION_SKIP\x10\x042\x95\n" +
+	"\n" +
 	"\x0eSessionService\x12M\n" +
 	"\n" +
 	"WatchState\x12\x1d.kantahe.v1.WatchStateRequest\x1a\x1e.kantahe.v1.WatchStateResponse0\x01\x12E\n" +
@@ -2188,7 +2304,8 @@ const file_kantahe_v1_session_proto_rawDesc = "" +
 	"\tReportMic\x12\x1c.kantahe.v1.ReportMicRequest\x1a\x1d.kantahe.v1.ReportMicResponse\x12Q\n" +
 	"\fReportDevice\x12\x1f.kantahe.v1.ReportDeviceRequest\x1a .kantahe.v1.ReportDeviceResponse\x12N\n" +
 	"\vSetMidiMode\x12\x1e.kantahe.v1.SetMidiModeRequest\x1a\x1f.kantahe.v1.SetMidiModeResponse\x12`\n" +
-	"\x11SetBackgroundMode\x12$.kantahe.v1.SetBackgroundModeRequest\x1a%.kantahe.v1.SetBackgroundModeResponseB\xa8\x01\n" +
+	"\x11SetBackgroundMode\x12$.kantahe.v1.SetBackgroundModeRequest\x1a%.kantahe.v1.SetBackgroundModeResponse\x12H\n" +
+	"\tSetVolume\x12\x1c.kantahe.v1.SetVolumeRequest\x1a\x1d.kantahe.v1.SetVolumeResponseB\xa8\x01\n" +
 	"\x0ecom.kantahe.v1B\fSessionProtoP\x01Z?github.com/andrewloable/kantahe/server/gen/kantahe/v1;kantahev1\xa2\x02\x03KXX\xaa\x02\n" +
 	"Kantahe.V1\xca\x02\n" +
 	"Kantahe\\V1\xe2\x02\x16Kantahe\\V1\\GPBMetadata\xea\x02\vKantahe::V1b\x06proto3"
@@ -2206,7 +2323,7 @@ func file_kantahe_v1_session_proto_rawDescGZIP() []byte {
 }
 
 var file_kantahe_v1_session_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_kantahe_v1_session_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
+var file_kantahe_v1_session_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_kantahe_v1_session_proto_goTypes = []any{
 	(PlayStatus)(0),                    // 0: kantahe.v1.PlayStatus
 	(SongSource)(0),                    // 1: kantahe.v1.SongSource
@@ -2243,79 +2360,84 @@ var file_kantahe_v1_session_proto_goTypes = []any{
 	(*SetMidiModeResponse)(nil),        // 32: kantahe.v1.SetMidiModeResponse
 	(*SetBackgroundModeRequest)(nil),   // 33: kantahe.v1.SetBackgroundModeRequest
 	(*SetBackgroundModeResponse)(nil),  // 34: kantahe.v1.SetBackgroundModeResponse
-	(*QueueItem)(nil),                  // 35: kantahe.v1.QueueItem
-	(*NowPlaying)(nil),                 // 36: kantahe.v1.NowPlaying
-	(*UpNext)(nil),                     // 37: kantahe.v1.UpNext
-	(*UserSettings)(nil),               // 38: kantahe.v1.UserSettings
-	(*Score)(nil),                      // 39: kantahe.v1.Score
-	(*State)(nil),                      // 40: kantahe.v1.State
-	(*Device)(nil),                     // 41: kantahe.v1.Device
-	(MidiMode)(0),                      // 42: kantahe.v1.MidiMode
-	(BackgroundMode)(0),                // 43: kantahe.v1.BackgroundMode
-	(*Song)(nil),                       // 44: kantahe.v1.Song
+	(*SetVolumeRequest)(nil),           // 35: kantahe.v1.SetVolumeRequest
+	(*SetVolumeResponse)(nil),          // 36: kantahe.v1.SetVolumeResponse
+	(*QueueItem)(nil),                  // 37: kantahe.v1.QueueItem
+	(*NowPlaying)(nil),                 // 38: kantahe.v1.NowPlaying
+	(*UpNext)(nil),                     // 39: kantahe.v1.UpNext
+	(*UserSettings)(nil),               // 40: kantahe.v1.UserSettings
+	(*Score)(nil),                      // 41: kantahe.v1.Score
+	(*State)(nil),                      // 42: kantahe.v1.State
+	(*Device)(nil),                     // 43: kantahe.v1.Device
+	(MidiMode)(0),                      // 44: kantahe.v1.MidiMode
+	(BackgroundMode)(0),                // 45: kantahe.v1.BackgroundMode
+	(*Song)(nil),                       // 46: kantahe.v1.Song
 }
 var file_kantahe_v1_session_proto_depIdxs = []int32{
-	40, // 0: kantahe.v1.WatchStateResponse.state:type_name -> kantahe.v1.State
-	40, // 1: kantahe.v1.GetStateResponse.state:type_name -> kantahe.v1.State
-	35, // 2: kantahe.v1.AddToQueueResponse.item:type_name -> kantahe.v1.QueueItem
+	42, // 0: kantahe.v1.WatchStateResponse.state:type_name -> kantahe.v1.State
+	42, // 1: kantahe.v1.GetStateResponse.state:type_name -> kantahe.v1.State
+	37, // 2: kantahe.v1.AddToQueueResponse.item:type_name -> kantahe.v1.QueueItem
 	4,  // 3: kantahe.v1.ControlRequest.action:type_name -> kantahe.v1.ControlAction
 	2,  // 4: kantahe.v1.UpdateUserSettingsRequest.score_mode:type_name -> kantahe.v1.ScoreMode
 	3,  // 5: kantahe.v1.UpdateUserSettingsRequest.score_level:type_name -> kantahe.v1.ScoreLevel
-	38, // 6: kantahe.v1.UpdateUserSettingsResponse.settings:type_name -> kantahe.v1.UserSettings
-	41, // 7: kantahe.v1.ReportDeviceResponse.device:type_name -> kantahe.v1.Device
-	42, // 8: kantahe.v1.SetMidiModeRequest.mode:type_name -> kantahe.v1.MidiMode
-	41, // 9: kantahe.v1.SetMidiModeResponse.device:type_name -> kantahe.v1.Device
-	43, // 10: kantahe.v1.SetBackgroundModeRequest.mode:type_name -> kantahe.v1.BackgroundMode
-	41, // 11: kantahe.v1.SetBackgroundModeResponse.device:type_name -> kantahe.v1.Device
-	44, // 12: kantahe.v1.QueueItem.song:type_name -> kantahe.v1.Song
-	44, // 13: kantahe.v1.NowPlaying.song:type_name -> kantahe.v1.Song
-	1,  // 14: kantahe.v1.NowPlaying.source:type_name -> kantahe.v1.SongSource
-	44, // 15: kantahe.v1.UpNext.song:type_name -> kantahe.v1.Song
-	1,  // 16: kantahe.v1.UpNext.source:type_name -> kantahe.v1.SongSource
-	2,  // 17: kantahe.v1.UserSettings.score_mode:type_name -> kantahe.v1.ScoreMode
-	3,  // 18: kantahe.v1.UserSettings.score_level:type_name -> kantahe.v1.ScoreLevel
-	0,  // 19: kantahe.v1.State.status:type_name -> kantahe.v1.PlayStatus
-	41, // 20: kantahe.v1.State.devices:type_name -> kantahe.v1.Device
-	36, // 21: kantahe.v1.State.now:type_name -> kantahe.v1.NowPlaying
-	35, // 22: kantahe.v1.State.queue:type_name -> kantahe.v1.QueueItem
-	37, // 23: kantahe.v1.State.up_next:type_name -> kantahe.v1.UpNext
-	38, // 24: kantahe.v1.State.settings:type_name -> kantahe.v1.UserSettings
-	39, // 25: kantahe.v1.State.score:type_name -> kantahe.v1.Score
-	5,  // 26: kantahe.v1.SessionService.WatchState:input_type -> kantahe.v1.WatchStateRequest
-	7,  // 27: kantahe.v1.SessionService.GetState:input_type -> kantahe.v1.GetStateRequest
-	9,  // 28: kantahe.v1.SessionService.AddToQueue:input_type -> kantahe.v1.AddToQueueRequest
-	11, // 29: kantahe.v1.SessionService.AddPlaylistToQueue:input_type -> kantahe.v1.AddPlaylistToQueueRequest
-	13, // 30: kantahe.v1.SessionService.RemoveFromQueue:input_type -> kantahe.v1.RemoveFromQueueRequest
-	15, // 31: kantahe.v1.SessionService.MoveToTop:input_type -> kantahe.v1.MoveToTopRequest
-	17, // 32: kantahe.v1.SessionService.Control:input_type -> kantahe.v1.ControlRequest
-	19, // 33: kantahe.v1.SessionService.UpdateUserSettings:input_type -> kantahe.v1.UpdateUserSettingsRequest
-	21, // 34: kantahe.v1.SessionService.Ready:input_type -> kantahe.v1.ReadyRequest
-	23, // 35: kantahe.v1.SessionService.ReportPosition:input_type -> kantahe.v1.ReportPositionRequest
-	25, // 36: kantahe.v1.SessionService.Ended:input_type -> kantahe.v1.EndedRequest
-	27, // 37: kantahe.v1.SessionService.ReportMic:input_type -> kantahe.v1.ReportMicRequest
-	29, // 38: kantahe.v1.SessionService.ReportDevice:input_type -> kantahe.v1.ReportDeviceRequest
-	31, // 39: kantahe.v1.SessionService.SetMidiMode:input_type -> kantahe.v1.SetMidiModeRequest
-	33, // 40: kantahe.v1.SessionService.SetBackgroundMode:input_type -> kantahe.v1.SetBackgroundModeRequest
-	6,  // 41: kantahe.v1.SessionService.WatchState:output_type -> kantahe.v1.WatchStateResponse
-	8,  // 42: kantahe.v1.SessionService.GetState:output_type -> kantahe.v1.GetStateResponse
-	10, // 43: kantahe.v1.SessionService.AddToQueue:output_type -> kantahe.v1.AddToQueueResponse
-	12, // 44: kantahe.v1.SessionService.AddPlaylistToQueue:output_type -> kantahe.v1.AddPlaylistToQueueResponse
-	14, // 45: kantahe.v1.SessionService.RemoveFromQueue:output_type -> kantahe.v1.RemoveFromQueueResponse
-	16, // 46: kantahe.v1.SessionService.MoveToTop:output_type -> kantahe.v1.MoveToTopResponse
-	18, // 47: kantahe.v1.SessionService.Control:output_type -> kantahe.v1.ControlResponse
-	20, // 48: kantahe.v1.SessionService.UpdateUserSettings:output_type -> kantahe.v1.UpdateUserSettingsResponse
-	22, // 49: kantahe.v1.SessionService.Ready:output_type -> kantahe.v1.ReadyResponse
-	24, // 50: kantahe.v1.SessionService.ReportPosition:output_type -> kantahe.v1.ReportPositionResponse
-	26, // 51: kantahe.v1.SessionService.Ended:output_type -> kantahe.v1.EndedResponse
-	28, // 52: kantahe.v1.SessionService.ReportMic:output_type -> kantahe.v1.ReportMicResponse
-	30, // 53: kantahe.v1.SessionService.ReportDevice:output_type -> kantahe.v1.ReportDeviceResponse
-	32, // 54: kantahe.v1.SessionService.SetMidiMode:output_type -> kantahe.v1.SetMidiModeResponse
-	34, // 55: kantahe.v1.SessionService.SetBackgroundMode:output_type -> kantahe.v1.SetBackgroundModeResponse
-	41, // [41:56] is the sub-list for method output_type
-	26, // [26:41] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	40, // 6: kantahe.v1.UpdateUserSettingsResponse.settings:type_name -> kantahe.v1.UserSettings
+	43, // 7: kantahe.v1.ReportDeviceResponse.device:type_name -> kantahe.v1.Device
+	44, // 8: kantahe.v1.SetMidiModeRequest.mode:type_name -> kantahe.v1.MidiMode
+	43, // 9: kantahe.v1.SetMidiModeResponse.device:type_name -> kantahe.v1.Device
+	45, // 10: kantahe.v1.SetBackgroundModeRequest.mode:type_name -> kantahe.v1.BackgroundMode
+	43, // 11: kantahe.v1.SetBackgroundModeResponse.device:type_name -> kantahe.v1.Device
+	43, // 12: kantahe.v1.SetVolumeResponse.device:type_name -> kantahe.v1.Device
+	46, // 13: kantahe.v1.QueueItem.song:type_name -> kantahe.v1.Song
+	46, // 14: kantahe.v1.NowPlaying.song:type_name -> kantahe.v1.Song
+	1,  // 15: kantahe.v1.NowPlaying.source:type_name -> kantahe.v1.SongSource
+	46, // 16: kantahe.v1.UpNext.song:type_name -> kantahe.v1.Song
+	1,  // 17: kantahe.v1.UpNext.source:type_name -> kantahe.v1.SongSource
+	2,  // 18: kantahe.v1.UserSettings.score_mode:type_name -> kantahe.v1.ScoreMode
+	3,  // 19: kantahe.v1.UserSettings.score_level:type_name -> kantahe.v1.ScoreLevel
+	0,  // 20: kantahe.v1.State.status:type_name -> kantahe.v1.PlayStatus
+	43, // 21: kantahe.v1.State.devices:type_name -> kantahe.v1.Device
+	38, // 22: kantahe.v1.State.now:type_name -> kantahe.v1.NowPlaying
+	37, // 23: kantahe.v1.State.queue:type_name -> kantahe.v1.QueueItem
+	39, // 24: kantahe.v1.State.up_next:type_name -> kantahe.v1.UpNext
+	40, // 25: kantahe.v1.State.settings:type_name -> kantahe.v1.UserSettings
+	41, // 26: kantahe.v1.State.score:type_name -> kantahe.v1.Score
+	5,  // 27: kantahe.v1.SessionService.WatchState:input_type -> kantahe.v1.WatchStateRequest
+	7,  // 28: kantahe.v1.SessionService.GetState:input_type -> kantahe.v1.GetStateRequest
+	9,  // 29: kantahe.v1.SessionService.AddToQueue:input_type -> kantahe.v1.AddToQueueRequest
+	11, // 30: kantahe.v1.SessionService.AddPlaylistToQueue:input_type -> kantahe.v1.AddPlaylistToQueueRequest
+	13, // 31: kantahe.v1.SessionService.RemoveFromQueue:input_type -> kantahe.v1.RemoveFromQueueRequest
+	15, // 32: kantahe.v1.SessionService.MoveToTop:input_type -> kantahe.v1.MoveToTopRequest
+	17, // 33: kantahe.v1.SessionService.Control:input_type -> kantahe.v1.ControlRequest
+	19, // 34: kantahe.v1.SessionService.UpdateUserSettings:input_type -> kantahe.v1.UpdateUserSettingsRequest
+	21, // 35: kantahe.v1.SessionService.Ready:input_type -> kantahe.v1.ReadyRequest
+	23, // 36: kantahe.v1.SessionService.ReportPosition:input_type -> kantahe.v1.ReportPositionRequest
+	25, // 37: kantahe.v1.SessionService.Ended:input_type -> kantahe.v1.EndedRequest
+	27, // 38: kantahe.v1.SessionService.ReportMic:input_type -> kantahe.v1.ReportMicRequest
+	29, // 39: kantahe.v1.SessionService.ReportDevice:input_type -> kantahe.v1.ReportDeviceRequest
+	31, // 40: kantahe.v1.SessionService.SetMidiMode:input_type -> kantahe.v1.SetMidiModeRequest
+	33, // 41: kantahe.v1.SessionService.SetBackgroundMode:input_type -> kantahe.v1.SetBackgroundModeRequest
+	35, // 42: kantahe.v1.SessionService.SetVolume:input_type -> kantahe.v1.SetVolumeRequest
+	6,  // 43: kantahe.v1.SessionService.WatchState:output_type -> kantahe.v1.WatchStateResponse
+	8,  // 44: kantahe.v1.SessionService.GetState:output_type -> kantahe.v1.GetStateResponse
+	10, // 45: kantahe.v1.SessionService.AddToQueue:output_type -> kantahe.v1.AddToQueueResponse
+	12, // 46: kantahe.v1.SessionService.AddPlaylistToQueue:output_type -> kantahe.v1.AddPlaylistToQueueResponse
+	14, // 47: kantahe.v1.SessionService.RemoveFromQueue:output_type -> kantahe.v1.RemoveFromQueueResponse
+	16, // 48: kantahe.v1.SessionService.MoveToTop:output_type -> kantahe.v1.MoveToTopResponse
+	18, // 49: kantahe.v1.SessionService.Control:output_type -> kantahe.v1.ControlResponse
+	20, // 50: kantahe.v1.SessionService.UpdateUserSettings:output_type -> kantahe.v1.UpdateUserSettingsResponse
+	22, // 51: kantahe.v1.SessionService.Ready:output_type -> kantahe.v1.ReadyResponse
+	24, // 52: kantahe.v1.SessionService.ReportPosition:output_type -> kantahe.v1.ReportPositionResponse
+	26, // 53: kantahe.v1.SessionService.Ended:output_type -> kantahe.v1.EndedResponse
+	28, // 54: kantahe.v1.SessionService.ReportMic:output_type -> kantahe.v1.ReportMicResponse
+	30, // 55: kantahe.v1.SessionService.ReportDevice:output_type -> kantahe.v1.ReportDeviceResponse
+	32, // 56: kantahe.v1.SessionService.SetMidiMode:output_type -> kantahe.v1.SetMidiModeResponse
+	34, // 57: kantahe.v1.SessionService.SetBackgroundMode:output_type -> kantahe.v1.SetBackgroundModeResponse
+	36, // 58: kantahe.v1.SessionService.SetVolume:output_type -> kantahe.v1.SetVolumeResponse
+	43, // [43:59] is the sub-list for method output_type
+	27, // [27:43] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_kantahe_v1_session_proto_init() }
@@ -2325,13 +2447,14 @@ func file_kantahe_v1_session_proto_init() {
 	}
 	file_kantahe_v1_common_proto_init()
 	file_kantahe_v1_session_proto_msgTypes[14].OneofWrappers = []any{}
+	file_kantahe_v1_session_proto_msgTypes[30].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kantahe_v1_session_proto_rawDesc), len(file_kantahe_v1_session_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   36,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

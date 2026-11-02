@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -15,8 +16,10 @@ import (
 	"time"
 
 	"github.com/andrewloable/kantahe/server/internal/library"
+	"github.com/andrewloable/kantahe/server/internal/loudness"
 	"github.com/andrewloable/kantahe/server/internal/media"
 	"github.com/andrewloable/kantahe/server/internal/store"
+	"github.com/mewkiz/flac"
 )
 
 // ErrUnavailable means rendering is switched off (no SoundFont, or --render-cache-gb 0).
@@ -239,6 +242,7 @@ func (s *Service) Run(ctx context.Context) {
 		return
 	}
 	s.cache.Cleanup()
+	go s.backfillGains(ctx) // renders from before the gain existed
 	t := time.NewTicker(cleanupInterval)
 	defer t.Stop()
 	for {
@@ -286,8 +290,118 @@ func (s *Service) render(ctx context.Context, j job) error {
 	}
 	defer bank.Close()
 	return s.cache.Store(s.cacheName(j.sha), func(w io.Writer) error {
-		return RenderWithTail(ctx, midi, bank, w, Tail)
+		meter := loudness.NewMeter(SampleRate)
+		if err := renderMeasured(ctx, midi, bank, w, Tail, meter); err != nil {
+			return err
+		}
+		// stored before the file is placed: a ready render always has its gain (a silent one has none, and still plays)
+		s.storeGain(ctx, j, meter)
+		return nil
 	})
+}
+
+// storeGain keeps the gain of a finished render; a failure only costs the gain, never the render.
+func (s *Service) storeGain(ctx context.Context, j job, meter *loudness.Meter) {
+	s.recordGain(ctx, j.sha, j.number, meter)
+}
+
+// recordGain stores the result of meter for the render of the song with this sha256 in the current bank: a gain, or NULL for a silent one.
+func (s *Service) recordGain(ctx context.Context, sha, number string, meter *loudness.Meter) {
+	var gain any
+	switch res, err := meter.Result(); {
+	case err == nil:
+		gain = loudness.Gain(res.LUFS, res.PeakDB)
+	case errors.Is(err, loudness.ErrSilent):
+	default:
+		s.logger.Warn("cannot measure a render", "song", number, "err", err)
+		return
+	}
+	if err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT OR REPLACE INTO render_gain(sha256, tag, gain_db) VALUES (?, ?, ?)`, sha, s.tag, gain)
+		return err
+	}); err != nil {
+		s.logger.Warn("cannot store the gain of a render", "song", number, "err", err)
+	}
+}
+
+// backfillGains measures the cached renders of this bank that have no measure yet (made before the gain existed), one at a time.
+func (s *Service) backfillGains(ctx context.Context) {
+	if s.cache == nil {
+		return
+	}
+	suffix := "-" + s.tag + Ext
+	measured := 0
+	for _, f := range s.cache.files() {
+		if ctx.Err() != nil {
+			return
+		}
+		sha, ok := strings.CutSuffix(f.name, suffix)
+		if !ok {
+			continue
+		}
+		var one int
+		if err := s.db.QueryRowContext(ctx, `SELECT 1 FROM render_gain WHERE sha256 = ? AND tag = ?`, sha, s.tag).Scan(&one); err == nil {
+			continue
+		}
+		meter, err := measureFLAC(s.cache.Path(f.name))
+		if err != nil {
+			s.logger.Warn("cannot measure a cached render", "file", f.name, "err", err)
+			continue
+		}
+		s.recordGain(ctx, sha, "", meter)
+		measured++
+	}
+	if measured > 0 {
+		s.logger.Info("measured the loudness of cached renders", "renders", measured)
+	}
+}
+
+// measureFLAC feeds a rendered file to a loudness meter.
+func measureFLAC(path string) (m *loudness.Meter, err error) {
+	// the decoder reads files from disk that may be damaged: an error, never a crash
+	defer func() {
+		if r := recover(); r != nil {
+			m, err = nil, fmt.Errorf("damaged file: %v", r)
+		}
+	}()
+	st, err := flac.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer st.Close()
+	if st.Info.NChannels != 2 || st.Info.BitsPerSample != 16 {
+		return nil, fmt.Errorf("not a 16-bit stereo render")
+	}
+	m = loudness.NewMeter(int(st.Info.SampleRate))
+	for {
+		fr, err := st.ParseNext()
+		if errors.Is(err, io.EOF) {
+			return m, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		l, r := fr.Subframes[0].Samples, fr.Subframes[1].Samples
+		for i := 0; i < len(l) && i < len(r); i++ {
+			m.Add(int16(l[i]), int16(r[i]))
+		}
+	}
+}
+
+// Gain is the gain in dB that brings the song's cached render to the common loudness; false while the render is not ready or has none.
+func (s *Service) Gain(ctx context.Context, number string) (float64, bool) {
+	if s.cache == nil {
+		return 0, false
+	}
+	j, err := s.lookup(ctx, number)
+	if err != nil || !s.cache.Has(s.cacheName(j.sha)) {
+		return 0, false
+	}
+	var g sql.NullFloat64
+	if err := s.db.QueryRowContext(ctx, `SELECT gain_db FROM render_gain WHERE sha256 = ? AND tag = ?`, j.sha, s.tag).Scan(&g); err != nil || !g.Valid {
+		return 0, false
+	}
+	return g.Float64, true
 }
 
 // openBank opens the song's trimmed SoundFont, waiting for it to be built, or the full bank when

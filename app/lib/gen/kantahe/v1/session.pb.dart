@@ -1753,6 +1753,149 @@ class SetBackgroundModeResponse extends $pb.GeneratedMessage {
   $0.Device ensureDevice() => $_ensure(0);
 }
 
+/// The device and the volumes to set; a field that is not given is left as it is.
+class SetVolumeRequest extends $pb.GeneratedMessage {
+  factory SetVolumeRequest({
+    $core.String? deviceId,
+    $core.int? mp3Pct,
+    $core.int? midiPct,
+  }) {
+    final result = SetVolumeRequest._();
+    if (deviceId != null) result.deviceId = deviceId;
+    if (mp3Pct != null) result.mp3Pct = mp3Pct;
+    if (midiPct != null) result.midiPct = midiPct;
+    return result;
+  }
+
+  SetVolumeRequest._();
+
+  factory SetVolumeRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetVolumeRequest()..mergeFromBuffer(data, registry);
+  factory SetVolumeRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetVolumeRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetVolumeRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: SetVolumeRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'deviceId')
+    ..aI(2, _omitFieldNames ? '' : 'mp3Pct')
+    ..aI(3, _omitFieldNames ? '' : 'midiPct')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetVolumeRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetVolumeRequest copyWith(void Function(SetVolumeRequest) updates) =>
+      super.copyWith((message) => updates(message as SetVolumeRequest))
+          as SetVolumeRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SetVolumeRequest() / SetVolumeRequest.new instead')
+  static SetVolumeRequest create() => SetVolumeRequest._();
+  static $pb.GeneratedMessage $_createMessage() => SetVolumeRequest._();
+  @$core.override
+  SetVolumeRequest createEmptyInstance() => SetVolumeRequest._();
+  @$core.pragma('dart2js:noInline')
+  static SetVolumeRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SetVolumeRequest>(
+          SetVolumeRequest.$_createMessage);
+  static SetVolumeRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get deviceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set deviceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDeviceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDeviceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get mp3Pct => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set mp3Pct($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMp3Pct() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMp3Pct() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get midiPct => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set midiPct($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasMidiPct() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearMidiPct() => $_clearField(3);
+}
+
+/// The device after the change.
+class SetVolumeResponse extends $pb.GeneratedMessage {
+  factory SetVolumeResponse({
+    $0.Device? device,
+  }) {
+    final result = SetVolumeResponse._();
+    if (device != null) result.device = device;
+    return result;
+  }
+
+  SetVolumeResponse._();
+
+  factory SetVolumeResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetVolumeResponse()..mergeFromBuffer(data, registry);
+  factory SetVolumeResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetVolumeResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetVolumeResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: SetVolumeResponse.$_createMessage)
+    ..aOM<$0.Device>(1, _omitFieldNames ? '' : 'device',
+        subBuilder: $0.Device.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetVolumeResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetVolumeResponse copyWith(void Function(SetVolumeResponse) updates) =>
+      super.copyWith((message) => updates(message as SetVolumeResponse))
+          as SetVolumeResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SetVolumeResponse() / SetVolumeResponse.new instead')
+  static SetVolumeResponse create() => SetVolumeResponse._();
+  static $pb.GeneratedMessage $_createMessage() => SetVolumeResponse._();
+  @$core.override
+  SetVolumeResponse createEmptyInstance() => SetVolumeResponse._();
+  @$core.pragma('dart2js:noInline')
+  static SetVolumeResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SetVolumeResponse>(
+          SetVolumeResponse.$_createMessage);
+  static SetVolumeResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.Device get device => $_getN(0);
+  @$pb.TagNumber(1)
+  set device($0.Device value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDevice() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDevice() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.Device ensureDevice() => $_ensure(0);
+}
+
 /// One entry of the caller's queue.
 class QueueItem extends $pb.GeneratedMessage {
   factory QueueItem({
@@ -2442,6 +2585,12 @@ class SessionServiceApi {
           $pb.ClientContext? ctx, SetBackgroundModeRequest request) =>
       _client.invoke<SetBackgroundModeResponse>(ctx, 'SessionService',
           'SetBackgroundMode', request, SetBackgroundModeResponse());
+
+  /// Signed-in user. Sets how loud one of the caller's devices plays MP3 songs and MIDI songs (percent, 0 to 200; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field.
+  $async.Future<SetVolumeResponse> setVolume(
+          $pb.ClientContext? ctx, SetVolumeRequest request) =>
+      _client.invoke<SetVolumeResponse>(
+          ctx, 'SessionService', 'SetVolume', request, SetVolumeResponse());
 }
 
 const $core.bool _omitFieldNames =

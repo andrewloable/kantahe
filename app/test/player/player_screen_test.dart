@@ -2,6 +2,8 @@ import 'package:connectrpc/connect.dart';
 import 'package:flutter/material.dart' hide State;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart';
 import 'package:kantahe/player/platform.dart';
 import 'package:kantahe/player/player_screen.dart';
@@ -47,8 +49,14 @@ State playingHere({ScoreMode? mode, String player = 'me', PlayStatus status = Pl
   now: nowPlaying(song('1', 'A', 'B')),
 );
 
-Future<Rig> open(WidgetTester tester, {State? state, String? server = 'http://srv:1', Widget base = const Text('base screen')}) async {
-  final q = QueueRig();
+Future<Rig> open(WidgetTester tester, {State? state, String? server = 'http://srv:1', Widget base = const Text('base screen'), bool tv = false}) async {
+  if (tv) {
+    // a TV screen: the buttons share one row
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+  }
+  final q = QueueRig(isTv: tv);
   // the address first: a new address ends the session
   if (server != null) await q.services.serverUrl.set(server);
   await q.signIn('me');
@@ -677,6 +685,231 @@ void main() {
       r.q.setState(playingHere());
       await tester.pump();
       expect(r.awake.log, [true]);
+    });
+  });
+
+  group('connect a phone', () {
+    const address = 'http://192.0.2.10:8080';
+    double controlsOpacity(WidgetTester tester) => tester.widget<AnimatedOpacity>(find.byKey(const Key('player-controls'))).opacity;
+    String focusLabel() => FocusManager.instance.primaryFocus?.debugLabel ?? '';
+    Future<void> gone(WidgetTester tester, int seconds) async {
+      await tester.pump(Duration(seconds: seconds));
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Future<Rig> openCard(WidgetTester tester) async {
+      final r = await open(tester, server: address, tv: true);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight); // Pause -> Skip
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight); // Skip -> Volume down
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight); // Volume down -> Volume up
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight); // Volume up -> Connect a phone
+      await tester.pump();
+      expect(focusLabel(), 'player: Connect a phone');
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump(const Duration(milliseconds: 400));
+      return r;
+    }
+
+    testWidgets('REGRESSION: on a TV the player has a Connect a phone button the remote can reach', (tester) async {
+      await open(tester, server: address, tv: true);
+      expect(find.text('Connect a phone'), findsOneWidget);
+    });
+
+    testWidgets('it is not there on a phone or tablet', (tester) async {
+      await open(tester, server: address);
+      expect(find.text('Connect a phone'), findsNothing);
+    });
+
+    testWidgets('OK shows the QR of the server address and the address, and nothing else is in the QR', (tester) async {
+      await openCard(tester);
+      // the QR's key is built from the very string the QR encodes
+      expect(find.byKey(const ValueKey('qr:$address')), findsOneWidget);
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(find.text(address), findsOneWidget);
+    });
+
+    testWidgets('the card hides by itself after 10 seconds, not before, and the focus is back on the button', (tester) async {
+      await openCard(tester);
+      await tester.pump(const Duration(seconds: 9));
+      expect(find.byType(QrImageView), findsOneWidget);
+      await gone(tester, 2);
+      expect(find.byType(QrImageView), findsNothing);
+      expect(focusLabel(), 'player: Connect a phone');
+    });
+
+    testWidgets('Back closes the card and not the player; the next Back leaves the player', (tester) async {
+      await openCard(tester);
+      await tester.binding.handlePopRoute();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(QrImageView), findsNothing);
+      expect(find.byType(PlayerScreen), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(PlayerScreen), findsNothing);
+    });
+
+    testWidgets('the controls stay while the card is open and fade again after it, as before', (tester) async {
+      await openCard(tester);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft); // any key starts the 4 seconds of the buttons again, which must not hide them now
+      await tester.pump(const Duration(seconds: 6));
+      expect(controlsOpacity(tester), 1);
+      await gone(tester, 3); // the card is gone
+      expect(find.byType(QrImageView), findsNothing);
+      expect(controlsOpacity(tester), 1);
+      await gone(tester, 5);
+      expect(controlsOpacity(tester), 0);
+    });
+
+    testWidgets('a second press on the button starts the 10 seconds again', (tester) async {
+      await openCard(tester);
+      await tester.pump(const Duration(seconds: 7));
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 7)); // 14 seconds after the first press
+      expect(find.byType(QrImageView), findsOneWidget);
+      await gone(tester, 4);
+      expect(find.byType(QrImageView), findsNothing);
+    });
+  });
+
+  group('volume', () {
+    const me = 'me';
+    double controlsOpacity(WidgetTester tester) => tester.widget<AnimatedOpacity>(find.byKey(const Key('player-controls'))).opacity;
+    State withVolumes({int? mp3, int? midi, Format format = Format.FORMAT_MP3, bool song = true}) => stateOf(
+      status: PlayStatus.PLAY_STATUS_PLAYING,
+      player: me,
+      devices: [
+        device(me, 'This device', isCaller: true, mp3VolumePct: mp3, midiVolumePct: midi),
+        device('tv', 'TV'),
+      ],
+      now: song ? nowPlaying(Song(number: '1', title: 'A', artist: 'B', format: format)) : null,
+    );
+    Future<Rig> openWith(WidgetTester tester, State s) {
+      // a wide screen: the buttons share one row, as on a TV
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      return open(tester, state: s);
+    }
+
+    testWidgets('a MIDI song: Volume up shows 105 at once and sends one request with midiPct 105 and no mp3Pct after 300 ms', (tester) async {
+      final r = await openWith(tester, withVolumes(mp3: 100, midi: 100, format: Format.FORMAT_MIDI));
+      expect(find.text('MIDI volume 100%'), findsOneWidget);
+      await tester.tap(find.text('Volume up'));
+      await tester.pump();
+      expect(find.text('MIDI volume 105%'), findsOneWidget);
+      expect(r.q.server.volumes, isEmpty);
+      await tester.pump(const Duration(milliseconds: 310));
+      expect(r.q.server.volumes, hasLength(1));
+      expect(r.q.server.volumes.single.deviceId, me);
+      expect(r.q.server.volumes.single.midiPct, 105);
+      expect(r.q.server.volumes.single.hasMp3Pct(), isFalse);
+    });
+
+    testWidgets('an MP3 song: three presses of Volume down within the pause send ONE request with mp3Pct 35', (tester) async {
+      final r = await openWith(tester, withVolumes(mp3: 50, midi: 100));
+      for (var i = 0; i < 3; i++) {
+        await tester.tap(find.text('Volume down'));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(r.q.server.volumes, isEmpty);
+      await tester.pump(const Duration(milliseconds: 310));
+      expect(r.q.server.volumes, hasLength(1));
+      expect(r.q.server.volumes.single.mp3Pct, 35);
+      expect(r.q.server.volumes.single.hasMidiPct(), isFalse);
+    });
+
+    testWidgets('it stops at 200 and at 0 and sends nothing', (tester) async {
+      final r = await openWith(tester, withVolumes(mp3: 200, midi: 0));
+      await tester.tap(find.text('Volume up'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('MP3 volume 200%'), findsOneWidget);
+      r.q.setState(withVolumes(mp3: 200, midi: 0, format: Format.FORMAT_MIDI));
+      await tester.pump();
+      await tester.tap(find.text('Volume down'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('MIDI volume 0%'), findsOneWidget);
+      expect(r.q.server.volumes, isEmpty);
+    });
+
+    testWidgets('while another device is the player there are no volume buttons here', (tester) async {
+      await open(tester, state: playingHere(player: 'tv'));
+      expect(find.text('Volume up'), findsNothing);
+    });
+
+    testWidgets('a server that sends no volumes (older) starts at 100', (tester) async {
+      await openWith(tester, withVolumes());
+      expect(find.text('MP3 volume 100%'), findsOneWidget);
+    });
+
+    testWidgets('REGRESSION: a refused request puts the old value back and shows the error', (tester) async {
+      final r = await openWith(tester, withVolumes(mp3: 100, midi: 100));
+      r.q.server.onVolume = (_) => throw ConnectException(Code.permissionDenied, 'not yours');
+      await tester.tap(find.text('Volume up'));
+      await tester.pump();
+      expect(find.text('MP3 volume 105%'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 310));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('MP3 volume 100%'), findsOneWidget);
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+
+    testWidgets('with no song current there are no volume buttons', (tester) async {
+      await openWith(tester, withVolumes(song: false));
+      expect(find.text('Volume up'), findsNothing);
+      expect(find.text('Volume down'), findsNothing);
+    });
+
+    testWidgets('a value the server later shows differently is not hidden by the earlier step', (tester) async {
+      final r = await openWith(tester, withVolumes(mp3: 100, midi: 100));
+      await tester.tap(find.text('Volume up'));
+      await tester.pump(const Duration(milliseconds: 310));
+      r.q.setState(withVolumes(mp3: 105, midi: 100));
+      await tester.pump();
+      r.q.setState(withVolumes(mp3: 60, midi: 100));
+      await tester.pump();
+      expect(find.text('MP3 volume 60%'), findsOneWidget);
+    });
+
+    testWidgets('the D-pad reaches Volume down and Volume up after Skip, and OK changes the level', (tester) async {
+      final r = await openWith(tester, withVolumes(mp3: 100, midi: 100));
+      await tester.pump();
+      bool onButton(String label) => find
+          .descendant(
+            of: find.widgetWithText(OutlinedButton, label),
+            matching: find.byElementPredicate((e) => identical(e, FocusManager.instance.primaryFocus?.context)),
+          )
+          .evaluate()
+          .isNotEmpty;
+      expect(onButton('Pause'), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(onButton('Skip'), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(onButton('Volume down'), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(onButton('Volume up'), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+      expect(find.text('MP3 volume 105%'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 310));
+      expect(r.q.server.volumes.single.mp3Pct, 105);
+    });
+
+    testWidgets('pressing a volume button starts the 4 seconds of the controls again', (tester) async {
+      await openWith(tester, withVolumes(mp3: 100, midi: 100));
+      await tester.pump(const Duration(seconds: 3));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump(const Duration(seconds: 3)); // 6 seconds after the start, 3 after the key
+      expect(controlsOpacity(tester), 1);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(controlsOpacity(tester), 0);
     });
   });
 }

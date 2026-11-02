@@ -100,6 +100,10 @@ message Device {
   // What the user chose; effective_background is what the server resolved from it (whether this device plays the background videos).
   BackgroundMode background_mode = 11;
   bool effective_background = 12;
+  // How loud this device plays MP3 songs and MIDI songs (a MIDI song also when the server renders it to audio), in percent: 0 to 200, 100 by default.
+  // optional: a client talking to an older server sees no value and plays at 100.
+  optional int32 mp3_volume_pct = 13;
+  optional int32 midi_volume_pct = 14;
 }
 
 // A background video uploaded by the admin (plan 4.2). url is a signed URL (ListVideos: 1 hour, for the admin preview; GetBackground: 6 hours).

@@ -109,6 +109,9 @@ message Playback {
   bool ready = 7;
   int32 retry_after_ms = 8;
   Lyrics lyrics = 9;
+  // The gain in dB that brings this song to the common loudness (an MP3 song, once the server has measured it); the player adds it to the device's
+  // own volume. Absent: no gain is known and the song plays as it is.
+  optional float gain_db = 10;
 }
 
 // The playback description.

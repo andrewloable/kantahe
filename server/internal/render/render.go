@@ -12,6 +12,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/andrewloable/kantahe/server/internal/loudness"
 	"github.com/mewkiz/flac"
 	"github.com/mewkiz/flac/frame"
 	"github.com/mewkiz/flac/meta"
@@ -40,7 +41,12 @@ func Render(ctx context.Context, midi []byte, sf2 io.ReaderAt, w io.Writer) erro
 }
 
 // RenderWithTail is Render with tail of silence-padded playing time added at the end.
-func RenderWithTail(ctx context.Context, midi []byte, sf2 io.ReaderAt, w io.Writer, tail time.Duration) (err error) {
+func RenderWithTail(ctx context.Context, midi []byte, sf2 io.ReaderAt, w io.Writer, tail time.Duration) error {
+	return renderMeasured(ctx, midi, sf2, w, tail, nil)
+}
+
+// renderMeasured is RenderWithTail that also feeds every sample it writes to meter (nil: no measure).
+func renderMeasured(ctx context.Context, midi []byte, sf2 io.ReaderAt, w io.Writer, tail time.Duration, meter *loudness.Meter) (err error) {
 	// The synth reads files that users uploaded; a damaged one must fail the render, not the server.
 	defer func() {
 		if r := recover(); r != nil {
@@ -90,6 +96,9 @@ func RenderWithTail(ctx context.Context, midi []byte, sf2 io.ReaderAt, w io.Writ
 		seq.Render(left[:n], right[:n])
 		for i := 0; i < n; i++ {
 			l[i], r[i] = pcm16(left[i]), pcm16(right[i])
+			if meter != nil {
+				meter.Add(int16(l[i]), int16(r[i]))
+			}
 		}
 		fr := &frame.Frame{
 			Header: frame.Header{HasFixedBlockSize: true, BlockSize: uint16(n), SampleRate: SampleRate, Channels: frame.ChannelsLR, BitsPerSample: 16},

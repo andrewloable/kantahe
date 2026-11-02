@@ -26,6 +26,7 @@ func (f *fakeRenderer) Available() bool                              { return f.
 func (f *fakeRenderer) Ready(context.Context, string) bool           { return f.err == nil }
 func (f *fakeRenderer) Failed(context.Context, string) bool          { return errors.Is(f.err, ErrBuildFailed) }
 func (f *fakeRenderer) Path(context.Context, string) (string, error) { return f.path, f.err }
+func (f *fakeRenderer) Gain(context.Context, string) (float64, bool) { return 0, false }
 func (f *fakeRenderer) Prepare(n string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

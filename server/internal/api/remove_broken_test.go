@@ -46,16 +46,6 @@ func TestBrokenSongRPCsAreForAdministratorsOnly(t *testing.T) {
 	}
 }
 
-func TestDeleteFilesIsOnlyForTheBrokenScope(t *testing.T) {
-	a := newAdminEnv(t)
-	for _, scope := range []kantahev1.RemoveScope{kantahev1.RemoveScope_REMOVE_SCOPE_ALL, kantahev1.RemoveScope_REMOVE_SCOPE_NO_MUSIC} {
-		_, err := a.adminClient.RemoveSongs(context.Background(), with(connect.NewRequest(&kantahev1.RemoveSongsRequest{Scope: scope, DeleteFiles: true}), a.admin.Token))
-		if code(err) != connect.CodeInvalidArgument {
-			t.Fatalf("scope %v with delete_files: %v", scope, err)
-		}
-	}
-}
-
 func TestCheckLibraryStreamsProgressAndEndsWithDone(t *testing.T) {
 	a := newAdminEnv(t)
 	_, p := a.folderSong(t, "a.kar", "Alpha", "A")

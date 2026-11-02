@@ -11,6 +11,8 @@ for behaviour, API, decisions (D1–D12) and the roadmap; read it before buildin
 when a decision changes. Commands marked *planned* do not work until that part is scaffolded; replace
 them with the real ones when it is.
 
+The project's domain is **kantahe.party** (see README.md and docs/PLAN.md); use it wherever a project address is needed.
+
 Earlier plans (a Blazor app, then a Raspberry Pi videoke box) are superseded; ignore them in git history.
 Do not name or compare Kantahe to other media-server products anywhere in the docs or the app.
 
@@ -34,6 +36,7 @@ scripts/ci-local.sh                # BEFORE a tag: every ci.yml check on the com
 
 # planned
 buf generate && buf lint                          # after editing proto/; commit the generated code
+cd server && go generate ./internal/assets      # once per checkout, before any build: puts the default SoundFont into the build (git-ignored; cached, checksum-checked download)
 cd server && go test ./...                        # all Go tests
 cd server && go test ./... -run TestQueueSkip     # one test
 cd server && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./cmd/kantahe   # any OS/arch the same way

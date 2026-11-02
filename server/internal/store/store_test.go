@@ -496,3 +496,50 @@ func TestDeviceBackgroundMigrationGivesOldDevicesAuto(t *testing.T) {
 		t.Fatalf("%d devices, %d with background_mode 1: %v", n, auto, err)
 	}
 }
+
+// A database that has devices from before the volume settings gets 100 and 100 for each of them.
+func TestDeviceVolumeMigrationKeepsExistingDevices(t *testing.T) {
+	db := rawDB(t)
+	ctx := context.Background()
+	old := fstest.MapFS{}
+	all, err := migrationFiles.ReadDir("migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var volume string
+	for _, e := range all {
+		if strings.Contains(e.Name(), "device_volume") {
+			volume = e.Name()
+			continue
+		}
+		b, _ := migrationFiles.ReadFile("migrations/" + e.Name())
+		old[e.Name()] = &fstest.MapFile{Data: b}
+	}
+	if volume == "" {
+		t.Fatal("no migration named ..._device_volume.sql")
+	}
+	if err := migrateFS(ctx, db, old); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO users(id, email, display_name, password_hash, created_at) VALUES ('u','a@example.com','A','x',1)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO devices(id, user_id, name, type, token_hash, created_at, last_seen) VALUES ('d','u','Old TV',1,'h',1,1)`); err != nil {
+		t.Fatal(err)
+	}
+	full := fstest.MapFS{}
+	for _, e := range all {
+		b, _ := migrationFiles.ReadFile("migrations/" + e.Name())
+		full[e.Name()] = &fstest.MapFile{Data: b}
+	}
+	if err := migrateFS(ctx, db, full); err != nil {
+		t.Fatal(err)
+	}
+	var mp3, midi int
+	if err := db.QueryRow(`SELECT mp3_volume_pct, midi_volume_pct FROM devices WHERE id='d'`).Scan(&mp3, &midi); err != nil {
+		t.Fatal(err)
+	}
+	if mp3 != 100 || midi != 100 {
+		t.Fatalf("volumes = %d, %d; want 100, 100", mp3, midi)
+	}
+}

@@ -6,6 +6,11 @@ import (
 	"fmt"
 )
 
+// The default SoundFont is embedded from soundfont/ (git-ignored). `go generate ./internal/assets` puts it there (a cached, checksum-checked
+// download, scripts/fetch-soundfont.sh); do it once per checkout, before building, so that the binary can play MIDI with no --soundfont.
+//
+//go:generate ../../../scripts/fetch-soundfont.sh
+
 //go:embed fanfare/*.mp3
 var fanfares embed.FS
 

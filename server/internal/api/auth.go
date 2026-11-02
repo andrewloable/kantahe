@@ -268,12 +268,14 @@ func toProtoUser(u users.User) *kantahev1.User {
 func toProtoDevice(d users.Device, callerID string, modes *devices.Modes) *kantahev1.Device {
 	mode := kantahev1.MidiMode(d.MidiMode)
 	background := kantahev1.BackgroundMode(d.BackgroundMode)
+	mp3Volume, midiVolume := int32(d.Mp3VolumePct), int32(d.MidiVolumePct)
 	return &kantahev1.Device{
 		Id: d.ID, Name: d.Name, Type: kantahev1.DeviceType(d.Type), MicAvailable: d.MicAvailable, MemoryMb: int32(d.MemoryMB),
 		MidiMode: mode, EffectiveMidiMode: modes.Effective(mode, kantahev1.DeviceType(d.Type), d.MemoryMB, d.ID),
 		BackgroundMode:      background,
 		EffectiveBackground: modes.EffectiveBackground(background, mode, kantahev1.DeviceType(d.Type), d.MemoryMB, d.ID),
 		IsCaller:            d.ID == callerID, LastSeenUnix: d.LastSeen,
+		Mp3VolumePct: &mp3Volume, MidiVolumePct: &midiVolume,
 	}
 }
 
