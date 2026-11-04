@@ -160,6 +160,6 @@ void main() {
     final t = FakeTransportBuilder().build();
     final api = Api(t);
     expect(api.transport, same(t));
-    expect([api.auth, api.session, api.catalog, api.admin, api.upload, api.userLibrary], everyElement(isNotNull));
+    expect([api.auth, api.session, api.catalog, api.userLibrary], everyElement(isNotNull));
   });
 }

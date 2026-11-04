@@ -25,6 +25,10 @@ type AdminServer struct {
 	media *media.Service
 	// checking is set while a CheckLibrary runs: a second one is refused.
 	checking atomic.Bool
+	// transferring is set while an export or an import runs: only one at a time.
+	transferring atomic.Bool
+	// exportHook, when set (tests), is called at every progress report of an export.
+	exportHook func()
 }
 
 func newAdminServer(d Deps, h *hasher) *AdminServer { return &AdminServer{d: d, h: h} }

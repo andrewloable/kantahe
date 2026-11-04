@@ -1,14 +1,18 @@
 import { TestBed } from '@angular/core/testing';
 import { Format } from '../../gen/kantahe/v1/common_pb';
-import { SongSort } from '../../gen/kantahe/v1/catalog_pb';
 import { Code, ConnectError } from '@connectrpc/connect';
+import { provideRouter } from '@angular/router';
+import { create } from '@bufbuild/protobuf';
+import { UserSchema } from '../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from '../core/api';
+import { AuthStore } from '../core/auth.store';
+import { KeyboardShortcuts } from '../core/shortcuts';
 import { LibraryPage } from './library.page';
 import { fakeLibrary, FakeLibrary, song, untilAborted } from './testing';
 
 function setup(h: FakeLibrary = {}) {
   const f = fakeLibrary(h);
-  TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: f.transport }] });
+  TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: TRANSPORT, useValue: f.transport }] });
   const fixture = TestBed.createComponent(LibraryPage);
   fixture.detectChanges();
   const el = fixture.nativeElement as HTMLElement;
@@ -31,11 +35,99 @@ describe('LibraryPage', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
+  describe('the / shortcut (kantahe-tlf.4.7)', () => {
+    const press = (key: string, target: Element = document.body, init: KeyboardEventInit = {}) => {
+      const e = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
+      target.dispatchEvent(e);
+      return e;
+    };
+
+    it('focuses the search box (and the / is not typed into it)', async () => {
+      const { el, settle } = setup();
+      document.body.appendChild(el);
+      await settle();
+      const e = press('/');
+      await settle();
+      expect(document.activeElement).toBe(el.querySelector('#search'));
+      expect(e.defaultPrevented).toBe(true);
+      el.remove();
+    });
+
+    it('from the Number tab it goes back to Search first', async () => {
+      const { el, tab, settle } = setup();
+      document.body.appendChild(el);
+      await settle();
+      tab('Number').click();
+      await settle();
+      press('/');
+      await settle();
+      await settle();
+      expect(tab('Search').getAttribute('aria-selected')).toBe('true');
+      expect(document.activeElement).toBe(el.querySelector('#search'));
+      el.remove();
+    });
+
+    it('REGRESSION: a / typed in a field stays there, and Ctrl or turned-off shortcuts do nothing', async () => {
+      const { el, settle } = setup();
+      document.body.appendChild(el);
+      await settle();
+      const search = el.querySelector<HTMLInputElement>('#search')!;
+      const other = document.createElement('input');
+      document.body.appendChild(other);
+      other.focus();
+      press('/', other);
+      press('/', document.body, { ctrlKey: true });
+      TestBed.inject(KeyboardShortcuts).setEnabled(false);
+      press('/');
+      await settle();
+      expect(document.activeElement).toBe(other);
+      expect(document.activeElement).not.toBe(search);
+      other.remove();
+      el.remove();
+    });
+  });
+
+  describe('an empty library (first run, kantahe-tlf.4.5)', () => {
+    it('tells an administrator how songs get in, with a link to Upload', async () => {
+      const { el, settle } = setup();
+      TestBed.inject(AuthStore).setUser(create(UserSchema, { admin: true }));
+      await settle();
+      const text = el.querySelector('.empty-library')?.textContent ?? '';
+      expect(text).toContain('The library is empty.');
+      expect(text).toContain('watched folder');
+      expect(el.querySelector('.empty-library a')?.getAttribute('href')).toBe('/admin/upload');
+      expect(el.textContent).not.toContain('No songs found.');
+    });
+
+    it('tells a user to ask the administrator', async () => {
+      const { el, settle } = setup();
+      await settle();
+      expect(el.querySelector('.empty-library')?.textContent).toContain('Ask your administrator to add songs.');
+      expect(el.querySelector('.empty-library a')).toBeNull();
+    });
+
+    it('a search with no result is still "No songs found."', async () => {
+      const { el, settle, type } = setup();
+      await settle();
+      await type('zzz');
+      await settle(300); // the search starts a moment after typing
+      expect(el.querySelector('.empty-library')).toBeNull();
+      expect(el.textContent).toContain('No songs found.');
+    });
+
+    it('a library with songs shows neither', async () => {
+      const { el, settle } = setup({ searchSongs: () => ({ items: [song('1', 'Hello', 'Adele')] }) });
+      await settle();
+      expect(el.querySelector('.empty-library')).toBeNull();
+      expect(el.textContent).not.toContain('No songs found.');
+    });
+  });
+
   describe('tabs', () => {
-    it('is a tablist of Search, Number and Browse with Search selected', async () => {
+    it('is a tablist of Search and Number with Search selected', async () => {
       const { el, tab, settle } = setup();
       await settle();
-      expect(Array.from(el.querySelectorAll('[role="tab"]')).map((t) => t.textContent?.trim())).toEqual(['Search', 'Number', 'Browse']);
+      expect(Array.from(el.querySelectorAll('[role="tab"]')).map((t) => t.textContent?.trim())).toEqual(['Search', 'Number']);
       expect(el.querySelector('[role="tablist"]')).not.toBeNull();
       expect(tab('Search').getAttribute('aria-selected')).toBe('true');
       expect(tab('Number').getAttribute('aria-selected')).toBe('false');
@@ -44,7 +136,7 @@ describe('LibraryPage', () => {
       expect(tab('Search').getAttribute('aria-controls')).toBe(el.querySelector('[role="tabpanel"]')?.id);
     });
 
-    it('clicking and the arrow keys move between tabs, Home and End jump', async () => {
+    it('clicking and the arrow keys move between the two tabs, Home and End jump', async () => {
       const { el, tab, settle } = setup();
       await settle();
       tab('Number').click();
@@ -52,20 +144,23 @@ describe('LibraryPage', () => {
       expect(el.querySelector('app-number-pad')).not.toBeNull();
       tab('Number').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
       await settle();
-      expect(tab('Browse').getAttribute('aria-selected')).toBe('true');
-      expect(el.querySelector('app-alpha-browse')).not.toBeNull();
-      tab('Browse').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-      await settle();
       expect(tab('Search').getAttribute('aria-selected')).toBe('true'); // wraps
       tab('Search').dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
       await settle();
-      expect(tab('Browse').getAttribute('aria-selected')).toBe('true');
-      tab('Browse').dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+      expect(tab('Number').getAttribute('aria-selected')).toBe('true');
+      tab('Number').dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
       await settle();
       expect(tab('Search').getAttribute('aria-selected')).toBe('true');
       tab('Search').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
       await settle();
-      expect(tab('Browse').getAttribute('aria-selected')).toBe('true');
+      expect(tab('Number').getAttribute('aria-selected')).toBe('true');
+    });
+
+    it('there is no Browse: no tab of that name and no browse component', async () => {
+      const { el, settle } = setup();
+      await settle();
+      expect(Array.from(el.querySelectorAll('[role="tab"]')).some((t) => /browse/i.test(t.textContent ?? ''))).toBe(false);
+      expect(el.querySelector('app-alpha-browse')).toBeNull();
     });
   });
 
@@ -274,16 +369,6 @@ describe('LibraryPage', () => {
       await vi.advanceTimersByTimeAsync(500);
       expect(calls.search.length).toBe(0);
     });
-  });
-
-  it('browse sorts by title', async () => {
-    const { el, tab, settle, calls } = setup();
-    await settle();
-    tab('Browse').click();
-    await settle();
-    Array.from(el.querySelectorAll<HTMLButtonElement>('.letters button')).find((b) => b.textContent?.trim() === 'A')!.click();
-    await settle();
-    expect(calls.search.at(-1)?.sort).toBe(SongSort.TITLE);
   });
 
   it('the format chips are toggles: the chosen one has aria-pressed and the toggle class the stylesheet fills', async () => {

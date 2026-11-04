@@ -7,9 +7,10 @@ import "package:connectrpc/connect.dart" as connect;
 import "upload.pb.dart" as kantahev1upload;
 import "upload.connect.spec.dart" as specs;
 
-/// Song upload; requires the uploader role (PERMISSION_DENIED otherwise).
+/// Song upload; for administrators only (PERMISSION_DENIED otherwise). The uploader role of a user has no effect since 1.2.0.
 extension type UploadServiceClient (connect.Transport _transport) {
-  /// Uploader or admin. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+  /// Admin only. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+  /// With replace_number set the file replaces the content of that song (it keeps its number, edits, favourites, playlists and history).
   Future<kantahev1upload.UploadSongResponse> uploadSong(
     kantahev1upload.UploadSongRequest input, {
     connect.Headers? headers,

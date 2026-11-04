@@ -4,6 +4,8 @@ import {
   AdminService,
   CreateUserRequest,
   CreateUserResponseSchema,
+  GetSongDownloadResponse,
+  GetSongDownloadResponseSchema,
   DeleteUserResponseSchema,
   ListUsersResponseSchema,
   ResetPasswordRequest,
@@ -13,6 +15,18 @@ import {
   UpdateUserResponseSchema,
 } from '../../gen/kantahe/v1/admin_pb';
 import { User, UserSchema } from '../../gen/kantahe/v1/common_pb';
+import {
+  ExportDataRequest,
+  ExportDataResponse,
+  ExportDataResponseSchema,
+  ImportDataRequest,
+  ImportDataResponse,
+  ImportDataResponseSchema,
+  InspectExportRequest,
+  InspectExportResponse,
+  InspectExportResponseSchema,
+} from '../../gen/kantahe/v1/admin_pb';
+import { AuthService, GetServerInfoResponse, GetServerInfoResponseSchema } from '../../gen/kantahe/v1/auth_pb';
 
 export function user(id: string, email: string, over: Partial<Omit<User, '$typeName' | '$unknown'>> = {}): User {
   return create(UserSchema, { id, email, displayName: email.split('@')[0], ...over });
@@ -96,7 +110,7 @@ export function fakeAdminUsers(seed: User[], opts: { devicesRevoked?: number } =
 
 // ---- songs, upload and settings ----
 
-import { CatalogService, SearchSongsRequest, SearchSongsResponseSchema } from '../../gen/kantahe/v1/catalog_pb';
+import { CatalogService, SearchSongsRequest, SearchSongsResponseSchema, SongSort } from '../../gen/kantahe/v1/catalog_pb';
 import {
   DeleteSongResponseSchema,
   GetServerSettingsResponseSchema,
@@ -146,6 +160,8 @@ export function fakeAdminSongs(seed: { songs?: Song[]; broken?: { song: Song; re
     checks: 0,
     listBroken: [] as ListBrokenSongsRequest[],
     rescan: 0,
+    /** The number of each GetSongDownload. */
+    download: [] as string[],
     settings: [] as UpdateServerSettingsRequest[],
     getSettings: 0,
   };
@@ -164,6 +180,11 @@ export function fakeAdminSongs(seed: { songs?: Song[]; broken?: { song: Song; re
       index: number,
     ) => UploadReply | Promise<UploadReply>,
     rescan: { added: 3, updated: 1, removed: 0, failed: 2 },
+    /** What GetSongDownload answers; may be async to hold the call back. */
+    download: ((number: string): GetSongDownloadResponse | Promise<GetSongDownloadResponse> =>
+      create(GetSongDownloadResponseSchema, { url: `/media/download/${number}?u=u1&exp=1&sig=s`, fileName: `${number} - Artist - Title.karmp3`, expiresUnix: 1n })) as (
+      number: string,
+    ) => GetSongDownloadResponse | Promise<GetSongDownloadResponse>,
     /** The answer of RemoveSelectedSongs; without removed it counts the numbers sent. */
     removeSelected: {} as { removed?: number; filesDeleted?: number; filesFailed?: number },
     /** What CheckLibrary streams: the songs checked at each step (the last one is the total) and how many are broken at the end. */
@@ -189,7 +210,35 @@ export function fakeAdminSongs(seed: { songs?: Song[]; broken?: { song: Song; re
       searchSongs(req) {
         calls.search.push(req);
         const q = req.query.toLowerCase();
-        const found = songs.filter((s) => !q || s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q));
+        // like the server: the filters, then the order (a sort that is not asked for keeps the order of the list); a descending order reverses the main key only
+        const found = songs
+          .filter((s) => !q || s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q))
+          .filter((s) => !req.format || s.format === req.format)
+          .filter((s) => req.hasVocals === undefined || s.hasVocals === req.hasVocals)
+          .filter((s) => !req.lyricTiming || s.lyricTiming === req.lyricTiming);
+        const key = (s: Song): string | number => {
+          switch (req.sort) {
+            case SongSort.TITLE:
+              return s.title.toLowerCase();
+            case SongSort.ARTIST:
+              return s.artist.toLowerCase();
+            case SongSort.FORMAT:
+              return s.format;
+            case SongSort.LYRIC_TIMING:
+              return s.lyricTiming;
+            case SongSort.VOCALS:
+              return s.hasVocals ? 1 : 0;
+            default:
+              return s.number;
+          }
+        };
+        if (req.sort !== SongSort.UNSPECIFIED) {
+          found.sort((a, b) => {
+            const [x, y] = [key(a), key(b)];
+            const main = x < y ? -1 : x > y ? 1 : 0;
+            return (req.descending ? -main : main) || (a.number < b.number ? -1 : 1);
+          });
+        }
         const pageSize = seed.pageSize ?? 2;
         const start = req.pageToken ? Number(req.pageToken) : 0;
         const next = start + pageSize < found.length ? String(start + pageSize) : '';
@@ -197,6 +246,11 @@ export function fakeAdminSongs(seed: { songs?: Song[]; broken?: { song: Song; re
       },
     });
     service(AdminService, {
+      async getSongDownload(req) {
+        calls.download.push(req.number);
+        maybeFail();
+        return handlers.download(req.number);
+      },
       updateSong(req) {
         calls.update.push(req);
         maybeFail();
@@ -292,3 +346,59 @@ export function fakeAdminSongs(seed: { songs?: Song[]; broken?: { song: Song; re
 }
 
 export { RemoveScope, UploadStatus };
+
+export const exportMsg = (over: Partial<Omit<ExportDataResponse, '$typeName' | '$unknown'>> = {}) => create(ExportDataResponseSchema, over);
+export const importMsg = (over: Partial<Omit<ImportDataResponse, '$typeName' | '$unknown'>> = {}) => create(ImportDataResponseSchema, over);
+export const inspectMsg = (over: Partial<Omit<InspectExportResponse, '$typeName' | '$unknown'>> = {}) =>
+  create(InspectExportResponseSchema, { serverName: 'Old box', kantaheVersion: '1.1.0', createdUnix: 1_767_268_800n, songs: 12, users: 3, videos: 1, bytesTotal: 5n * 1024n * 1024n, importable: true, ...over });
+export const infoMsg = (startedUnixMs: bigint) => create(GetServerInfoResponseSchema, { name: 'Box', version: '1.2.0', startedUnixMs });
+
+/** An in-memory server for Admin, Transfer: what each stream sends is set by the test; every request is recorded. */
+export function fakeAdminTransfer() {
+  const calls = { export: [] as ExportDataRequest[], inspect: [] as InspectExportRequest[], import: [] as ImportDataRequest[], info: 0 };
+  /** The abort signal of each export and import call, as the server sees it. */
+  const signals = { export: [] as AbortSignal[], import: [] as AbortSignal[] };
+  const handlers = {
+    export: (async function* () {
+      yield exportMsg({ filesDone: 2, filesTotal: 2, done: true });
+    }) as (req: ExportDataRequest, signal: AbortSignal) => AsyncGenerator<ExportDataResponse>,
+    inspect: ((): InspectExportResponse | Promise<InspectExportResponse> => inspectMsg()) as (req: InspectExportRequest) => InspectExportResponse | Promise<InspectExportResponse>,
+    import: (async function* () {
+      yield importMsg({ filesDone: 2, filesTotal: 2, done: true, restarting: true });
+    }) as (req: ImportDataRequest, signal: AbortSignal) => AsyncGenerator<ImportDataResponse>,
+    /** GetServerInfo; the number counts the calls; throw to be a server that is down. */
+    info: ((): GetServerInfoResponse => infoMsg(100n)) as (n: number) => GetServerInfoResponse,
+  };
+  const transport = createRouterTransport(({ service }) => {
+    service(AdminService, {
+      async *exportData(req, ctx) {
+        calls.export.push(req);
+        signals.export.push(ctx.signal);
+        yield* handlers.export(req, ctx.signal);
+      },
+      inspectExport(req) {
+        calls.inspect.push(req);
+        return handlers.inspect(req);
+      },
+      async *importData(req, ctx) {
+        calls.import.push(req);
+        signals.import.push(ctx.signal);
+        yield* handlers.import(req, ctx.signal);
+      },
+    });
+    service(AuthService, {
+      getServerInfo() {
+        calls.info++;
+        return handlers.info(calls.info);
+      },
+    });
+  });
+  return { transport, calls, signals, handlers };
+}
+
+/** A promise that the test settles by hand, to hold a stream back. */
+export function gate() {
+  let open!: () => void;
+  const promise = new Promise<void>((r) => (open = r));
+  return { promise, open };
+}

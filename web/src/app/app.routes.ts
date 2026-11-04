@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { environment } from '../environments/environment';
 import { Environment } from '../environments/environment.model';
-import { adminGuard, authGuard, serverGuard, setupGuard, uploaderGuard } from './core/guards';
+import { adminGuard, authGuard, serverGuard, setupGuard } from './core/guards';
 import { ShellComponent } from './shell.component';
 
 const signInPage = (env: Environment) =>
@@ -13,9 +13,11 @@ const pages = (env: Environment): Routes => [
   { path: '', pathMatch: 'full', redirectTo: 'library' },
   { path: 'setup', title: 'Set up', loadComponent: () => import('./auth/setup.page').then((m) => m.SetupPage) },
   { path: 'login', title: 'Sign in', loadComponent: signInPage(env), canActivate: [setupGuard] },
-  { path: 'code', title: 'Approve a TV', loadComponent: () => import('./auth/approve-code.page').then((m) => m.ApproveCodePage), canActivate: [authGuard] },
+  // the address on the TV's screen and in its QR code: the page itself is under Me, with the Me menu
+  { path: 'code', pathMatch: 'full', redirectTo: 'me/approve-tv' },
   { path: 'library', title: 'Library', loadComponent: () => import('./library/library.page').then((m) => m.LibraryPage), canActivate: [authGuard] },
-  { path: 'upload', title: 'Upload songs', loadComponent: () => import('./admin/songs/upload.page').then((m) => m.UploadPage), canActivate: [authGuard, uploaderGuard] },
+  // Upload is a page of Admin (with the admin menu on screen); the old address still leads there
+  { path: 'upload', pathMatch: 'full', redirectTo: 'admin/upload' },
   { path: 'queue', title: 'Queue', loadComponent: () => import('./queue/queue.page').then((m) => m.QueuePage), canActivate: [authGuard] },
   {
     path: 'me',
@@ -29,7 +31,10 @@ const pages = (env: Environment): Routes => [
       { path: 'playlists/:id', title: 'Playlist', loadComponent: () => import('./me/playlist-detail.component').then((m) => m.PlaylistDetailComponent) },
       { path: 'devices', title: 'Devices', loadComponent: () => import('./me/my-devices.component').then((m) => m.MyDevicesComponent) },
       { path: 'settings', title: 'Score', loadComponent: () => import('./me/score-settings.component').then((m) => m.ScoreSettingsComponent) },
+      { path: 'appearance', title: 'Appearance and account', loadComponent: () => import('./me/appearance.component').then((m) => m.AppearanceComponent) },
+      { path: 'help', title: 'Help', loadComponent: () => import('./me/help.component').then((m) => m.HelpComponent) },
       { path: 'password', title: 'Password', loadComponent: () => import('./auth/change-password.page').then((m) => m.ChangePasswordPage) },
+      { path: 'approve-tv', title: 'Approve a TV', loadComponent: () => import('./auth/approve-code.page').then((m) => m.ApproveCodePage) },
     ],
   },
   {
@@ -38,10 +43,12 @@ const pages = (env: Environment): Routes => [
     canActivate: [authGuard, adminGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'users' },
+      { path: 'upload', title: 'Upload songs', loadComponent: () => import('./admin/songs/upload.page').then((m) => m.UploadPage) },
       { path: 'users', title: 'Users', loadComponent: () => import('./admin/users/users.page').then((m) => m.UsersPage) },
       { path: 'songs', title: 'Songs', loadComponent: () => import('./admin/songs/songs-admin.page').then((m) => m.SongsAdminPage) },
       { path: 'videos', title: 'Videos', loadComponent: () => import('./admin/videos/videos.page').then((m) => m.VideosPage) },
       { path: 'settings', title: 'Settings', loadComponent: () => import('./admin/songs/server-settings.page').then((m) => m.ServerSettingsPage) },
+      { path: 'transfer', title: 'Transfer', loadComponent: () => import('./admin/transfer/transfer.page').then((m) => m.TransferPage) },
     ],
   },
   { path: '**', redirectTo: 'library' },

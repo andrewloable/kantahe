@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kantahe/shell/app_footer.dart';
 
 /// The frame of the sign-in screens: a centred column that scrolls when the keyboard is up.
 class AuthPage extends StatelessWidget {
@@ -14,22 +15,29 @@ class AuthPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(title, textAlign: centered ? TextAlign.center : null, style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 16),
-                  ...children,
-                ],
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: 420),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(title, textAlign: centered ? TextAlign.center : null, style: Theme.of(context).textTheme.headlineMedium),
+                        const SizedBox(height: 16),
+                        ...children,
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
+            const AppFooter(),
+          ],
         ),
       ),
     );

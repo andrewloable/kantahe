@@ -19,9 +19,11 @@ type adminEnv struct {
 	user  *kantahev1.AuthToken // a regular user
 }
 
-func newAdminEnv(t *testing.T) *adminEnv {
+func newAdminEnv(t *testing.T) *adminEnv { return newAdminEnvWith(t, nil) }
+
+func newAdminEnvWith(t *testing.T, tweak func(*Deps)) *adminEnv {
 	t.Helper()
-	e := newEnv(t)
+	e := newEnvWith(t, tweak)
 	admin := e.setup(t, "admin@example.com", "password1")
 	e.addUser(t, "user@example.com", "password1")
 	user, err := e.login("user@example.com", "password1", "Phone")

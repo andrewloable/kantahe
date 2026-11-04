@@ -9,6 +9,7 @@
   --on-accent: #ffffff;
   --sung: #9a6700;
   --danger: #b3261e;
+  --on-danger: #ffffff;
   --line: #c9cde0;
   /* the border of a control (3:1 against the page and against a card); --line is for separators and cards */
   --field-line: #7a81a6;
@@ -26,6 +27,7 @@
     --on-accent: #0c1230;
     --sung: #ffd23f;
     --danger: #ff8a80;
+    --on-danger: #0c1230;
     --line: #2a3592;
     --field-line: #5562c4;
   }
@@ -41,6 +43,7 @@
   --on-accent: #0c1230;
   --sung: #ffd23f;
   --danger: #ff8a80;
+  --on-danger: #0c1230;
   --line: #2a3592;
   --field-line: #5562c4;
 }
@@ -58,6 +61,14 @@ body {
   background: var(--paper);
   color: var(--text);
   font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* WCAG 2.4.11: on a phone the tab bar is fixed over the bottom of the window; a control that gets the focus is scrolled clear of it.
+   Keep this the height of the bar (.frame padding-bottom in shell.component.css, same breakpoint). */
+@media (max-width: 40rem) {
+  html {
+    scroll-padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
 }
 
 a {
@@ -109,10 +120,105 @@ input[type='number'] {
   font: inherit;
 }
 
+/* a dropdown looks like a text box: outlined, rounded, in the page colours (kantahe-tlf.5.7) */
 select {
   min-height: 2.75rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--field-line);
+  border-radius: 0.5rem;
+  background: var(--panel);
+  color: var(--text);
   /* a select does not inherit the font by default; under 16 px iOS Safari zooms into it when it is focused */
   font: inherit;
+}
+
+/* A checkbox is drawn by the app: a 24 px box (the ::before) in the tick colours, the tick the ::after. The input itself is as big as
+   the box; where the page needs a 44 px target (a table cell) it makes the input 44 px and the box stays centred in it. */
+input[type='checkbox'] {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0 0.5rem 0 0;
+  vertical-align: middle;
+  background: none;
+  cursor: pointer;
+}
+
+input[type='checkbox']::before {
+  content: '';
+  grid-area: 1 / 1;
+  place-self: center;
+  box-sizing: border-box;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--field-line);
+  border-radius: 0.3rem;
+  background: var(--panel);
+}
+
+input[type='checkbox']::after {
+  content: '';
+  grid-area: 1 / 1;
+  place-self: center;
+  width: 0.8rem;
+  height: 0.4rem;
+  margin-top: -0.15rem;
+  border-left: 3px solid var(--on-accent);
+  border-bottom: 3px solid var(--on-accent);
+  transform: rotate(-45deg) scale(0);
+}
+
+input[type='checkbox']:checked::before,
+input[type='checkbox']:indeterminate::before {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+input[type='checkbox']:checked::after {
+  transform: rotate(-45deg) scale(1);
+}
+
+/* the mixed state: a dash */
+input[type='checkbox']:indeterminate::after {
+  width: 0.8rem;
+  height: 0;
+  margin-top: 0;
+  border-left: 0;
+  transform: none;
+}
+
+input[type='checkbox']:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input[type='radio'] {
+  accent-color: var(--accent);
+}
+
+/* forced colours (Windows high contrast) replace the colours: the box and the tick stay visible in the system's */
+@media (forced-colors: active) {
+  input[type='checkbox']::before {
+    border-color: ButtonText;
+    background: Canvas;
+  }
+
+  input[type='checkbox']::after {
+    border-color: ButtonText;
+  }
+
+  input[type='checkbox']:checked::before,
+  input[type='checkbox']:indeterminate::before {
+    border-color: Highlight;
+    background: Canvas;
+  }
+
+  input[type='checkbox']:checked::after,
+  input[type='checkbox']:indeterminate::after {
+    border-color: Highlight;
+  }
 }
 
 /* the file picker is one 44 px target: the box and the button inside it */
@@ -134,19 +240,79 @@ input.code {
   text-transform: uppercase;
 }
 
+/* Four kinds of button (kantahe-tlf.3.1): a plain button is the secondary one, outlined; .primary is the one main action of an area,
+   filled; .danger deletes or removes something, in the danger colour (.danger.primary, filled, is the Yes of a deletion);
+   .quiet steps back (Cancel, Close, Clear). All keep the 44 px target and the focus ring. */
 button {
   min-height: 2.75rem;
   padding: 0.5rem 1.25rem;
-  border: 0;
+  border: 2px solid var(--accent);
   border-radius: 0.5rem;
-  background: var(--accent);
-  color: var(--on-accent);
+  background: transparent;
+  color: var(--accent);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
 }
 
-/* a toggle (format chips, Browse, letters): outlined while off, filled while on, so the chosen one is not a thin ring only */
+button.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+button.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+button.danger.primary {
+  background: var(--danger);
+  color: var(--on-danger);
+}
+
+button.quiet {
+  border-color: transparent;
+  color: var(--accent);
+}
+
+/* The second-level menu of Me and Administration (kantahe-tlf.5.6): tabs like the ones of the Library, the current one filled. */
+.sub-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.sub-nav a,
+.sub-nav .entry {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 0.5rem 0.5rem 0 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.sub-nav a[aria-current='page'] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* on a phone the nine entries of Me are packed tighter (the gap stays 8 px: the layout tests keep controls 8 px apart) */
+@media (max-width: 40rem) {
+  .sub-nav a,
+  .sub-nav .entry {
+    padding: 0 0.75rem;
+  }
+}
+
+/* a toggle (format chips, letters): outlined while off, filled while on, so the chosen one is not a thin ring only */
 button.toggle {
   background: transparent;
   color: var(--accent);
@@ -166,6 +332,18 @@ button:disabled {
 .error {
   margin: 0.25rem 0 0.75rem;
   color: var(--danger);
+}
+
+/* a form keeps a reading column in the wide frame (the frame is wide for the admin tables) */
+form {
+  max-width: 48rem;
+}
+
+/* running text in the app frame stays a readable line length on a wide screen. The player, TV and embed pages are outside the frame and centre
+   their lines in the whole window: a capped paragraph there is a narrow block at the left edge and its centred text is off centre. */
+.frame p,
+.frame .hint {
+  max-width: 70ch;
 }
 
 .hint {

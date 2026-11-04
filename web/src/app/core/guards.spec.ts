@@ -6,7 +6,7 @@ import { AuthService, GetServerInfoResponseSchema, MeResponseSchema } from '../.
 import { AuthTokenSchema, UserSchema } from '../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from './api';
 import { AuthStore } from './auth.store';
-import { adminGuard, authGuard, setupGuard, uploaderGuard } from './guards';
+import { adminGuard, authGuard, setupGuard } from './guards';
 
 interface Server {
   me?: () => unknown;
@@ -137,6 +137,12 @@ describe('adminGuard', () => {
     expect(url(await run(adminGuard))).toBe('/library');
   });
 
+  it('sends a user with the old uploader role, who is not an admin, to /library: only administrators upload', async () => {
+    setup();
+    TestBed.inject(AuthStore).signIn(create(AuthTokenSchema, { token: 't', deviceId: 'd', user: create(UserSchema, { uploader: true, admin: false }) }));
+    expect(url(await run(adminGuard))).toBe('/library');
+  });
+
   it('asks the server when the user is not loaded yet', async () => {
     const s = setup({ me: () => create(MeResponseSchema, { user: create(UserSchema, { admin: true }) }) });
     signIn(false, false);
@@ -178,41 +184,5 @@ describe('setupGuard', () => {
       },
     });
     expect(await run(setupGuard)).toBe(true);
-  });
-});
-
-describe('uploaderGuard', () => {
-  const runUp = () => TestBed.runInInjectionContext(() => uploaderGuard(route, state)) as Promise<boolean | UrlTree>;
-  const signInAs = (uploader: boolean, admin: boolean) =>
-    TestBed.inject(AuthStore).signIn(create(AuthTokenSchema, { token: 't', deviceId: 'd', user: create(UserSchema, { uploader, admin }) }));
-
-  it('lets an uploader through', async () => {
-    setup();
-    signInAs(true, false);
-    expect(await runUp()).toBe(true);
-  });
-
-  it('lets an administrator through even without the uploader role', async () => {
-    setup();
-    signInAs(false, true);
-    expect(await runUp()).toBe(true);
-  });
-
-  it('sends anybody else to the library', async () => {
-    setup();
-    signInAs(false, false);
-    expect(url(await runUp())).toBe('/library');
-  });
-
-  it('sends a visitor to the sign-in page', async () => {
-    setup();
-    expect(url(await runUp())).toBe('/login?returnUrl=%2Flibrary');
-  });
-
-  it('loads the user after a reload before deciding', async () => {
-    const s = setup({ me: () => create(MeResponseSchema, { user: create(UserSchema, { uploader: true }) }) });
-    signIn(false, false);
-    expect(await runUp()).toBe(true);
-    expect(s.meCalls).toBe(1);
   });
 });

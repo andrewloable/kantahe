@@ -23,12 +23,17 @@ Future<Rig> open(WidgetTester tester, {Rig? rig}) async {
 
 void main() {
   group('tabs', () {
-    testWidgets('Search, Number and Browse, with Search first', (tester) async {
+    testWidgets('Search and Number, with Search first', (tester) async {
       await open(tester);
       expect(find.text('Search'), findsOneWidget);
       expect(find.text('Number'), findsOneWidget);
-      expect(find.text('Browse'), findsOneWidget);
       expect(find.text('Search songs'), findsOneWidget);
+    });
+
+    testWidgets('there is no Browse: two tabs, and no tab of that name', (tester) async {
+      await open(tester);
+      expect(find.text('Browse'), findsNothing);
+      expect(find.descendant(of: find.byType(TabBar), matching: find.byType(Tab)), findsNWidgets(2));
     });
 
     testWidgets('tapping a tab shows its page', (tester) async {
@@ -36,10 +41,9 @@ void main() {
       await tester.tap(find.text('Number'));
       await settle(tester, 400);
       expect(find.text('Add to queue'), findsOneWidget);
-      await tester.tap(find.text('Browse'));
+      await tester.tap(find.text('Search'));
       await settle(tester, 400);
-      expect(find.text('Titles'), findsOneWidget);
-      expect(find.text('Artists'), findsOneWidget);
+      expect(find.text('Search songs'), findsOneWidget);
     });
   });
 
@@ -51,7 +55,7 @@ void main() {
     }
 
     testWidgets('REGRESSION: a focused tab shows a strong highlight (the default Material one is too faint to see across a room)', (tester) async {
-      for (final label in ['Search', 'Number', 'Browse']) {
+      for (final label in ['Search', 'Number']) {
         final ink = await tabInk(tester, label);
         final focused = ink.overlayColor?.resolve({WidgetState.focused});
         expect(focused, isNotNull, reason: '$label has a focus colour');
@@ -68,12 +72,12 @@ void main() {
     testWidgets('the remote still moves between the tabs and selects one', (tester) async {
       await pumpScreen(tester, await FakeLibrary().services(isTv: true), const LibraryScreen());
       await settle(tester);
-      final browse = focusNodeInside(tester, find.ancestor(of: find.widgetWithText(Tab, 'Browse'), matching: find.byType(InkWell)).first);
-      browse.requestFocus();
+      final number = focusNodeInside(tester, find.ancestor(of: find.widgetWithText(Tab, 'Number'), matching: find.byType(InkWell)).first);
+      number.requestFocus();
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.select);
       await settle(tester, 400);
-      expect(find.text('Titles'), findsOneWidget);
+      expect(find.text('Add to queue'), findsOneWidget);
     });
   });
 

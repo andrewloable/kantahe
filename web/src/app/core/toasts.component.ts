@@ -5,7 +5,7 @@ import { ToastService } from './toast';
   selector: 'app-toasts',
   template: `
     @if (inShell() === toasts.inShell()) {
-      <div class="toasts" [class.in-page]="inShell()" aria-live="polite">
+      <div class="toasts" [class.in-page]="inShell()" [class.centered]="centered()" aria-live="polite">
         @for (t of toasts.toasts(); track t.id) {
           <div class="toast" [class.error]="t.kind === 'error'" [attr.role]="t.kind === 'error' ? 'alert' : 'status'">
             <span>{{ t.message }}</span>
@@ -31,7 +31,7 @@ import { ToastService } from './toast';
       padding: 0 1rem;
       pointer-events: none;
     }
-    /* in the page frame: under the menu, in the flow of the page, sticky while it scrolls: it never covers a control */
+    /* in the page frame: under the top bar, in the flow of the page (it covers nothing there); sticky, so on a scrolled page it stays at the top over it until dismissed */
     .toasts.in-page {
       position: sticky;
       top: 0;
@@ -42,6 +42,15 @@ import { ToastService } from './toast';
       align-items: flex-start;
       margin: 0 1rem 0.5rem;
       padding: 0;
+    }
+    /* on the player: centred on the stage, which does not scroll; no room taken while there is nothing to say */
+    .toasts.in-page.centered {
+      position: static;
+      align-items: center;
+      margin: 0 0 0.5rem;
+    }
+    .toasts.in-page.centered:empty {
+      margin: 0;
     }
     .toast {
       pointer-events: auto;
@@ -66,6 +75,7 @@ import { ToastService } from './toast';
       min-width: 2.75rem;
       min-height: 2.75rem;
       padding: 0 0.5rem;
+      border: 0;
       background: transparent;
       color: inherit;
     }
@@ -78,5 +88,7 @@ import { ToastService } from './toast';
 export class ToastsComponent {
   /** The instance that lives in the page frame (the root instance shows the toasts only while the frame does not). */
   readonly inShell = input(false);
+  /** Centred in the flow (the player's stage) instead of at the left edge of the page frame. */
+  readonly centered = input(false);
   protected readonly toasts = inject(ToastService);
 }

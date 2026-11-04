@@ -158,9 +158,10 @@ type CreateUserRequest struct {
 	DisplayName       string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	TemporaryPassword string                 `protobuf:"bytes,3,opt,name=temporary_password,json=temporaryPassword,proto3" json:"temporary_password,omitempty"`
 	Admin             bool                   `protobuf:"varint,4,opt,name=admin,proto3" json:"admin,omitempty"`
-	Uploader          bool                   `protobuf:"varint,5,opt,name=uploader,proto3" json:"uploader,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Has no effect since 1.2.0: only administrators upload songs.
+	Uploader      bool `protobuf:"varint,5,opt,name=uploader,proto3" json:"uploader,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateUserRequest) Reset() {
@@ -275,12 +276,13 @@ func (x *CreateUserResponse) GetUser() *User {
 
 // Partial update; only fields that are set change.
 type UpdateUserRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	DisplayName   *string                `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3,oneof" json:"display_name,omitempty"`
-	Admin         *bool                  `protobuf:"varint,3,opt,name=admin,proto3,oneof" json:"admin,omitempty"`
-	Uploader      *bool                  `protobuf:"varint,4,opt,name=uploader,proto3,oneof" json:"uploader,omitempty"`
-	Disabled      *bool                  `protobuf:"varint,5,opt,name=disabled,proto3,oneof" json:"disabled,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	UserId      string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	DisplayName *string                `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3,oneof" json:"display_name,omitempty"`
+	Admin       *bool                  `protobuf:"varint,3,opt,name=admin,proto3,oneof" json:"admin,omitempty"`
+	// Has no effect since 1.2.0: only administrators upload songs.
+	Uploader      *bool `protobuf:"varint,4,opt,name=uploader,proto3,oneof" json:"uploader,omitempty"`
+	Disabled      *bool `protobuf:"varint,5,opt,name=disabled,proto3,oneof" json:"disabled,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2110,6 +2112,538 @@ func (*DeleteVideoResponse) Descriptor() ([]byte, []int) {
 	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{39}
 }
 
+// The folder to write the export into, an absolute path on the server's disk.
+type ExportDataRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Folder        string                 `protobuf:"bytes,1,opt,name=folder,proto3" json:"folder,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExportDataRequest) Reset() {
+	*x = ExportDataRequest{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExportDataRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExportDataRequest) ProtoMessage() {}
+
+func (x *ExportDataRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExportDataRequest.ProtoReflect.Descriptor instead.
+func (*ExportDataRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *ExportDataRequest) GetFolder() string {
+	if x != nil {
+		return x.Folder
+	}
+	return ""
+}
+
+// Progress of an export; the last message has done = true.
+type ExportDataResponse struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	FilesDone  int32                  `protobuf:"varint,1,opt,name=files_done,json=filesDone,proto3" json:"files_done,omitempty"`
+	FilesTotal int32                  `protobuf:"varint,2,opt,name=files_total,json=filesTotal,proto3" json:"files_total,omitempty"`
+	BytesDone  int64                  `protobuf:"varint,3,opt,name=bytes_done,json=bytesDone,proto3" json:"bytes_done,omitempty"`
+	BytesTotal int64                  `protobuf:"varint,4,opt,name=bytes_total,json=bytesTotal,proto3" json:"bytes_total,omitempty"`
+	Done       bool                   `protobuf:"varint,5,opt,name=done,proto3" json:"done,omitempty"`
+	// Only on the last message: the numbers of live songs whose file could not be read; they are not in the export.
+	SkippedNumbers []string `protobuf:"bytes,6,rep,name=skipped_numbers,json=skippedNumbers,proto3" json:"skipped_numbers,omitempty"`
+	// Only on the last message: the cleaned absolute folder.
+	Folder        string `protobuf:"bytes,7,opt,name=folder,proto3" json:"folder,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExportDataResponse) Reset() {
+	*x = ExportDataResponse{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExportDataResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExportDataResponse) ProtoMessage() {}
+
+func (x *ExportDataResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExportDataResponse.ProtoReflect.Descriptor instead.
+func (*ExportDataResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *ExportDataResponse) GetFilesDone() int32 {
+	if x != nil {
+		return x.FilesDone
+	}
+	return 0
+}
+
+func (x *ExportDataResponse) GetFilesTotal() int32 {
+	if x != nil {
+		return x.FilesTotal
+	}
+	return 0
+}
+
+func (x *ExportDataResponse) GetBytesDone() int64 {
+	if x != nil {
+		return x.BytesDone
+	}
+	return 0
+}
+
+func (x *ExportDataResponse) GetBytesTotal() int64 {
+	if x != nil {
+		return x.BytesTotal
+	}
+	return 0
+}
+
+func (x *ExportDataResponse) GetDone() bool {
+	if x != nil {
+		return x.Done
+	}
+	return false
+}
+
+func (x *ExportDataResponse) GetSkippedNumbers() []string {
+	if x != nil {
+		return x.SkippedNumbers
+	}
+	return nil
+}
+
+func (x *ExportDataResponse) GetFolder() string {
+	if x != nil {
+		return x.Folder
+	}
+	return ""
+}
+
+// The export folder to read, an absolute path on the server's disk.
+type InspectExportRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Folder        string                 `protobuf:"bytes,1,opt,name=folder,proto3" json:"folder,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InspectExportRequest) Reset() {
+	*x = InspectExportRequest{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InspectExportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InspectExportRequest) ProtoMessage() {}
+
+func (x *InspectExportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InspectExportRequest.ProtoReflect.Descriptor instead.
+func (*InspectExportRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *InspectExportRequest) GetFolder() string {
+	if x != nil {
+		return x.Folder
+	}
+	return ""
+}
+
+// What an export folder holds.
+type InspectExportResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ServerName     string                 `protobuf:"bytes,1,opt,name=server_name,json=serverName,proto3" json:"server_name,omitempty"`
+	KantaheVersion string                 `protobuf:"bytes,2,opt,name=kantahe_version,json=kantaheVersion,proto3" json:"kantahe_version,omitempty"`
+	CreatedUnix    int64                  `protobuf:"varint,3,opt,name=created_unix,json=createdUnix,proto3" json:"created_unix,omitempty"`
+	Songs          int32                  `protobuf:"varint,4,opt,name=songs,proto3" json:"songs,omitempty"`
+	Users          int32                  `protobuf:"varint,5,opt,name=users,proto3" json:"users,omitempty"`
+	Videos         int32                  `protobuf:"varint,6,opt,name=videos,proto3" json:"videos,omitempty"`
+	BytesTotal     int64                  `protobuf:"varint,7,opt,name=bytes_total,json=bytesTotal,proto3" json:"bytes_total,omitempty"`
+	Importable     bool                   `protobuf:"varint,8,opt,name=importable,proto3" json:"importable,omitempty"`
+	// Why the folder cannot be imported; set when importable is false.
+	Reason        string `protobuf:"bytes,9,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InspectExportResponse) Reset() {
+	*x = InspectExportResponse{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InspectExportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InspectExportResponse) ProtoMessage() {}
+
+func (x *InspectExportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InspectExportResponse.ProtoReflect.Descriptor instead.
+func (*InspectExportResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *InspectExportResponse) GetServerName() string {
+	if x != nil {
+		return x.ServerName
+	}
+	return ""
+}
+
+func (x *InspectExportResponse) GetKantaheVersion() string {
+	if x != nil {
+		return x.KantaheVersion
+	}
+	return ""
+}
+
+func (x *InspectExportResponse) GetCreatedUnix() int64 {
+	if x != nil {
+		return x.CreatedUnix
+	}
+	return 0
+}
+
+func (x *InspectExportResponse) GetSongs() int32 {
+	if x != nil {
+		return x.Songs
+	}
+	return 0
+}
+
+func (x *InspectExportResponse) GetUsers() int32 {
+	if x != nil {
+		return x.Users
+	}
+	return 0
+}
+
+func (x *InspectExportResponse) GetVideos() int32 {
+	if x != nil {
+		return x.Videos
+	}
+	return 0
+}
+
+func (x *InspectExportResponse) GetBytesTotal() int64 {
+	if x != nil {
+		return x.BytesTotal
+	}
+	return 0
+}
+
+func (x *InspectExportResponse) GetImportable() bool {
+	if x != nil {
+		return x.Importable
+	}
+	return false
+}
+
+func (x *InspectExportResponse) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// The export folder to import, an absolute path on the server's disk.
+type ImportDataRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Folder        string                 `protobuf:"bytes,1,opt,name=folder,proto3" json:"folder,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportDataRequest) Reset() {
+	*x = ImportDataRequest{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportDataRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportDataRequest) ProtoMessage() {}
+
+func (x *ImportDataRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportDataRequest.ProtoReflect.Descriptor instead.
+func (*ImportDataRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *ImportDataRequest) GetFolder() string {
+	if x != nil {
+		return x.Folder
+	}
+	return ""
+}
+
+// Progress of an import; the last message has done = true.
+type ImportDataResponse struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	FilesDone  int32                  `protobuf:"varint,1,opt,name=files_done,json=filesDone,proto3" json:"files_done,omitempty"`
+	FilesTotal int32                  `protobuf:"varint,2,opt,name=files_total,json=filesTotal,proto3" json:"files_total,omitempty"`
+	BytesDone  int64                  `protobuf:"varint,3,opt,name=bytes_done,json=bytesDone,proto3" json:"bytes_done,omitempty"`
+	BytesTotal int64                  `protobuf:"varint,4,opt,name=bytes_total,json=bytesTotal,proto3" json:"bytes_total,omitempty"`
+	Done       bool                   `protobuf:"varint,5,opt,name=done,proto3" json:"done,omitempty"`
+	// Only on the last message: the server restarts now to apply the import.
+	Restarting    bool `protobuf:"varint,6,opt,name=restarting,proto3" json:"restarting,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportDataResponse) Reset() {
+	*x = ImportDataResponse{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportDataResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportDataResponse) ProtoMessage() {}
+
+func (x *ImportDataResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportDataResponse.ProtoReflect.Descriptor instead.
+func (*ImportDataResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *ImportDataResponse) GetFilesDone() int32 {
+	if x != nil {
+		return x.FilesDone
+	}
+	return 0
+}
+
+func (x *ImportDataResponse) GetFilesTotal() int32 {
+	if x != nil {
+		return x.FilesTotal
+	}
+	return 0
+}
+
+func (x *ImportDataResponse) GetBytesDone() int64 {
+	if x != nil {
+		return x.BytesDone
+	}
+	return 0
+}
+
+func (x *ImportDataResponse) GetBytesTotal() int64 {
+	if x != nil {
+		return x.BytesTotal
+	}
+	return 0
+}
+
+func (x *ImportDataResponse) GetDone() bool {
+	if x != nil {
+		return x.Done
+	}
+	return false
+}
+
+func (x *ImportDataResponse) GetRestarting() bool {
+	if x != nil {
+		return x.Restarting
+	}
+	return false
+}
+
+// The song whose file is wanted.
+type GetSongDownloadRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Number        string                 `protobuf:"bytes,1,opt,name=number,proto3" json:"number,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSongDownloadRequest) Reset() {
+	*x = GetSongDownloadRequest{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSongDownloadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSongDownloadRequest) ProtoMessage() {}
+
+func (x *GetSongDownloadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSongDownloadRequest.ProtoReflect.Descriptor instead.
+func (*GetSongDownloadRequest) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *GetSongDownloadRequest) GetNumber() string {
+	if x != nil {
+		return x.Number
+	}
+	return ""
+}
+
+// url is a path with a query, relative to the server address (like the media addresses); file_name is the name the file should be saved as.
+type GetSongDownloadResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	FileName      string                 `protobuf:"bytes,2,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
+	ExpiresUnix   int64                  `protobuf:"varint,3,opt,name=expires_unix,json=expiresUnix,proto3" json:"expires_unix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSongDownloadResponse) Reset() {
+	*x = GetSongDownloadResponse{}
+	mi := &file_kantahe_v1_admin_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSongDownloadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSongDownloadResponse) ProtoMessage() {}
+
+func (x *GetSongDownloadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kantahe_v1_admin_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSongDownloadResponse.ProtoReflect.Descriptor instead.
+func (*GetSongDownloadResponse) Descriptor() ([]byte, []int) {
+	return file_kantahe_v1_admin_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *GetSongDownloadResponse) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *GetSongDownloadResponse) GetFileName() string {
+	if x != nil {
+		return x.FileName
+	}
+	return ""
+}
+
+func (x *GetSongDownloadResponse) GetExpiresUnix() int64 {
+	if x != nil {
+		return x.ExpiresUnix
+	}
+	return 0
+}
+
 var File_kantahe_v1_admin_proto protoreflect.FileDescriptor
 
 const file_kantahe_v1_admin_proto_rawDesc = "" +
@@ -2240,10 +2774,61 @@ const file_kantahe_v1_admin_proto_rawDesc = "" +
 	"\x06videos\x18\x01 \x03(\v2\x11.kantahe.v1.VideoR\x06videos\"$\n" +
 	"\x12DeleteVideoRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x15\n" +
-	"\x13DeleteVideoResponse*y\n" +
+	"\x13DeleteVideoResponse\"+\n" +
+	"\x11ExportDataRequest\x12\x16\n" +
+	"\x06folder\x18\x01 \x01(\tR\x06folder\"\xe9\x01\n" +
+	"\x12ExportDataResponse\x12\x1d\n" +
+	"\n" +
+	"files_done\x18\x01 \x01(\x05R\tfilesDone\x12\x1f\n" +
+	"\vfiles_total\x18\x02 \x01(\x05R\n" +
+	"filesTotal\x12\x1d\n" +
+	"\n" +
+	"bytes_done\x18\x03 \x01(\x03R\tbytesDone\x12\x1f\n" +
+	"\vbytes_total\x18\x04 \x01(\x03R\n" +
+	"bytesTotal\x12\x12\n" +
+	"\x04done\x18\x05 \x01(\bR\x04done\x12'\n" +
+	"\x0fskipped_numbers\x18\x06 \x03(\tR\x0eskippedNumbers\x12\x16\n" +
+	"\x06folder\x18\a \x01(\tR\x06folder\".\n" +
+	"\x14InspectExportRequest\x12\x16\n" +
+	"\x06folder\x18\x01 \x01(\tR\x06folder\"\xa1\x02\n" +
+	"\x15InspectExportResponse\x12\x1f\n" +
+	"\vserver_name\x18\x01 \x01(\tR\n" +
+	"serverName\x12'\n" +
+	"\x0fkantahe_version\x18\x02 \x01(\tR\x0ekantaheVersion\x12!\n" +
+	"\fcreated_unix\x18\x03 \x01(\x03R\vcreatedUnix\x12\x14\n" +
+	"\x05songs\x18\x04 \x01(\x05R\x05songs\x12\x14\n" +
+	"\x05users\x18\x05 \x01(\x05R\x05users\x12\x16\n" +
+	"\x06videos\x18\x06 \x01(\x05R\x06videos\x12\x1f\n" +
+	"\vbytes_total\x18\a \x01(\x03R\n" +
+	"bytesTotal\x12\x1e\n" +
+	"\n" +
+	"importable\x18\b \x01(\bR\n" +
+	"importable\x12\x16\n" +
+	"\x06reason\x18\t \x01(\tR\x06reason\"+\n" +
+	"\x11ImportDataRequest\x12\x16\n" +
+	"\x06folder\x18\x01 \x01(\tR\x06folder\"\xc8\x01\n" +
+	"\x12ImportDataResponse\x12\x1d\n" +
+	"\n" +
+	"files_done\x18\x01 \x01(\x05R\tfilesDone\x12\x1f\n" +
+	"\vfiles_total\x18\x02 \x01(\x05R\n" +
+	"filesTotal\x12\x1d\n" +
+	"\n" +
+	"bytes_done\x18\x03 \x01(\x03R\tbytesDone\x12\x1f\n" +
+	"\vbytes_total\x18\x04 \x01(\x03R\n" +
+	"bytesTotal\x12\x12\n" +
+	"\x04done\x18\x05 \x01(\bR\x04done\x12\x1e\n" +
+	"\n" +
+	"restarting\x18\x06 \x01(\bR\n" +
+	"restarting\"0\n" +
+	"\x16GetSongDownloadRequest\x12\x16\n" +
+	"\x06number\x18\x01 \x01(\tR\x06number\"k\n" +
+	"\x17GetSongDownloadResponse\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12\x1b\n" +
+	"\tfile_name\x18\x02 \x01(\tR\bfileName\x12!\n" +
+	"\fexpires_unix\x18\x03 \x01(\x03R\vexpiresUnix*y\n" +
 	"\vRemoveScope\x12\x1c\n" +
 	"\x18REMOVE_SCOPE_UNSPECIFIED\x10\x00\x12\x17\n" +
-	"\x13REMOVE_SCOPE_BROKEN\x10\x03\"\x04\b\x01\x10\x01\"\x04\b\x02\x10\x02*\x10REMOVE_SCOPE_ALL*\x15REMOVE_SCOPE_NO_MUSIC2\xcb\f\n" +
+	"\x13REMOVE_SCOPE_BROKEN\x10\x03\"\x04\b\x01\x10\x01\"\x04\b\x02\x10\x02*\x10REMOVE_SCOPE_ALL*\x15REMOVE_SCOPE_NO_MUSIC2\x9b\x0f\n" +
 	"\fAdminService\x12H\n" +
 	"\tListUsers\x12\x1c.kantahe.v1.ListUsersRequest\x1a\x1d.kantahe.v1.ListUsersResponse\x12K\n" +
 	"\n" +
@@ -2269,7 +2854,13 @@ const file_kantahe_v1_admin_proto_rawDesc = "" +
 	"\vDeleteVideo\x12\x1e.kantahe.v1.DeleteVideoRequest\x1a\x1f.kantahe.v1.DeleteVideoResponse\x12?\n" +
 	"\x06Rescan\x12\x19.kantahe.v1.RescanRequest\x1a\x1a.kantahe.v1.RescanResponse\x12`\n" +
 	"\x11GetServerSettings\x12$.kantahe.v1.GetServerSettingsRequest\x1a%.kantahe.v1.GetServerSettingsResponse\x12i\n" +
-	"\x14UpdateServerSettings\x12'.kantahe.v1.UpdateServerSettingsRequest\x1a(.kantahe.v1.UpdateServerSettingsResponseB\xa6\x01\n" +
+	"\x14UpdateServerSettings\x12'.kantahe.v1.UpdateServerSettingsRequest\x1a(.kantahe.v1.UpdateServerSettingsResponse\x12M\n" +
+	"\n" +
+	"ExportData\x12\x1d.kantahe.v1.ExportDataRequest\x1a\x1e.kantahe.v1.ExportDataResponse0\x01\x12T\n" +
+	"\rInspectExport\x12 .kantahe.v1.InspectExportRequest\x1a!.kantahe.v1.InspectExportResponse\x12M\n" +
+	"\n" +
+	"ImportData\x12\x1d.kantahe.v1.ImportDataRequest\x1a\x1e.kantahe.v1.ImportDataResponse0\x01\x12Z\n" +
+	"\x0fGetSongDownload\x12\".kantahe.v1.GetSongDownloadRequest\x1a#.kantahe.v1.GetSongDownloadResponseB\xa6\x01\n" +
 	"\x0ecom.kantahe.v1B\n" +
 	"AdminProtoP\x01Z?github.com/andrewloable/kantahe/server/gen/kantahe/v1;kantahev1\xa2\x02\x03KXX\xaa\x02\n" +
 	"Kantahe.V1\xca\x02\n" +
@@ -2288,7 +2879,7 @@ func file_kantahe_v1_admin_proto_rawDescGZIP() []byte {
 }
 
 var file_kantahe_v1_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_kantahe_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
+var file_kantahe_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 48)
 var file_kantahe_v1_admin_proto_goTypes = []any{
 	(RemoveScope)(0),                     // 0: kantahe.v1.RemoveScope
 	(*ListUsersRequest)(nil),             // 1: kantahe.v1.ListUsersRequest
@@ -2331,23 +2922,31 @@ var file_kantahe_v1_admin_proto_goTypes = []any{
 	(*ReorderVideosResponse)(nil),        // 38: kantahe.v1.ReorderVideosResponse
 	(*DeleteVideoRequest)(nil),           // 39: kantahe.v1.DeleteVideoRequest
 	(*DeleteVideoResponse)(nil),          // 40: kantahe.v1.DeleteVideoResponse
-	(*User)(nil),                         // 41: kantahe.v1.User
-	(*Song)(nil),                         // 42: kantahe.v1.Song
-	(*Video)(nil),                        // 43: kantahe.v1.Video
+	(*ExportDataRequest)(nil),            // 41: kantahe.v1.ExportDataRequest
+	(*ExportDataResponse)(nil),           // 42: kantahe.v1.ExportDataResponse
+	(*InspectExportRequest)(nil),         // 43: kantahe.v1.InspectExportRequest
+	(*InspectExportResponse)(nil),        // 44: kantahe.v1.InspectExportResponse
+	(*ImportDataRequest)(nil),            // 45: kantahe.v1.ImportDataRequest
+	(*ImportDataResponse)(nil),           // 46: kantahe.v1.ImportDataResponse
+	(*GetSongDownloadRequest)(nil),       // 47: kantahe.v1.GetSongDownloadRequest
+	(*GetSongDownloadResponse)(nil),      // 48: kantahe.v1.GetSongDownloadResponse
+	(*User)(nil),                         // 49: kantahe.v1.User
+	(*Song)(nil),                         // 50: kantahe.v1.Song
+	(*Video)(nil),                        // 51: kantahe.v1.Video
 }
 var file_kantahe_v1_admin_proto_depIdxs = []int32{
-	41, // 0: kantahe.v1.ListUsersResponse.users:type_name -> kantahe.v1.User
-	41, // 1: kantahe.v1.CreateUserResponse.user:type_name -> kantahe.v1.User
-	41, // 2: kantahe.v1.UpdateUserResponse.user:type_name -> kantahe.v1.User
-	42, // 3: kantahe.v1.UpdateSongResponse.song:type_name -> kantahe.v1.Song
+	49, // 0: kantahe.v1.ListUsersResponse.users:type_name -> kantahe.v1.User
+	49, // 1: kantahe.v1.CreateUserResponse.user:type_name -> kantahe.v1.User
+	49, // 2: kantahe.v1.UpdateUserResponse.user:type_name -> kantahe.v1.User
+	50, // 3: kantahe.v1.UpdateSongResponse.song:type_name -> kantahe.v1.Song
 	0,  // 4: kantahe.v1.RemoveSongsRequest.scope:type_name -> kantahe.v1.RemoveScope
-	42, // 5: kantahe.v1.BrokenSong.song:type_name -> kantahe.v1.Song
+	50, // 5: kantahe.v1.BrokenSong.song:type_name -> kantahe.v1.Song
 	23, // 6: kantahe.v1.ListBrokenSongsResponse.songs:type_name -> kantahe.v1.BrokenSong
 	30, // 7: kantahe.v1.GetServerSettingsResponse.settings:type_name -> kantahe.v1.ServerSettings
 	30, // 8: kantahe.v1.UpdateServerSettingsResponse.settings:type_name -> kantahe.v1.ServerSettings
-	43, // 9: kantahe.v1.ListVideosResponse.videos:type_name -> kantahe.v1.Video
-	43, // 10: kantahe.v1.UpdateVideoResponse.video:type_name -> kantahe.v1.Video
-	43, // 11: kantahe.v1.ReorderVideosResponse.videos:type_name -> kantahe.v1.Video
+	51, // 9: kantahe.v1.ListVideosResponse.videos:type_name -> kantahe.v1.Video
+	51, // 10: kantahe.v1.UpdateVideoResponse.video:type_name -> kantahe.v1.Video
+	51, // 11: kantahe.v1.ReorderVideosResponse.videos:type_name -> kantahe.v1.Video
 	1,  // 12: kantahe.v1.AdminService.ListUsers:input_type -> kantahe.v1.ListUsersRequest
 	3,  // 13: kantahe.v1.AdminService.CreateUser:input_type -> kantahe.v1.CreateUserRequest
 	5,  // 14: kantahe.v1.AdminService.UpdateUser:input_type -> kantahe.v1.UpdateUserRequest
@@ -2367,27 +2966,35 @@ var file_kantahe_v1_admin_proto_depIdxs = []int32{
 	26, // 28: kantahe.v1.AdminService.Rescan:input_type -> kantahe.v1.RescanRequest
 	28, // 29: kantahe.v1.AdminService.GetServerSettings:input_type -> kantahe.v1.GetServerSettingsRequest
 	31, // 30: kantahe.v1.AdminService.UpdateServerSettings:input_type -> kantahe.v1.UpdateServerSettingsRequest
-	2,  // 31: kantahe.v1.AdminService.ListUsers:output_type -> kantahe.v1.ListUsersResponse
-	4,  // 32: kantahe.v1.AdminService.CreateUser:output_type -> kantahe.v1.CreateUserResponse
-	6,  // 33: kantahe.v1.AdminService.UpdateUser:output_type -> kantahe.v1.UpdateUserResponse
-	8,  // 34: kantahe.v1.AdminService.ResetPassword:output_type -> kantahe.v1.ResetPasswordResponse
-	10, // 35: kantahe.v1.AdminService.DeleteUser:output_type -> kantahe.v1.DeleteUserResponse
-	12, // 36: kantahe.v1.AdminService.RevokeUserDevices:output_type -> kantahe.v1.RevokeUserDevicesResponse
-	14, // 37: kantahe.v1.AdminService.UpdateSong:output_type -> kantahe.v1.UpdateSongResponse
-	25, // 38: kantahe.v1.AdminService.DeleteSong:output_type -> kantahe.v1.DeleteSongResponse
-	19, // 39: kantahe.v1.AdminService.RemoveSongs:output_type -> kantahe.v1.RemoveSongsResponse
-	18, // 40: kantahe.v1.AdminService.RemoveSelectedSongs:output_type -> kantahe.v1.RemoveSelectedSongsResponse
-	21, // 41: kantahe.v1.AdminService.CheckLibrary:output_type -> kantahe.v1.CheckLibraryResponse
-	24, // 42: kantahe.v1.AdminService.ListBrokenSongs:output_type -> kantahe.v1.ListBrokenSongsResponse
-	34, // 43: kantahe.v1.AdminService.ListVideos:output_type -> kantahe.v1.ListVideosResponse
-	36, // 44: kantahe.v1.AdminService.UpdateVideo:output_type -> kantahe.v1.UpdateVideoResponse
-	38, // 45: kantahe.v1.AdminService.ReorderVideos:output_type -> kantahe.v1.ReorderVideosResponse
-	40, // 46: kantahe.v1.AdminService.DeleteVideo:output_type -> kantahe.v1.DeleteVideoResponse
-	27, // 47: kantahe.v1.AdminService.Rescan:output_type -> kantahe.v1.RescanResponse
-	29, // 48: kantahe.v1.AdminService.GetServerSettings:output_type -> kantahe.v1.GetServerSettingsResponse
-	32, // 49: kantahe.v1.AdminService.UpdateServerSettings:output_type -> kantahe.v1.UpdateServerSettingsResponse
-	31, // [31:50] is the sub-list for method output_type
-	12, // [12:31] is the sub-list for method input_type
+	41, // 31: kantahe.v1.AdminService.ExportData:input_type -> kantahe.v1.ExportDataRequest
+	43, // 32: kantahe.v1.AdminService.InspectExport:input_type -> kantahe.v1.InspectExportRequest
+	45, // 33: kantahe.v1.AdminService.ImportData:input_type -> kantahe.v1.ImportDataRequest
+	47, // 34: kantahe.v1.AdminService.GetSongDownload:input_type -> kantahe.v1.GetSongDownloadRequest
+	2,  // 35: kantahe.v1.AdminService.ListUsers:output_type -> kantahe.v1.ListUsersResponse
+	4,  // 36: kantahe.v1.AdminService.CreateUser:output_type -> kantahe.v1.CreateUserResponse
+	6,  // 37: kantahe.v1.AdminService.UpdateUser:output_type -> kantahe.v1.UpdateUserResponse
+	8,  // 38: kantahe.v1.AdminService.ResetPassword:output_type -> kantahe.v1.ResetPasswordResponse
+	10, // 39: kantahe.v1.AdminService.DeleteUser:output_type -> kantahe.v1.DeleteUserResponse
+	12, // 40: kantahe.v1.AdminService.RevokeUserDevices:output_type -> kantahe.v1.RevokeUserDevicesResponse
+	14, // 41: kantahe.v1.AdminService.UpdateSong:output_type -> kantahe.v1.UpdateSongResponse
+	25, // 42: kantahe.v1.AdminService.DeleteSong:output_type -> kantahe.v1.DeleteSongResponse
+	19, // 43: kantahe.v1.AdminService.RemoveSongs:output_type -> kantahe.v1.RemoveSongsResponse
+	18, // 44: kantahe.v1.AdminService.RemoveSelectedSongs:output_type -> kantahe.v1.RemoveSelectedSongsResponse
+	21, // 45: kantahe.v1.AdminService.CheckLibrary:output_type -> kantahe.v1.CheckLibraryResponse
+	24, // 46: kantahe.v1.AdminService.ListBrokenSongs:output_type -> kantahe.v1.ListBrokenSongsResponse
+	34, // 47: kantahe.v1.AdminService.ListVideos:output_type -> kantahe.v1.ListVideosResponse
+	36, // 48: kantahe.v1.AdminService.UpdateVideo:output_type -> kantahe.v1.UpdateVideoResponse
+	38, // 49: kantahe.v1.AdminService.ReorderVideos:output_type -> kantahe.v1.ReorderVideosResponse
+	40, // 50: kantahe.v1.AdminService.DeleteVideo:output_type -> kantahe.v1.DeleteVideoResponse
+	27, // 51: kantahe.v1.AdminService.Rescan:output_type -> kantahe.v1.RescanResponse
+	29, // 52: kantahe.v1.AdminService.GetServerSettings:output_type -> kantahe.v1.GetServerSettingsResponse
+	32, // 53: kantahe.v1.AdminService.UpdateServerSettings:output_type -> kantahe.v1.UpdateServerSettingsResponse
+	42, // 54: kantahe.v1.AdminService.ExportData:output_type -> kantahe.v1.ExportDataResponse
+	44, // 55: kantahe.v1.AdminService.InspectExport:output_type -> kantahe.v1.InspectExportResponse
+	46, // 56: kantahe.v1.AdminService.ImportData:output_type -> kantahe.v1.ImportDataResponse
+	48, // 57: kantahe.v1.AdminService.GetSongDownload:output_type -> kantahe.v1.GetSongDownloadResponse
+	35, // [35:58] is the sub-list for method output_type
+	12, // [12:35] is the sub-list for method input_type
 	12, // [12:12] is the sub-list for extension type_name
 	12, // [12:12] is the sub-list for extension extendee
 	0,  // [0:12] is the sub-list for field type_name
@@ -2409,7 +3016,7 @@ func file_kantahe_v1_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kantahe_v1_admin_proto_rawDesc), len(file_kantahe_v1_admin_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   40,
+			NumMessages:   48,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

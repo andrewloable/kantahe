@@ -12,8 +12,19 @@ import (
 func toProtoSong(s library.SongInfo, favourite bool) *kantahev1.Song {
 	return &kantahev1.Song{
 		Number: s.Number, Format: kantahev1.Format(s.Format), Title: s.Title, Artist: s.Artist,
-		SongbookNumber: s.Songbook, DurationMs: s.DurationMs, Failed: s.Failed, Favourite: favourite, HasVocals: s.HasVocals,
+		SongbookNumber: s.Songbook, DurationMs: s.DurationMs, Failed: s.Failed, Favourite: favourite, HasVocals: s.HasVocals, LyricTiming: lyricTiming(s.LyricTiming),
 	}
+}
+
+// lyricTiming maps songs.lyric_timing to the wire enum: 1 by line, 2 by word, anything else (not read yet, no lyrics) says nothing.
+func lyricTiming(v int) kantahev1.LyricTiming {
+	switch v {
+	case 1:
+		return kantahev1.LyricTiming_LYRIC_TIMING_LINE
+	case 2:
+		return kantahev1.LyricTiming_LYRIC_TIMING_WORD
+	}
+	return kantahev1.LyricTiming_LYRIC_TIMING_UNSPECIFIED
 }
 
 // markFavourites sets the favourite flag of the songs for the user, with one query.

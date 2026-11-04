@@ -19,8 +19,8 @@ interface Row {
 @Component({
   selector: 'app-upload-page',
   template: `
-    <main class="upload">
-      <h1>Upload songs</h1>
+    <section class="upload">
+      <h2>Upload songs</h2>
       <div class="drop" (dragover)="$event.preventDefault()" (drop)="dropped($event)">
         <label for="upload-files">Choose song files (.kar, .karmp3) or ZIP files with songs in them</label>
         <input id="upload-files" type="file" multiple accept=".kar,.karmp3,.zip" [disabled]="busy()" (change)="chosen($event)" />
@@ -29,7 +29,7 @@ interface Row {
       @if (rows().length > 0) {
         <p role="status">{{ done() }} of {{ total() }}@if (!busy()) { — {{ summary() }} }</p>
         @if (busy()) {
-          <button type="button" (click)="cancel()">Cancel</button>
+          <button class="quiet" type="button" (click)="cancel()">Cancel</button>
         }
         <table role="table">
           <caption class="sr-only">
@@ -53,15 +53,12 @@ interface Row {
           </tbody>
         </table>
       }
-    </main>
+    </section>
   `,
   styles: `
     :host {
       display: block;
       container-type: inline-size;
-    }
-    .upload {
-      padding: 1rem;
     }
     .drop {
       padding: 1rem;

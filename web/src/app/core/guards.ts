@@ -62,16 +62,6 @@ export const setupGuard: CanActivateFn = async (): Promise<boolean | UrlTree> =>
   }
 };
 
-/** Uploading is for users with the uploader role, and for administrators. */
-export const uploaderGuard: CanActivateFn = async (_route, state): Promise<boolean | UrlTree> => {
-  const router = inject(Router);
-  const { auth, load } = userLoader();
-  if (!auth.token()) return toLogin(router, state);
-  if ((await ensureUser(auth, load)) === 'refused') return toLogin(router, state);
-  const u = auth.user();
-  return u?.uploader || u?.admin ? true : router.parseUrl('/library');
-};
-
 /** A packaged TV app has no server of its own: until its address is typed in, every page is the address page. */
 export const serverGuard: CanActivateFn = (_route, state): boolean | UrlTree => {
   if (!inject(ENVIRONMENT).isTv || inject(ServerUrl).hasAddress()) return true;

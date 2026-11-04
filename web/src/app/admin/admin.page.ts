@@ -5,37 +5,22 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
   selector: 'app-admin-page',
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
   template: `
-    <main class="admin">
+    <div class="admin">
       <h1>Administration</h1>
-      <nav aria-label="Administration">
+      <nav class="sub-nav" aria-label="Administration">
+        <a routerLink="/admin/upload" routerLinkActive="active" ariaCurrentWhenActive="page">Upload</a>
         <a routerLink="/admin/users" routerLinkActive="active" ariaCurrentWhenActive="page">Users</a>
         <a routerLink="/admin/songs" routerLinkActive="active" ariaCurrentWhenActive="page">Songs</a>
         <a routerLink="/admin/videos" routerLinkActive="active" ariaCurrentWhenActive="page">Videos</a>
         <a routerLink="/admin/settings" routerLinkActive="active" ariaCurrentWhenActive="page">Settings</a>
+        <a routerLink="/admin/transfer" routerLinkActive="active" ariaCurrentWhenActive="page">Transfer</a>
       </nav>
       <router-outlet />
-    </main>
+    </div>
   `,
   styles: `
     .admin {
       padding: 1rem;
-    }
-    nav {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem 1rem;
-      margin-bottom: 1rem;
-      border-bottom: 1px solid var(--line);
-    }
-    nav a {
-      display: inline-flex;
-      align-items: center;
-      min-height: 2.75rem;
-      padding: 0 0.25rem;
-    }
-    nav a.active {
-      font-weight: 700;
-      color: var(--sung);
     }
   `,
 })

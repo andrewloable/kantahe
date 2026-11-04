@@ -127,5 +127,29 @@ class BackgroundMode extends $pb.ProtobufEnum {
   const BackgroundMode._(super.value, super.name);
 }
 
+/// How the lyrics of a song are timed. For a .karmp3 this is the "Timing by" row of its .nfo (Kantahe Maker 1.2.6 and later), else what the
+/// .lrc has; for a MIDI song, whether a line has more than one timed syllable.
+class LyricTiming extends $pb.ProtobufEnum {
+  static const LyricTiming LYRIC_TIMING_UNSPECIFIED =
+      LyricTiming._(0, _omitEnumNames ? '' : 'LYRIC_TIMING_UNSPECIFIED');
+  static const LyricTiming LYRIC_TIMING_LINE =
+      LyricTiming._(1, _omitEnumNames ? '' : 'LYRIC_TIMING_LINE');
+  static const LyricTiming LYRIC_TIMING_WORD =
+      LyricTiming._(2, _omitEnumNames ? '' : 'LYRIC_TIMING_WORD');
+
+  static const $core.List<LyricTiming> values = <LyricTiming>[
+    LYRIC_TIMING_UNSPECIFIED,
+    LYRIC_TIMING_LINE,
+    LYRIC_TIMING_WORD,
+  ];
+
+  static final $core.List<LyricTiming?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 2);
+  static LyricTiming? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const LyricTiming._(super.value, super.name);
+}
+
 const $core.bool _omitEnumNames =
     $core.bool.fromEnvironment('protobuf.omit_enum_names');

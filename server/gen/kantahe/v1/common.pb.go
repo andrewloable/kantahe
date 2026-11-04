@@ -242,6 +242,57 @@ func (BackgroundMode) EnumDescriptor() ([]byte, []int) {
 	return file_kantahe_v1_common_proto_rawDescGZIP(), []int{3}
 }
 
+// How the lyrics of a song are timed. For a .karmp3 this is the "Timing by" row of its .nfo (Kantahe Maker 1.2.6 and later), else what the
+// .lrc has; for a MIDI song, whether a line has more than one timed syllable.
+type LyricTiming int32
+
+const (
+	LyricTiming_LYRIC_TIMING_UNSPECIFIED LyricTiming = 0
+	LyricTiming_LYRIC_TIMING_LINE        LyricTiming = 1
+	LyricTiming_LYRIC_TIMING_WORD        LyricTiming = 2
+)
+
+// Enum value maps for LyricTiming.
+var (
+	LyricTiming_name = map[int32]string{
+		0: "LYRIC_TIMING_UNSPECIFIED",
+		1: "LYRIC_TIMING_LINE",
+		2: "LYRIC_TIMING_WORD",
+	}
+	LyricTiming_value = map[string]int32{
+		"LYRIC_TIMING_UNSPECIFIED": 0,
+		"LYRIC_TIMING_LINE":        1,
+		"LYRIC_TIMING_WORD":        2,
+	}
+)
+
+func (x LyricTiming) Enum() *LyricTiming {
+	p := new(LyricTiming)
+	*p = x
+	return p
+}
+
+func (x LyricTiming) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (LyricTiming) Descriptor() protoreflect.EnumDescriptor {
+	return file_kantahe_v1_common_proto_enumTypes[4].Descriptor()
+}
+
+func (LyricTiming) Type() protoreflect.EnumType {
+	return &file_kantahe_v1_common_proto_enumTypes[4]
+}
+
+func (x LyricTiming) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use LyricTiming.Descriptor instead.
+func (LyricTiming) EnumDescriptor() ([]byte, []int) {
+	return file_kantahe_v1_common_proto_rawDescGZIP(), []int{4}
+}
+
 // One library entry; number is unique and never changes (plan 6). Visible to every signed-in user.
 type Song struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -256,7 +307,9 @@ type Song struct {
 	// Whether the calling user has favourited it; always scoped to the caller.
 	Favourite bool `protobuf:"varint,8,opt,name=favourite,proto3" json:"favourite,omitempty"`
 	// True when the song is a .karmp3 with a vocals track the player can offer as a guide; false for every other song.
-	HasVocals     bool `protobuf:"varint,9,opt,name=has_vocals,json=hasVocals,proto3" json:"has_vocals,omitempty"`
+	HasVocals bool `protobuf:"varint,9,opt,name=has_vocals,json=hasVocals,proto3" json:"has_vocals,omitempty"`
+	// How the lyrics are timed: by word (or syllable) or by line. UNSPECIFIED until the file has been read, and for a file without lyrics.
+	LyricTiming   LyricTiming `protobuf:"varint,10,opt,name=lyric_timing,json=lyricTiming,proto3,enum=kantahe.v1.LyricTiming" json:"lyric_timing,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -352,6 +405,13 @@ func (x *Song) GetHasVocals() bool {
 		return x.HasVocals
 	}
 	return false
+}
+
+func (x *Song) GetLyricTiming() LyricTiming {
+	if x != nil {
+		return x.LyricTiming
+	}
+	return LyricTiming_LYRIC_TIMING_UNSPECIFIED
 }
 
 // One lyric word with its wipe window in milliseconds (plan 3).
@@ -547,14 +607,15 @@ func (x *Lyrics) GetLines() []*LyricLine {
 
 // An account; password data is never sent. Only admins see other users.
 type User struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Email              string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	DisplayName        string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	Admin              bool                   `protobuf:"varint,4,opt,name=admin,proto3" json:"admin,omitempty"`
-	Uploader           bool                   `protobuf:"varint,5,opt,name=uploader,proto3" json:"uploader,omitempty"`
-	MustChangePassword bool                   `protobuf:"varint,6,opt,name=must_change_password,json=mustChangePassword,proto3" json:"must_change_password,omitempty"`
-	Disabled           bool                   `protobuf:"varint,7,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Email       string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	DisplayName string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	Admin       bool                   `protobuf:"varint,4,opt,name=admin,proto3" json:"admin,omitempty"`
+	// Has no effect since 1.2.0: only administrators upload songs.
+	Uploader           bool `protobuf:"varint,5,opt,name=uploader,proto3" json:"uploader,omitempty"`
+	MustChangePassword bool `protobuf:"varint,6,opt,name=must_change_password,json=mustChangePassword,proto3" json:"must_change_password,omitempty"`
+	Disabled           bool `protobuf:"varint,7,opt,name=disabled,proto3" json:"disabled,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1011,7 +1072,7 @@ var File_kantahe_v1_common_proto protoreflect.FileDescriptor
 const file_kantahe_v1_common_proto_rawDesc = "" +
 	"\n" +
 	"\x17kantahe/v1/common.proto\x12\n" +
-	"kantahe.v1\"\x97\x02\n" +
+	"kantahe.v1\"\xd3\x02\n" +
 	"\x04Song\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\tR\x06number\x12*\n" +
 	"\x06format\x18\x02 \x01(\x0e2\x12.kantahe.v1.FormatR\x06format\x12\x14\n" +
@@ -1023,7 +1084,9 @@ const file_kantahe_v1_common_proto_rawDesc = "" +
 	"\x06failed\x18\a \x01(\bR\x06failed\x12\x1c\n" +
 	"\tfavourite\x18\b \x01(\bR\tfavourite\x12\x1d\n" +
 	"\n" +
-	"has_vocals\x18\t \x01(\bR\thasVocals\"Q\n" +
+	"has_vocals\x18\t \x01(\bR\thasVocals\x12:\n" +
+	"\flyric_timing\x18\n" +
+	" \x01(\x0e2\x17.kantahe.v1.LyricTimingR\vlyricTiming\"Q\n" +
 	"\tLyricWord\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x19\n" +
 	"\bstart_ms\x18\x02 \x01(\x03R\astartMs\x12\x15\n" +
@@ -1110,7 +1173,11 @@ const file_kantahe_v1_common_proto_rawDesc = "" +
 	"\x1bBACKGROUND_MODE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14BACKGROUND_MODE_AUTO\x10\x01\x12\x16\n" +
 	"\x12BACKGROUND_MODE_ON\x10\x02\x12\x17\n" +
-	"\x13BACKGROUND_MODE_OFF\x10\x03B\xa7\x01\n" +
+	"\x13BACKGROUND_MODE_OFF\x10\x03*Y\n" +
+	"\vLyricTiming\x12\x1c\n" +
+	"\x18LYRIC_TIMING_UNSPECIFIED\x10\x00\x12\x15\n" +
+	"\x11LYRIC_TIMING_LINE\x10\x01\x12\x15\n" +
+	"\x11LYRIC_TIMING_WORD\x10\x02B\xa7\x01\n" +
 	"\x0ecom.kantahe.v1B\vCommonProtoP\x01Z?github.com/andrewloable/kantahe/server/gen/kantahe/v1;kantahev1\xa2\x02\x03KXX\xaa\x02\n" +
 	"Kantahe.V1\xca\x02\n" +
 	"Kantahe\\V1\xe2\x02\x16Kantahe\\V1\\GPBMetadata\xea\x02\vKantahe::V1b\x06proto3"
@@ -1127,36 +1194,38 @@ func file_kantahe_v1_common_proto_rawDescGZIP() []byte {
 	return file_kantahe_v1_common_proto_rawDescData
 }
 
-var file_kantahe_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_kantahe_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 var file_kantahe_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_kantahe_v1_common_proto_goTypes = []any{
 	(Format)(0),         // 0: kantahe.v1.Format
 	(DeviceType)(0),     // 1: kantahe.v1.DeviceType
 	(MidiMode)(0),       // 2: kantahe.v1.MidiMode
 	(BackgroundMode)(0), // 3: kantahe.v1.BackgroundMode
-	(*Song)(nil),        // 4: kantahe.v1.Song
-	(*LyricWord)(nil),   // 5: kantahe.v1.LyricWord
-	(*LyricLine)(nil),   // 6: kantahe.v1.LyricLine
-	(*Lyrics)(nil),      // 7: kantahe.v1.Lyrics
-	(*User)(nil),        // 8: kantahe.v1.User
-	(*Device)(nil),      // 9: kantahe.v1.Device
-	(*Video)(nil),       // 10: kantahe.v1.Video
-	(*AuthToken)(nil),   // 11: kantahe.v1.AuthToken
+	(LyricTiming)(0),    // 4: kantahe.v1.LyricTiming
+	(*Song)(nil),        // 5: kantahe.v1.Song
+	(*LyricWord)(nil),   // 6: kantahe.v1.LyricWord
+	(*LyricLine)(nil),   // 7: kantahe.v1.LyricLine
+	(*Lyrics)(nil),      // 8: kantahe.v1.Lyrics
+	(*User)(nil),        // 9: kantahe.v1.User
+	(*Device)(nil),      // 10: kantahe.v1.Device
+	(*Video)(nil),       // 11: kantahe.v1.Video
+	(*AuthToken)(nil),   // 12: kantahe.v1.AuthToken
 }
 var file_kantahe_v1_common_proto_depIdxs = []int32{
 	0, // 0: kantahe.v1.Song.format:type_name -> kantahe.v1.Format
-	5, // 1: kantahe.v1.LyricLine.words:type_name -> kantahe.v1.LyricWord
-	6, // 2: kantahe.v1.Lyrics.lines:type_name -> kantahe.v1.LyricLine
-	1, // 3: kantahe.v1.Device.type:type_name -> kantahe.v1.DeviceType
-	2, // 4: kantahe.v1.Device.midi_mode:type_name -> kantahe.v1.MidiMode
-	2, // 5: kantahe.v1.Device.effective_midi_mode:type_name -> kantahe.v1.MidiMode
-	3, // 6: kantahe.v1.Device.background_mode:type_name -> kantahe.v1.BackgroundMode
-	8, // 7: kantahe.v1.AuthToken.user:type_name -> kantahe.v1.User
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	4, // 1: kantahe.v1.Song.lyric_timing:type_name -> kantahe.v1.LyricTiming
+	6, // 2: kantahe.v1.LyricLine.words:type_name -> kantahe.v1.LyricWord
+	7, // 3: kantahe.v1.Lyrics.lines:type_name -> kantahe.v1.LyricLine
+	1, // 4: kantahe.v1.Device.type:type_name -> kantahe.v1.DeviceType
+	2, // 5: kantahe.v1.Device.midi_mode:type_name -> kantahe.v1.MidiMode
+	2, // 6: kantahe.v1.Device.effective_midi_mode:type_name -> kantahe.v1.MidiMode
+	3, // 7: kantahe.v1.Device.background_mode:type_name -> kantahe.v1.BackgroundMode
+	9, // 8: kantahe.v1.AuthToken.user:type_name -> kantahe.v1.User
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_kantahe_v1_common_proto_init() }
@@ -1170,7 +1239,7 @@ func file_kantahe_v1_common_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kantahe_v1_common_proto_rawDesc), len(file_kantahe_v1_common_proto_rawDesc)),
-			NumEnums:      4,
+			NumEnums:      5,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,

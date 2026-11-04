@@ -64,7 +64,10 @@ type GetServerInfoResponse struct {
 	Version       string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
 	SetupRequired bool                   `protobuf:"varint,2,opt,name=setup_required,json=setupRequired,proto3" json:"setup_required,omitempty"`
 	// Human-readable server name, the --name flag; also the mDNS instance name.
-	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// When this run of the server started, in Unix milliseconds. It changes when the server restarts (after an import), so that a page
+	// can tell the restarted server from the one that is shutting down.
+	StartedUnixMs int64 `protobuf:"varint,4,opt,name=started_unix_ms,json=startedUnixMs,proto3" json:"started_unix_ms,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -118,6 +121,13 @@ func (x *GetServerInfoResponse) GetName() string {
 		return x.Name
 	}
 	return ""
+}
+
+func (x *GetServerInfoResponse) GetStartedUnixMs() int64 {
+	if x != nil {
+		return x.StartedUnixMs
+	}
+	return 0
 }
 
 // Creates the first admin and signs in the calling device.
@@ -1112,11 +1122,12 @@ const file_kantahe_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"\x15kantahe/v1/auth.proto\x12\n" +
 	"kantahe.v1\x1a\x17kantahe/v1/common.proto\"\x16\n" +
-	"\x14GetServerInfoRequest\"l\n" +
+	"\x14GetServerInfoRequest\"\x94\x01\n" +
 	"\x15GetServerInfoResponse\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12%\n" +
 	"\x0esetup_required\x18\x02 \x01(\bR\rsetupRequired\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"\xbd\x01\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12&\n" +
+	"\x0fstarted_unix_ms\x18\x04 \x01(\x03R\rstartedUnixMs\"\xbd\x01\n" +
 	"\fSetupRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12!\n" +

@@ -223,29 +223,29 @@ func TestAPIAndMediaAnswerCORSButTheWebAppDoesNot(t *testing.T) {
 // function (cancel the context, wait for the exit code).
 func runServer(t *testing.T, extra ...string) (stop func() int) {
 	t.Helper()
+	_, _, stop = runServerAt(t, "", extra...)
+	return stop
+}
+
+// runServerAt is runServer with a data folder of the test's choosing ("" for a new one); it also returns the address and the folder.
+func runServerAt(t *testing.T, data string, extra ...string) (addr, dataDir string, stop func() int) {
+	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr := ln.Addr().String()
+	addr = ln.Addr().String()
 	ln.Close()
+	if data == "" {
+		data = filepath.Join(t.TempDir(), "data")
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	done := make(chan int, 1)
-	args := append([]string{"--data", filepath.Join(t.TempDir(), "data"), "--listen", addr}, extra...)
+	args := append([]string{"--data", data, "--listen", addr}, extra...)
 	go func() { done <- runContext(ctx, args, &bytes.Buffer{}) }()
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		if res, err := http.Get("http://" + addr + "/healthz"); err == nil {
-			res.Body.Close()
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("the server did not start")
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	return func() int {
+	waitHealthy(t, addr)
+	return addr, data, func() int {
 		cancel()
 		select {
 		case code := <-done:
@@ -254,6 +254,24 @@ func runServer(t *testing.T, extra ...string) (stop func() int) {
 			t.Fatal("runContext did not return after its context was cancelled")
 			return -1
 		}
+	}
+}
+
+// waitHealthy waits until the server at addr answers /healthz.
+func waitHealthy(t *testing.T, addr string) {
+	t.Helper()
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		if res, err := http.Get("http://" + addr + "/healthz"); err == nil {
+			res.Body.Close()
+			if res.StatusCode == 200 {
+				return
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the server did not start")
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }
 

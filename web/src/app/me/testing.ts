@@ -5,6 +5,9 @@ import { BackgroundMode, Device, MidiMode, Song } from '../../gen/kantahe/v1/com
 import {
   AddPlaylistToQueueResponseSchema,
   AddToQueueResponseSchema,
+  MoveToTopResponseSchema,
+  QueueItemSchema,
+  RemoveFromQueueResponseSchema,
   SessionService,
   SetBackgroundModeResponseSchema,
   SetVolumeResponseSchema,
@@ -59,6 +62,8 @@ export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; 
     get: [] as string[],
     toQueue: [] as string[],
     add: [] as string[],
+    /** Queue calls in order (play next: add, then move the new item to the top). */
+    session: [] as string[],
     midi: [] as { deviceId: string; mode: MidiMode }[],
     background: [] as { deviceId: string; mode: BackgroundMode }[],
     volume: [] as { deviceId: string; mp3?: number; midi?: number }[],
@@ -141,7 +146,16 @@ export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; 
       },
       addToQueue(req) {
         calls.add.push(req.number);
-        return create(AddToQueueResponseSchema, {});
+        calls.session.push(`add ${req.number}`);
+        return create(AddToQueueResponseSchema, { item: create(QueueItemSchema, { id: `q-${req.number}` }) });
+      },
+      moveToTop(req) {
+        calls.session.push(`top ${req.itemId}`);
+        return create(MoveToTopResponseSchema, {});
+      },
+      removeFromQueue(req) {
+        calls.session.push(`remove ${req.itemId}`);
+        return create(RemoveFromQueueResponseSchema, {});
       },
       addPlaylistToQueue(req) {
         maybeFail();

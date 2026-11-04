@@ -25,15 +25,20 @@ class UploadStatus extends $pb.ProtobufEnum {
   static const UploadStatus UPLOAD_STATUS_REJECTED =
       UploadStatus._(3, _omitEnumNames ? '' : 'UPLOAD_STATUS_REJECTED');
 
+  /// The file replaced the content of the song named in replace_number; the response carries the song.
+  static const UploadStatus UPLOAD_STATUS_UPDATED =
+      UploadStatus._(4, _omitEnumNames ? '' : 'UPLOAD_STATUS_UPDATED');
+
   static const $core.List<UploadStatus> values = <UploadStatus>[
     UPLOAD_STATUS_UNSPECIFIED,
     UPLOAD_STATUS_ADDED,
     UPLOAD_STATUS_DUPLICATE,
     UPLOAD_STATUS_REJECTED,
+    UPLOAD_STATUS_UPDATED,
   ];
 
   static final $core.List<UploadStatus?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 3);
+      $pb.ProtobufEnum.$_initByValueList(values, 4);
   static UploadStatus? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 

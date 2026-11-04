@@ -20,7 +20,7 @@ const SETUP_TEXT = 'This server has no account yet. Open it in a web browser to 
 @Component({
   selector: 'app-server-address-page',
   template: `
-    <main class="card">
+    <main id="main" class="card">
       @switch (phase()) {
         @case ('searching') {
           <h1>Connect to your server</h1>
@@ -65,7 +65,7 @@ const SETUP_TEXT = 'This server has no account yet. Open it in a web browser to 
             @if (failure()) {
               <p class="error" role="alert">{{ failure() }}</p>
             }
-            <button type="submit" [disabled]="busy()">Connect</button>
+            <button class="primary" type="submit" [disabled]="busy()">Connect</button>
           </form>
           <p><button type="button" (click)="search(true)">Search again</button></p>
         }

@@ -24,6 +24,19 @@ func GainOf(ctx context.Context, q Querier, number string) (float64, bool, error
 	return g.Float64, g.Valid, err
 }
 
+// MediaPathOf is the extracted audio file of a song (the MP3 of a .karmp3); "" when the song has none or does not exist.
+func MediaPathOf(ctx context.Context, q Querier, number string) (string, error) {
+	var p string
+	err := q.QueryRowContext(ctx, `SELECT media_path FROM songs WHERE number = ? AND deleted = 0`, number).Scan(&p)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return p, err
+}
+
+// VocalsPathOf is the vocals track that goes with an extracted instrumental ("" for no instrumental).
+func VocalsPathOf(mediaPath string) string { return vocalsPathOf(mediaPath) }
+
 // ProcessLoudness measures the songs that have audio of their own (the extracted MP3 of a .karmp3) and no loudness yet, one at a time with a
 // pause between, and stores each one's gain. It covers new songs and, once, the songs of a library that was imported before the measure
 // existed. A song that cannot be measured is marked done with no gain. It gives way (true) as soon as a song waits for its metadata, which

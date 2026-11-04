@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { afterNextRender, Component, DestroyRef, ElementRef, inject, Injector, signal, viewChild } from '@angular/core';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { AdminService } from '../../../gen/kantahe/v1/admin_pb';
 import { User } from '../../../gen/kantahe/v1/common_pb';
@@ -9,13 +9,17 @@ import { CreatedUser, UserFormComponent } from './user-form.component';
 import { generateTempPassword } from './temp-password';
 import { TempPasswordPanelComponent } from './temp-password-panel.component';
 
-type Role = 'admin' | 'uploader' | 'disabled';
+type Role = 'admin' | 'disabled';
 
 @Component({
   selector: 'app-users-page',
   imports: [UserFormComponent, TempPasswordPanelComponent],
   template: `
-    <h2>Users</h2>
+    <div class="page">
+    <div class="head">
+      <h2>Users</h2>
+      <button #opener type="button" class="primary" (click)="openNew()">New user</button>
+    </div>
     @if (shown(); as s) {
       <app-temp-password-panel [email]="s.email" [password]="s.password" (closed)="shown.set(undefined)" />
     }
@@ -28,7 +32,6 @@ type Role = 'admin' | 'uploader' | 'disabled';
           <th scope="col" role="columnheader">Email</th>
           <th scope="col" role="columnheader">Name</th>
           <th scope="col" role="columnheader">Admin</th>
-          <th scope="col" role="columnheader">Uploader</th>
           <th scope="col" role="columnheader">Disabled</th>
           <th scope="col" role="columnheader">Account</th>
           <th scope="col" role="columnheader">Actions</th>
@@ -40,28 +43,27 @@ type Role = 'admin' | 'uploader' | 'disabled';
             <td role="cell">{{ u.email }}</td>
             <td role="cell">{{ u.displayName }}</td>
             <td role="cell"><label class="role"><input type="checkbox" data-role="admin" [attr.aria-label]="'Admin: ' + u.email" [checked]="u.admin" [disabled]="pending().has(u.id + ':admin')" (change)="toggle(u, 'admin', $event)" /><span class="role-name">Admin</span></label></td>
-            <td role="cell"><label class="role"><input type="checkbox" data-role="uploader" [attr.aria-label]="'Uploader: ' + u.email" [checked]="u.uploader" [disabled]="pending().has(u.id + ':uploader')" (change)="toggle(u, 'uploader', $event)" /><span class="role-name">Uploader</span></label></td>
             <td role="cell"><label class="role"><input type="checkbox" data-role="disabled" [attr.aria-label]="'Disabled: ' + u.email" [checked]="u.disabled" [disabled]="pending().has(u.id + ':disabled')" (change)="toggle(u, 'disabled', $event)" /><span class="role-name">Disabled</span></label></td>
             <td role="cell">{{ u.mustChangePassword ? 'must change password' : '' }}</td>
-            <td role="cell" class="actions">
+            <td role="cell" class="actions" [class.one-line]="deleting() !== u.id && confirming()?.id !== u.id && !notice()[u.id] && !problems()[u.id]">
               @if (deleting() === u.id) {
                 <label [for]="'confirm-' + u.id">Type {{ u.email }} to delete this user</label>
                 <input [id]="'confirm-' + u.id" type="text" autocomplete="off" [value]="typed()" (input)="typed.set(value($event))" />
-                <button type="button" [disabled]="typed() !== u.email" (click)="remove(u)">Delete user</button>
-                <button type="button" (click)="deleting.set(undefined)">Cancel</button>
+                <button class="danger primary" type="button" [disabled]="typed() !== u.email" (click)="remove(u)">Delete user</button>
+                <button class="quiet" type="button" (click)="deleting.set(undefined)">Cancel</button>
               } @else if (confirming()?.id === u.id) {
                 @if (confirming()?.action === 'reset') {
                   <span>Reset the password of {{ u.email }}? The old one stops working and they must choose a new one.</span>
-                  <button type="button" (click)="reset(u)">Yes, reset</button>
+                  <button class="primary" type="button" (click)="reset(u)">Yes, reset</button>
                 } @else {
                   <span>Sign out all devices of {{ u.email }}?</span>
-                  <button type="button" (click)="revoke(u)">Yes, sign out</button>
+                  <button class="danger primary" type="button" (click)="revoke(u)">Yes, sign out</button>
                 }
-                <button type="button" (click)="confirming.set(undefined)">Cancel</button>
+                <button class="quiet" type="button" (click)="confirming.set(undefined)">Cancel</button>
               } @else {
                 <button type="button" [attr.aria-label]="'Reset password of ' + u.email" (click)="confirm(u, 'reset')">Reset password</button>
-                <button type="button" [attr.aria-label]="'Sign out devices of ' + u.email" (click)="confirm(u, 'revoke')">Sign out devices</button>
-                <button type="button" [attr.aria-label]="'Delete ' + u.email" (click)="ask(u)">Delete</button>
+                <button class="danger" type="button" [attr.aria-label]="'Sign out devices of ' + u.email" (click)="confirm(u, 'revoke')">Sign out devices</button>
+                <button class="danger" type="button" [attr.aria-label]="'Delete ' + u.email" (click)="ask(u)">Delete</button>
               }
               @if (notice()[u.id]) {
                 <span class="notice" role="status">{{ notice()[u.id] }}</span>
@@ -74,13 +76,54 @@ type Role = 'admin' | 'uploader' | 'disabled';
         }
       </tbody>
     </table>
-    <app-user-form (created)="created($event)" />
+    </div>
+    @if (adding()) {
+      <div class="backdrop" aria-hidden="true" (click)="closeNew()"></div>
+      <div class="dialog" role="dialog" aria-modal="true" data-back-closes aria-labelledby="new-user-title" (keydown.escape)="closeNew()">
+        <app-user-form (created)="created($event); closeNew(false)" (cancelled)="closeNew()" />
+      </div>
+    }
   `,
   styles: `
     :host {
       display: block;
+    }
+    /* the page is the container of the table's breakpoints and scrolls on its own; the dialog is outside it: a container (layout containment)
+       would be the containing block of a fixed dialog, and its scrolling would clip it */
+    .page {
       overflow-x: auto;
       container-type: inline-size;
+    }
+    .head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem 1rem;
+    }
+    /* above the tab bar of a phone (z-index 20): the dialog is modal (the same as the song edit dialog) */
+    .backdrop {
+      position: fixed;
+      z-index: 40;
+      inset: 0;
+      background: rgb(0 0 0 / 0.45);
+    }
+    /* it fits a phone on its side and one with the keyboard open: it starts near the top and scrolls inside */
+    .dialog {
+      position: fixed;
+      z-index: 41;
+      left: 50%;
+      top: 1rem;
+      transform: translateX(-50%);
+      width: min(28rem, calc(100vw - 2rem));
+      max-height: calc(100dvh - 2rem);
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: 0.75rem;
+      background: var(--panel);
+      box-shadow: 0 8px 30px rgb(0 0 0 / 0.4);
     }
     table {
       width: 100%;
@@ -97,6 +140,18 @@ type Role = 'admin' | 'uploader' | 'disabled';
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
+    }
+    /* the buttons alone (no question, no message) stay on one line where the table has room (a desktop): a wrapping cell let the name
+       columns take the room; on a tablet they may wrap, so that the table never gets wider than the window */
+    @container (min-width: 60rem) {
+      .actions.one-line {
+        flex-wrap: nowrap;
+      }
+      /* and do not shrink: a squeezed button broke its label onto two lines */
+      .actions.one-line button {
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
     }
     input[type='checkbox'] {
       width: 1.5rem;
@@ -120,7 +175,7 @@ type Role = 'admin' | 'uploader' | 'disabled';
     /* on a phone each user is a block: address, name, the three roles, the state, then the buttons */
     /* the width of the page's own box, in rem: with a larger text size a table that needs 44rem no longer fits, and the blocks come sooner */
     @container (max-width: 44rem) {
-      :host {
+      .page {
         overflow-x: visible;
       }
       table,
@@ -155,6 +210,7 @@ type Role = 'admin' | 'uploader' | 'disabled';
       td.actions {
         padding-top: 0.5rem;
       }
+
     }
     .notice {
       color: var(--muted);
@@ -174,6 +230,11 @@ export class UsersPage {
   protected readonly confirming = signal<{ id: string; action: 'reset' | 'revoke' } | undefined>(undefined);
   /** Role boxes with a change on its way, as user id and role. */
   protected readonly pending = signal<ReadonlySet<string>>(new Set());
+  /** The New user dialog is open. */
+  protected readonly adding = signal(false);
+  private readonly opener = viewChild.required<ElementRef<HTMLButtonElement>>('opener');
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
   private readonly toast = inject(ToastService);
   private gone = false;
 
@@ -241,6 +302,18 @@ export class UsersPage {
         return next;
       });
     }
+  }
+
+  /** Opens the dialog; the focus goes to its first box. */
+  protected openNew(): void {
+    this.adding.set(true);
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLInputElement>('#new-email')?.focus(), { injector: this.injector });
+  }
+
+  /** Closes it; the focus goes back to the button (after a created user too: the page shows the password panel). */
+  protected closeNew(refocus = true): void {
+    this.adding.set(false);
+    if (refocus) afterNextRender(() => this.opener().nativeElement.focus(), { injector: this.injector });
   }
 
   protected created(c: CreatedUser): void {

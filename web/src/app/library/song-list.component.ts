@@ -6,20 +6,24 @@ import { injectClient } from '../core/api';
 import { AuthStore } from '../core/auth.store';
 import { fromServer, problem } from '../core/errors';
 import { ToastService } from '../core/toast';
+import { BadgeLegendComponent } from './badge-legend.component';
 import { FormatBadgeComponent } from './format-badge.component';
 import { LibraryActions } from './library-actions';
 import { PageBarComponent } from './page-bar.component';
 import { PageWindow } from './page-window';
 import { PlaylistPickerComponent } from './playlist-picker.component';
+import { ENVIRONMENT } from '../core/environment';
+import { ActionMenuComponent, MenuItem } from '../shared/action-menu.component';
 
 @Component({
   selector: 'app-song-list',
-  imports: [FormatBadgeComponent, PageBarComponent, PlaylistPickerComponent],
+  imports: [FormatBadgeComponent, PageBarComponent, PlaylistPickerComponent, ActionMenuComponent, BadgeLegendComponent],
   template: `
     <ul #list class="songs">
       @for (s of win.rows(); track s.number) {
         <li class="row">
-          <button type="button" class="main" [disabled]="s.failed" [attr.aria-label]="'Add ' + s.title + ' by ' + s.artist + ' to the queue'" (click)="actions.add(s)">
+          <!-- named by what it shows, then what it does (WCAG 2.5.3: a speech user says what they see) -->
+          <button type="button" class="main" [disabled]="s.failed" (click)="actions.add(s)">
             <span class="num">{{ s.number }}</span>
             <span class="info">
               <span class="title" [attr.title]="s.title">{{ s.title }}</span>
@@ -28,25 +32,31 @@ import { PlaylistPickerComponent } from './playlist-picker.component';
                 <span class="artist">This song can't be played.</span>
               }
             </span>
-            <app-format-badge [format]="s.format" />
+            <app-format-badge [format]="s.format" [timing]="s.lyricTiming" [vocals]="s.hasVocals" />
+            <span class="sr-only">, add to the queue</span>
           </button>
           <span class="actions">
             <button type="button" class="star" [attr.aria-pressed]="actions.isFavourite(s)" [attr.aria-label]="'Favourite: ' + s.title" (click)="actions.toggleFavourite(s)">
               {{ actions.isFavourite(s) ? '★' : '☆' }}
             </button>
-            <button type="button" class="menu" [attr.aria-expanded]="pickerFor() === s.number" [attr.aria-label]="'Add ' + s.title + ' to a playlist'" title="Add to a playlist" (click)="togglePicker(s.number)">＋</button>
-            @if (isAdmin()) {
-              <button type="button" class="delete" [attr.aria-label]="'Delete ' + s.title + ' by ' + s.artist" title="Delete" (click)="deleting.set(s.number)">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zM6 9h12l-1 12H7L6 9z" /></svg>
-              </button>
+            @if (isTv) {
+              <!-- a TV is steered with a remote: no menu, the actions stay in the row -->
+              <button type="button" class="menu" [attr.aria-expanded]="pickerFor() === s.number" [attr.aria-label]="'Add ' + s.title + ' to a playlist'" title="Add to a playlist" (click)="togglePicker(s.number)">＋</button>
+              @if (canDelete()) {
+                <button type="button" class="delete" [attr.aria-label]="'Delete ' + s.title + ' by ' + s.artist" title="Delete" (click)="deleting.set(s.number)">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zM6 9h12l-1 12H7L6 9z" /></svg>
+                </button>
+              }
+            } @else {
+              <app-action-menu [label]="'More actions for ' + s.title" [items]="menus().get(s.number) ?? []" />
             }
           </span>
           @if (deleting() === s.number) {
             <div class="confirm picker-slot" role="alert">
               <span>Take "{{ s.title }}" off the list, or delete its file too?</span>
-              <button type="button" (click)="remove(s, true)">Remove from list</button>
+              <button class="danger" type="button" (click)="remove(s, true)">Remove from list</button>
               <button type="button" class="danger" (click)="remove(s, false)">Delete file too</button>
-              <button type="button" (click)="deleting.set(undefined)">Cancel</button>
+              <button class="quiet" type="button" (click)="deleting.set(undefined)">Cancel</button>
             </div>
           }
           @if (deleteError()[s.number]) {
@@ -61,7 +71,11 @@ import { PlaylistPickerComponent } from './playlist-picker.component';
     @if (loading()) {
       <p role="status">Loading…</p>
     } @else if (visible().length === 0 && !failed()) {
-      <p>{{ emptyText() }}</p>
+      @if (emptyText()) {
+        <p>{{ emptyText() }}</p>
+      }
+    } @else if (visible().length > 0) {
+      <app-badge-legend />
     }
     <app-page-bar [win]="win" [hasMore]="hasMore()" />
   `,
@@ -83,6 +97,8 @@ import { PlaylistPickerComponent } from './playlist-picker.component';
     .actions {
       display: flex;
       gap: 0.5rem;
+      /* at the right end of the row, also when a narrow phone puts them on a line of their own (the menu opens leftwards from there) */
+      margin-left: auto;
     }
     .main {
       /* a row of at least 14rem for the text: below that the buttons go to a second line instead of squeezing the title */
@@ -91,12 +107,18 @@ import { PlaylistPickerComponent } from './playlist-picker.component';
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      padding: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      border: 0;
       border-radius: 0;
       background: transparent;
       color: inherit;
       text-align: left;
       font-weight: 400;
+    }
+    /* the badges of a row wrap inside this width, so that they never squeeze the title */
+    app-format-badge {
+      max-width: 3.5rem;
+      justify-content: flex-end;
     }
     .num {
       min-width: 3.5rem;
@@ -130,6 +152,7 @@ import { PlaylistPickerComponent } from './playlist-picker.component';
     .star {
       min-width: 2.75rem;
       padding: 0.25rem;
+      border: 0;
       background: transparent;
       color: var(--sung);
       font-size: 1.25rem;
@@ -137,6 +160,7 @@ import { PlaylistPickerComponent } from './playlist-picker.component';
     .menu {
       min-width: 2.75rem;
       padding: 0.25rem;
+      border: 0;
       background: transparent;
       color: inherit;
       font-size: 1.25rem;
@@ -147,12 +171,17 @@ import { PlaylistPickerComponent } from './playlist-picker.component';
     .delete {
       min-width: 2.75rem;
       padding: 0.25rem;
+      border: 0;
       background: transparent;
       color: var(--danger);
     }
-    .confirm .danger {
-      background: var(--danger);
-      color: var(--paper);
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
     .confirm {
       display: flex;
@@ -173,6 +202,9 @@ export class SongListComponent {
   private readonly toasts = inject(ToastService);
   /** Delete is for administrators: it removes the song together with its file. */
   protected readonly isAdmin = computed(() => this.auth.user()?.admin === true);
+  /** Only the Library offers Delete: in a personal list (Favourites) it would take the song out of everybody's library. */
+  readonly allowDelete = input(false);
+  protected readonly canDelete = computed(() => this.allowDelete() && this.isAdmin());
   protected readonly deleting = signal<string | undefined>(undefined);
   protected readonly deleteError = signal<Record<string, string>>({});
   /** Songs deleted here: they leave the list at once, whatever the page that owns the list does. */
@@ -180,6 +212,21 @@ export class SongListComponent {
 
   readonly songs = input.required<Song[]>();
   protected readonly visible = computed(() => this.songs().filter((s) => !this.removed().has(s.number)));
+  protected readonly isTv = inject(ENVIRONMENT).isTv;
+  /** The More menu of each row (built once per list, not on every check). */
+  protected readonly menus = computed(() => {
+    const admin = this.canDelete();
+    return new Map(
+      this.visible().map((s): [string, MenuItem[]] => [
+        s.number,
+        [
+          { label: 'Play next', run: () => void this.actions.playNext(s) },
+          { label: 'Add to a playlist', run: () => this.pickerFor.set(s.number) },
+          ...(admin ? [{ label: 'Delete', danger: true, run: () => this.deleting.set(s.number) }] : []),
+        ],
+      ]),
+    );
+  });
   readonly hasMore = input(false);
   readonly loading = input(false);
   /**

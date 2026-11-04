@@ -104,6 +104,9 @@ class _ApproveCodeScreenState extends State<ApproveCodeScreen> {
         if (_approved.isNotEmpty) MessageLine('Signed in $_approved', error: false),
         const SizedBox(height: 16),
         FilledButton(onPressed: _busy || !_complete ? null : _approve, child: const Text('Approve')),
+        const SizedBox(height: 8),
+        // Cancel, or Done once a TV was approved: back to the Me screen; nothing is sent
+        TextButton(onPressed: () => Navigator.of(context).maybePop(), child: Text(_approved.isEmpty ? 'Cancel' : 'Done')),
       ],
     );
   }

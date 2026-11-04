@@ -158,7 +158,7 @@ class _Row extends StatelessWidget {
                             ],
                           ),
                         ),
-                        FormatBadge(song.format),
+                        FormatBadge(song.format, timing: song.lyricTiming, vocals: song.hasVocals),
                       ],
                     ),
                   ),

@@ -1,9 +1,11 @@
-import { Component, DestroyRef, ElementRef, inject, signal, viewChildren } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, Injector, signal, viewChildren } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { CatalogService } from '../../gen/kantahe/v1/catalog_pb';
 import { Format, Song } from '../../gen/kantahe/v1/common_pb';
 import { injectClient } from '../core/api';
+import { AuthStore } from '../core/auth.store';
+import { KeyboardShortcuts } from '../core/shortcuts';
 import { fieldValue } from '../auth/form';
-import { AlphaBrowseComponent } from './alpha-browse.component';
 import { NumberPadComponent } from './number-pad.component';
 import { Pager } from './paged';
 import { LibraryActions } from './library-actions';
@@ -11,18 +13,18 @@ import { SongListComponent } from './song-list.component';
 
 const SEARCH_DELAY_MS = 250;
 
-type Tab = 'search' | 'number' | 'browse';
+type Tab = 'search' | 'number';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'search', label: 'Search' },
   { id: 'number', label: 'Number' },
-  { id: 'browse', label: 'Browse' },
 ];
 
 @Component({
   selector: 'app-library-page',
-  imports: [SongListComponent, NumberPadComponent, AlphaBrowseComponent],
+  imports: [SongListComponent, NumberPadComponent, RouterLink],
+  host: { '(document:keydown)': 'onShortcut($event)' },
   template: `
-    <main class="library">
+    <div class="library">
       <h1>Library</h1>
       <div role="tablist" aria-label="Find a song">
         @for (t of tabs; track t.id) {
@@ -56,17 +58,24 @@ const TABS: { id: Tab; label: string }[] = [
             @if (songs.error()) {
               <p class="error" role="alert">{{ songs.error() }} <button type="button" (click)="songs.retry()">Try again</button></p>
             }
-            <app-song-list [songs]="songs.items()" [hasMore]="songs.hasMore()" [loading]="songs.loading()" [autoMore]="!songs.error()" [failed]="!!songs.error()" (more)="songs.more()" />
+            @if (emptyLibrary()) {
+              <p class="empty-library" role="status">
+                The library is empty.
+                @if (isAdmin()) {
+                  Add songs with <a data-inline-link routerLink="/admin/upload">Upload</a>, or put them in a watched folder on the server.
+                } @else {
+                  Ask your administrator to add songs.
+                }
+              </p>
+            }
+            <app-song-list [songs]="songs.items()" [allowDelete]="true" [emptyText]="emptyLibrary() ? '' : 'No songs found.'" [hasMore]="songs.hasMore()" [loading]="songs.loading()" [autoMore]="!songs.error()" [failed]="!!songs.error()" (more)="songs.more()" />
           }
           @case ('number') {
             <app-number-pad />
           }
-          @case ('browse') {
-            <app-alpha-browse />
-          }
         }
       </div>
-    </main>
+    </div>
   `,
   styles: `
     .library {
@@ -82,6 +91,7 @@ const TABS: { id: Tab; label: string }[] = [
       border-bottom: 1px solid var(--line);
     }
     [role='tab'] {
+      border: 0;
       background: transparent;
       color: inherit;
       border-radius: 0.5rem 0.5rem 0 0;
@@ -116,6 +126,14 @@ export class LibraryPage {
   protected readonly tabs = TABS;
   protected readonly tab = signal<Tab>('search');
   protected readonly query = signal('');
+  private readonly auth = inject(AuthStore);
+  private readonly shortcuts = inject(KeyboardShortcuts);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+  protected readonly isAdmin = computed(() => this.auth.user()?.admin === true);
+  /** The search that was made asked for everything (no words, no format): when nothing comes back, the library itself is empty. */
+  private readonly askedForEverything = signal(true);
+  protected readonly emptyLibrary = computed(() => this.askedForEverything() && !this.songs.loading() && !this.songs.error() && this.songs.items().length === 0);
   protected readonly format = signal(Format.UNSPECIFIED);
   protected readonly chips = [
     { label: 'All', format: Format.UNSPECIFIED },
@@ -153,6 +171,14 @@ export class LibraryPage {
     this.tab.set(t);
   }
 
+  /** / goes to the search box (from the Number tab: back to Search first). */
+  protected onShortcut(e: KeyboardEvent): void {
+    if (e.key !== '/' || !this.shortcuts.accepts(e)) return;
+    e.preventDefault();
+    this.tab.set('search');
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLInputElement>('#search')?.focus(), { injector: this.injector });
+  }
+
   protected onKey(e: KeyboardEvent, current: Tab): void {
     const i = TABS.findIndex((t) => t.id === current);
     const next =
@@ -179,6 +205,7 @@ export class LibraryPage {
     clearTimeout(this.timer);
     this.activeQuery = this.query().trim();
     this.activeFormat = this.format();
+    this.askedForEverything.set(this.activeQuery === '' && this.activeFormat === Format.UNSPECIFIED);
     void this.songs.reset();
   }
 }

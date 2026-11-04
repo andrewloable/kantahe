@@ -86,6 +86,21 @@ final $typed_data.Uint8List backgroundModeDescriptor = $convert.base64Decode(
     'NLR1JPVU5EX01PREVfQVVUTxABEhYKEkJBQ0tHUk9VTkRfTU9ERV9PThACEhcKE0JBQ0tHUk9V'
     'TkRfTU9ERV9PRkYQAw==');
 
+@$core.Deprecated('Use lyricTimingDescriptor instead')
+const LyricTiming$json = {
+  '1': 'LyricTiming',
+  '2': [
+    {'1': 'LYRIC_TIMING_UNSPECIFIED', '2': 0},
+    {'1': 'LYRIC_TIMING_LINE', '2': 1},
+    {'1': 'LYRIC_TIMING_WORD', '2': 2},
+  ],
+};
+
+/// Descriptor for `LyricTiming`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List lyricTimingDescriptor = $convert.base64Decode(
+    'CgtMeXJpY1RpbWluZxIcChhMWVJJQ19USU1JTkdfVU5TUEVDSUZJRUQQABIVChFMWVJJQ19USU'
+    '1JTkdfTElORRABEhUKEUxZUklDX1RJTUlOR19XT1JEEAI=');
+
 @$core.Deprecated('Use songDescriptor instead')
 const Song$json = {
   '1': 'Song',
@@ -106,6 +121,14 @@ const Song$json = {
     {'1': 'failed', '3': 7, '4': 1, '5': 8, '10': 'failed'},
     {'1': 'favourite', '3': 8, '4': 1, '5': 8, '10': 'favourite'},
     {'1': 'has_vocals', '3': 9, '4': 1, '5': 8, '10': 'hasVocals'},
+    {
+      '1': 'lyric_timing',
+      '3': 10,
+      '4': 1,
+      '5': 14,
+      '6': '.kantahe.v1.LyricTiming',
+      '10': 'lyricTiming'
+    },
   ],
 };
 
@@ -116,7 +139,8 @@ final $typed_data.Uint8List songDescriptor = $convert.base64Decode(
     'CVIGYXJ0aXN0EicKD3Nvbmdib29rX251bWJlchgFIAEoCVIOc29uZ2Jvb2tOdW1iZXISHwoLZH'
     'VyYXRpb25fbXMYBiABKANSCmR1cmF0aW9uTXMSFgoGZmFpbGVkGAcgASgIUgZmYWlsZWQSHAoJ'
     'ZmF2b3VyaXRlGAggASgIUglmYXZvdXJpdGUSHQoKaGFzX3ZvY2FscxgJIAEoCFIJaGFzVm9jYW'
-    'xz');
+    'xzEjoKDGx5cmljX3RpbWluZxgKIAEoDjIXLmthbnRhaGUudjEuTHlyaWNUaW1pbmdSC2x5cmlj'
+    'VGltaW5n');
 
 @$core.Deprecated('Use lyricWordDescriptor instead')
 const LyricWord$json = {

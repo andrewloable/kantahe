@@ -7,8 +7,18 @@ import { injectClient } from '../core/api';
 import { AuthStore } from '../core/auth.store';
 import { problem } from '../core/errors';
 import { StateStore } from '../core/state.store';
+import { SONG_CACHE } from '../player/cache/song-cache';
 import { ToastService } from '../core/toast';
 import { TYPES } from '../queue/devices.component';
+
+const MIB = 1024 * 1024;
+const GIB = 1024 * MIB;
+
+/** A size for people: megabytes up to a gigabyte, then gigabytes; one decimal only when it is not a whole number. */
+function formatBytes(bytes: number): string {
+  const [value, unit] = bytes >= GIB ? [bytes / GIB, 'GB'] : [bytes / MIB, 'MB'];
+  return `${Number.isInteger(value) ? value : value.toFixed(1)} ${unit}`;
+}
 
 const MODES: { value: MidiMode; label: string; explain: string }[] = [
   { value: MidiMode.AUTO, label: 'Auto', explain: 'Chooses by the memory of the device and steps down by itself if the sound stutters.' },
@@ -26,6 +36,8 @@ const BACKGROUNDS: { value: BackgroundMode; label: string; explain: string }[] =
 ];
 
 type VolumeKind = 'mp3' | 'midi';
+/** A device offline for longer than this can be removed with one button. */
+const STALE_DAYS = 30;
 /** The pause after the last move of a volume range before it is sent. */
 const VOLUME_PAUSE_MS = 300;
 
@@ -39,63 +51,106 @@ const VOLUME_PAUSE_MS = 300;
     <ul class="devices">
       @for (d of devices(); track d.id) {
         <li class="device">
+          <!-- one line per device; its settings open under it (this device's start open, the others closed) -->
           <span class="name">{{ d.name }}</span>
           @if (d.isCaller) {
             <span>(this device)</span>
           }
           <span class="muted">{{ type(d).label }}</span>
           <span class="muted">{{ online(d) ? 'online' : 'offline' }}</span>
-          <span class="mode">
-            <label [for]="'mode-' + d.id" class="what">MIDI mode</label>
-            <select [id]="'mode-' + d.id" [attr.aria-label]="'MIDI mode of ' + d.name" (change)="setMode(d, $event)">
-              @for (m of modes; track m.value) {
-                <option [value]="m.value" [selected]="m.value === mode(d)">{{ m.label }}</option>
+          <span class="muted">MIDI: {{ effective(d) }}</span>
+          <button type="button" class="toggle-settings" [attr.aria-expanded]="isOpen(d)" [attr.aria-label]="'Settings for ' + d.name" (click)="toggle(d)">
+            Settings
+          </button>
+          @if (isOpen(d)) {
+            <span class="mode">
+              <label [for]="'mode-' + d.id" class="what">MIDI mode</label>
+              <select class="midi-mode" [id]="'mode-' + d.id" [attr.aria-label]="'MIDI mode of ' + d.name" (change)="setMode(d, $event)">
+                @for (m of modes; track m.value) {
+                  <option [value]="m.value" [selected]="m.value === mode(d)">{{ m.label }}</option>
+                }
+              </select>
+              <span class="explain">{{ explain(d) }}</span>
+              <span class="effective">Now using: {{ effective(d) }}</span>
+            </span>
+            <span class="mode background">
+              <label [for]="'background-' + d.id" class="what">Background video</label>
+              <select [id]="'background-' + d.id" [attr.aria-label]="'Background video of ' + d.name" (change)="setBackground(d, $event)">
+                @for (b of backgrounds; track b.value) {
+                  <option [value]="b.value" [selected]="b.value === background(d)">
+                    {{ b.label }}
+                  </option>
+                }
+              </select>
+              <span class="explain">{{ explainBackground(d) }}</span>
+              <span class="effective">Now using: {{ effectiveBackground(d) }}</span>
+            </span>
+            <span class="volumes" role="group" [attr.aria-label]="'Volume of ' + d.name">
+              @for (v of volumeKinds; track v.kind) {
+                <span class="volume">
+                  <label [for]="v.kind + '-volume-' + d.id" class="what">{{ v.label }}</label>
+                  <input
+                    [id]="v.kind + '-volume-' + d.id"
+                    [class]="'volume-' + v.kind"
+                    type="range"
+                    min="0"
+                    max="200"
+                    step="5"
+                    [attr.aria-label]="v.label + ' of ' + d.name"
+                    [value]="volume(d, v.kind)"
+                    (input)="setVolume(d, v.kind, $event)"
+                  />
+                  <span class="effective">{{ volume(d, v.kind) }} %</span>
+                </span>
               }
-            </select>
-            <span class="explain">{{ explain(d) }}</span>
-            <span class="effective">Now using: {{ effective(d) }}</span>
-          </span>
-          <span class="mode background">
-            <label [for]="'background-' + d.id" class="what">Background video</label>
-            <select [id]="'background-' + d.id" [attr.aria-label]="'Background video of ' + d.name" (change)="setBackground(d, $event)">
-              @for (b of backgrounds; track b.value) {
-                <option [value]="b.value" [selected]="b.value === background(d)">{{ b.label }}</option>
-              }
-            </select>
-            <span class="explain">{{ explainBackground(d) }}</span>
-            <span class="effective">Now using: {{ effectiveBackground(d) }}</span>
-          </span>
-          <span class="volumes" role="group" [attr.aria-label]="'Volume of ' + d.name">
-            @for (v of volumeKinds; track v.kind) {
-              <span class="volume">
-                <label [for]="v.kind + '-volume-' + d.id" class="what">{{ v.label }}</label>
-                <input
-                  [id]="v.kind + '-volume-' + d.id"
-                  [class]="'volume-' + v.kind"
-                  type="range"
-                  min="0"
-                  max="200"
-                  step="5"
-                  [attr.aria-label]="v.label + ' of ' + d.name"
-                  [value]="volume(d, v.kind)"
-                  (input)="setVolume(d, v.kind, $event)"
-                />
-                <span class="effective">{{ volume(d, v.kind) }} %</span>
+            </span>
+            @if (d.isCaller && cacheShown) {
+              <span class="mode cache">
+                <label class="what"><input type="checkbox" [checked]="cacheOn()" (change)="toggleCache($event)" /> Keep played songs on this device</label>
+                <span class="explain"
+                  >{{ cacheText() }} A song is then played from this device and not downloaded again; the oldest are removed to make room, and room is always
+                  left for other apps.</span
+                >
+                @if (clearingCache()) {
+                  <span class="ask" role="group">
+                    <span>{{ clearQuestion() }}</span>
+                    <button class="danger primary" type="button" (click)="clearCache()">Yes, clear</button>
+                    <button class="quiet" type="button" (click)="clearingCache.set(false)">Cancel</button>
+                  </span>
+                } @else {
+                  <button type="button" class="clear-cache danger" [disabled]="!cacheStats()?.count" (click)="clearingCache.set(true)">Clear song cache</button>
+                }
               </span>
             }
-          </span>
-          @if (confirming() === d.id) {
-            <span class="ask" role="group">
-              <span>Sign out "{{ d.name }}"?{{ d.isCaller ? ' This is the device you are using; you will have to sign in again.' : '' }}</span>
-              <button type="button" (click)="revoke(d)">Yes, sign out</button>
-              <button type="button" (click)="confirming.set(undefined)">Cancel</button>
-            </span>
-          } @else {
-            <button type="button" [attr.aria-label]="'Sign out ' + d.name" (click)="confirming.set(d.id)">Sign out</button>
+            @if (confirming() === d.id) {
+              <span class="ask" role="group">
+                <span>Sign out "{{ d.name }}"?{{ d.isCaller ? ' This is the device you are using; you will have to sign in again.' : '' }}</span>
+                <button class="danger primary" type="button" (click)="revoke(d)">Yes, sign out</button>
+                <button class="quiet" type="button" (click)="confirming.set(undefined)">Cancel</button>
+              </span>
+            } @else {
+              <button class="danger" type="button" [attr.aria-label]="'Sign out ' + d.name" (click)="confirming.set(d.id)">Sign out</button>
+            }
           }
         </li>
       }
     </ul>
+    @if (stale().length > 0) {
+      <p class="bulk">
+        @if (clearingStale()) {
+          <span class="ask" role="group">
+            <span
+              >Sign out {{ stale().length }} {{ stale().length === 1 ? 'device' : 'devices' }} that {{ stale().length === 1 ? 'has' : 'have' }} been offline for
+              more than 30 days?</span
+            >
+            <button class="danger primary" type="button" [disabled]="removingStale()" (click)="removeStale()">Yes, sign out all {{ stale().length }}</button>
+            <button class="quiet" type="button" [disabled]="removingStale()" (click)="clearingStale.set(false)">Cancel</button>
+          </span>
+        } @else {
+          <button class="danger" type="button" (click)="clearingStale.set(true)">Remove devices offline for 30 days ({{ stale().length }})</button>
+        }
+      </p>
+    }
   `,
   styles: `
     .devices {
@@ -122,6 +177,12 @@ const VOLUME_PAUSE_MS = 300;
     .name {
       font-weight: 600;
     }
+    .toggle-settings {
+      margin-left: auto;
+    }
+    .bulk {
+      margin: 1rem 0 0;
+    }
     .muted,
     .explain,
     .effective {
@@ -138,6 +199,17 @@ const VOLUME_PAUSE_MS = 300;
     .what {
       font-weight: 600;
       font-size: 0.875rem;
+    }
+    /* the switch of the song cache: the label is the target, at least as tall as the other controls */
+    .cache .what {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 2.75rem;
+    }
+    .cache input[type='checkbox'] {
+      width: 1.5rem;
+      height: 1.5rem;
     }
     select {
       min-height: 2.75rem;
@@ -177,6 +249,7 @@ export class MyDevicesComponent {
   private readonly store = inject(StateStore);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
+  private readonly cache = inject(SONG_CACHE);
 
   protected readonly modes = MODES;
   protected readonly backgrounds = BACKGROUNDS;
@@ -195,7 +268,51 @@ export class MyDevicesComponent {
   private readonly chosenBackground = signal<Map<string, { mode: BackgroundMode; effective: boolean }>>(new Map());
   private gone = false;
 
-  protected readonly devices = computed(() => this.listed());
+  /** The song cache of this browser: only offered where the browser can keep files. */
+  protected readonly cacheShown = this.cache.supported();
+  protected readonly cacheOn = signal(this.cache.enabled());
+  protected readonly cacheStats = signal<{ count: number; bytes: number; capBytes: number } | undefined>(undefined);
+  protected readonly clearingCache = signal(false);
+
+  /** This device first, then the others in the order the server lists them. */
+  protected readonly devices = computed(() => [...this.listed()].sort((a, b) => Number(b.isCaller) - Number(a.isCaller)));
+
+  /** Devices whose settings were opened or closed by hand: this device starts open, the others closed. */
+  private readonly flipped = signal<ReadonlySet<string>>(new Set());
+
+  protected isOpen(d: Device): boolean {
+    return this.flipped().has(d.id) !== d.isCaller;
+  }
+
+  protected toggle(d: Device): void {
+    this.flipped.update((s) => {
+      const next = new Set(s);
+      if (!next.delete(d.id)) next.add(d.id);
+      return next;
+    });
+  }
+
+  /** Devices that are offline and were last seen more than 30 days ago (a device with no last-seen time is left alone), never this one. */
+  protected readonly stale = computed(() => {
+    const cutoff = BigInt(Math.floor(Date.now() / 1000) - STALE_DAYS * 24 * 60 * 60);
+    return this.devices().filter((d) => !d.isCaller && d.id !== this.auth.deviceId() && !this.online(d) && d.lastSeenUnix > 0n && d.lastSeenUnix < cutoff);
+  });
+  protected readonly clearingStale = signal(false);
+  protected readonly removingStale = signal(false);
+
+  /** Signs the stale devices out, one call each; the first refusal stops it, is shown, and the list is read again. */
+  protected async removeStale(): Promise<void> {
+    this.removingStale.set(true);
+    try {
+      for (const d of this.stale()) await this.authClient.revokeDevice({ deviceId: d.id });
+    } catch (e) {
+      this.toast.show(problem(e, {}), 'error');
+    } finally {
+      this.removingStale.set(false);
+      this.clearingStale.set(false);
+      await this.load();
+    }
+  }
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
@@ -203,6 +320,7 @@ export class MyDevicesComponent {
       for (const t of this.volumeTimers.values()) clearTimeout(t);
     });
     void this.load();
+    if (this.cacheShown) void this.refreshCache();
   }
 
   /** Why the list could not be loaded, shown on the page with a way to try again (a toast would be gone before it was read). */
@@ -216,6 +334,35 @@ export class MyDevicesComponent {
     } catch (e) {
       if (!this.gone) this.loadError.set(problem(e, {}));
     }
+  }
+
+  private async refreshCache(): Promise<void> {
+    const stats = await this.cache.stats();
+    if (!this.gone) this.cacheStats.set(stats);
+  }
+
+  protected toggleCache(event: Event): void {
+    const on = (event.target as HTMLInputElement).checked;
+    this.cache.setEnabled(on);
+    this.cacheOn.set(on);
+  }
+
+  protected cacheText(): string {
+    const s = this.cacheStats();
+    if (!s || s.count === 0) return `Nothing is kept yet (up to ${formatBytes(s?.capBytes ?? 2 * GIB)}).`;
+    return `${s.count} ${s.count === 1 ? 'song' : 'songs'}, ${formatBytes(s.bytes)} of up to ${formatBytes(s.capBytes)}.`;
+  }
+
+  protected clearQuestion(): string {
+    const count = this.cacheStats()?.count ?? 0;
+    return count === 1 ? 'Delete the kept song from this device?' : `Delete the ${count} kept songs from this device?`;
+  }
+
+  protected async clearCache(): Promise<void> {
+    await this.cache.clear();
+    this.clearingCache.set(false);
+    await this.refreshCache();
+    this.toast.show('Song cache cleared');
   }
 
   private live(d: Device): Device | undefined {
@@ -264,7 +411,12 @@ export class MyDevicesComponent {
     const mode = Number(select.value) as BackgroundMode;
     try {
       const res = await this.session.setBackgroundMode({ deviceId: d.id, mode });
-      this.chosenBackground.update((m) => new Map(m).set(d.id, { mode: res.device?.backgroundMode ?? mode, effective: res.device?.effectiveBackground ?? false }));
+      this.chosenBackground.update((m) =>
+        new Map(m).set(d.id, {
+          mode: res.device?.backgroundMode ?? mode,
+          effective: res.device?.effectiveBackground ?? false,
+        }),
+      );
     } catch (e) {
       select.value = String(before);
       this.toast.show(problem(e, {}), 'error');

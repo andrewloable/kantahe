@@ -782,6 +782,138 @@ const DeleteVideoResponse$json = {
 final $typed_data.Uint8List deleteVideoResponseDescriptor =
     $convert.base64Decode('ChNEZWxldGVWaWRlb1Jlc3BvbnNl');
 
+@$core.Deprecated('Use exportDataRequestDescriptor instead')
+const ExportDataRequest$json = {
+  '1': 'ExportDataRequest',
+  '2': [
+    {'1': 'folder', '3': 1, '4': 1, '5': 9, '10': 'folder'},
+  ],
+};
+
+/// Descriptor for `ExportDataRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List exportDataRequestDescriptor = $convert.base64Decode(
+    'ChFFeHBvcnREYXRhUmVxdWVzdBIWCgZmb2xkZXIYASABKAlSBmZvbGRlcg==');
+
+@$core.Deprecated('Use exportDataResponseDescriptor instead')
+const ExportDataResponse$json = {
+  '1': 'ExportDataResponse',
+  '2': [
+    {'1': 'files_done', '3': 1, '4': 1, '5': 5, '10': 'filesDone'},
+    {'1': 'files_total', '3': 2, '4': 1, '5': 5, '10': 'filesTotal'},
+    {'1': 'bytes_done', '3': 3, '4': 1, '5': 3, '10': 'bytesDone'},
+    {'1': 'bytes_total', '3': 4, '4': 1, '5': 3, '10': 'bytesTotal'},
+    {'1': 'done', '3': 5, '4': 1, '5': 8, '10': 'done'},
+    {'1': 'skipped_numbers', '3': 6, '4': 3, '5': 9, '10': 'skippedNumbers'},
+    {'1': 'folder', '3': 7, '4': 1, '5': 9, '10': 'folder'},
+  ],
+};
+
+/// Descriptor for `ExportDataResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List exportDataResponseDescriptor = $convert.base64Decode(
+    'ChJFeHBvcnREYXRhUmVzcG9uc2USHQoKZmlsZXNfZG9uZRgBIAEoBVIJZmlsZXNEb25lEh8KC2'
+    'ZpbGVzX3RvdGFsGAIgASgFUgpmaWxlc1RvdGFsEh0KCmJ5dGVzX2RvbmUYAyABKANSCWJ5dGVz'
+    'RG9uZRIfCgtieXRlc190b3RhbBgEIAEoA1IKYnl0ZXNUb3RhbBISCgRkb25lGAUgASgIUgRkb2'
+    '5lEicKD3NraXBwZWRfbnVtYmVycxgGIAMoCVIOc2tpcHBlZE51bWJlcnMSFgoGZm9sZGVyGAcg'
+    'ASgJUgZmb2xkZXI=');
+
+@$core.Deprecated('Use inspectExportRequestDescriptor instead')
+const InspectExportRequest$json = {
+  '1': 'InspectExportRequest',
+  '2': [
+    {'1': 'folder', '3': 1, '4': 1, '5': 9, '10': 'folder'},
+  ],
+};
+
+/// Descriptor for `InspectExportRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List inspectExportRequestDescriptor =
+    $convert.base64Decode(
+        'ChRJbnNwZWN0RXhwb3J0UmVxdWVzdBIWCgZmb2xkZXIYASABKAlSBmZvbGRlcg==');
+
+@$core.Deprecated('Use inspectExportResponseDescriptor instead')
+const InspectExportResponse$json = {
+  '1': 'InspectExportResponse',
+  '2': [
+    {'1': 'server_name', '3': 1, '4': 1, '5': 9, '10': 'serverName'},
+    {'1': 'kantahe_version', '3': 2, '4': 1, '5': 9, '10': 'kantaheVersion'},
+    {'1': 'created_unix', '3': 3, '4': 1, '5': 3, '10': 'createdUnix'},
+    {'1': 'songs', '3': 4, '4': 1, '5': 5, '10': 'songs'},
+    {'1': 'users', '3': 5, '4': 1, '5': 5, '10': 'users'},
+    {'1': 'videos', '3': 6, '4': 1, '5': 5, '10': 'videos'},
+    {'1': 'bytes_total', '3': 7, '4': 1, '5': 3, '10': 'bytesTotal'},
+    {'1': 'importable', '3': 8, '4': 1, '5': 8, '10': 'importable'},
+    {'1': 'reason', '3': 9, '4': 1, '5': 9, '10': 'reason'},
+  ],
+};
+
+/// Descriptor for `InspectExportResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List inspectExportResponseDescriptor = $convert.base64Decode(
+    'ChVJbnNwZWN0RXhwb3J0UmVzcG9uc2USHwoLc2VydmVyX25hbWUYASABKAlSCnNlcnZlck5hbW'
+    'USJwoPa2FudGFoZV92ZXJzaW9uGAIgASgJUg5rYW50YWhlVmVyc2lvbhIhCgxjcmVhdGVkX3Vu'
+    'aXgYAyABKANSC2NyZWF0ZWRVbml4EhQKBXNvbmdzGAQgASgFUgVzb25ncxIUCgV1c2VycxgFIA'
+    'EoBVIFdXNlcnMSFgoGdmlkZW9zGAYgASgFUgZ2aWRlb3MSHwoLYnl0ZXNfdG90YWwYByABKANS'
+    'CmJ5dGVzVG90YWwSHgoKaW1wb3J0YWJsZRgIIAEoCFIKaW1wb3J0YWJsZRIWCgZyZWFzb24YCS'
+    'ABKAlSBnJlYXNvbg==');
+
+@$core.Deprecated('Use importDataRequestDescriptor instead')
+const ImportDataRequest$json = {
+  '1': 'ImportDataRequest',
+  '2': [
+    {'1': 'folder', '3': 1, '4': 1, '5': 9, '10': 'folder'},
+  ],
+};
+
+/// Descriptor for `ImportDataRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List importDataRequestDescriptor = $convert.base64Decode(
+    'ChFJbXBvcnREYXRhUmVxdWVzdBIWCgZmb2xkZXIYASABKAlSBmZvbGRlcg==');
+
+@$core.Deprecated('Use importDataResponseDescriptor instead')
+const ImportDataResponse$json = {
+  '1': 'ImportDataResponse',
+  '2': [
+    {'1': 'files_done', '3': 1, '4': 1, '5': 5, '10': 'filesDone'},
+    {'1': 'files_total', '3': 2, '4': 1, '5': 5, '10': 'filesTotal'},
+    {'1': 'bytes_done', '3': 3, '4': 1, '5': 3, '10': 'bytesDone'},
+    {'1': 'bytes_total', '3': 4, '4': 1, '5': 3, '10': 'bytesTotal'},
+    {'1': 'done', '3': 5, '4': 1, '5': 8, '10': 'done'},
+    {'1': 'restarting', '3': 6, '4': 1, '5': 8, '10': 'restarting'},
+  ],
+};
+
+/// Descriptor for `ImportDataResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List importDataResponseDescriptor = $convert.base64Decode(
+    'ChJJbXBvcnREYXRhUmVzcG9uc2USHQoKZmlsZXNfZG9uZRgBIAEoBVIJZmlsZXNEb25lEh8KC2'
+    'ZpbGVzX3RvdGFsGAIgASgFUgpmaWxlc1RvdGFsEh0KCmJ5dGVzX2RvbmUYAyABKANSCWJ5dGVz'
+    'RG9uZRIfCgtieXRlc190b3RhbBgEIAEoA1IKYnl0ZXNUb3RhbBISCgRkb25lGAUgASgIUgRkb2'
+    '5lEh4KCnJlc3RhcnRpbmcYBiABKAhSCnJlc3RhcnRpbmc=');
+
+@$core.Deprecated('Use getSongDownloadRequestDescriptor instead')
+const GetSongDownloadRequest$json = {
+  '1': 'GetSongDownloadRequest',
+  '2': [
+    {'1': 'number', '3': 1, '4': 1, '5': 9, '10': 'number'},
+  ],
+};
+
+/// Descriptor for `GetSongDownloadRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getSongDownloadRequestDescriptor =
+    $convert.base64Decode(
+        'ChZHZXRTb25nRG93bmxvYWRSZXF1ZXN0EhYKBm51bWJlchgBIAEoCVIGbnVtYmVy');
+
+@$core.Deprecated('Use getSongDownloadResponseDescriptor instead')
+const GetSongDownloadResponse$json = {
+  '1': 'GetSongDownloadResponse',
+  '2': [
+    {'1': 'url', '3': 1, '4': 1, '5': 9, '10': 'url'},
+    {'1': 'file_name', '3': 2, '4': 1, '5': 9, '10': 'fileName'},
+    {'1': 'expires_unix', '3': 3, '4': 1, '5': 3, '10': 'expiresUnix'},
+  ],
+};
+
+/// Descriptor for `GetSongDownloadResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getSongDownloadResponseDescriptor = $convert.base64Decode(
+    'ChdHZXRTb25nRG93bmxvYWRSZXNwb25zZRIQCgN1cmwYASABKAlSA3VybBIbCglmaWxlX25hbW'
+    'UYAiABKAlSCGZpbGVOYW1lEiEKDGV4cGlyZXNfdW5peBgDIAEoA1ILZXhwaXJlc1VuaXg=');
+
 const $core.Map<$core.String, $core.dynamic> AdminServiceBase$json = {
   '1': 'AdminService',
   '2': [
@@ -881,6 +1013,28 @@ const $core.Map<$core.String, $core.dynamic> AdminServiceBase$json = {
       '2': '.kantahe.v1.UpdateServerSettingsRequest',
       '3': '.kantahe.v1.UpdateServerSettingsResponse'
     },
+    {
+      '1': 'ExportData',
+      '2': '.kantahe.v1.ExportDataRequest',
+      '3': '.kantahe.v1.ExportDataResponse',
+      '6': true
+    },
+    {
+      '1': 'InspectExport',
+      '2': '.kantahe.v1.InspectExportRequest',
+      '3': '.kantahe.v1.InspectExportResponse'
+    },
+    {
+      '1': 'ImportData',
+      '2': '.kantahe.v1.ImportDataRequest',
+      '3': '.kantahe.v1.ImportDataResponse',
+      '6': true
+    },
+    {
+      '1': 'GetSongDownload',
+      '2': '.kantahe.v1.GetSongDownloadRequest',
+      '3': '.kantahe.v1.GetSongDownloadResponse'
+    },
   ],
 };
 
@@ -930,6 +1084,14 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.kantahe.v1.ServerSettings': ServerSettings$json,
   '.kantahe.v1.UpdateServerSettingsRequest': UpdateServerSettingsRequest$json,
   '.kantahe.v1.UpdateServerSettingsResponse': UpdateServerSettingsResponse$json,
+  '.kantahe.v1.ExportDataRequest': ExportDataRequest$json,
+  '.kantahe.v1.ExportDataResponse': ExportDataResponse$json,
+  '.kantahe.v1.InspectExportRequest': InspectExportRequest$json,
+  '.kantahe.v1.InspectExportResponse': InspectExportResponse$json,
+  '.kantahe.v1.ImportDataRequest': ImportDataRequest$json,
+  '.kantahe.v1.ImportDataResponse': ImportDataResponse$json,
+  '.kantahe.v1.GetSongDownloadRequest': GetSongDownloadRequest$json,
+  '.kantahe.v1.GetSongDownloadResponse': GetSongDownloadResponse$json,
 };
 
 /// Descriptor for `AdminService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -963,4 +1125,10 @@ final $typed_data.Uint8List adminServiceDescriptor = $convert.base64Decode(
     'dFNlcnZlclNldHRpbmdzUmVxdWVzdBolLmthbnRhaGUudjEuR2V0U2VydmVyU2V0dGluZ3NSZX'
     'Nwb25zZRJpChRVcGRhdGVTZXJ2ZXJTZXR0aW5ncxInLmthbnRhaGUudjEuVXBkYXRlU2VydmVy'
     'U2V0dGluZ3NSZXF1ZXN0Gigua2FudGFoZS52MS5VcGRhdGVTZXJ2ZXJTZXR0aW5nc1Jlc3Bvbn'
-    'Nl');
+    'NlEk0KCkV4cG9ydERhdGESHS5rYW50YWhlLnYxLkV4cG9ydERhdGFSZXF1ZXN0Gh4ua2FudGFo'
+    'ZS52MS5FeHBvcnREYXRhUmVzcG9uc2UwARJUCg1JbnNwZWN0RXhwb3J0EiAua2FudGFoZS52MS'
+    '5JbnNwZWN0RXhwb3J0UmVxdWVzdBohLmthbnRhaGUudjEuSW5zcGVjdEV4cG9ydFJlc3BvbnNl'
+    'Ek0KCkltcG9ydERhdGESHS5rYW50YWhlLnYxLkltcG9ydERhdGFSZXF1ZXN0Gh4ua2FudGFoZS'
+    '52MS5JbXBvcnREYXRhUmVzcG9uc2UwARJaCg9HZXRTb25nRG93bmxvYWQSIi5rYW50YWhlLnYx'
+    'LkdldFNvbmdEb3dubG9hZFJlcXVlc3QaIy5rYW50YWhlLnYxLkdldFNvbmdEb3dubG9hZFJlc3'
+    'BvbnNl');

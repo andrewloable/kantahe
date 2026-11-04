@@ -2,6 +2,7 @@
   "name": "Kantahe",
   "short_name": "Kantahe",
   "description": "Self-hosted karaoke: your songs, your queue, any screen.",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

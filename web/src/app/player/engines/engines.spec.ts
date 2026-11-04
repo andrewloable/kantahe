@@ -12,6 +12,8 @@ describe('mediaUrl', () => {
     expect(mediaUrl(`${BASE}/sing`, '/media/x')).toBe('https://k.example/sing/media/x');
     expect(mediaUrl(BASE, 'https://cdn.example/a.mp3')).toBe('https://cdn.example/a.mp3');
     expect(mediaUrl(BASE, 'media/x')).toBe('https://k.example/media/x');
+    // a file kept on this device is played from its object URL, which is not behind the server's address
+    expect(mediaUrl(BASE, 'blob:https://k.example/3f2a-77')).toBe('blob:https://k.example/3f2a-77');
   });
 });
 
@@ -100,6 +102,7 @@ describe('Mp3Engine', () => {
     class FakeNode {
       gain = { value: 1 };
       connect = vi.fn();
+      disconnect = vi.fn();
     }
     class FakeAudioContext {
       state = 'running';
@@ -147,6 +150,68 @@ describe('Mp3Engine', () => {
       expect(ctx.sources[0].connect).toHaveBeenCalledWith(ctx.nodes[0]);
       expect(ctx.nodes[0].connect).toHaveBeenCalledWith(ctx.destination);
       expect(audio.crossOrigin, 'the media may come from another origin: the context needs it to be readable').toBe('anonymous');
+    });
+
+    describe('a context shared with the vocals of the song', () => {
+      function withShared() {
+        const shared = new FakeAudioContext();
+        const made = vi.fn(() => {
+          throw new Error('an engine with a shared context must not make one of its own');
+        });
+        const audio = document.createElement('audio');
+        audio.play = vi.fn().mockResolvedValue(undefined);
+        audio.pause = vi.fn();
+        audio.load = vi.fn();
+        let corsAtSrc: string | null | undefined;
+        const setAttr = audio.setAttribute.bind(audio);
+        Object.defineProperty(audio, 'src', {
+          set(v: string) {
+            corsAtSrc = audio.crossOrigin;
+            setAttr('src', v);
+          },
+          get: () => audio.getAttribute('src') ?? '',
+          configurable: true,
+        });
+        const engine = new Mp3Engine(BASE, audio, made, shared as never);
+        const playback = create(PlaybackSchema, { kind: PlaybackKind.AUDIO, audioUrl: '/media/song/1052?exp=9&sig=zz', ready: true });
+        const loaded = async () => {
+          const p = engine.load(playback);
+          audio.dispatchEvent(new Event('canplay'));
+          await p;
+        };
+        return { shared, made, audio, engine, loaded, corsAtSrc: () => corsAtSrc };
+      }
+
+      it('shared_context_routes_even_at_factor_1: through the shared context, with CORS asked for before the address', async () => {
+        const { shared, made, audio, engine, loaded, corsAtSrc } = withShared();
+        engine.setVolume(1);
+        await loaded();
+        expect(made).not.toHaveBeenCalled();
+        expect(corsAtSrc()).toBe('anonymous');
+        expect(shared.sources).toHaveLength(1);
+        expect(shared.sources[0].el).toBe(audio);
+        expect(shared.nodes).toHaveLength(1);
+        expect(shared.nodes[0].gain.value).toBe(1);
+        expect(shared.sources[0].connect).toHaveBeenCalledWith(shared.nodes[0]);
+        expect(shared.nodes[0].connect).toHaveBeenCalledWith(shared.destination);
+      });
+
+      it('a volume change sets the gain on the shared context', async () => {
+        const { shared, engine, loaded } = withShared();
+        engine.setVolume(0.6);
+        await loaded();
+        engine.setVolume(0.3);
+        expect(shared.nodes).toHaveLength(1);
+        expect(shared.nodes[0].gain.value).toBe(0.3);
+      });
+
+      it('shared_context_is_not_closed_by_the_engine: its node is let go, the context stays for the other track', async () => {
+        const { shared, engine, loaded } = withShared();
+        await loaded();
+        engine.dispose();
+        expect(shared.close).not.toHaveBeenCalled();
+        expect(shared.nodes[0].disconnect).toHaveBeenCalled();
+      });
     });
 
     it('at 100 percent nothing is created: the element plays as before', async () => {

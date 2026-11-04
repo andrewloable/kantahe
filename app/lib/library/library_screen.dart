@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/gen/kantahe/v1/catalog.pb.dart';
 import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
-import 'package:kantahe/library/alpha_browse.dart';
 import 'package:kantahe/library/library_actions.dart';
 import 'package:kantahe/library/number_pad.dart';
 import 'package:kantahe/library/pager.dart';
@@ -14,7 +13,7 @@ import 'package:kantahe/tv/focus.dart';
 
 const _searchDelay = Duration(milliseconds: 250);
 
-/// Find a song: search, type its number, or browse by letter. A tap queues it, the star favourites it.
+/// Find a song: search, or type its number. A tap queues it, the star favourites it.
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
 
@@ -23,7 +22,7 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 3, vsync: this)..addListener(() => setState(() {}));
+  late final TabController _tabs = TabController(length: 2, vsync: this)..addListener(() => setState(() {}));
   LibraryActions? _actions;
 
   @override
@@ -65,14 +64,12 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
           tabs: const [
             Tab(text: 'Search'),
             Tab(text: 'Number'),
-            Tab(text: 'Browse'),
           ],
         ),
       ),
       body: switch (_tabs.index) {
         0 => _SearchTab(actions: actions),
-        1 => NumberPad(actions: actions),
-        _ => AlphaBrowse(actions: actions),
+        _ => NumberPad(actions: actions),
       },
     );
   }

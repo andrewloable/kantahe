@@ -37,6 +37,15 @@ void main() {
     expect(find.text('MP3'), findsNWidgets(2));
   });
 
+  testWidgets('shows W and V beside the badge of a queued song', (tester) async {
+    await open(
+      tester,
+      state: stateOf(queue: [item('i1', song('00001', 'First', 'A', lyricTiming: LyricTiming.LYRIC_TIMING_WORD, hasVocals: true))]),
+    );
+    expect(find.text('W'), findsOneWidget);
+    expect(find.text('V'), findsOneWidget);
+  });
+
   testWidgets('says so when the queue is empty', (tester) async {
     await open(tester, state: stateOf());
     expect(shows('The queue is empty'), isTrue);

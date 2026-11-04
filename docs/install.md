@@ -21,7 +21,7 @@ You need two folders:
 
 Settings are flags or environment variables (`kantahe --help` lists them): `--data`, `--library`
 (repeatable), `--listen` (default `:8080`), `--public-url`, `--trusted-proxies`, `--soundfont`,
-`--score-seconds`, `--render-cache-gb`, `--name` and `--discovery`. Releases are on the project's GitHub releases page, one file per
+`--score-seconds`, `--render-cache-gb`, `--name`, `--discovery` and `--transfer-root`. Releases are on the project's GitHub releases page, one file per
 system named `kantahe-VERSION-OS-ARCH`, with a `SHA256SUMS` file.
 
 ## Finding the server from the apps
@@ -47,6 +47,11 @@ add `:ro` if admins should not be able to delete songs from that folder (uploade
 volume, not to the library). If you mount a host folder for `/data` instead of the volume, it must be
 writable by user 65532. To change flags, repeat the whole command in the compose file, for example to
 add `--public-url`.
+
+**Export and import (Admin → Transfer).** The page writes to and reads from a folder on the server's disk, so in Docker give the
+container one: add `-v /srv/kantahe-transfer:/transfer` (a host folder that user 65532 can read and write; in the compose file
+uncomment the `/transfer` line) and type `/transfer/NAME` in the page. To allow nothing else, add `--transfer-root /transfer` (or
+`KANTAHE_TRANSFER_ROOT=/transfer`). See [moving to another server](admin-guide.md#moving-to-another-server).
 
 **Discovery from Docker.** Announcements do not leave Docker's default bridge network, and a published port such as
 `-p 9000:8080` would announce the wrong port. For the apps to find the server, run the container on the host's
@@ -156,7 +161,7 @@ Everyone has their own queue, favourites, history and playlists; the song librar
 
 ## Adding songs
 
-* **Upload**: users with the uploader role (and admins) use *Upload* in the menu to send `.kar` and
+* **Upload**: administrators use *Admin → Upload* to send `.kar` and
   `.karmp3` files or ZIP archives of them. The default limit is 50 MiB per file, adjustable by an admin
   under *Admin → Settings* (1 MiB to 1 GiB); a proxy in front must allow more than the limit.
 * **Watched folder**: songs placed in a `--library` folder are found when the server starts and every
@@ -170,7 +175,8 @@ again. The `cache` folder inside the data folder (trimmed SoundFonts and audio t
 cannot play MIDI) can be left out of a backup and deleted at any time; it fills again as songs are played. Its size is
 limited by `--render-cache-gb` (default 5; 0 switches rendering off). The library folder is yours and is backed up like
 any other folder. Restoring is the same copy in
-the other direction.
+the other direction. To move to another machine without a shell on the old one, use *Admin → Transfer* in the web app
+([moving to another server](admin-guide.md#moving-to-another-server)).
 
 ## Upgrades
 

@@ -50,7 +50,10 @@ type testEnv struct {
 	deps         Deps
 }
 
-func newEnv(t *testing.T) *testEnv {
+func newEnv(t *testing.T) *testEnv { return newEnvWith(t, nil) }
+
+// newEnvWith is newEnv with a last change to the dependencies before the services are mounted.
+func newEnvWith(t *testing.T, tweak func(*Deps)) *testEnv {
 	t.Helper()
 	dataDir := t.TempDir()
 	db, err := store.Open(context.Background(), dataDir)
@@ -76,6 +79,10 @@ func newEnv(t *testing.T) *testEnv {
 		SoundFont:      soundFontPath(t),
 		ScoreSeconds:   6,
 		Importer:       importer,
+		Libraries:      []string{libDir},
+	}
+	if tweak != nil {
+		tweak(&deps)
 	}
 	mux := http.NewServeMux()
 	mounted, err := mount(mux.Handle, deps)
@@ -636,4 +643,22 @@ func (p *recordingPreparer) seen() []string {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return append([]string(nil), p.list...)
+}
+
+func TestGetServerInfoStartedAt(t *testing.T) {
+	e := newEnv(t)
+	get := func() int64 {
+		res, err := e.auth.GetServerInfo(context.Background(), connect.NewRequest(&kantahev1.GetServerInfoRequest{}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Msg.StartedUnixMs
+	}
+	if got, want := get(), time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC).UnixMilli(); got != want {
+		t.Fatalf("started at %d, want %d (the time the services were made)", got, want)
+	}
+	e.clock.t.Store(e.clock.t.Load() + 3600)
+	if first, second := get(), get(); first != second {
+		t.Fatalf("the start time changed between two calls: %d, %d", first, second)
+	}
 }

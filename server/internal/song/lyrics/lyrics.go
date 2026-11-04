@@ -94,3 +94,26 @@ func ToProto(number, source string, durationMs int64, lines []Line) *kantahev1.L
 	}
 	return msg
 }
+
+// Timing says how the lyrics of a song are timed.
+type Timing int
+
+const (
+	TimingNone Timing = iota // no lyrics
+	TimingLine               // every line has one time
+	TimingWord               // words (or syllables) have times of their own
+)
+
+// TimingOf is TimingWord when at least one line has more than one word (a word mark or a syllable gives a line several words), TimingLine
+// when there are lines and none has, and TimingNone without lines. Kantahe Maker's rule for the "Timing by" row of the .nfo is the same.
+func TimingOf(lines []Line) Timing {
+	if len(lines) == 0 {
+		return TimingNone
+	}
+	for _, l := range lines {
+		if len(l.Words) > 1 {
+			return TimingWord
+		}
+	}
+	return TimingLine
+}

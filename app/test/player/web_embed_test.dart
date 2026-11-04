@@ -44,6 +44,13 @@ void main() {
     expect(o.platform.controller!.background, Colors.black);
   });
 
+  testWidgets('REGRESSION: when the screen goes away the page is unloaded, so no old player page goes on playing behind it', (tester) async {
+    final o = await open(tester);
+    final controller = o.platform.controller!;
+    await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+    expect(controller.loaded.last, Uri.parse('about:blank'));
+  });
+
   testWidgets('what the page posts on the channel named Kantahe reaches the app', (tester) async {
     final o = await open(tester);
     final channel = o.platform.controller!.channels['Kantahe']!;

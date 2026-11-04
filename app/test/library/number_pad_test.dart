@@ -41,7 +41,7 @@ void main() {
 
   testWidgets('looks the number up once, 150 ms after the last key, and shows the song', (tester) async {
     final r = Rig();
-    r.fake.onGet = (_) => song('00123', 'Yesterday', 'The Band');
+    r.fake.onGet = (_) => song('00123', 'Yesterday', 'The Band', lyricTiming: LyricTiming.LYRIC_TIMING_WORD, hasVocals: true);
     await open(tester, rig: r);
     await key(tester, '1');
     await tester.pump(const Duration(milliseconds: 100));
@@ -56,6 +56,8 @@ void main() {
     expect(shows('Yesterday'), isTrue);
     expect(shows('The Band'), isTrue);
     expect(find.text('MP3'), findsOneWidget);
+    expect(find.text('W'), findsOneWidget);
+    expect(find.text('V'), findsOneWidget);
   });
 
   testWidgets('Add queues the song and clears the pad', (tester) async {

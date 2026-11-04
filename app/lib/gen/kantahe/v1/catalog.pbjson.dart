@@ -25,13 +25,18 @@ const SongSort$json = {
     {'1': 'SONG_SORT_NUMBER', '2': 1},
     {'1': 'SONG_SORT_TITLE', '2': 2},
     {'1': 'SONG_SORT_ARTIST', '2': 3},
+    {'1': 'SONG_SORT_FORMAT', '2': 4},
+    {'1': 'SONG_SORT_LYRIC_TIMING', '2': 5},
+    {'1': 'SONG_SORT_VOCALS', '2': 6},
   ],
 };
 
 /// Descriptor for `SongSort`. Decode as a `google.protobuf.EnumDescriptorProto`.
 final $typed_data.Uint8List songSortDescriptor = $convert.base64Decode(
     'CghTb25nU29ydBIZChVTT05HX1NPUlRfVU5TUEVDSUZJRUQQABIUChBTT05HX1NPUlRfTlVNQk'
-    'VSEAESEwoPU09OR19TT1JUX1RJVExFEAISFAoQU09OR19TT1JUX0FSVElTVBAD');
+    'VSEAESEwoPU09OR19TT1JUX1RJVExFEAISFAoQU09OR19TT1JUX0FSVElTVBADEhQKEFNPTkdf'
+    'U09SVF9GT1JNQVQQBBIaChZTT05HX1NPUlRfTFlSSUNfVElNSU5HEAUSFAoQU09OR19TT1JUX1'
+    'ZPQ0FMUxAG');
 
 @$core.Deprecated('Use playbackKindDescriptor instead')
 const PlaybackKind$json = {
@@ -72,6 +77,27 @@ const SearchSongsRequest$json = {
     {'1': 'letter', '3': 4, '4': 1, '5': 9, '10': 'letter'},
     {'1': 'page_token', '3': 5, '4': 1, '5': 9, '10': 'pageToken'},
     {'1': 'page_size', '3': 6, '4': 1, '5': 5, '10': 'pageSize'},
+    {
+      '1': 'has_vocals',
+      '3': 7,
+      '4': 1,
+      '5': 8,
+      '9': 0,
+      '10': 'hasVocals',
+      '17': true
+    },
+    {
+      '1': 'lyric_timing',
+      '3': 8,
+      '4': 1,
+      '5': 14,
+      '6': '.kantahe.v1.LyricTiming',
+      '10': 'lyricTiming'
+    },
+    {'1': 'descending', '3': 9, '4': 1, '5': 8, '10': 'descending'},
+  ],
+  '8': [
+    {'1': '_has_vocals'},
   ],
 };
 
@@ -80,7 +106,10 @@ final $typed_data.Uint8List searchSongsRequestDescriptor = $convert.base64Decode
     'ChJTZWFyY2hTb25nc1JlcXVlc3QSFAoFcXVlcnkYASABKAlSBXF1ZXJ5EioKBmZvcm1hdBgCIA'
     'EoDjISLmthbnRhaGUudjEuRm9ybWF0UgZmb3JtYXQSKAoEc29ydBgDIAEoDjIULmthbnRhaGUu'
     'djEuU29uZ1NvcnRSBHNvcnQSFgoGbGV0dGVyGAQgASgJUgZsZXR0ZXISHQoKcGFnZV90b2tlbh'
-    'gFIAEoCVIJcGFnZVRva2VuEhsKCXBhZ2Vfc2l6ZRgGIAEoBVIIcGFnZVNpemU=');
+    'gFIAEoCVIJcGFnZVRva2VuEhsKCXBhZ2Vfc2l6ZRgGIAEoBVIIcGFnZVNpemUSIgoKaGFzX3Zv'
+    'Y2FscxgHIAEoCEgAUgloYXNWb2NhbHOIAQESOgoMbHlyaWNfdGltaW5nGAggASgOMhcua2FudG'
+    'FoZS52MS5MeXJpY1RpbWluZ1ILbHlyaWNUaW1pbmcSHgoKZGVzY2VuZGluZxgJIAEoCFIKZGVz'
+    'Y2VuZGluZ0INCgtfaGFzX3ZvY2Fscw==');
 
 @$core.Deprecated('Use searchSongsResponseDescriptor instead')
 const SearchSongsResponse$json = {
@@ -281,6 +310,8 @@ const Playback$json = {
       '17': true
     },
     {'1': 'vocals_url', '3': 11, '4': 1, '5': 9, '10': 'vocalsUrl'},
+    {'1': 'audio_version', '3': 12, '4': 1, '5': 9, '10': 'audioVersion'},
+    {'1': 'vocals_version', '3': 13, '4': 1, '5': 9, '10': 'vocalsVersion'},
   ],
   '8': [
     {'1': '_gain_db'},
@@ -296,7 +327,9 @@ final $typed_data.Uint8List playbackDescriptor = $convert.base64Decode(
     'dGFoZS52MS5NaWRpTW9kZVIRZWZmZWN0aXZlTWlkaU1vZGUSFAoFcmVhZHkYByABKAhSBXJlYW'
     'R5EiQKDnJldHJ5X2FmdGVyX21zGAggASgFUgxyZXRyeUFmdGVyTXMSKgoGbHlyaWNzGAkgASgL'
     'MhIua2FudGFoZS52MS5MeXJpY3NSBmx5cmljcxIcCgdnYWluX2RiGAogASgCSABSBmdhaW5EYo'
-    'gBARIdCgp2b2NhbHNfdXJsGAsgASgJUgl2b2NhbHNVcmxCCgoIX2dhaW5fZGI=');
+    'gBARIdCgp2b2NhbHNfdXJsGAsgASgJUgl2b2NhbHNVcmwSIwoNYXVkaW9fdmVyc2lvbhgMIAEo'
+    'CVIMYXVkaW9WZXJzaW9uEiUKDnZvY2Fsc192ZXJzaW9uGA0gASgJUg12b2NhbHNWZXJzaW9uQg'
+    'oKCF9nYWluX2Ri');
 
 @$core.Deprecated('Use getPlaybackResponseDescriptor instead')
 const GetPlaybackResponse$json = {

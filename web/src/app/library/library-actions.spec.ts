@@ -77,6 +77,33 @@ describe('LibraryActions.toggleFavourite', () => {
     expect(actions.isFavourite(s)).toBe(false);
   });
 
+  it('un-starring says so with Undo; Undo stars it again with one call; starring says nothing', async () => {
+    const { actions, calls, toasts } = setup();
+    const s = song('7', 'Hello', 'A', undefined, true);
+    await actions.toggleFavourite(s);
+    const toast = toasts.toasts()[0];
+    expect([toast.message, toast.kind, toast.action?.label]).toEqual(['Removed Hello from favourites', 'info', 'Undo']);
+    toasts.act(toast.id);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(calls.fav.map((c) => [c.number, c.favourite])).toEqual([
+      ['7', false],
+      ['7', true],
+    ]);
+    expect(actions.isFavourite(s)).toBe(true);
+    expect(toasts.toasts()).toEqual([]); // starring again needs no message
+  });
+
+  it('regression: an Undo pressed after starring again by hand leaves the star on (it toggled it off)', async () => {
+    const { actions, calls, toasts } = setup();
+    const s = song('7', 'Hello', 'A', undefined, true);
+    await actions.toggleFavourite(s); // off, with Undo
+    await actions.toggleFavourite(s); // on again, by hand
+    toasts.act(toasts.toasts().find((t) => t.action?.label === 'Undo')!.id);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(actions.isFavourite(s)).toBe(true);
+    expect(calls.fav.map((c) => c.favourite)).toEqual([false, true]);
+  });
+
   it('puts the star back and shows an error when the server refuses', async () => {
     const { actions, toasts } = setup({
       setFavourite: () => {
@@ -142,5 +169,53 @@ describe('LibraryActions across sign-ins', () => {
     auth.signIn(create(AuthTokenSchema, { token: 'b', deviceId: 'd2' }));
     TestBed.tick();
     expect(actions.isFavourite(song('7', 'T', 'A'))).toBe(false);
+  });
+});
+
+describe('LibraryActions.playNext', () => {
+  it('adds the song, then moves that queue item (not the song number) to the top, and offers Undo', async () => {
+    const { actions, calls, toasts } = setup({ addToQueue: () => 'item-7' });
+    expect(await actions.playNext(song('01052', 'Hello', 'Adele'))).toBe(true);
+    expect(calls.session).toEqual(['add 01052', 'top item-7']);
+    const toast = toasts.toasts()[0];
+    expect([toast.message, toast.kind, toast.action?.label]).toEqual(['Hello plays next', 'info', 'Undo']);
+    toasts.act(toast.id);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(calls.session).toEqual(['add 01052', 'top item-7', 'remove item-7']);
+  });
+
+  it('when the move fails the song stays queued at the end and the toast says so, without an error', async () => {
+    const { actions, calls, toasts } = setup({
+      moveToTop: () => {
+        throw new ConnectError('x', Code.Unavailable);
+      },
+    });
+    expect(await actions.playNext(song('01052', 'Hello', 'Adele'))).toBe(true);
+    expect(calls.session).toEqual(['add 01052', 'top q-01052']);
+    expect(toasts.toasts().map((t) => [t.message, t.kind])).toEqual([['Added Hello at the end of the queue', 'info']]);
+  });
+
+  it('a song that cannot be played is not sent', async () => {
+    const { actions, calls, toasts } = setup();
+    const s = song('9', 'Broken', 'X');
+    s.failed = true;
+    expect(await actions.playNext(s)).toBe(false);
+    expect(calls.session).toEqual([]);
+    expect(toasts.toasts()[0].kind).toBe('error');
+  });
+});
+
+describe('LibraryActions.playNext Undo', () => {
+  it('too late (the song started or left the queue) says so instead of a general error', async () => {
+    const { actions, toasts } = setup({
+      removeFromQueue: () => {
+        throw new ConnectError('gone', Code.NotFound);
+      },
+    });
+    await actions.playNext(song('01052', 'Hello', 'Adele'));
+    toasts.act(toasts.toasts()[0].id);
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(toasts.toasts().map((t) => [t.message, t.kind])).toEqual([['Hello has already started or left the queue.', 'error']]);
   });
 });

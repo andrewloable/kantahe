@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
-import { AuthTokenSchema } from '../../gen/kantahe/v1/common_pb';
+import { AuthTokenSchema, LyricTiming } from '../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from '../core/api';
 import { AuthStore } from '../core/auth.store';
 import { StateStore } from '../core/state.store';
@@ -15,7 +15,7 @@ const BASE: StateInit = {
   player: 'me',
   devices: [device('me', 'Phone', { isCaller: true })],
   queue: [
-    { id: 'q1', song: song('01052', 'Hello', 'Adele', Format.MP3) },
+    { id: 'q1', song: song('01052', 'Hello', 'Adele', Format.MP3, false, { lyricTiming: LyricTiming.WORD, hasVocals: true }) },
     { id: 'q2', song: song('21628', 'Skyfall', 'Adele', Format.MIDI) },
     { id: 'q3', song: song('3', 'Third', 'X') },
   ],
@@ -54,6 +54,9 @@ describe('QueuePage', () => {
     expect(rows().length).toBe(3);
     expect(rows()[0].textContent).toContain('Hello');
     expect(rows()[0].textContent).toContain('MP3');
+    expect(rows()[0].querySelector('.timing-badge')?.textContent).toBe('W');
+    expect(rows()[0].querySelector('.vocals-badge')?.textContent).toBe('V');
+    expect(rows()[1].querySelector('.timing-badge')).toBeNull();
     expect(rows()[1].textContent).toContain('Skyfall');
     expect(rows()[1].textContent).toContain('MIDI');
     expect(rows()[2].textContent).toContain('Third');
@@ -62,6 +65,8 @@ describe('QueuePage', () => {
   it('says so when the queue is empty', async () => {
     const { el } = await setup({ ...BASE, queue: [] });
     expect(el.textContent).toContain('The queue is empty');
+    const link = Array.from(el.querySelectorAll('a')).find((a) => a.textContent?.trim() === 'Open the Library');
+    expect(link?.getAttribute('href'), 'it says how to fill the queue and links to the Library').toBe('/library');
   });
 
   it('regression: after a few seconds without a state it says that the server cannot be reached, and the state replaces that message', async () => {
@@ -88,6 +93,13 @@ describe('QueuePage', () => {
     server.push(stateOf({ ...BASE, queue: [BASE.queue![2]] }));
     await settle();
     expect(rows().length).toBe(1);
+  });
+
+  it('regression: Remove is a danger button and Move to top a plain one (all buttons were filled alike)', async () => {
+    const { rows } = await setup(BASE);
+    const button = (name: string) => Array.from(rows()[1].querySelectorAll('button')).find((b) => b.textContent?.trim().startsWith(name))!;
+    expect(button('Remove').classList.contains('danger')).toBe(true);
+    expect(button('Move to top').className).toBe('');
   });
 
   it('Remove sends RemoveFromQueue with the item id and offers Undo', async () => {
@@ -140,7 +152,7 @@ describe('QueuePage', () => {
     const { rows } = await setup(BASE);
     const labels = Array.from(rows()[1].querySelectorAll('button')).map((b) => b.getAttribute('aria-label'));
     expect(labels).toContain('Remove Skyfall from the queue');
-    expect(labels).toContain('Move Skyfall to the top of the queue');
+    expect(labels).toContain('Move to top: Skyfall');
   });
 
   it('shows the now playing card and the devices', async () => {

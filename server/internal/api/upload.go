@@ -74,14 +74,12 @@ func uploadName(filename string) (name string, format library.Format, ok bool) {
 	return "", 0, false
 }
 
-// UploadSong stores and imports one .kar or .karmp3 for users with the uploader role.
+// UploadSong stores and imports one .kar or .karmp3. Only administrators upload (the uploader role of a user has no effect since 1.2.0); with
+// replace_number set the file replaces the content of that song instead of being added.
 func (s *UploadServer) UploadSong(ctx context.Context, req *connect.Request[kantahev1.UploadSongRequest]) (*connect.Response[kantahev1.UploadSongResponse], error) {
-	id, ok := auth.IdentityFrom(ctx)
-	if !ok {
-		return nil, newErr(connect.CodeUnauthenticated, "sign in required")
-	}
-	if !id.Uploader {
-		return nil, newErr(connect.CodePermissionDenied, "upload permission required")
+	id, err := requireAdmin(ctx)
+	if err != nil {
+		return nil, err
 	}
 	limit, err := settings.MaxUploadBytes(ctx, s.d.DB)
 	if err != nil {
@@ -103,6 +101,9 @@ func (s *UploadServer) UploadSong(ctx context.Context, req *connect.Request[kant
 	}
 	if reason := library.CheckContent(format, content); reason != "" {
 		return rejected(reason)
+	}
+	if req.Msg.ReplaceNumber != "" {
+		return s.replace(ctx, id, req.Msg.ReplaceNumber, format, content)
 	}
 
 	stored, created, err := s.store(content, format)
@@ -190,4 +191,53 @@ func (s *UploadServer) dropIfCreated(ctx context.Context, p string, created bool
 // concurrent upload of the same bytes shares the file.
 func (s *UploadServer) dropUnreferenced(ctx context.Context, p string) {
 	s.d.Importer.RemoveIfUnreferenced(ctx, p) // never fails the upload: a file in use is swept later
+}
+
+// replace gives an existing song the content of an uploaded file (premise P3 of the epic "Song files": the number and what hangs on it stay).
+func (s *UploadServer) replace(ctx context.Context, id auth.Identity, replaceNumber string, format library.Format, content []byte) (*connect.Response[kantahev1.UploadSongResponse], error) {
+	number, ok := library.CanonicalNumber(replaceNumber)
+	if !ok {
+		return rejected("no such song")
+	}
+	cur, err := library.GetSong(ctx, s.d.DB, number)
+	if errors.Is(err, library.ErrNotFound) {
+		return rejected("no such song")
+	}
+	if err != nil {
+		return nil, internalErr(s.d.Logger, "UploadSong", err)
+	}
+	if cur.Format != format {
+		if cur.Format == library.FormatMIDI {
+			return rejected("the file must be a .kar, like the song it replaces")
+		}
+		return rejected("the file must be a .karmp3, like the song it replaces")
+	}
+	res, err := s.d.Importer.Replace(ctx, number, content)
+	var dup *library.DuplicateError
+	switch {
+	case errors.As(err, &dup):
+		return rejected("this file is already the song " + dup.Number)
+	case errors.Is(err, library.ErrNotFound):
+		return rejected("no such song")
+	case errors.Is(err, library.ErrNotWritable), errors.Is(err, library.ErrOutsideManaged):
+		return rejected("the file of this song cannot be written")
+	case err != nil:
+		s.d.Logger.Error("song replace failed", "number", number, "err", err)
+		return rejected("the file could not be processed")
+	}
+	info, err := library.GetSong(ctx, s.d.DB, number)
+	if err != nil {
+		return nil, internalErr(s.d.Logger, "UploadSong", err)
+	}
+	status := kantahev1.UploadStatus_UPLOAD_STATUS_UPDATED
+	if res.Unchanged {
+		status = kantahev1.UploadStatus_UPLOAD_STATUS_DUPLICATE
+	} else {
+		s.d.Logger.Info("song replaced", "number", number, "user", id.UserID)
+	}
+	song := toProtoSong(info, false)
+	if err := markFavourites(ctx, s.d.UserLib, id.UserID, song); err != nil {
+		return nil, internalErr(s.d.Logger, "UploadSong", err)
+	}
+	return connect.NewResponse(&kantahev1.UploadSongResponse{Status: status, Song: song}), nil
 }

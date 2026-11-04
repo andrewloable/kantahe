@@ -48,6 +48,9 @@ const (
 	SortNumber
 	SortTitle
 	SortArtist
+	SortFormat
+	SortLyricTiming
+	SortVocals
 )
 
 // SearchParams describe one search or browse request.
@@ -56,8 +59,14 @@ type SearchParams struct {
 	Format library.Format // 0 for any
 	Sort   Sort
 	Letter string // "A".."Z" or "#", "" for any
-	Offset int
-	Limit  int // page size; 0 means 50, at most 200
+	// HasVocals: nil for any, else only songs that have (true) or lack (false) a vocals track.
+	HasVocals *bool
+	// LyricTiming: 0 for any, 1 for by line, 2 for by word (the stored values of songs.lyric_timing).
+	LyricTiming int
+	// Descending reverses the main key of the sort (not the relevance order); the number stays the tie-breaker, ascending.
+	Descending bool
+	Offset     int
+	Limit      int // page size; 0 means 50, at most 200
 }
 
 // Artist is a displayed artist with the number of visible songs.
@@ -78,12 +87,12 @@ func New(db *store.DB) *Catalog { return &Catalog{db: db, cache: newLRU(lyricsCa
 // visible limits every query to songs users may see: finished, not failed, not deleted.
 const visible = `s.deleted = 0 AND s.failed = 0 AND s.metadata_done = 1`
 
-const songColumns = `s.number, s.format, s.songbook_number, s.duration_ms, s.failed <> 0, s.has_vocals <> 0, s.display_title, s.display_artist`
+const songColumns = `s.number, s.format, s.songbook_number, s.duration_ms, s.failed <> 0, s.has_vocals <> 0, s.lyric_timing, s.display_title, s.display_artist`
 
 func scanSong(row interface{ Scan(...any) error }) (library.SongInfo, error) {
 	var s library.SongInfo
 	var format int
-	err := row.Scan(&s.Number, &format, &s.Songbook, &s.DurationMs, &s.Failed, &s.HasVocals, &s.Title, &s.Artist)
+	err := row.Scan(&s.Number, &format, &s.Songbook, &s.DurationMs, &s.Failed, &s.HasVocals, &s.LyricTiming, &s.Title, &s.Artist)
 	s.Format = library.Format(format)
 	return s, err
 }
@@ -198,15 +207,38 @@ func (c *Catalog) Search(ctx context.Context, p SearchParams) ([]library.SongInf
 		where += ` AND s.format = ?`
 		args = append(args, int(p.Format))
 	}
+	if p.HasVocals != nil {
+		where += ` AND s.has_vocals = ?`
+		args = append(args, b2i(*p.HasVocals))
+	}
+	if p.LyricTiming != 0 {
+		where += ` AND s.lyric_timing = ?`
+		args = append(args, p.LyricTiming)
+	}
 	letterColumn := `s.title_letter`
+	// Only fixed strings go into the ORDER BY. Descending reverses the main key; the number stays the tie-breaker, ascending.
+	desc := ""
+	if p.Descending {
+		desc = ` DESC`
+	}
 	switch p.Sort {
 	case SortNumber:
 		order = numberOrder
+		if p.Descending {
+			order = `length(s.number) DESC, s.number DESC`
+		}
 	case SortTitle:
-		order = `s.title_key, ` + numberOrder
+		order = `s.title_key` + desc + `, ` + numberOrder
 	case SortArtist:
-		order = `s.artist_key, s.title_key, ` + numberOrder
+		order = `s.artist_key` + desc + `, s.title_key, ` + numberOrder
 		letterColumn = `s.artist_letter`
+	case SortFormat:
+		order = `s.format` + desc + `, ` + numberOrder
+	case SortLyricTiming:
+		// unknown (0) and no lyrics (9) are both a song without timed lyrics: they sort together, before line (1) and word (2)
+		order = `CASE s.lyric_timing WHEN 1 THEN 1 WHEN 2 THEN 2 ELSE 0 END` + desc + `, ` + numberOrder
+	case SortVocals:
+		order = `s.has_vocals` + desc + `, ` + numberOrder
 	}
 	if letter != "" {
 		where += ` AND ` + letterColumn + ` = ?`
@@ -310,6 +342,13 @@ func (c *Catalog) Artists(ctx context.Context, letter string, offset, limit int)
 		out = out[:limit]
 	}
 	return out, more, nil
+}
+
+func b2i(v bool) int {
+	if v {
+		return 1
+	}
+	return 0
 }
 
 func canonicalOrInvalid(number string) (string, error) {

@@ -30,7 +30,7 @@ const MAX_DIGITS = 20;
           <span class="num">{{ s.number }}</span>
           <strong>{{ s.title }}</strong>
           <span>{{ s.artist }}</span>
-          <app-format-badge [format]="s.format" />
+          <app-format-badge [format]="s.format" [timing]="s.lyricTiming" [vocals]="s.hasVocals" />
         </p>
       }
     </div>
@@ -42,7 +42,7 @@ const MAX_DIGITS = 20;
       <button type="button" (click)="press('0')">0</button>
       <button type="button" aria-label="Backspace" (click)="backspace()">⌫</button>
     </div>
-    <button type="button" class="add" [disabled]="!found()" (click)="add()">Add to queue</button>
+    <button type="button" class="add primary" [disabled]="!found()" (click)="add()">Add to queue</button>
   `,
   styles: `
     :host {

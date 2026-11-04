@@ -33,6 +33,7 @@ class Song extends $pb.GeneratedMessage {
     $core.bool? failed,
     $core.bool? favourite,
     $core.bool? hasVocals,
+    LyricTiming? lyricTiming,
   }) {
     final result = Song._();
     if (number != null) result.number = number;
@@ -44,6 +45,7 @@ class Song extends $pb.GeneratedMessage {
     if (failed != null) result.failed = failed;
     if (favourite != null) result.favourite = favourite;
     if (hasVocals != null) result.hasVocals = hasVocals;
+    if (lyricTiming != null) result.lyricTiming = lyricTiming;
     return result;
   }
 
@@ -69,6 +71,8 @@ class Song extends $pb.GeneratedMessage {
     ..aOB(7, _omitFieldNames ? '' : 'failed')
     ..aOB(8, _omitFieldNames ? '' : 'favourite')
     ..aOB(9, _omitFieldNames ? '' : 'hasVocals')
+    ..aE<LyricTiming>(10, _omitFieldNames ? '' : 'lyricTiming',
+        enumValues: LyricTiming.values)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -174,6 +178,16 @@ class Song extends $pb.GeneratedMessage {
   $core.bool hasHasVocals() => $_has(8);
   @$pb.TagNumber(9)
   void clearHasVocals() => $_clearField(9);
+
+  /// How the lyrics are timed: by word (or syllable) or by line. UNSPECIFIED until the file has been read, and for a file without lyrics.
+  @$pb.TagNumber(10)
+  LyricTiming get lyricTiming => $_getN(9);
+  @$pb.TagNumber(10)
+  set lyricTiming(LyricTiming value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasLyricTiming() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearLyricTiming() => $_clearField(10);
 }
 
 /// One lyric word with its wipe window in milliseconds (plan 3).
@@ -519,6 +533,7 @@ class User extends $pb.GeneratedMessage {
   @$pb.TagNumber(4)
   void clearAdmin() => $_clearField(4);
 
+  /// Has no effect since 1.2.0: only administrators upload songs.
   @$pb.TagNumber(5)
   $core.bool get uploader => $_getBF(4);
   @$pb.TagNumber(5)

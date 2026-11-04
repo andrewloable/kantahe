@@ -10,7 +10,7 @@ import { Errors, fieldValue, fromServer, problem, safeReturnUrl, webDeviceName }
 @Component({
   selector: 'app-login-page',
   template: `
-    <main class="card">
+    <div class="card">
       <h1>Sign in</h1>
       <form (submit)="submit($event)" novalidate>
         <div class="field">
@@ -32,9 +32,9 @@ import { Errors, fieldValue, fromServer, problem, safeReturnUrl, webDeviceName }
         @if (failure()) {
           <p class="error" role="alert">{{ failure() }}</p>
         }
-        <button type="submit" [disabled]="busy()">Sign in</button>
+        <button class="primary" type="submit" [disabled]="busy()">Sign in</button>
       </form>
-    </main>
+    </div>
   `,
 })
 export class LoginPage {

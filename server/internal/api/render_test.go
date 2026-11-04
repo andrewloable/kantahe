@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -219,5 +220,45 @@ func TestNoRenderAheadForADeviceThatPlaysMIDIItself(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 	if files := r.renderedFiles(); len(files) != 0 {
 		t.Fatalf("rendered %v for a device that does not use renders", files)
+	}
+}
+
+func TestGetPlaybackVersionOfARender(t *testing.T) {
+	r := newRenderEnv(t, 1<<30)
+	n := r.seed(t, "Song.kar", "Song", "Artist", true)
+	r.setMode(t, r.admin.Token, r.admin.DeviceId, kantahev1.MidiMode_MIDI_MODE_SERVER)
+	if pb := r.playback(t, r.admin.Token, n); !pb.Ready && pb.AudioVersion != "" {
+		t.Fatalf("a render that is not ready has a version: %q", pb.AudioVersion)
+	}
+	waitFor(t, "the render", func() bool { return r.playback(t, r.admin.Token, n).Ready })
+	pb := r.playback(t, r.admin.Token, n)
+	st, err := os.Stat(r.renderedFiles()[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := fmt.Sprintf("%s-%d", filepath.Base(r.renderedFiles()[0]), st.Size()); pb.AudioVersion != want {
+		t.Fatalf("audio_version = %q, want %q", pb.AudioVersion, want)
+	}
+	if pb.VocalsVersion != "" {
+		t.Errorf("a render has no vocals version: %q", pb.VocalsVersion)
+	}
+}
+
+func TestGetPlaybackVersionOfARenderSurvivesATouch(t *testing.T) {
+	r := newRenderEnv(t, 1<<30)
+	n := r.seed(t, "Song.kar", "Song", "Artist", true)
+	r.setMode(t, r.admin.Token, r.admin.DeviceId, kantahev1.MidiMode_MIDI_MODE_SERVER)
+	waitFor(t, "the render", func() bool { return r.playback(t, r.admin.Token, n).Ready })
+	v1 := r.playback(t, r.admin.Token, n).AudioVersion
+	if v1 == "" {
+		t.Fatal("no version")
+	}
+	// the render cache touches a file each time it is played (least recently played goes first)
+	old := time.Now().Add(-time.Hour)
+	if err := os.Chtimes(r.renderedFiles()[0], old, old); err != nil {
+		t.Fatal(err)
+	}
+	if v2 := r.playback(t, r.admin.Token, n).AudioVersion; v2 != v1 {
+		t.Fatalf("REGRESSION: the version changed from %q to %q when the file was only touched", v1, v2)
 	}
 }

@@ -16,6 +16,7 @@ type SongInfo struct {
 	DurationMs                      int64
 	Failed                          bool
 	HasVocals                       bool // a .karmp3 with a vocals track the player can offer
+	LyricTiming                     int  // songs.lyric_timing: 0 not read yet, 1 by line, 2 by word, 9 no lyrics
 }
 
 // Querier is satisfied by *sql.DB, *sql.Tx and *store.DB.
@@ -30,9 +31,9 @@ func GetSong(ctx context.Context, q Querier, number string) (SongInfo, error) {
 	var format int
 	var fileTitle, fileArtist, original string
 	var editTitle, editArtist sql.NullString
-	err := q.QueryRowContext(ctx, `SELECT s.number, s.format, s.songbook_number, s.duration_ms, s.failed <> 0, s.has_vocals <> 0, s.file_title, s.file_artist, s.original_name, e.title, e.artist
+	err := q.QueryRowContext(ctx, `SELECT s.number, s.format, s.songbook_number, s.duration_ms, s.failed <> 0, s.has_vocals <> 0, s.lyric_timing, s.file_title, s.file_artist, s.original_name, e.title, e.artist
 		FROM songs s LEFT JOIN song_edits e ON e.number = s.number WHERE s.number = ? AND s.deleted = 0`, number).
-		Scan(&s.Number, &format, &s.Songbook, &s.DurationMs, &s.Failed, &s.HasVocals, &fileTitle, &fileArtist, &original, &editTitle, &editArtist)
+		Scan(&s.Number, &format, &s.Songbook, &s.DurationMs, &s.Failed, &s.HasVocals, &s.LyricTiming, &fileTitle, &fileArtist, &original, &editTitle, &editArtist)
 	if errors.Is(err, sql.ErrNoRows) {
 		return SongInfo{}, ErrNotFound
 	}

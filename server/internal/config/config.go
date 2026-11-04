@@ -31,6 +31,8 @@ type Config struct {
 	Name string
 	// Discovery turns on the mDNS advertisement.
 	Discovery bool
+	// TransferRoot, when set, is the folder that every admin export and import folder must be inside ("" allows any absolute folder).
+	TransferRoot string
 }
 
 // maxNameBytes is the longest DNS-SD instance label.
@@ -58,8 +60,8 @@ func (l *libraries) Set(v string) error {
 }
 
 type values struct {
-	listen, data, soundfont, publicURL, score, cache, proxies, name, discovery string
-	libs                                                                       libraries
+	listen, data, soundfont, publicURL, score, cache, proxies, name, discovery, transferRoot string
+	libs                                                                                     libraries
 }
 
 func newFlagSet(getenv func(string) string) (*flag.FlagSet, *values) {
@@ -87,6 +89,7 @@ func newFlagSet(getenv func(string) string) (*flag.FlagSet, *values) {
 	fs.StringVar(&v.proxies, "trusted-proxies", pick("KANTAHE_TRUSTED_PROXIES", ""), "comma-separated CIDRs of reverse proxies (KANTAHE_TRUSTED_PROXIES)")
 	fs.StringVar(&v.name, "name", pick("KANTAHE_NAME", ""), "name shown to clients, at most 63 bytes (KANTAHE_NAME, default \"Kantahe on <host name>\")")
 	fs.StringVar(&v.discovery, "discovery", pick("KANTAHE_DISCOVERY", "true"), "advertise the server on the local network so apps find it, true or false (KANTAHE_DISCOVERY)")
+	fs.StringVar(&v.transferRoot, "transfer-root", pick("KANTAHE_TRANSFER_ROOT", ""), "folder that every admin export and import must be inside; empty allows any absolute folder (KANTAHE_TRANSFER_ROOT)")
 	return fs, v
 }
 
@@ -134,6 +137,10 @@ func Parse(args []string, getenv func(string) string) (Config, error) {
 	if c.Name, err = serverName(v.name); err != nil {
 		return Config{}, err
 	}
+	if v.transferRoot != "" && !filepath.IsAbs(v.transferRoot) {
+		return Config{}, fmt.Errorf("invalid --transfer-root %q: want an absolute path", v.transferRoot)
+	}
+	c.TransferRoot = v.transferRoot
 	return c, nil
 }
 

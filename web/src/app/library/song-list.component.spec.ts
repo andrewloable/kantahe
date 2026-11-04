@@ -1,18 +1,37 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { create } from '@bufbuild/protobuf';
-import { Format, UserSchema } from '../../gen/kantahe/v1/common_pb';
+import { Format, LyricTiming, UserSchema } from '../../gen/kantahe/v1/common_pb';
 import { AuthStore } from '../core/auth.store';
 import { TRANSPORT } from '../core/api';
 import { ToastService } from '../core/toast';
 import { SongListComponent } from './song-list.component';
 import { provideRouter } from '@angular/router';
 import { fakeMe } from '../me/testing';
+import { ENVIRONMENT } from '../core/environment';
+import { environment } from '../../environments/environment';
 import { fakeLibrary, FakeLibrary, song } from './testing';
 
 const many = (n: number) => Array.from({ length: n }, (_, i) => song(String(1000 + i), `Song ${i}`, 'Artist'));
 const rowCount = (el: HTMLElement) => el.querySelectorAll('li.row').length;
 const btn = (el: HTMLElement, text: string) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === text)!;
+/** Opens the More menu of a row and gives its items. */
+const openMenu = (fixture: ComponentFixture<unknown>, row: Element) => {
+  row.querySelector<HTMLButtonElement>('button.more')!.click();
+  fixture.detectChanges();
+  return Array.from(row.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
+};
+const menuLabels = (fixture: ComponentFixture<unknown>, row: Element) => {
+  const labels = openMenu(fixture, row).map((b) => b.textContent?.trim());
+  row.querySelector<HTMLButtonElement>('button.more')!.click(); // closes it again
+  fixture.detectChanges();
+  return labels;
+};
+/** Delete from the More menu of the i-th row on the page: opens the question. */
+const askDelete = (fixture: ComponentFixture<unknown>, el: HTMLElement, i: number) => {
+  openMenu(fixture, el.querySelectorAll('li.row')[i]).find((b) => b.textContent?.trim() === 'Delete')!.click();
+  fixture.detectChanges();
+};
 
 function setup(inputs: Record<string, unknown>, h: FakeLibrary = {}) {
   const f = fakeLibrary(h);
@@ -31,9 +50,41 @@ describe('SongListComponent', () => {
     expect(el.textContent).not.toContain('No songs found.');
   });
 
+  it('shows the badge legend under a list that has songs, and not under an empty one', () => {
+    localStorage.removeItem('kantahe.legend.hidden');
+    const full = setup({ songs: [song('1', 'Hello', 'Adele')] });
+    expect(full.el.querySelector('app-badge-legend')).not.toBeNull();
+    TestBed.resetTestingModule();
+    const empty = setup({ songs: [] });
+    expect(empty.el.querySelector('app-badge-legend')).toBeNull();
+  });
+
+  it('an empty text of nothing leaves the place to the page (no paragraph)', () => {
+    const { el } = setup({ songs: [], emptyText: '' });
+    expect(el.querySelector('p')).toBeNull();
+  });
+
   it('an empty result without a failure says that no songs were found', () => {
     const { el } = setup({ songs: [], emptyText: 'No songs found.' });
     expect(el.textContent).toContain('No songs found.');
+  });
+
+  it('shows W or L and V beside the format badge of a row', async () => {
+    const { fixture, el } = setup({
+      songs: [
+        song('1', 'A', 'X', Format.MP3, false, { lyricTiming: LyricTiming.WORD, hasVocals: true }),
+        song('2', 'B', 'X', Format.MIDI, false, { lyricTiming: LyricTiming.LINE }),
+        song('3', 'C', 'X'),
+      ],
+    });
+    await fixture.whenStable();
+    const rows = Array.from(el.querySelectorAll('li'));
+    expect(rows[0].querySelector('.timing-badge')?.textContent).toBe('W');
+    expect(rows[0].querySelector('.vocals-badge')?.textContent).toBe('V');
+    expect(rows[1].querySelector('.timing-badge')?.textContent).toBe('L');
+    expect(rows[1].querySelector('.vocals-badge')).toBeNull();
+    expect(rows[2].querySelector('.timing-badge')).toBeNull();
+    expect(rows[2].querySelector('.vocals-badge')).toBeNull();
   });
 
   it('shows number, title, artist and a badge on every row', async () => {
@@ -57,7 +108,11 @@ describe('SongListComponent', () => {
     expect(calls.add.map((c) => c.number)).toEqual(['21628']);
     expect(toasts.toasts().map((t) => t.message)).toEqual(['Added Hello']);
     expect(mains[1].tagName).toBe('BUTTON'); // a real button: Enter and Space work without extra code
-    expect(mains[1].getAttribute('aria-label')).toBe('Add Hello by Adele to the queue');
+    // the name is what the row shows, then what pressing it does (WCAG 2.5.3: a speech user says what they see)
+    expect(mains[1].getAttribute('aria-label')).toBeNull();
+    const name = (mains[1].textContent ?? '').replace(/\s+/g, ' ').trim();
+    expect(name).toMatch(/^21628\s*Hello\s*Adele/);
+    expect(name).toMatch(/, add to the queue$/);
   });
 
   it('the star toggles the favourite and shows it', async () => {
@@ -162,12 +217,12 @@ describe('SongListComponent', () => {
       TestBed.inject(AuthStore).setUser(create(UserSchema, { admin: true }));
       const fixture = TestBed.createComponent(SongListComponent);
       fixture.componentRef.setInput('songs', many(120));
+      fixture.componentRef.setInput('allowDelete', true);
       fixture.detectChanges();
       const el = fixture.nativeElement as HTMLElement;
       btn(el, 'Next').click();
       fixture.detectChanges();
-      el.querySelectorAll<HTMLButtonElement>('button.delete')[3].click();
-      fixture.detectChanges();
+      askDelete(fixture, el, 3);
       btn(el, 'Delete file too').click();
       await fixture.whenStable();
       fixture.detectChanges();
@@ -207,24 +262,21 @@ describe('SongListComponent', () => {
       return { fixture, el, server, settle };
     }
 
-    it('opens the picker under that row only, and a second press closes it', async () => {
+    it('Add to a playlist in the More menu opens the picker under that row only; its Close closes it', async () => {
       const { el, fixture, settle } = withPlaylists();
-      const menus = el.querySelectorAll<HTMLButtonElement>('button.menu');
-      expect(menus[0].getAttribute('aria-label')).toBe('Add Hello to a playlist');
-      expect(menus[0].getAttribute('aria-expanded')).toBe('false');
-      menus[0].click();
+      const rows = el.querySelectorAll('li.row');
+      openMenu(fixture, rows[0]).find((b) => b.textContent?.trim() === 'Add to a playlist')!.click();
       await settle();
       expect(el.querySelectorAll('app-playlist-picker').length).toBe(1);
-      expect(el.querySelectorAll('li.row')[0].querySelector('app-playlist-picker')).not.toBeNull();
-      expect(menus[0].getAttribute('aria-expanded')).toBe('true');
-      menus[0].click();
+      expect(rows[0].querySelector('app-playlist-picker')).not.toBeNull();
+      Array.from(el.querySelectorAll<HTMLButtonElement>('app-playlist-picker button')).find((b) => b.textContent?.trim() === 'Close')!.click();
       fixture.detectChanges();
       expect(el.querySelector('app-playlist-picker')).toBeNull();
     });
 
     it('choosing a playlist appends the song and closes the picker', async () => {
-      const { el, server, settle } = withPlaylists();
-      el.querySelector<HTMLButtonElement>('button.menu')!.click();
+      const { el, fixture, server, settle } = withPlaylists();
+      openMenu(fixture, el.querySelector('li.row')!).find((b) => b.textContent?.trim() === 'Add to a playlist')!.click();
       await settle();
       Array.from(el.querySelectorAll<HTMLButtonElement>('app-playlist-picker li button')).find((b) => b.textContent?.trim() === 'Party')!.click();
       await settle();
@@ -233,13 +285,21 @@ describe('SongListComponent', () => {
     });
   });
 
-  it('regression: the row actions are compact icon buttons with labels (a wide text button wrapped every row to two lines on a phone)', async () => {
-    const { el } = setup({ songs: [song('1', 'Hello', 'Adele')] });
+  it('regression: a row has the star and one More actions button (+ and Delete wrapped every phone row to two lines)', async () => {
+    const { el, fixture } = setup({ songs: [song('1', 'Hello', 'Adele')] });
     const row = el.querySelector('li.row')!;
-    const actions = Array.from(row.querySelectorAll<HTMLButtonElement>('button.star, button.menu'));
-    expect(actions.map((b) => b.getAttribute('aria-label'))).toEqual(['Favourite: Hello', 'Add Hello to a playlist']);
-    expect(actions.every((b) => (b.textContent ?? '').trim().length <= 2)).toBe(true); // an icon, not a sentence
-    expect(row.textContent).not.toContain('Add to playlist…');
+    const actions = Array.from(row.querySelectorAll<HTMLButtonElement>('.actions button'));
+    expect(actions.map((b) => b.getAttribute('aria-label'))).toEqual(['Favourite: Hello', 'More actions for Hello']);
+    expect(actions[1].getAttribute('aria-haspopup')).toBe('menu');
+    expect(menuLabels(fixture, row)).toEqual(['Play next', 'Add to a playlist']);
+  });
+
+  it('Play next in the More menu puts the song right after the current one', async () => {
+    const { el, fixture, calls } = setup({ songs: [song('1', 'Hello', 'Adele')] });
+    openMenu(fixture, el.querySelector('li.row')!).find((b) => b.textContent?.trim() === 'Play next')!.click();
+    await fixture.whenStable();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(calls.session).toEqual(['add 1', 'top q-1']);
   });
 
   it('regression: a very long title or artist is cut to two lines (a phone row grew to 400 px), and the whole text stays available', () => {
@@ -256,23 +316,41 @@ describe('SongListComponent', () => {
 
   describe('deleting (administrators)', () => {
     const admin = () => TestBed.inject(AuthStore).setUser(create(UserSchema, { admin: true }));
-    const deleteButtons = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLButtonElement>('button.delete'));
+    const deleteItems = (fixture: ComponentFixture<unknown>, el: HTMLElement) => Array.from(el.querySelectorAll('li.row')).filter((row) => menuLabels(fixture, row).includes('Delete'));
     const button = (el: HTMLElement, text: string) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === text);
 
-    it('a user who is not an administrator sees no Delete', () => {
-      const { el } = setup({ songs: [song('1', 'Hello', 'Adele')] });
-      expect(deleteButtons(el).length).toBe(0);
+    it('regression: an administrator sees no Delete unless the page allows it (only the Library does; Favourites deleted songs from the library)', () => {
+      const f = fakeLibrary();
+      TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: f.transport }] });
+      admin();
+      const fixture = TestBed.createComponent(SongListComponent);
+      fixture.componentRef.setInput('songs', [song('1', 'Hello', 'Adele')]);
+      fixture.detectChanges();
+      const el = fixture.nativeElement as HTMLElement;
+      expect(deleteItems(fixture, el).length).toBe(0);
+      fixture.componentRef.setInput('allowDelete', true);
+      fixture.detectChanges();
+      expect(deleteItems(fixture, el).length).toBe(1);
     });
 
-    it('an administrator has a Delete on every row, named after the song', () => {
+    it('a user who is not an administrator sees no Delete', () => {
+      const { el, fixture } = setup({ songs: [song('1', 'Hello', 'Adele')] });
+      expect(deleteItems(fixture, el).length).toBe(0);
+    });
+
+    it('an administrator has a Delete in the More menu of every row, whose name says the song', () => {
       const f = fakeLibrary();
       TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: f.transport }] });
       admin();
       const fixture = TestBed.createComponent(SongListComponent);
       fixture.componentRef.setInput('songs', [song('1', 'Hello', 'Adele'), song('2', 'Skyfall', 'Adele')]);
+      fixture.componentRef.setInput('allowDelete', true);
       fixture.detectChanges();
       const el = fixture.nativeElement as HTMLElement;
-      expect(deleteButtons(el).map((b) => b.getAttribute('aria-label'))).toEqual(['Delete Hello by Adele', 'Delete Skyfall by Adele']);
+      expect(deleteItems(fixture, el).map((row) => row.querySelector('button.more')!.getAttribute('aria-label'))).toEqual(['More actions for Hello', 'More actions for Skyfall']);
+      openMenu(fixture, el.querySelector('li.row')!);
+      expect(el.querySelector('[role="menu"]')!.getAttribute('aria-label')).toBe('More actions for Hello');
+      expect(Array.from(el.querySelectorAll('[role="menuitem"]')).find((b) => b.textContent?.trim() === 'Delete')!.classList.contains('danger')).toBe(true);
     });
 
     it('Delete follows the user\'s role without a reload (gone when the administrator is demoted, there when promoted)', () => {
@@ -280,15 +358,16 @@ describe('SongListComponent', () => {
       TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: f.transport }] });
       const fixture = TestBed.createComponent(SongListComponent);
       fixture.componentRef.setInput('songs', [song('1', 'Hello', 'Adele')]);
+      fixture.componentRef.setInput('allowDelete', true);
       fixture.detectChanges();
       const el = fixture.nativeElement as HTMLElement;
-      expect(deleteButtons(el).length).toBe(0);
+      expect(deleteItems(fixture, el).length).toBe(0);
       admin();
       fixture.detectChanges();
-      expect(deleteButtons(el).length).toBe(1);
+      expect(deleteItems(fixture, el).length).toBe(1);
       TestBed.inject(AuthStore).setUser(create(UserSchema, { admin: false }));
       fixture.detectChanges();
-      expect(deleteButtons(el).length).toBe(0);
+      expect(deleteItems(fixture, el).length).toBe(0);
     });
 
     function adminSetup(h: FakeLibrary = {}) {
@@ -297,43 +376,41 @@ describe('SongListComponent', () => {
       admin();
       const fixture = TestBed.createComponent(SongListComponent);
       fixture.componentRef.setInput('songs', [song('1', 'Hello', 'Adele'), song('2', 'Skyfall', 'Adele')]);
+      fixture.componentRef.setInput('allowDelete', true);
       fixture.detectChanges();
       return { fixture, el: fixture.nativeElement as HTMLElement, ...f, toasts: TestBed.inject(ToastService) };
     }
 
-    it('regression: Delete is an icon button like the others, so the administrator\'s row stays on one line on a phone', () => {
+    it('on a TV build the row keeps its inline + and Delete (no menu to steer with a remote)', () => {
       const f = fakeLibrary();
-      TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: f.transport }] });
+      TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: f.transport }, { provide: ENVIRONMENT, useValue: { ...environment, isTv: true } }] });
       admin();
       const fixture = TestBed.createComponent(SongListComponent);
       fixture.componentRef.setInput('songs', [song('1', 'Hello', 'Adele')]);
+      fixture.componentRef.setInput('allowDelete', true);
       fixture.detectChanges();
-      const del = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button.delete')!;
-      expect((del.textContent ?? '').trim()).toBe(''); // an icon, no word that takes the song's room
-      expect(del.querySelector('svg')).not.toBeNull();
-      expect(del.getAttribute('aria-label')).toBe('Delete Hello by Adele');
-      expect(del.getAttribute('title')).toBe('Delete');
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelector('button.more')).toBeNull();
+      expect(el.querySelector('button.menu')?.getAttribute('aria-label')).toBe('Add Hello to a playlist');
+      expect(el.querySelector('button.delete')?.getAttribute('aria-label')).toBe('Delete Hello by Adele');
     });
 
     it('asks first: remove from the list or delete the file too, and nothing is sent until one is chosen', async () => {
       const { fixture, el, calls } = adminSetup();
-      deleteButtons(el)[0].click();
-      fixture.detectChanges();
+      askDelete(fixture, el, 0);
       expect(el.textContent).toContain('Take "Hello" off the list, or delete its file too?');
       expect(calls.remove.length).toBe(0);
     });
 
     it('regression: the question is announced to a screen reader when it opens (it appeared silently)', () => {
       const { fixture, el } = adminSetup();
-      deleteButtons(el)[0].click();
-      fixture.detectChanges();
+      askDelete(fixture, el, 0);
       expect(el.querySelector('.confirm')?.getAttribute('role')).toBe('alert');
     });
 
     it('Cancel closes the question and sends nothing', () => {
       const { fixture, el, calls } = adminSetup();
-      deleteButtons(el)[0].click();
-      fixture.detectChanges();
+      askDelete(fixture, el, 0);
       button(el, 'Cancel')!.click();
       fixture.detectChanges();
       expect(el.textContent).not.toContain('off the list, or delete');
@@ -343,8 +420,7 @@ describe('SongListComponent', () => {
 
     it('Delete file too deletes the file on the server, takes the song off the list, and says so', async () => {
       const { fixture, el, calls, toasts } = adminSetup();
-      deleteButtons(el)[0].click();
-      fixture.detectChanges();
+      askDelete(fixture, el, 0);
       button(el, 'Delete file too')!.click();
       await vi.waitFor(() => expect(calls.remove.map((c) => [c.number, c.keepFile])).toEqual([['1', false]]));
       await fixture.whenStable();
@@ -355,8 +431,7 @@ describe('SongListComponent', () => {
 
     it('Remove from list keeps the file: the request says so, the song leaves the list, and it is said in the toast', async () => {
       const { fixture, el, calls, toasts } = adminSetup();
-      deleteButtons(el)[1].click();
-      fixture.detectChanges();
+      askDelete(fixture, el, 1);
       button(el, 'Remove from list')!.click();
       await vi.waitFor(() => expect(calls.remove.map((c) => [c.number, c.keepFile])).toEqual([['2', true]]));
       await fixture.whenStable();
@@ -371,8 +446,7 @@ describe('SongListComponent', () => {
           throw new ConnectError('song not found', Code.NotFound);
         },
       });
-      deleteButtons(el)[0].click();
-      fixture.detectChanges();
+      askDelete(fixture, el, 0);
       button(el, 'Delete file too')!.click();
       await vi.waitFor(() => expect(el.querySelectorAll('li').length).toBe(1));
       expect(el.querySelector('[role="alert"]')).toBeNull();
@@ -384,8 +458,7 @@ describe('SongListComponent', () => {
           throw new ConnectError('the library folder is read-only', Code.FailedPrecondition);
         },
       });
-      deleteButtons(el)[0].click();
-      fixture.detectChanges();
+      askDelete(fixture, el, 0);
       button(el, 'Delete file too')!.click();
       await vi.waitFor(() => {
         fixture.detectChanges();

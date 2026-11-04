@@ -51,6 +51,16 @@ message Song {
   bool favourite = 8;
   // True when the song is a .karmp3 with a vocals track the player can offer as a guide; false for every other song.
   bool has_vocals = 9;
+  // How the lyrics are timed: by word (or syllable) or by line. UNSPECIFIED until the file has been read, and for a file without lyrics.
+  LyricTiming lyric_timing = 10;
+}
+
+// How the lyrics of a song are timed. For a .karmp3 this is the "Timing by" row of its .nfo (Kantahe Maker 1.2.6 and later), else what the
+// .lrc has; for a MIDI song, whether a line has more than one timed syllable.
+enum LyricTiming {
+  LYRIC_TIMING_UNSPECIFIED = 0;
+  LYRIC_TIMING_LINE = 1;
+  LYRIC_TIMING_WORD = 2;
 }
 
 // One lyric word with its wipe window in milliseconds (plan 3).
@@ -81,6 +91,7 @@ message User {
   string email = 2;
   string display_name = 3;
   bool admin = 4;
+  // Has no effect since 1.2.0: only administrators upload songs.
   bool uploader = 5;
   bool must_change_password = 6;
   bool disabled = 7;

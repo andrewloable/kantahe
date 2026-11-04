@@ -180,3 +180,17 @@ func TestActiveLineNegativeTime(t *testing.T) {
 		t.Fatalf("got %d, want 0 (50 ms lead)", got)
 	}
 }
+
+func TestTimingOf(t *testing.T) {
+	oneWord := Layout([][]Word{{w("A whole line", 1000)}, {w("Another line", 5000)}})
+	if got := TimingOf(oneWord); got != TimingLine {
+		t.Errorf("lines of one word each: %v, want line", got)
+	}
+	withMarks := Layout([][]Word{{w("A whole line", 1000)}, {w("Sing ", 5000), w("along", 5500)}})
+	if got := TimingOf(withMarks); got != TimingWord {
+		t.Errorf("one line with two words: %v, want word", got)
+	}
+	if got := TimingOf(nil); got != TimingNone {
+		t.Errorf("no lines: %v, want none", got)
+	}
+}

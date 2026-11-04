@@ -11,7 +11,7 @@ import { Errors, fieldValue, passwordLengthOk, problem, validEmail, webDeviceNam
   selector: 'app-setup-page',
   imports: [RouterLink],
   template: `
-    <main class="card">
+    <div class="card">
       <h1>Welcome to Kantahe</h1>
       <p>Create the administrator account. You can add other people afterwards.</p>
       <form (submit)="submit($event)" novalidate>
@@ -53,9 +53,9 @@ import { Errors, fieldValue, passwordLengthOk, problem, validEmail, webDeviceNam
             <p><a routerLink="/login">Sign in</a></p>
           }
         }
-        <button type="submit" [disabled]="busy()">Create account</button>
+        <button class="primary" type="submit" [disabled]="busy()">Create account</button>
       </form>
-    </main>
+    </div>
   `,
 })
 export class SetupPage {

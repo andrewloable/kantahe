@@ -35,7 +35,7 @@ export function whereText(state: State | undefined, deviceId: string | undefined
         <p class="meta">
           <span>{{ n.song?.artist }}</span>
           @if (n.song) {
-            <app-format-badge [format]="n.song.format" />
+            <app-format-badge [format]="n.song.format" [timing]="n.song.lyricTiming" [vocals]="n.song.hasVocals" />
           }
           <span class="source">{{ n.source === SongSource.RANDOM ? 'Picked at random' : 'From the queue' }}</span>
         </p>
@@ -49,13 +49,14 @@ export function whereText(state: State | undefined, deviceId: string | undefined
       <p class="where" role="status">{{ where() }}</p>
       <div class="controls">
         @if (playing()) {
-          <button type="button" (click)="send(Action.PAUSE)">Pause</button>
+          <button type="button" [class.primary]="isHere()" (click)="send(Action.PAUSE)">Pause</button>
         } @else {
-          <button type="button" (click)="send(Action.PLAY)">Play</button>
+          <button type="button" [class.primary]="isHere()" (click)="send(Action.PLAY)">Play</button>
         }
         <button type="button" (click)="send(Action.SKIP)">Skip</button>
+        <!-- one primary: taking the song here while another device plays, else Play or Pause -->
         @if (!isHere()) {
-          <button type="button" (click)="send(Action.PLAY_HERE)">Play here</button>
+          <button class="primary" type="button" (click)="send(Action.PLAY_HERE)">Play here</button>
         }
       </div>
       @if (upNext(); as u) {

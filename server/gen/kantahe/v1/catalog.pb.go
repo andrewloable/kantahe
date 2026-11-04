@@ -30,6 +30,11 @@ const (
 	SongSort_SONG_SORT_NUMBER      SongSort = 1
 	SongSort_SONG_SORT_TITLE       SongSort = 2
 	SongSort_SONG_SORT_ARTIST      SongSort = 3
+	SongSort_SONG_SORT_FORMAT      SongSort = 4
+	// By how the lyrics are timed: songs without timed lyrics first, then by line, then by word.
+	SongSort_SONG_SORT_LYRIC_TIMING SongSort = 5
+	// Songs without a vocals track first.
+	SongSort_SONG_SORT_VOCALS SongSort = 6
 )
 
 // Enum value maps for SongSort.
@@ -39,12 +44,18 @@ var (
 		1: "SONG_SORT_NUMBER",
 		2: "SONG_SORT_TITLE",
 		3: "SONG_SORT_ARTIST",
+		4: "SONG_SORT_FORMAT",
+		5: "SONG_SORT_LYRIC_TIMING",
+		6: "SONG_SORT_VOCALS",
 	}
 	SongSort_value = map[string]int32{
-		"SONG_SORT_UNSPECIFIED": 0,
-		"SONG_SORT_NUMBER":      1,
-		"SONG_SORT_TITLE":       2,
-		"SONG_SORT_ARTIST":      3,
+		"SONG_SORT_UNSPECIFIED":  0,
+		"SONG_SORT_NUMBER":       1,
+		"SONG_SORT_TITLE":        2,
+		"SONG_SORT_ARTIST":       3,
+		"SONG_SORT_FORMAT":       4,
+		"SONG_SORT_LYRIC_TIMING": 5,
+		"SONG_SORT_VOCALS":       6,
 	}
 )
 
@@ -127,15 +138,21 @@ func (PlaybackKind) EnumDescriptor() ([]byte, []int) {
 	return file_kantahe_v1_catalog_proto_rawDescGZIP(), []int{1}
 }
 
-// Page size defaults to 50; format and letter are optional filters.
+// Page size defaults to 50; format, letter, has_vocals and lyric_timing are optional filters.
 type SearchSongsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Query         string                 `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
-	Format        Format                 `protobuf:"varint,2,opt,name=format,proto3,enum=kantahe.v1.Format" json:"format,omitempty"`
-	Sort          SongSort               `protobuf:"varint,3,opt,name=sort,proto3,enum=kantahe.v1.SongSort" json:"sort,omitempty"`
-	Letter        string                 `protobuf:"bytes,4,opt,name=letter,proto3" json:"letter,omitempty"`
-	PageToken     string                 `protobuf:"bytes,5,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
-	PageSize      int32                  `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Query     string                 `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	Format    Format                 `protobuf:"varint,2,opt,name=format,proto3,enum=kantahe.v1.Format" json:"format,omitempty"`
+	Sort      SongSort               `protobuf:"varint,3,opt,name=sort,proto3,enum=kantahe.v1.SongSort" json:"sort,omitempty"`
+	Letter    string                 `protobuf:"bytes,4,opt,name=letter,proto3" json:"letter,omitempty"`
+	PageToken string                 `protobuf:"bytes,5,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	PageSize  int32                  `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	// Absent: any song. True: only songs with a vocals track. False: only songs without one.
+	HasVocals *bool `protobuf:"varint,7,opt,name=has_vocals,json=hasVocals,proto3,oneof" json:"has_vocals,omitempty"`
+	// Unspecified: any song. Else only songs whose lyrics are timed by line or by word.
+	LyricTiming LyricTiming `protobuf:"varint,8,opt,name=lyric_timing,json=lyricTiming,proto3,enum=kantahe.v1.LyricTiming" json:"lyric_timing,omitempty"`
+	// Reverses the main sort key; the number stays the tie-breaker, in ascending order. Ignored when the order is by relevance.
+	Descending    bool `protobuf:"varint,9,opt,name=descending,proto3" json:"descending,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -210,6 +227,27 @@ func (x *SearchSongsRequest) GetPageSize() int32 {
 		return x.PageSize
 	}
 	return 0
+}
+
+func (x *SearchSongsRequest) GetHasVocals() bool {
+	if x != nil && x.HasVocals != nil {
+		return *x.HasVocals
+	}
+	return false
+}
+
+func (x *SearchSongsRequest) GetLyricTiming() LyricTiming {
+	if x != nil {
+		return x.LyricTiming
+	}
+	return LyricTiming_LYRIC_TIMING_UNSPECIFIED
+}
+
+func (x *SearchSongsRequest) GetDescending() bool {
+	if x != nil {
+		return x.Descending
+	}
+	return false
 }
 
 // One page; next_page_token is empty on the last page.
@@ -674,7 +712,12 @@ type Playback struct {
 	GainDb *float32 `protobuf:"fixed32,10,opt,name=gain_db,json=gainDb,proto3,oneof" json:"gain_db,omitempty"`
 	// The signed URL of the song's vocals track (the singer's voice alone, same start and length as audio_url, so the two play in step);
 	// it has the same signing and lifetime as audio_url. Empty when the song has none.
-	VocalsUrl     string `protobuf:"bytes,11,opt,name=vocals_url,json=vocalsUrl,proto3" json:"vocals_url,omitempty"`
+	VocalsUrl string `protobuf:"bytes,11,opt,name=vocals_url,json=vocalsUrl,proto3" json:"vocals_url,omitempty"`
+	// A value that changes whenever the file behind audio_url changes (a replaced song file, a render made again). Empty: unknown, a player must not
+	// keep a copy of the file. Players compare it for equality only and never read a meaning into it.
+	AudioVersion string `protobuf:"bytes,12,opt,name=audio_version,json=audioVersion,proto3" json:"audio_version,omitempty"`
+	// The same for the file behind vocals_url; empty when there is no vocals track.
+	VocalsVersion string `protobuf:"bytes,13,opt,name=vocals_version,json=vocalsVersion,proto3" json:"vocals_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -782,6 +825,20 @@ func (x *Playback) GetGainDb() float32 {
 func (x *Playback) GetVocalsUrl() string {
 	if x != nil {
 		return x.VocalsUrl
+	}
+	return ""
+}
+
+func (x *Playback) GetAudioVersion() string {
+	if x != nil {
+		return x.AudioVersion
+	}
+	return ""
+}
+
+func (x *Playback) GetVocalsVersion() string {
+	if x != nil {
+		return x.VocalsVersion
 	}
 	return ""
 }
@@ -934,7 +991,7 @@ var File_kantahe_v1_catalog_proto protoreflect.FileDescriptor
 const file_kantahe_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"\x18kantahe/v1/catalog.proto\x12\n" +
-	"kantahe.v1\x1a\x17kantahe/v1/common.proto\"\xd4\x01\n" +
+	"kantahe.v1\x1a\x17kantahe/v1/common.proto\"\xe3\x02\n" +
 	"\x12SearchSongsRequest\x12\x14\n" +
 	"\x05query\x18\x01 \x01(\tR\x05query\x12*\n" +
 	"\x06format\x18\x02 \x01(\x0e2\x12.kantahe.v1.FormatR\x06format\x12(\n" +
@@ -942,7 +999,14 @@ const file_kantahe_v1_catalog_proto_rawDesc = "" +
 	"\x06letter\x18\x04 \x01(\tR\x06letter\x12\x1d\n" +
 	"\n" +
 	"page_token\x18\x05 \x01(\tR\tpageToken\x12\x1b\n" +
-	"\tpage_size\x18\x06 \x01(\x05R\bpageSize\"e\n" +
+	"\tpage_size\x18\x06 \x01(\x05R\bpageSize\x12\"\n" +
+	"\n" +
+	"has_vocals\x18\a \x01(\bH\x00R\thasVocals\x88\x01\x01\x12:\n" +
+	"\flyric_timing\x18\b \x01(\x0e2\x17.kantahe.v1.LyricTimingR\vlyricTiming\x12\x1e\n" +
+	"\n" +
+	"descending\x18\t \x01(\bR\n" +
+	"descendingB\r\n" +
+	"\v_has_vocals\"e\n" +
 	"\x13SearchSongsResponse\x12&\n" +
 	"\x05songs\x18\x01 \x03(\v2\x10.kantahe.v1.SongR\x05songs\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\";\n" +
@@ -967,7 +1031,7 @@ const file_kantahe_v1_catalog_proto_rawDesc = "" +
 	"\x11GetLyricsResponse\x12*\n" +
 	"\x06lyrics\x18\x01 \x01(\v2\x12.kantahe.v1.LyricsR\x06lyrics\",\n" +
 	"\x12GetPlaybackRequest\x12\x16\n" +
-	"\x06number\x18\x01 \x01(\tR\x06number\"\xb2\x03\n" +
+	"\x06number\x18\x01 \x01(\tR\x06number\"\xfe\x03\n" +
 	"\bPlayback\x12$\n" +
 	"\x04song\x18\x01 \x01(\v2\x10.kantahe.v1.SongR\x04song\x12,\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x18.kantahe.v1.PlaybackKindR\x04kind\x12\x1b\n" +
@@ -981,7 +1045,9 @@ const file_kantahe_v1_catalog_proto_rawDesc = "" +
 	"\again_db\x18\n" +
 	" \x01(\x02H\x00R\x06gainDb\x88\x01\x01\x12\x1d\n" +
 	"\n" +
-	"vocals_url\x18\v \x01(\tR\tvocalsUrlB\n" +
+	"vocals_url\x18\v \x01(\tR\tvocalsUrl\x12#\n" +
+	"\raudio_version\x18\f \x01(\tR\faudioVersion\x12%\n" +
+	"\x0evocals_version\x18\r \x01(\tR\rvocalsVersionB\n" +
 	"\n" +
 	"\b_gain_db\"G\n" +
 	"\x13GetPlaybackResponse\x120\n" +
@@ -990,12 +1056,15 @@ const file_kantahe_v1_catalog_proto_rawDesc = "" +
 	"\x15GetBackgroundResponse\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x18\n" +
 	"\ashuffle\x18\x02 \x01(\bR\ashuffle\x12)\n" +
-	"\x06videos\x18\x03 \x03(\v2\x11.kantahe.v1.VideoR\x06videos*f\n" +
+	"\x06videos\x18\x03 \x03(\v2\x11.kantahe.v1.VideoR\x06videos*\xae\x01\n" +
 	"\bSongSort\x12\x19\n" +
 	"\x15SONG_SORT_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10SONG_SORT_NUMBER\x10\x01\x12\x13\n" +
 	"\x0fSONG_SORT_TITLE\x10\x02\x12\x14\n" +
-	"\x10SONG_SORT_ARTIST\x10\x03*d\n" +
+	"\x10SONG_SORT_ARTIST\x10\x03\x12\x14\n" +
+	"\x10SONG_SORT_FORMAT\x10\x04\x12\x1a\n" +
+	"\x16SONG_SORT_LYRIC_TIMING\x10\x05\x12\x14\n" +
+	"\x10SONG_SORT_VOCALS\x10\x06*d\n" +
 	"\fPlaybackKind\x12\x1d\n" +
 	"\x19PLAYBACK_KIND_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13PLAYBACK_KIND_AUDIO\x10\x01\x12\x1c\n" +
@@ -1043,41 +1112,43 @@ var file_kantahe_v1_catalog_proto_goTypes = []any{
 	(*GetBackgroundRequest)(nil),  // 14: kantahe.v1.GetBackgroundRequest
 	(*GetBackgroundResponse)(nil), // 15: kantahe.v1.GetBackgroundResponse
 	(Format)(0),                   // 16: kantahe.v1.Format
-	(*Song)(nil),                  // 17: kantahe.v1.Song
-	(*Lyrics)(nil),                // 18: kantahe.v1.Lyrics
-	(MidiMode)(0),                 // 19: kantahe.v1.MidiMode
-	(*Video)(nil),                 // 20: kantahe.v1.Video
+	(LyricTiming)(0),              // 17: kantahe.v1.LyricTiming
+	(*Song)(nil),                  // 18: kantahe.v1.Song
+	(*Lyrics)(nil),                // 19: kantahe.v1.Lyrics
+	(MidiMode)(0),                 // 20: kantahe.v1.MidiMode
+	(*Video)(nil),                 // 21: kantahe.v1.Video
 }
 var file_kantahe_v1_catalog_proto_depIdxs = []int32{
 	16, // 0: kantahe.v1.SearchSongsRequest.format:type_name -> kantahe.v1.Format
 	0,  // 1: kantahe.v1.SearchSongsRequest.sort:type_name -> kantahe.v1.SongSort
-	17, // 2: kantahe.v1.SearchSongsResponse.songs:type_name -> kantahe.v1.Song
-	4,  // 3: kantahe.v1.ListArtistsResponse.artists:type_name -> kantahe.v1.Artist
-	17, // 4: kantahe.v1.GetSongResponse.song:type_name -> kantahe.v1.Song
-	18, // 5: kantahe.v1.GetLyricsResponse.lyrics:type_name -> kantahe.v1.Lyrics
-	17, // 6: kantahe.v1.Playback.song:type_name -> kantahe.v1.Song
-	1,  // 7: kantahe.v1.Playback.kind:type_name -> kantahe.v1.PlaybackKind
-	19, // 8: kantahe.v1.Playback.effective_midi_mode:type_name -> kantahe.v1.MidiMode
-	18, // 9: kantahe.v1.Playback.lyrics:type_name -> kantahe.v1.Lyrics
-	12, // 10: kantahe.v1.GetPlaybackResponse.playback:type_name -> kantahe.v1.Playback
-	20, // 11: kantahe.v1.GetBackgroundResponse.videos:type_name -> kantahe.v1.Video
-	2,  // 12: kantahe.v1.CatalogService.SearchSongs:input_type -> kantahe.v1.SearchSongsRequest
-	5,  // 13: kantahe.v1.CatalogService.ListArtists:input_type -> kantahe.v1.ListArtistsRequest
-	7,  // 14: kantahe.v1.CatalogService.GetSong:input_type -> kantahe.v1.GetSongRequest
-	9,  // 15: kantahe.v1.CatalogService.GetLyrics:input_type -> kantahe.v1.GetLyricsRequest
-	11, // 16: kantahe.v1.CatalogService.GetPlayback:input_type -> kantahe.v1.GetPlaybackRequest
-	14, // 17: kantahe.v1.CatalogService.GetBackground:input_type -> kantahe.v1.GetBackgroundRequest
-	3,  // 18: kantahe.v1.CatalogService.SearchSongs:output_type -> kantahe.v1.SearchSongsResponse
-	6,  // 19: kantahe.v1.CatalogService.ListArtists:output_type -> kantahe.v1.ListArtistsResponse
-	8,  // 20: kantahe.v1.CatalogService.GetSong:output_type -> kantahe.v1.GetSongResponse
-	10, // 21: kantahe.v1.CatalogService.GetLyrics:output_type -> kantahe.v1.GetLyricsResponse
-	13, // 22: kantahe.v1.CatalogService.GetPlayback:output_type -> kantahe.v1.GetPlaybackResponse
-	15, // 23: kantahe.v1.CatalogService.GetBackground:output_type -> kantahe.v1.GetBackgroundResponse
-	18, // [18:24] is the sub-list for method output_type
-	12, // [12:18] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	17, // 2: kantahe.v1.SearchSongsRequest.lyric_timing:type_name -> kantahe.v1.LyricTiming
+	18, // 3: kantahe.v1.SearchSongsResponse.songs:type_name -> kantahe.v1.Song
+	4,  // 4: kantahe.v1.ListArtistsResponse.artists:type_name -> kantahe.v1.Artist
+	18, // 5: kantahe.v1.GetSongResponse.song:type_name -> kantahe.v1.Song
+	19, // 6: kantahe.v1.GetLyricsResponse.lyrics:type_name -> kantahe.v1.Lyrics
+	18, // 7: kantahe.v1.Playback.song:type_name -> kantahe.v1.Song
+	1,  // 8: kantahe.v1.Playback.kind:type_name -> kantahe.v1.PlaybackKind
+	20, // 9: kantahe.v1.Playback.effective_midi_mode:type_name -> kantahe.v1.MidiMode
+	19, // 10: kantahe.v1.Playback.lyrics:type_name -> kantahe.v1.Lyrics
+	12, // 11: kantahe.v1.GetPlaybackResponse.playback:type_name -> kantahe.v1.Playback
+	21, // 12: kantahe.v1.GetBackgroundResponse.videos:type_name -> kantahe.v1.Video
+	2,  // 13: kantahe.v1.CatalogService.SearchSongs:input_type -> kantahe.v1.SearchSongsRequest
+	5,  // 14: kantahe.v1.CatalogService.ListArtists:input_type -> kantahe.v1.ListArtistsRequest
+	7,  // 15: kantahe.v1.CatalogService.GetSong:input_type -> kantahe.v1.GetSongRequest
+	9,  // 16: kantahe.v1.CatalogService.GetLyrics:input_type -> kantahe.v1.GetLyricsRequest
+	11, // 17: kantahe.v1.CatalogService.GetPlayback:input_type -> kantahe.v1.GetPlaybackRequest
+	14, // 18: kantahe.v1.CatalogService.GetBackground:input_type -> kantahe.v1.GetBackgroundRequest
+	3,  // 19: kantahe.v1.CatalogService.SearchSongs:output_type -> kantahe.v1.SearchSongsResponse
+	6,  // 20: kantahe.v1.CatalogService.ListArtists:output_type -> kantahe.v1.ListArtistsResponse
+	8,  // 21: kantahe.v1.CatalogService.GetSong:output_type -> kantahe.v1.GetSongResponse
+	10, // 22: kantahe.v1.CatalogService.GetLyrics:output_type -> kantahe.v1.GetLyricsResponse
+	13, // 23: kantahe.v1.CatalogService.GetPlayback:output_type -> kantahe.v1.GetPlaybackResponse
+	15, // 24: kantahe.v1.CatalogService.GetBackground:output_type -> kantahe.v1.GetBackgroundResponse
+	19, // [19:25] is the sub-list for method output_type
+	13, // [13:19] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_kantahe_v1_catalog_proto_init() }
@@ -1086,6 +1157,7 @@ func file_kantahe_v1_catalog_proto_init() {
 		return
 	}
 	file_kantahe_v1_common_proto_init()
+	file_kantahe_v1_catalog_proto_msgTypes[0].OneofWrappers = []any{}
 	file_kantahe_v1_catalog_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

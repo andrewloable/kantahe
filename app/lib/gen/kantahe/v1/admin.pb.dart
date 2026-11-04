@@ -214,6 +214,7 @@ class CreateUserRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(4)
   void clearAdmin() => $_clearField(4);
 
+  /// Has no effect since 1.2.0: only administrators upload songs.
   @$pb.TagNumber(5)
   $core.bool get uploader => $_getBF(4);
   @$pb.TagNumber(5)
@@ -372,6 +373,7 @@ class UpdateUserRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(3)
   void clearAdmin() => $_clearField(3);
 
+  /// Has no effect since 1.2.0: only administrators upload songs.
   @$pb.TagNumber(4)
   $core.bool get uploader => $_getBF(3);
   @$pb.TagNumber(4)
@@ -2704,6 +2706,727 @@ class DeleteVideoResponse extends $pb.GeneratedMessage {
   static DeleteVideoResponse? _defaultInstance;
 }
 
+/// The folder to write the export into, an absolute path on the server's disk.
+class ExportDataRequest extends $pb.GeneratedMessage {
+  factory ExportDataRequest({
+    $core.String? folder,
+  }) {
+    final result = ExportDataRequest._();
+    if (folder != null) result.folder = folder;
+    return result;
+  }
+
+  ExportDataRequest._();
+
+  factory ExportDataRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ExportDataRequest()..mergeFromBuffer(data, registry);
+  factory ExportDataRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ExportDataRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ExportDataRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: ExportDataRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'folder')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ExportDataRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ExportDataRequest copyWith(void Function(ExportDataRequest) updates) =>
+      super.copyWith((message) => updates(message as ExportDataRequest))
+          as ExportDataRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ExportDataRequest() / ExportDataRequest.new instead')
+  static ExportDataRequest create() => ExportDataRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ExportDataRequest._();
+  @$core.override
+  ExportDataRequest createEmptyInstance() => ExportDataRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ExportDataRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ExportDataRequest>(
+          ExportDataRequest.$_createMessage);
+  static ExportDataRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get folder => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set folder($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasFolder() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFolder() => $_clearField(1);
+}
+
+/// Progress of an export; the last message has done = true.
+class ExportDataResponse extends $pb.GeneratedMessage {
+  factory ExportDataResponse({
+    $core.int? filesDone,
+    $core.int? filesTotal,
+    $fixnum.Int64? bytesDone,
+    $fixnum.Int64? bytesTotal,
+    $core.bool? done,
+    $core.Iterable<$core.String>? skippedNumbers,
+    $core.String? folder,
+  }) {
+    final result = ExportDataResponse._();
+    if (filesDone != null) result.filesDone = filesDone;
+    if (filesTotal != null) result.filesTotal = filesTotal;
+    if (bytesDone != null) result.bytesDone = bytesDone;
+    if (bytesTotal != null) result.bytesTotal = bytesTotal;
+    if (done != null) result.done = done;
+    if (skippedNumbers != null) result.skippedNumbers.addAll(skippedNumbers);
+    if (folder != null) result.folder = folder;
+    return result;
+  }
+
+  ExportDataResponse._();
+
+  factory ExportDataResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ExportDataResponse()..mergeFromBuffer(data, registry);
+  factory ExportDataResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ExportDataResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ExportDataResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: ExportDataResponse.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'filesDone')
+    ..aI(2, _omitFieldNames ? '' : 'filesTotal')
+    ..aInt64(3, _omitFieldNames ? '' : 'bytesDone')
+    ..aInt64(4, _omitFieldNames ? '' : 'bytesTotal')
+    ..aOB(5, _omitFieldNames ? '' : 'done')
+    ..pPS(6, _omitFieldNames ? '' : 'skippedNumbers')
+    ..aOS(7, _omitFieldNames ? '' : 'folder')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ExportDataResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ExportDataResponse copyWith(void Function(ExportDataResponse) updates) =>
+      super.copyWith((message) => updates(message as ExportDataResponse))
+          as ExportDataResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ExportDataResponse() / ExportDataResponse.new instead')
+  static ExportDataResponse create() => ExportDataResponse._();
+  static $pb.GeneratedMessage $_createMessage() => ExportDataResponse._();
+  @$core.override
+  ExportDataResponse createEmptyInstance() => ExportDataResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ExportDataResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ExportDataResponse>(
+          ExportDataResponse.$_createMessage);
+  static ExportDataResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get filesDone => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set filesDone($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasFilesDone() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFilesDone() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get filesTotal => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set filesTotal($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFilesTotal() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFilesTotal() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get bytesDone => $_getI64(2);
+  @$pb.TagNumber(3)
+  set bytesDone($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasBytesDone() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearBytesDone() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get bytesTotal => $_getI64(3);
+  @$pb.TagNumber(4)
+  set bytesTotal($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasBytesTotal() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearBytesTotal() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get done => $_getBF(4);
+  @$pb.TagNumber(5)
+  set done($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasDone() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDone() => $_clearField(5);
+
+  /// Only on the last message: the numbers of live songs whose file could not be read; they are not in the export.
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get skippedNumbers => $_getList(5);
+
+  /// Only on the last message: the cleaned absolute folder.
+  @$pb.TagNumber(7)
+  $core.String get folder => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set folder($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasFolder() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearFolder() => $_clearField(7);
+}
+
+/// The export folder to read, an absolute path on the server's disk.
+class InspectExportRequest extends $pb.GeneratedMessage {
+  factory InspectExportRequest({
+    $core.String? folder,
+  }) {
+    final result = InspectExportRequest._();
+    if (folder != null) result.folder = folder;
+    return result;
+  }
+
+  InspectExportRequest._();
+
+  factory InspectExportRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      InspectExportRequest()..mergeFromBuffer(data, registry);
+  factory InspectExportRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      InspectExportRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'InspectExportRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: InspectExportRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'folder')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  InspectExportRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  InspectExportRequest copyWith(void Function(InspectExportRequest) updates) =>
+      super.copyWith((message) => updates(message as InspectExportRequest))
+          as InspectExportRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use InspectExportRequest() / InspectExportRequest.new instead')
+  static InspectExportRequest create() => InspectExportRequest._();
+  static $pb.GeneratedMessage $_createMessage() => InspectExportRequest._();
+  @$core.override
+  InspectExportRequest createEmptyInstance() => InspectExportRequest._();
+  @$core.pragma('dart2js:noInline')
+  static InspectExportRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<InspectExportRequest>(
+          InspectExportRequest.$_createMessage);
+  static InspectExportRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get folder => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set folder($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasFolder() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFolder() => $_clearField(1);
+}
+
+/// What an export folder holds.
+class InspectExportResponse extends $pb.GeneratedMessage {
+  factory InspectExportResponse({
+    $core.String? serverName,
+    $core.String? kantaheVersion,
+    $fixnum.Int64? createdUnix,
+    $core.int? songs,
+    $core.int? users,
+    $core.int? videos,
+    $fixnum.Int64? bytesTotal,
+    $core.bool? importable,
+    $core.String? reason,
+  }) {
+    final result = InspectExportResponse._();
+    if (serverName != null) result.serverName = serverName;
+    if (kantaheVersion != null) result.kantaheVersion = kantaheVersion;
+    if (createdUnix != null) result.createdUnix = createdUnix;
+    if (songs != null) result.songs = songs;
+    if (users != null) result.users = users;
+    if (videos != null) result.videos = videos;
+    if (bytesTotal != null) result.bytesTotal = bytesTotal;
+    if (importable != null) result.importable = importable;
+    if (reason != null) result.reason = reason;
+    return result;
+  }
+
+  InspectExportResponse._();
+
+  factory InspectExportResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      InspectExportResponse()..mergeFromBuffer(data, registry);
+  factory InspectExportResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      InspectExportResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'InspectExportResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: InspectExportResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'serverName')
+    ..aOS(2, _omitFieldNames ? '' : 'kantaheVersion')
+    ..aInt64(3, _omitFieldNames ? '' : 'createdUnix')
+    ..aI(4, _omitFieldNames ? '' : 'songs')
+    ..aI(5, _omitFieldNames ? '' : 'users')
+    ..aI(6, _omitFieldNames ? '' : 'videos')
+    ..aInt64(7, _omitFieldNames ? '' : 'bytesTotal')
+    ..aOB(8, _omitFieldNames ? '' : 'importable')
+    ..aOS(9, _omitFieldNames ? '' : 'reason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  InspectExportResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  InspectExportResponse copyWith(
+          void Function(InspectExportResponse) updates) =>
+      super.copyWith((message) => updates(message as InspectExportResponse))
+          as InspectExportResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use InspectExportResponse() / InspectExportResponse.new instead')
+  static InspectExportResponse create() => InspectExportResponse._();
+  static $pb.GeneratedMessage $_createMessage() => InspectExportResponse._();
+  @$core.override
+  InspectExportResponse createEmptyInstance() => InspectExportResponse._();
+  @$core.pragma('dart2js:noInline')
+  static InspectExportResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<InspectExportResponse>(
+          InspectExportResponse.$_createMessage);
+  static InspectExportResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get serverName => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set serverName($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasServerName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearServerName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get kantaheVersion => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set kantaheVersion($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasKantaheVersion() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearKantaheVersion() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get createdUnix => $_getI64(2);
+  @$pb.TagNumber(3)
+  set createdUnix($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCreatedUnix() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCreatedUnix() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get songs => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set songs($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSongs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSongs() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get users => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set users($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasUsers() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearUsers() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get videos => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set videos($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasVideos() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearVideos() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $fixnum.Int64 get bytesTotal => $_getI64(6);
+  @$pb.TagNumber(7)
+  set bytesTotal($fixnum.Int64 value) => $_setInt64(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasBytesTotal() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearBytesTotal() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get importable => $_getBF(7);
+  @$pb.TagNumber(8)
+  set importable($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasImportable() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearImportable() => $_clearField(8);
+
+  /// Why the folder cannot be imported; set when importable is false.
+  @$pb.TagNumber(9)
+  $core.String get reason => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set reason($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasReason() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearReason() => $_clearField(9);
+}
+
+/// The export folder to import, an absolute path on the server's disk.
+class ImportDataRequest extends $pb.GeneratedMessage {
+  factory ImportDataRequest({
+    $core.String? folder,
+  }) {
+    final result = ImportDataRequest._();
+    if (folder != null) result.folder = folder;
+    return result;
+  }
+
+  ImportDataRequest._();
+
+  factory ImportDataRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ImportDataRequest()..mergeFromBuffer(data, registry);
+  factory ImportDataRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ImportDataRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ImportDataRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: ImportDataRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'folder')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ImportDataRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ImportDataRequest copyWith(void Function(ImportDataRequest) updates) =>
+      super.copyWith((message) => updates(message as ImportDataRequest))
+          as ImportDataRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ImportDataRequest() / ImportDataRequest.new instead')
+  static ImportDataRequest create() => ImportDataRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ImportDataRequest._();
+  @$core.override
+  ImportDataRequest createEmptyInstance() => ImportDataRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ImportDataRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ImportDataRequest>(
+          ImportDataRequest.$_createMessage);
+  static ImportDataRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get folder => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set folder($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasFolder() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFolder() => $_clearField(1);
+}
+
+/// Progress of an import; the last message has done = true.
+class ImportDataResponse extends $pb.GeneratedMessage {
+  factory ImportDataResponse({
+    $core.int? filesDone,
+    $core.int? filesTotal,
+    $fixnum.Int64? bytesDone,
+    $fixnum.Int64? bytesTotal,
+    $core.bool? done,
+    $core.bool? restarting,
+  }) {
+    final result = ImportDataResponse._();
+    if (filesDone != null) result.filesDone = filesDone;
+    if (filesTotal != null) result.filesTotal = filesTotal;
+    if (bytesDone != null) result.bytesDone = bytesDone;
+    if (bytesTotal != null) result.bytesTotal = bytesTotal;
+    if (done != null) result.done = done;
+    if (restarting != null) result.restarting = restarting;
+    return result;
+  }
+
+  ImportDataResponse._();
+
+  factory ImportDataResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ImportDataResponse()..mergeFromBuffer(data, registry);
+  factory ImportDataResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ImportDataResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ImportDataResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: ImportDataResponse.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'filesDone')
+    ..aI(2, _omitFieldNames ? '' : 'filesTotal')
+    ..aInt64(3, _omitFieldNames ? '' : 'bytesDone')
+    ..aInt64(4, _omitFieldNames ? '' : 'bytesTotal')
+    ..aOB(5, _omitFieldNames ? '' : 'done')
+    ..aOB(6, _omitFieldNames ? '' : 'restarting')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ImportDataResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ImportDataResponse copyWith(void Function(ImportDataResponse) updates) =>
+      super.copyWith((message) => updates(message as ImportDataResponse))
+          as ImportDataResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ImportDataResponse() / ImportDataResponse.new instead')
+  static ImportDataResponse create() => ImportDataResponse._();
+  static $pb.GeneratedMessage $_createMessage() => ImportDataResponse._();
+  @$core.override
+  ImportDataResponse createEmptyInstance() => ImportDataResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ImportDataResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ImportDataResponse>(
+          ImportDataResponse.$_createMessage);
+  static ImportDataResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get filesDone => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set filesDone($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasFilesDone() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFilesDone() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get filesTotal => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set filesTotal($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFilesTotal() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFilesTotal() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get bytesDone => $_getI64(2);
+  @$pb.TagNumber(3)
+  set bytesDone($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasBytesDone() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearBytesDone() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get bytesTotal => $_getI64(3);
+  @$pb.TagNumber(4)
+  set bytesTotal($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasBytesTotal() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearBytesTotal() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get done => $_getBF(4);
+  @$pb.TagNumber(5)
+  set done($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasDone() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDone() => $_clearField(5);
+
+  /// Only on the last message: the server restarts now to apply the import.
+  @$pb.TagNumber(6)
+  $core.bool get restarting => $_getBF(5);
+  @$pb.TagNumber(6)
+  set restarting($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasRestarting() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearRestarting() => $_clearField(6);
+}
+
+/// The song whose file is wanted.
+class GetSongDownloadRequest extends $pb.GeneratedMessage {
+  factory GetSongDownloadRequest({
+    $core.String? number,
+  }) {
+    final result = GetSongDownloadRequest._();
+    if (number != null) result.number = number;
+    return result;
+  }
+
+  GetSongDownloadRequest._();
+
+  factory GetSongDownloadRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetSongDownloadRequest()..mergeFromBuffer(data, registry);
+  factory GetSongDownloadRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetSongDownloadRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetSongDownloadRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: GetSongDownloadRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'number')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetSongDownloadRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetSongDownloadRequest copyWith(
+          void Function(GetSongDownloadRequest) updates) =>
+      super.copyWith((message) => updates(message as GetSongDownloadRequest))
+          as GetSongDownloadRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetSongDownloadRequest() / GetSongDownloadRequest.new instead')
+  static GetSongDownloadRequest create() => GetSongDownloadRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetSongDownloadRequest._();
+  @$core.override
+  GetSongDownloadRequest createEmptyInstance() => GetSongDownloadRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetSongDownloadRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetSongDownloadRequest>(
+          GetSongDownloadRequest.$_createMessage);
+  static GetSongDownloadRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get number => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set number($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNumber() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNumber() => $_clearField(1);
+}
+
+/// url is a path with a query, relative to the server address (like the media addresses); file_name is the name the file should be saved as.
+class GetSongDownloadResponse extends $pb.GeneratedMessage {
+  factory GetSongDownloadResponse({
+    $core.String? url,
+    $core.String? fileName,
+    $fixnum.Int64? expiresUnix,
+  }) {
+    final result = GetSongDownloadResponse._();
+    if (url != null) result.url = url;
+    if (fileName != null) result.fileName = fileName;
+    if (expiresUnix != null) result.expiresUnix = expiresUnix;
+    return result;
+  }
+
+  GetSongDownloadResponse._();
+
+  factory GetSongDownloadResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetSongDownloadResponse()..mergeFromBuffer(data, registry);
+  factory GetSongDownloadResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetSongDownloadResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetSongDownloadResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: GetSongDownloadResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'url')
+    ..aOS(2, _omitFieldNames ? '' : 'fileName')
+    ..aInt64(3, _omitFieldNames ? '' : 'expiresUnix')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetSongDownloadResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetSongDownloadResponse copyWith(
+          void Function(GetSongDownloadResponse) updates) =>
+      super.copyWith((message) => updates(message as GetSongDownloadResponse))
+          as GetSongDownloadResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetSongDownloadResponse() / GetSongDownloadResponse.new instead')
+  static GetSongDownloadResponse create() => GetSongDownloadResponse._();
+  static $pb.GeneratedMessage $_createMessage() => GetSongDownloadResponse._();
+  @$core.override
+  GetSongDownloadResponse createEmptyInstance() => GetSongDownloadResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetSongDownloadResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetSongDownloadResponse>(
+          GetSongDownloadResponse.$_createMessage);
+  static GetSongDownloadResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get url => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set url($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUrl() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUrl() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get fileName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set fileName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFileName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFileName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get expiresUnix => $_getI64(2);
+  @$pb.TagNumber(3)
+  set expiresUnix($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasExpiresUnix() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearExpiresUnix() => $_clearField(3);
+}
+
 /// Administration; every RPC requires the admin role (PERMISSION_DENIED otherwise).
 class AdminServiceApi {
   final $pb.RpcClient _client;
@@ -2825,6 +3548,35 @@ class AdminServiceApi {
           $pb.ClientContext? ctx, UpdateServerSettingsRequest request) =>
       _client.invoke<UpdateServerSettingsResponse>(ctx, 'AdminService',
           'UpdateServerSettings', request, UpdateServerSettingsResponse());
+
+  /// Admin only. Writes a copy of the whole server (database, settings, every song file, extracted MP3s, background videos) into a new or
+  /// empty folder on the server's disk. Streams progress; the last message has done = true. INVALID_ARGUMENT for a folder that is not
+  /// allowed; FAILED_PRECONDITION while another export or import runs.
+  $async.Future<ExportDataResponse> exportData(
+          $pb.ClientContext? ctx, ExportDataRequest request) =>
+      _client.invoke<ExportDataResponse>(
+          ctx, 'AdminService', 'ExportData', request, ExportDataResponse());
+
+  /// Admin only. Reads the manifest of an export folder and says whether it can be imported; changes nothing.
+  $async.Future<InspectExportResponse> inspectExport(
+          $pb.ClientContext? ctx, InspectExportRequest request) =>
+      _client.invoke<InspectExportResponse>(ctx, 'AdminService',
+          'InspectExport', request, InspectExportResponse());
+
+  /// Admin only. Checks and stages an export folder; the server then restarts and replaces all of its data with it. Streams progress; the
+  /// last message has done = true. INVALID_ARGUMENT for a folder that cannot be imported; FAILED_PRECONDITION while another export or
+  /// import runs.
+  $async.Future<ImportDataResponse> importData(
+          $pb.ClientContext? ctx, ImportDataRequest request) =>
+      _client.invoke<ImportDataResponse>(
+          ctx, 'AdminService', 'ImportData', request, ImportDataResponse());
+
+  /// Admin only. A signed address (valid for 10 minutes, for the asking administrator) from which the stored file of a song is downloaded as it is: the
+  /// .karmp3 ZIP or the .kar file. NOT_FOUND for a number that is not a live song.
+  $async.Future<GetSongDownloadResponse> getSongDownload(
+          $pb.ClientContext? ctx, GetSongDownloadRequest request) =>
+      _client.invoke<GetSongDownloadResponse>(ctx, 'AdminService',
+          'GetSongDownload', request, GetSongDownloadResponse());
 }
 
 const $core.bool _omitFieldNames =

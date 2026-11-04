@@ -32,11 +32,12 @@ import {
   SetVolumeResponseSchema,
   State,
 } from '../../gen/kantahe/v1/session_pb';
-import { Engine, Engines, MidiOptions } from './engines/engine';
+import { Engine, Engines, MidiOptions, Mp3Options } from './engines/engine';
+import { CacheKind, SongCache } from './cache/song-cache';
 import { MicMeter } from './mic';
 
 export function playbackOf(
-  over: Partial<{ kind: PlaybackKind; ready: boolean; retryAfterMs: number; mode: MidiMode; lyrics: Lyrics; audioUrl: string; song: Song; gainDb: number; vocalsUrl: string }> = {},
+  over: Partial<{ kind: PlaybackKind; ready: boolean; retryAfterMs: number; mode: MidiMode; lyrics: Lyrics; audioUrl: string; song: Song; gainDb: number; vocalsUrl: string; audioVersion: string; vocalsVersion: string }> = {},
 ): Playback {
   return create(PlaybackSchema, {
     kind: over.kind ?? PlaybackKind.MIDI_SYNTH,
@@ -50,6 +51,8 @@ export function playbackOf(
     song: over.song,
     gainDb: over.gainDb,
     vocalsUrl: over.vocalsUrl,
+    audioVersion: over.audioVersion,
+    vocalsVersion: over.vocalsVersion,
   });
 }
 
@@ -178,16 +181,17 @@ export class FakeEngine implements Engine {
 }
 
 export function fakeEngines() {
-  const created: { kind: 'mp3' | 'midi'; options?: MidiOptions; engine: FakeEngine }[] = [];
+  // the options of either kind of engine: MIDI settings, or the shared audio context of an MP3 engine
+  const created: { kind: 'mp3' | 'midi'; options?: Partial<MidiOptions> & Mp3Options; engine: FakeEngine }[] = [];
   const hooks: { configure?: (engine: FakeEngine) => void } = {};
-  const make = (kind: 'mp3' | 'midi', options?: MidiOptions) => {
+  const make = (kind: 'mp3' | 'midi', options?: MidiOptions | Mp3Options) => {
     const engine = new FakeEngine();
     if (kind === 'midi') engine.audioClock = () => engine.clock;
     hooks.configure?.(engine);
     created.push({ kind, options, engine });
     return engine;
   };
-  const engines: Engines = { mp3: () => make('mp3'), midi: (options) => make('midi', options) };
+  const engines: Engines = { mp3: (options) => make('mp3', options), midi: (options) => make('midi', options) };
   return { engines, created, hooks, last: () => created[created.length - 1].engine };
 }
 
@@ -214,4 +218,47 @@ export class FakeMic {
 
 export function asMic(m: FakeMic): MicMeter {
   return m as unknown as MicMeter;
+}
+
+/** A song cache that the test drives: what is "kept" is in `kept`; every call is recorded. */
+export class FakeSongCache {
+  /** "audio/00001@v1" → the object URL that lookup gives. */
+  kept = new Map<string, string>();
+  lookups: string[] = [];
+  stores: { kind: CacheKind; number: string; version: string; url: string }[] = [];
+  released: string[] = [];
+  discarded: string[] = [];
+  pinned: string[][] = [];
+  /** What store answers; a test can make it slow or failing. */
+  storeResult: () => Promise<boolean> = () => Promise.resolve(true);
+  lookup = vi.fn(async (kind: CacheKind, number: string, version: string) => {
+    this.lookups.push(`${kind}/${number}@${version}`);
+    return this.kept.get(`${kind}/${number}@${version}`);
+  });
+  store = vi.fn((kind: CacheKind, number: string, version: string, url: string) => {
+    this.stores.push({ kind, number, version, url });
+    return this.storeResult();
+  });
+  release = vi.fn((url: string) => void this.released.push(url));
+  discard = vi.fn(async (kind: CacheKind, number: string) => void this.discarded.push(`${kind}/${number}`));
+  pin = vi.fn((keys: string[]) => void this.pinned.push([...keys]));
+  available = () => this.supportedNow && this.enabledNow;
+  /** For the settings: whether the browser can keep files, the switch, what is kept, and how often it was cleared. */
+  supportedNow = true;
+  enabledNow = true;
+  statsNow = { count: 0, bytes: 0, capBytes: 2 * 1024 ** 3 };
+  clears = 0;
+  setNativeFreeBytes = vi.fn();
+  supported = () => this.supportedNow;
+  enabled = () => this.enabledNow;
+  setEnabled = vi.fn((on: boolean) => void (this.enabledNow = on));
+  stats = vi.fn(async () => ({ ...this.statsNow }));
+  clear = vi.fn(async () => {
+    this.clears++;
+    this.statsNow = { ...this.statsNow, count: 0, bytes: 0 };
+  });
+}
+
+export function asSongCache(c: FakeSongCache): SongCache {
+  return c as unknown as SongCache;
 }

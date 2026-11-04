@@ -1,5 +1,9 @@
 import { TestBed } from '@angular/core/testing';
+import { create } from '@bufbuild/protobuf';
+import { UserSchema } from '../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from '../core/api';
+import { AuthStore } from '../core/auth.store';
+import { ToastService } from '../core/toast';
 import { FavouritesComponent } from './favourites.component';
 import { fakeMe, song } from './testing';
 
@@ -35,6 +39,29 @@ describe('FavouritesComponent', () => {
     await settle();
     fixture.detectChanges();
     expect(Array.from(el.querySelectorAll('.title')).map((e) => e.textContent)).toEqual(['Bravo', 'Charlie']);
+  });
+
+  it('un-starring offers Undo, which brings the song back to the list', async () => {
+    const { el, fixture, settle } = await setup();
+    const toasts = TestBed.inject(ToastService);
+    el.querySelector<HTMLButtonElement>('li.row button.star')!.click();
+    await settle();
+    fixture.detectChanges();
+    expect(Array.from(el.querySelectorAll('.title')).map((e) => e.textContent)).toEqual(['Bravo', 'Charlie']);
+    toasts.act(toasts.toasts().find((t) => t.action?.label === 'Undo')!.id);
+    await settle();
+    fixture.detectChanges();
+    expect(Array.from(el.querySelectorAll('.title')).map((e) => e.textContent)).toEqual(['Alpha', 'Bravo', 'Charlie']);
+  });
+
+  it('regression: an administrator has no Delete in Favourites (it deleted the song from the whole library)', async () => {
+    const { el, fixture } = await setup();
+    TestBed.inject(AuthStore).setUser(create(UserSchema, { admin: true }));
+    fixture.detectChanges();
+    const row = el.querySelector('li.row')!;
+    row.querySelector<HTMLButtonElement>('button.more')!.click();
+    fixture.detectChanges();
+    expect(Array.from(row.querySelectorAll('[role="menuitem"]')).map((b) => b.textContent?.trim())).not.toContain('Delete');
   });
 
   it('regression: after un-starring, the pages that follow still show the favourites that are left (the server pages by position, which moved)', async () => {

@@ -1,4 +1,5 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { QueueItem, SessionService } from '../../gen/kantahe/v1/session_pb';
 import { injectClient } from '../core/api';
 import { problem } from '../core/errors';
@@ -11,9 +12,9 @@ import { NowPlayingComponent } from './now-playing.component';
 
 @Component({
   selector: 'app-queue-page',
-  imports: [NowPlayingComponent, DevicesComponent, FormatBadgeComponent],
+  imports: [NowPlayingComponent, DevicesComponent, FormatBadgeComponent, RouterLink],
   template: `
-    <main class="queue-page">
+    <div class="queue-page">
       <h1>Queue</h1>
       @if (state(); as s) {
         @if (!store.connected()) {
@@ -24,6 +25,7 @@ import { NowPlayingComponent } from './now-playing.component';
           <h2 id="queue-title">Coming up</h2>
           @if (s.queue.length === 0) {
             <p>The queue is empty. Add songs from the library, or let the next one be picked at random.</p>
+            <p><a class="open-library" routerLink="/library">Open the Library</a></p>
           } @else {
             <ol class="queue">
               @for (item of s.queue; track item.id; let first = $first) {
@@ -33,13 +35,13 @@ import { NowPlayingComponent } from './now-playing.component';
                     <span class="artist">{{ item.song?.artist }}</span>
                   </span>
                   @if (item.song) {
-                    <app-format-badge [format]="item.song.format" />
+                    <app-format-badge [format]="item.song.format" [timing]="item.song.lyricTiming" [vocals]="item.song.hasVocals" />
                   }
                   <span class="row-actions">
                     @if (!first) {
-                      <button type="button" [attr.aria-label]="'Move ' + item.song?.title + ' to the top of the queue'" (click)="moveToTop(item)">Move to top</button>
+                      <button type="button" [attr.aria-label]="'Move to top: ' + item.song?.title" (click)="moveToTop(item)">Move to top</button>
                     }
-                    <button type="button" [attr.aria-label]="'Remove ' + item.song?.title + ' from the queue'" (click)="remove(item)">Remove</button>
+                    <button class="danger" type="button" [attr.aria-label]="'Remove ' + item.song?.title + ' from the queue'" (click)="remove(item)">Remove</button>
                   </span>
                 </li>
               }
@@ -54,9 +56,14 @@ import { NowPlayingComponent } from './now-playing.component';
           <p role="status">Connecting…</p>
         }
       }
-    </main>
+    </div>
   `,
   styles: `
+    .open-library {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.75rem;
+    }
     .queue-page {
       /* a reading column: wider, the title and the buttons of a row are too far apart; left aligned in the frame */
       max-width: 48rem;

@@ -84,7 +84,7 @@ All are in `checks.ts` and tested by name in `checks.spec.ts` on small pages, ea
 | consoleErrors, failedRequests, brokenImages | minor | errors in the console, requests that failed (status 400 and up), an image that did not load |
 | unreachable | blocker | the state could not be set up, so it was not checked; the screenshot shows how far it got |
 
-The **core flows** are sign-in and set-up (`/setup`, `/login`, `/code`), the library, the queue and the player. The window size is told to the
+The **core flows** are sign-in and set-up (`/setup`, `/login`, `/me/approve-tv`), the library, the queue and the player. The window size is told to the
 checks from outside: a phone browser, and Chromium's emulation of one, makes the layout viewport as wide as a page that is too wide, so
 `window.innerWidth` would agree with the page and hide the very problem.
 

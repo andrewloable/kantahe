@@ -5,6 +5,7 @@ import { Engine, mediaUrl } from './engine';
 interface GainLike {
   gain: { value: number };
   connect(node: unknown): unknown;
+  disconnect?(): void;
 }
 export interface AudioContextLike {
   state: string;
@@ -23,6 +24,10 @@ const realContext = (): AudioContextLike | undefined => (typeof AudioContext ===
 /**
  * Plays an audio file (an MP3, or MIDI the server rendered) through an audio element. At 100 percent the element plays on its own; at any
  * other volume the element feeds an audio context with a gain node (a boost needs one; the element's own volume can only lower).
+ *
+ * The two tracks of a song with vocals are given one shared context: both then always go through it (also at 100 percent) and reach the
+ * speakers with the same delay. An element that plays on its own and one that goes through a context are heard at different moments
+ * although their clocks agree (on an Android TV the context added about 0.4 s and more). The shared context belongs to the caller.
  */
 export class Mp3Engine implements Engine {
   private ended?: () => void;
@@ -37,6 +42,7 @@ export class Mp3Engine implements Engine {
     private readonly baseUrl: string,
     private readonly audio: HTMLAudioElement = new Audio(),
     private readonly makeContext: () => AudioContextLike | undefined = realContext,
+    private readonly shared?: AudioContextLike,
   ) {
     audio.addEventListener('ended', () => {
       if (!this.disposed) this.ended?.();
@@ -57,7 +63,7 @@ export class Mp3Engine implements Engine {
       this.audio.addEventListener('error', onError);
       this.audio.preload = 'auto';
       // a context reads the media only when it was asked for with CORS (the server answers it for any origin): set it before the address
-      if (this.factor !== 1) {
+      if (this.factor !== 1 || this.shared) {
         this.audio.crossOrigin = 'anonymous';
         this.corsReady = true;
       }
@@ -78,7 +84,7 @@ export class Mp3Engine implements Engine {
       this.gain.gain.value = this.factor;
       return;
     }
-    if (this.factor === 1) {
+    if (this.factor === 1 && !this.shared) {
       this.audio.volume = 1;
       return;
     }
@@ -87,7 +93,7 @@ export class Mp3Engine implements Engine {
       this.audio.volume = Math.min(1, this.factor);
       return;
     }
-    const ctx = this.makeContext();
+    const ctx = this.shared ?? this.makeContext();
     if (!ctx) {
       this.audio.volume = Math.min(1, this.factor);
       return;
@@ -143,6 +149,7 @@ export class Mp3Engine implements Engine {
     this.audio.pause();
     this.audio.removeAttribute('src');
     this.audio.load(); // lets go of the file that was being fetched
-    void this.ctx?.close();
+    if (this.shared) this.gain?.disconnect?.();
+    else void this.ctx?.close();
   }
 }

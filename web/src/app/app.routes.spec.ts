@@ -51,13 +51,13 @@ describe('routes', () => {
     expect(TestBed.inject(Router).url).toBe('/me/favourites');
   });
 
-  it('the TV approval page needs a sign-in', async () => {
+  it('the TV approval page is a page of Me and needs a sign-in; the address /code that the TV shows leads there', async () => {
     const h = await setup();
     await h.navigateByUrl('/code');
-    expect(TestBed.inject(Router).url).toBe('/login?returnUrl=%2Fcode');
+    expect(TestBed.inject(Router).url).toBe('/login?returnUrl=%2Fme%2Fapprove-tv');
     signIn();
     await h.navigateByUrl('/code');
-    expect(TestBed.inject(Router).url).toBe('/code');
+    expect(TestBed.inject(Router).url).toBe('/me/approve-tv');
   });
 
   it('the admin area is for admins only', async () => {
@@ -67,18 +67,16 @@ describe('routes', () => {
     expect(TestBed.inject(Router).url).toBe('/library');
   });
 
-  it('an uploader who is not an administrator reaches /upload but not the song administration', async () => {
+  it('a user with the old uploader role who is not an administrator reaches neither /upload nor the song administration', async () => {
     const h = await setup();
     signIn(false, true);
-    await h.navigateByUrl('/upload');
-    expect(TestBed.inject(Router).url).toBe('/upload');
-    await h.navigateByUrl('/admin/songs');
-    expect(TestBed.inject(Router).url).toBe('/library');
-    await h.navigateByUrl('/admin/settings');
-    expect(TestBed.inject(Router).url).toBe('/library');
+    for (const path of ['/upload', '/admin/upload', '/admin/songs', '/admin/settings', '/admin/transfer']) {
+      await h.navigateByUrl(path);
+      expect(TestBed.inject(Router).url, path).toBe('/library');
+    }
   });
 
-  it('somebody without the uploader role cannot open /upload', async () => {
+  it('an ordinary user cannot open /upload', async () => {
     const h = await setup();
     signIn(false, false);
     await h.navigateByUrl('/upload');
@@ -93,7 +91,9 @@ describe('routes', () => {
     await h.navigateByUrl('/admin/settings');
     expect(TestBed.inject(Router).url).toBe('/admin/settings');
     await h.navigateByUrl('/upload');
-    expect(TestBed.inject(Router).url).toBe('/upload');
+    expect(TestBed.inject(Router).url, 'the old address of Upload leads to the admin page').toBe('/admin/upload');
+    await h.navigateByUrl('/admin/upload');
+    expect(TestBed.inject(Router).url).toBe('/admin/upload');
   });
 
   it('an admin reaches the admin area', async () => {
@@ -137,8 +137,10 @@ describe('routes', () => {
       expect(await titleAfter(h, '/queue')).toBe('Queue · Kantahe');
       expect(await titleAfter(h, '/me/favourites')).toBe('Favourites · Kantahe');
       expect(await titleAfter(h, '/me/devices')).toBe('Devices · Kantahe');
-      expect(await titleAfter(h, '/code')).toBe('Approve a TV · Kantahe');
-      expect(await titleAfter(h, '/upload')).toBe('Upload songs · Kantahe');
+      expect(await titleAfter(h, '/me/help')).toBe('Help · Kantahe');
+      expect(await titleAfter(h, '/me/appearance')).toBe('Appearance and account · Kantahe');
+      expect(await titleAfter(h, '/me/approve-tv')).toBe('Approve a TV · Kantahe');
+      expect(await titleAfter(h, '/admin/upload')).toBe('Upload songs · Kantahe');
       expect(await titleAfter(h, '/admin/users')).toBe('Users · Kantahe');
       expect(await titleAfter(h, '/admin/songs')).toBe('Songs · Kantahe');
       expect(await titleAfter(h, '/admin/settings')).toBe('Settings · Kantahe');

@@ -6,6 +6,7 @@ import 'package:kantahe/me/me_screen.dart';
 import 'package:kantahe/player/player_screen.dart';
 import 'package:kantahe/core/state_store.dart';
 import 'package:kantahe/queue/queue_screen.dart';
+import 'package:kantahe/shell/app_footer.dart';
 import 'package:kantahe/tv/focus.dart';
 
 /// What the app shows once signed in: Library, Queue and Me behind a navigation bar (a rail at the side on a TV), with Player between Queue and
@@ -127,14 +128,26 @@ class _AppShellState extends State<AppShell> {
                 ),
               ),
               const VerticalDivider(width: 1),
-              Expanded(child: screens),
+              Expanded(
+                child: Column(
+                  children: [
+                    Expanded(child: screens),
+                    const AppFooter(),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
       );
     }
     return Scaffold(
-      body: screens,
+      body: Column(
+        children: [
+          Expanded(child: screens),
+          const AppFooter(),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedDestination,
         onDestinationSelected: _select,

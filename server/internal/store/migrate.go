@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -91,4 +92,42 @@ func applyOne(ctx context.Context, db *sql.DB, fsys fs.FS, m migration) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+// LatestVersion is the highest migration this program knows: a database whose schema_migrations goes beyond it was made by a
+// newer Kantahe.
+func LatestVersion() int {
+	entries, err := fs.ReadDir(migrationFiles, "migrations")
+	if err != nil {
+		return 0
+	}
+	latest := 0
+	for _, e := range entries {
+		if m := migrationName.FindStringSubmatch(e.Name()); m != nil {
+			if v, _ := strconv.Atoi(m[1]); v > latest {
+				latest = v
+			}
+		}
+	}
+	return latest
+}
+
+// SchemaOf lists every table, index, trigger and view of the database with its definition, one entry each, in a fixed order and with
+// the white space of the definitions folded. Two databases made by the same migrations list the same, so a database that came from
+// somewhere else can be compared with a freshly migrated one.
+func SchemaOf(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `SELECT type, name, tbl_name, COALESCE(sql, '') FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var typ, name, table, def string
+		if err := rows.Scan(&typ, &name, &table, &def); err != nil {
+			return nil, err
+		}
+		out = append(out, typ+" "+name+" on "+table+": "+strings.Join(strings.Fields(def), " "))
+	}
+	return out, rows.Err()
 }

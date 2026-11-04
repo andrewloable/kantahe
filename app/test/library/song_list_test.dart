@@ -31,6 +31,17 @@ Future<Rig> open(WidgetTester tester, List<Song> songs, {bool hasMore = false, b
 FakeLibrary fake(Rig r) => r.fake;
 
 void main() {
+  testWidgets('shows W or L and V beside the format badge of a row', (tester) async {
+    await open(tester, [
+      song('00001', 'Yesterday', 'The Band', lyricTiming: LyricTiming.LYRIC_TIMING_WORD, hasVocals: true),
+      song('00002', 'Tomorrow', 'Other', format: Format.FORMAT_MIDI, lyricTiming: LyricTiming.LYRIC_TIMING_LINE),
+      song('00003', 'Third', 'Z'),
+    ]);
+    expect(find.text('W'), findsOneWidget);
+    expect(find.text('L'), findsOneWidget);
+    expect(find.text('V'), findsOneWidget);
+  });
+
   testWidgets('shows number, title, artist and a badge on every row', (tester) async {
     await open(tester, [song('00001', 'Yesterday', 'The Band'), song('00002', 'Tomorrow', 'Other', format: Format.FORMAT_MIDI)]);
     expect(find.text('00001'), findsOneWidget);

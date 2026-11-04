@@ -7,11 +7,14 @@ import { UserLibraryService } from '../../gen/kantahe/v1/user_library_pb';
 import { injectClient } from '../core/api';
 import { problem } from '../core/errors';
 import { ToastService } from '../core/toast';
+import { BadgeLegendComponent } from '../library/badge-legend.component';
 import { FormatBadgeComponent } from '../library/format-badge.component';
+import { LibraryActions } from '../library/library-actions';
+import { ActionMenuComponent, MenuItem } from '../shared/action-menu.component';
 
 @Component({
   selector: 'app-playlist-detail',
-  imports: [RouterLink, FormatBadgeComponent],
+  imports: [RouterLink, FormatBadgeComponent, ActionMenuComponent, BadgeLegendComponent],
   template: `
     <p><a class="back" routerLink="/me/playlists">← All playlists</a></p>
     @if (missing()) {
@@ -19,7 +22,7 @@ import { FormatBadgeComponent } from '../library/format-badge.component';
     } @else if (id()) {
       <h2>{{ name() }}</h2>
       <p>
-        <button type="button" (click)="addAll()" [disabled]="songs().length === 0 || saving()">Add all to queue</button>
+        <button class="primary" type="button" (click)="addAll()" [disabled]="songs().length === 0 || saving()">Add all to queue</button>
       </p>
       @if (loaded() && songs().length === 0) {
         <p>This playlist is empty. Add songs from the library.</p>
@@ -31,19 +34,21 @@ import { FormatBadgeComponent } from '../library/format-badge.component';
               <span class="title">{{ s.title }}</span>
               <span class="artist">{{ s.artist }}</span>
             </span>
-            <app-format-badge [format]="s.format" />
+            <app-format-badge [format]="s.format" [timing]="s.lyricTiming" [vocals]="s.hasVocals" />
             <span class="row-actions">
               @if (!first) {
-                <button type="button" [disabled]="saving()" [attr.aria-label]="'Move ' + s.title + ' up'" (click)="move(i, -1)">Move up</button>
+                <button type="button" [disabled]="saving()" [attr.aria-label]="'Move up: ' + s.title" (click)="move(i, -1)">Move up</button>
               }
               @if (!last) {
-                <button type="button" [disabled]="saving()" [attr.aria-label]="'Move ' + s.title + ' down'" (click)="move(i, 1)">Move down</button>
+                <button type="button" [disabled]="saving()" [attr.aria-label]="'Move down: ' + s.title" (click)="move(i, 1)">Move down</button>
               }
-              <button type="button" [disabled]="saving()" [attr.aria-label]="'Remove ' + s.title + ' from the playlist'" (click)="removeAt(i)">Remove</button>
+              <button class="danger" type="button" [disabled]="saving()" [attr.aria-label]="'Remove ' + s.title + ' from the playlist'" (click)="removeAt(i)">Remove</button>
+              <app-action-menu [label]="'More actions for ' + s.title" [items]="menuFor(s)" />
             </span>
           </li>
         }
       </ol>
+      <app-badge-legend />
     }
   `,
   styles: `
@@ -106,6 +111,15 @@ import { FormatBadgeComponent } from '../library/format-badge.component';
   `,
 })
 export class PlaylistDetailComponent {
+  private readonly actions = inject(LibraryActions);
+  private readonly menus = new WeakMap<Song, MenuItem[]>();
+
+  /** The More menu of a song: the same array for the same song, so that the menu is not rebuilt on every check. */
+  protected menuFor(s: Song): MenuItem[] {
+    let items = this.menus.get(s);
+    if (!items) this.menus.set(s, (items = [{ label: 'Play next', run: () => void this.actions.playNext(s) }]));
+    return items;
+  }
   private readonly user = injectClient(UserLibraryService);
   private readonly session = injectClient(SessionService);
   private readonly toast = inject(ToastService);

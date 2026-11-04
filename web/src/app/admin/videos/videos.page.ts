@@ -52,7 +52,7 @@ interface UploadRow {
               }
               <span class="text">{{ r.text }}</span>
               @if (r.state === 'waiting' || r.state === 'sending') {
-                <button type="button" [attr.aria-label]="'Cancel the upload of ' + r.name" (click)="cancel(r)">Cancel</button>
+                <button class="quiet" type="button" [attr.aria-label]="'Cancel the upload of ' + r.name" (click)="cancel(r)">Cancel</button>
               }
             </li>
           }
@@ -76,7 +76,7 @@ interface UploadRow {
               <span class="pos" aria-hidden="true">{{ i + 1 }}.</span>
               <div class="preview">
                 <video #pv appSilent class="thumb" playsinline preload="metadata" width="160" [src]="v.url + '#t=0.1'" (ended)="previewing.set(undefined)"></video>
-                <button type="button" [attr.aria-label]="(previewing() === v.id ? 'Stop the preview of ' : 'Play the preview of ') + v.name" (click)="preview(pv, v.id)">
+                <button type="button" [attr.aria-label]="(previewing() === v.id ? 'Stop the preview of ' : 'Preview: ') + v.name" (click)="preview(pv, v.id)">
                   {{ previewing() === v.id ? 'Stop' : 'Preview' }}
                 </button>
               </div>
@@ -94,8 +94,8 @@ interface UploadRow {
                       (keydown.enter)="saveName(v)"
                       (keydown.escape)="stopRename(v)"
                     />
-                    <button type="button" [attr.aria-label]="'Save the name of ' + v.name" (click)="saveName(v)">Save</button>
-                    <button type="button" [attr.aria-label]="'Cancel renaming ' + v.name" (click)="stopRename(v)">Cancel</button>
+                    <button class="primary" type="button" [attr.aria-label]="'Save the name of ' + v.name" (click)="saveName(v)">Save</button>
+                    <button class="quiet" type="button" [attr.aria-label]="'Cancel renaming ' + v.name" (click)="stopRename(v)">Cancel</button>
                   </span>
                   @if (nameError()) {
                     <p class="error" role="alert">{{ nameError() }}</p>
@@ -115,19 +115,19 @@ interface UploadRow {
                 }
                 <span class="actions">
                   <label class="check">
-                    <input type="checkbox" [checked]="v.enabled" [attr.aria-label]="'Play ' + v.name + ' in the loop'" (change)="setEnabled(v, $event)" />
+                    <input type="checkbox" [checked]="v.enabled" [attr.aria-label]="'Play this video: ' + v.name" (change)="setEnabled(v, $event)" />
                     Play this video
                   </label>
-                  <button type="button" [attr.aria-label]="'Move ' + v.name + ' up'" [attr.data-focus]="'up-' + v.id" [disabled]="first || busy()" (click)="move(i, -1)">Move up</button>
-                  <button type="button" [attr.aria-label]="'Move ' + v.name + ' down'" [attr.data-focus]="'down-' + v.id" [disabled]="last || busy()" (click)="move(i, 1)">Move down</button>
+                  <button type="button" [attr.aria-label]="'Move up: ' + v.name" [attr.data-focus]="'up-' + v.id" [disabled]="first || busy()" (click)="move(i, -1)">Move up</button>
+                  <button type="button" [attr.aria-label]="'Move down: ' + v.name" [attr.data-focus]="'down-' + v.id" [disabled]="last || busy()" (click)="move(i, 1)">Move down</button>
                   @if (confirming() === v.id) {
                     <span class="confirm" role="alert">
                       <span>Delete "{{ v.name }}" and its file? Players stop showing it.</span>
-                      <button type="button" [attr.aria-label]="'Delete ' + v.name + ' for good'" (click)="remove(v)">Delete</button>
-                      <button type="button" [attr.aria-label]="'Keep ' + v.name" [attr.data-focus]="'keep-' + v.id" (click)="keep(v)">Cancel</button>
+                      <button class="danger primary" type="button" [attr.aria-label]="'Delete ' + v.name + ' for good'" (click)="remove(v)">Delete</button>
+                      <button class="quiet" type="button" [attr.aria-label]="'Cancel: keep ' + v.name" [attr.data-focus]="'keep-' + v.id" (click)="keep(v)">Cancel</button>
                     </span>
                   } @else {
-                    <button type="button" [attr.aria-label]="'Delete ' + v.name" [attr.data-focus]="'delete-' + v.id" (click)="ask(v)">Delete</button>
+                    <button class="danger" type="button" [attr.aria-label]="'Delete ' + v.name" [attr.data-focus]="'delete-' + v.id" (click)="ask(v)">Delete</button>
                   }
                 </span>
               </div>

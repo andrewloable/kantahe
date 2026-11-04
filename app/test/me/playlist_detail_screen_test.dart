@@ -9,7 +9,7 @@ import 'package:kantahe/me/playlist_detail_screen.dart';
 
 import 'fakes.dart';
 
-final a = song('1', 'Alpha', 'X');
+final a = song('1', 'Alpha', 'X', lyricTiming: LyricTiming.LYRIC_TIMING_WORD, hasVocals: true);
 final b = song('2', 'Beta', 'Y');
 final c = song('3', 'Gamma', 'Z');
 
@@ -43,6 +43,8 @@ void main() {
     expect(find.text('Party'), findsWidgets);
     final ys = ['Alpha', 'Beta', 'Gamma'].map((t) => tester.getTopLeft(find.text(t)).dy).toList();
     expect(ys, orderedEquals([...ys]..sort()));
+    expect(find.text('W'), findsOneWidget);
+    expect(find.text('V'), findsOneWidget);
   });
 
   testWidgets('Move down sends the whole new order and shows what the server answered', (tester) async {

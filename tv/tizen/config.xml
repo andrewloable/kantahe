@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Kantahe for Samsung TV (Tizen web app). Packaged by scripts/build-tizen.sh, see docs/tv-samsung.md. -->
-<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://github.com/andrewloable/kantahe" version="1.1.0" viewmodes="maximized">
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://github.com/andrewloable/kantahe" version="1.2.0" viewmodes="maximized">
   <!-- package: ten letters and digits; the application id is the package, a dot and the name -->
   <tizen:application id="KantaheApp.Kantahe" package="KantaheApp" required_version="5.0"/>
   <content src="index.html"/>

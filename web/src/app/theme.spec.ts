@@ -24,6 +24,7 @@ const PAIRS: [string, string, number][] = [
   ['on-accent', 'accent', 4.5],
   ['danger', 'paper', 4.5],
   ['danger', 'panel', 4.5],
+  ['on-danger', 'danger', 4.5],
   ['sung', 'paper', 3],
   ['sung', 'panel', 3],
 ];
@@ -32,6 +33,30 @@ describe('toggle buttons', () => {
   it('are outlined while off and filled with the accent while on', () => {
     expect(css).toMatch(/button\.toggle\s*\{[^}]*background:\s*transparent[^}]*border:\s*2px solid var\(--accent\)/);
     expect(css).toMatch(/button\.toggle\[aria-pressed='true'\]\s*\{[^}]*background:\s*var\(--accent\)[^}]*color:\s*var\(--on-accent\)/);
+  });
+});
+
+describe('button styles (kantahe-tlf.3.1)', () => {
+  const rule = (selector: string) => css.match(new RegExp(`(?:^|\\n)${selector.replace(/[.[\]()]/g, '\\$&')}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+  it('a plain button is the secondary style: outlined in the accent, 44 px high', () => {
+    expect(rule('button')).toMatch(/min-height:\s*2\.75rem/);
+    expect(rule('button')).toMatch(/background:\s*transparent/);
+    expect(rule('button')).toMatch(/border:\s*2px solid var\(--accent\)/);
+    expect(rule('button')).toMatch(/color:\s*var\(--accent\)/);
+  });
+  it('primary is filled with the accent', () => {
+    expect(rule('button.primary')).toMatch(/background:\s*var\(--accent\)/);
+    expect(rule('button.primary')).toMatch(/color:\s*var\(--on-accent\)/);
+  });
+  it('danger is outlined in the danger colour; danger primary (the Yes of a deletion) is filled with it', () => {
+    expect(rule('button.danger')).toMatch(/border-color:\s*var\(--danger\)/);
+    expect(rule('button.danger')).toMatch(/color:\s*var\(--danger\)/);
+    expect(rule('button.danger.primary')).toMatch(/background:\s*var\(--danger\)/);
+    expect(rule('button.danger.primary')).toMatch(/color:\s*var\(--on-danger\)/);
+  });
+  it('quiet has no border and accent text', () => {
+    expect(rule('button.quiet')).toMatch(/border-color:\s*transparent/);
+    expect(rule('button.quiet')).toMatch(/color:\s*var\(--accent\)/);
   });
 });
 

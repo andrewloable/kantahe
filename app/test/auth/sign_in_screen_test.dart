@@ -61,6 +61,13 @@ void main() {
     expect(h.logins.single.deviceName, 'Kitchen phone');
   });
 
+  testWidgets('the sign-in screen ends with the copyright', (tester) async {
+    final h = Harness();
+    await h.pump(tester, SignInScreen(deviceName: pixel));
+    await tester.pumpAndSettle();
+    expect(shows('© 2020 Andrew Loable · Kantahe'), isTrue);
+  });
+
   testWidgets('wrong password: the text, and the password field is emptied', (tester) async {
     final h = Harness();
     h.loginHandler = (_) => throw ConnectException(Code.unauthenticated, 'bad credentials');

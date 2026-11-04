@@ -83,8 +83,8 @@ test('background videos: uploaded by the administrator, ordered, shown on a play
     // A carries a sound track: the page says so, as a plain note, and nothing offers to play it
     await expect(first.locator('.sound')).toHaveText('has a sound track (never played)');
     await expect(a.locator('li.video').nth(1).locator('.sound')).toHaveCount(0);
-    await expect(a.getByRole('button', { name: 'Move a up' })).toBeDisabled();
-    await expect(a.getByRole('button', { name: 'Move a down' })).toBeEnabled();
+    await expect(a.getByRole('button', { name: 'Move up: a' })).toBeDisabled();
+    await expect(a.getByRole('button', { name: 'Move down: a' })).toBeEnabled();
     await expectSilent(a.locator('li.video video')); // the previews are silent too
   });
 
@@ -95,7 +95,7 @@ test('background videos: uploaded by the administrator, ordered, shown on a play
   });
 
   await test.step('the order is changed so that b is first, and it is still so after a reload', async () => {
-    await a.getByRole('button', { name: 'Move b up' }).click();
+    await a.getByRole('button', { name: 'Move up: b' }).click();
     await expect(names()).toHaveText(['b', 'a']);
     await a.reload();
     await expect(names()).toHaveText(['b', 'a']);
@@ -134,8 +134,8 @@ test('background videos: uploaded by the administrator, ordered, shown on a play
   });
 
   await test.step('with one video switched off the loop has only the other', async () => {
-    await a.getByLabel('Play a in the loop').uncheck();
-    await expect(a.getByLabel('Play a in the loop')).not.toBeChecked();
+    await a.getByLabel('Play this video: a').uncheck();
+    await expect(a.getByLabel('Play this video: a')).not.toBeChecked();
     await p.reload();
     await expect(stageVideos).toHaveCount(2);
     await expect.poll(async () => (await addresses(p)).length).toBe(1);
@@ -146,8 +146,8 @@ test('background videos: uploaded by the administrator, ordered, shown on a play
   });
 
   await test.step('with both switched off there is no video element at all', async () => {
-    await a.getByLabel('Play b in the loop').uncheck();
-    await expect(a.getByLabel('Play b in the loop')).not.toBeChecked();
+    await a.getByLabel('Play this video: b').uncheck();
+    await expect(a.getByLabel('Play this video: b')).not.toBeChecked();
     await p.reload();
     await expect(p.locator('.stage')).toBeVisible();
     await p.waitForTimeout(1500); // the list has been asked for and answered
@@ -156,9 +156,9 @@ test('background videos: uploaded by the administrator, ordered, shown on a play
   });
 
   await test.step('switched on again, and then "Background video: Off" for this device: no request for the list is made', async () => {
-    await a.getByLabel('Play a in the loop').check();
-    await a.getByLabel('Play b in the loop').check();
-    await expect(a.getByLabel('Play b in the loop')).toBeChecked();
+    await a.getByLabel('Play this video: a').check();
+    await a.getByLabel('Play this video: b').check();
+    await expect(a.getByLabel('Play this video: b')).toBeChecked();
     await p.goto('/me/devices');
     const row = p.locator('li.device', { hasText: 'Player device' });
     await row.getByLabel('Background video of Player device').selectOption('Off');

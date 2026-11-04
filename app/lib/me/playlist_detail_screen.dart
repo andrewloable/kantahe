@@ -142,7 +142,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                             ],
                           ),
                         ),
-                        FormatBadge(s.format),
+                        FormatBadge(s.format, timing: s.lyricTiming, vocals: s.hasVocals),
                         if (i > 0)
                           IconButton(tooltip: 'Move ${s.title} up', icon: const Icon(Icons.arrow_upward), onPressed: _saving ? null : () => _move(i, -1)),
                         if (i < _songs.length - 1)

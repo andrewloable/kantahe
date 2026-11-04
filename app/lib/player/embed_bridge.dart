@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:kantahe/core/auth_store.dart';
@@ -28,6 +29,10 @@ String buildSetVocalsScript(bool on, int pct) {
 /// JavaScript that tells the page how tall the app's own buttons are, in pixels (the page keeps that much room free at the bottom): one call
 /// to window.kantahe.setControlsHeight. The only value in it is a whole number between 0 and 600.
 String buildSetControlsHeightScript(int px) => 'window.kantahe && window.kantahe.setControlsHeight && window.kantahe.setControlsHeight(${px.clamp(0, 600)});';
+
+/// JavaScript that tells the page how many bytes are free on the device: one call to window.kantahe.setFreeDisk. The only value in it is a whole
+/// number from 0 up to the largest one JavaScript can count exactly.
+String buildSetFreeDiskScript(int bytes) => 'window.kantahe && window.kantahe.setFreeDisk && window.kantahe.setFreeDisk(${bytes.clamp(0, 9007199254740991)});';
 
 /// What the page says about the guide vocals: `KantaheVocals:state:pct` with the state off, loading, on or failed (pct from 0 to 100).
 class VocalsReport {
@@ -84,7 +89,7 @@ abstract interface class EmbedHost {
 /// announces itself again and is given the token again; a failed load never announces itself. The channel is
 /// open to whatever page the WebView shows, so the token goes only to a page that is on the server's own origin.
 class EmbedBridge {
-  EmbedBridge({required this.auth, required this.serverUrl, this.host, this.onVocals});
+  EmbedBridge({required this.auth, required this.serverUrl, this.host, this.onVocals, this.readFreeDisk, this.freeDiskEvery = const Duration(seconds: 60)});
 
   final AuthStore auth;
   final ServerUrl serverUrl;
@@ -99,6 +104,31 @@ class EmbedBridge {
   /// How tall the app's buttons are; a page that starts again is given it after the token. The page can only be told once it is ready.
   int? controlsHeight;
   bool _pageReady = false;
+
+  /// Reads the free space of the device in bytes (null when it cannot tell). The page keeps songs on the device (the song cache) and must leave
+  /// room for the other apps: it is told this number when it is ready and again every [freeDiskEvery] while the bridge lives.
+  final Future<int?> Function()? readFreeDisk;
+  final Duration freeDiskEvery;
+  Timer? _freeDiskTimer;
+
+  /// Reads the free space and tells the page; nothing is sent before the page is ready, when the reader fails or does not know.
+  Future<void> refreshFreeDisk() async {
+    final read = readFreeDisk;
+    if (read == null || !_pageReady) return;
+    final int? bytes;
+    try {
+      bytes = await read();
+    } catch (_) {
+      return; // the page then goes by the browser's own estimate
+    }
+    if (bytes != null) await host?.runJavaScript(buildSetFreeDiskScript(bytes));
+  }
+
+  /// Stops the refreshing; the screen calls it when it goes away.
+  void dispose() {
+    _freeDiskTimer?.cancel();
+    _freeDiskTimer = null;
+  }
 
   Future<void> setControlsHeight(int px) async {
     if (px == controlsHeight) return;
@@ -133,5 +163,9 @@ class EmbedBridge {
     _pageReady = true;
     final height = controlsHeight;
     if (height != null) await host.runJavaScript(buildSetControlsHeightScript(height));
+    if (readFreeDisk != null) {
+      await refreshFreeDisk();
+      _freeDiskTimer ??= Timer.periodic(freeDiskEvery, (_) => unawaited(refreshFreeDisk()));
+    }
   }
 }

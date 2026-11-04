@@ -1,6 +1,7 @@
 .frame {
-  /* the one column of the web app: brand, menu, now bar and every page share its left edge */
-  max-width: 60rem;
+  /* the one column of the web app: brand, menu, now bar and every page share its left edge; wide enough for the admin tables on a
+     desktop, while lists, forms and text keep their own narrower reading column (48rem, 70ch) */
+  max-width: 75rem;
   margin: 0 auto;
 }
 
@@ -46,6 +47,11 @@
   left: 0;
 }
 
+/* the skip link's target takes the focus so that Tab goes on from there; it is not a control, so no ring */
+main#main:focus {
+  outline: none;
+}
+
 .theme {
   width: auto;
   min-width: 0;
@@ -59,11 +65,13 @@
   font: inherit;
 }
 
+/* the main menu: a row of tabs under the top bar; the first tab's box starts at the brand's left edge */
 nav {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  padding: 0 1rem;
+  /* 8 px from the controls of the top bar */
+  padding: 0.5rem 1rem 0.25rem;
   border-bottom: 1px solid var(--line);
 }
 
@@ -71,15 +79,95 @@ nav a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.375rem;
   flex: none;
   min-height: 2.75rem;
   min-width: 2.75rem;
-  padding: 0 0.5rem;
+  padding: 0 0.75rem;
+  border-radius: 0.5rem;
+  color: var(--text);
+  text-decoration: none;
 }
 
+nav svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* only for a pointer that hovers: a touch screen keeps :hover on the tapped tab */
+@media (hover: hover) {
+  nav a:hover {
+    text-decoration: underline;
+  }
+}
+
+/* the offer to install the app: in the page flow under the top bar, never over the content */
+.install {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin: 0.5rem 1rem 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+
+.install .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* the page that is open: a filled tab */
 nav a.active {
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 700;
-  color: var(--sung);
+}
+
+/* A phone: the menu is a tab bar at the bottom, in reach of the thumb, above the home indicator; the page keeps clear of it */
+@media (max-width: 40rem) {
+  /* signed in, the theme and Sign out are under Me > Appearance and account: the top keeps the brand; before signing in the theme stays */
+  .tools.signed-in {
+    display: none;
+  }
+
+  .frame {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+
+  nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    flex-wrap: nowrap;
+    padding: 0.25rem 0.5rem calc(0.25rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    border-bottom: 0;
+    background: var(--panel);
+  }
+
+  nav a {
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-height: 3rem;
+    min-width: 0;
+    padding: 0.25rem 0;
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
 }
 
 .signout {
@@ -92,4 +180,13 @@ nav a.active {
   font: inherit;
   font-weight: 400;
   cursor: pointer;
+}
+
+/* the footer: the copyright and the version of the server, small, on every page of the frame (kantahe-30z); text only, nothing to focus */
+.legal {
+  padding: 1rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  text-align: center;
 }

@@ -9,7 +9,7 @@ const CODE_LENGTH = 6;
 @Component({
   selector: 'app-approve-code-page',
   template: `
-    <main class="card">
+    <div class="card">
       <h1>Approve a TV</h1>
       <p>Enter the code shown on the TV to sign it in with your account.</p>
       <form (submit)="submit($event)" novalidate>
@@ -25,9 +25,9 @@ const CODE_LENGTH = 6;
         @if (approved()) {
           <p role="status">Signed in {{ approved() }}</p>
         }
-        <button type="submit" [disabled]="busy() || !complete()">Approve</button>
+        <button class="primary" type="submit" [disabled]="busy() || !complete()">Approve</button>
       </form>
-    </main>
+    </div>
   `,
 })
 export class ApproveCodePage {

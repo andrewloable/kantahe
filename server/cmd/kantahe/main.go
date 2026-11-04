@@ -10,6 +10,8 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/andrewloable/kantahe/server/internal/discovery"
 	"github.com/andrewloable/kantahe/server/internal/library"
 	"github.com/andrewloable/kantahe/server/internal/store"
+	"github.com/andrewloable/kantahe/server/internal/transfer"
 	"github.com/andrewloable/kantahe/server/internal/users"
 	"github.com/andrewloable/kantahe/server/internal/webui"
 )
@@ -34,7 +37,8 @@ func run(args []string, stdout io.Writer) int {
 	return runContext(ctx, args, stdout)
 }
 
-// runContext is the server until ctx is cancelled (a console run cancels it on a signal, a Windows service on Stop).
+// runContext is the server until ctx is cancelled (a console run cancels it on a signal, a Windows service on Stop). An import that
+// an administrator has staged makes the server stop and start again in this same process, which applies it while no database is open.
 func runContext(ctx context.Context, args []string, stdout io.Writer) int {
 	for _, a := range args {
 		if a == "--version" || a == "-version" {
@@ -56,16 +60,54 @@ func runContext(ctx context.Context, args []string, stdout io.Writer) int {
 		return 1
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	for {
+		code, restart := runOnce(ctx, cfg, logger)
+		if !restart || ctx.Err() != nil {
+			return code
+		}
+		logger.Info("restarting to apply an import")
+	}
+}
+
+// applyStagedImport applies the import that is waiting in the data folder, if there is one. When that fails and the database is still in
+// place, the server starts with its current data and the staged import is kept aside as import-failed-<time>; when it fails after the old
+// database was moved away, nothing is started, so that the next start finishes the job.
+func applyStagedImport(dataDir string, logger *slog.Logger) bool {
+	err := transfer.ApplyPending(dataDir, time.Now, logger)
+	if err == nil {
+		return true
+	}
+	if _, serr := os.Stat(filepath.Join(dataDir, "kantahe.db")); serr != nil {
+		logger.Error("the staged import could not be applied and the database is not in place; fix the cause and start again", "err", err)
+		return false
+	}
+	aside := filepath.Join(dataDir, "import-failed-"+time.Now().UTC().Format("20060102-150405"))
+	logger.Error("the staged import could not be applied; starting with the current data", "err", err, "kept", aside)
+	if rerr := os.Rename(filepath.Join(dataDir, "import-pending"), aside); rerr != nil {
+		logger.Error("the staged import could not be set aside", "err", rerr)
+	}
+	return true
+}
+
+// runOnce is one run of the server: it returns when ctx is cancelled (restart false) or when an import asked for a restart (restart true).
+// Everything it opened is closed before it returns, the database file included.
+func runOnce(parent context.Context, cfg config.Config, logger *slog.Logger) (code int, restart bool) {
+	if !applyStagedImport(cfg.DataDir, logger) {
+		return 1, false
+	}
+	ctx, cancel := context.WithCancel(parent)
+	defer cancel()
+	var restartAsked atomic.Bool
 	db, err := store.Open(ctx, cfg.DataDir)
 	if err != nil {
 		logger.Error("cannot open the database", "err", err)
-		return 1
+		return 1, false
 	}
 	defer db.Close()
 	soundFont, err := assets.SoundFontPath(cfg.SoundFont, cfg.DataDir)
 	if err != nil {
 		logger.Error("cannot prepare the default SoundFont", "err", err)
-		return 1
+		return 1, false
 	}
 	warnNoSoundFont(logger, soundFont)
 	warnSetupOpen(ctx, logger, db)
@@ -73,10 +115,11 @@ func runContext(ctx context.Context, args []string, stdout io.Writer) int {
 	srv := app.New(cfg, logger)
 	mounted, err := mountServices(srv, api.Deps{DB: db, Version: version, Name: cfg.Name, Now: time.Now, Logger: logger, TrustedProxies: cfg.TrustedProxies,
 		DataDir: cfg.DataDir, Importer: imp, ScoreSeconds: cfg.ScoreSeconds, SoundFont: soundFont, PublicURL: cfg.PublicURL,
-		RenderCacheBytes: int64(cfg.RenderCacheGB) << 30})
+		RenderCacheBytes: int64(cfg.RenderCacheGB) << 30, Libraries: cfg.Libraries, TransferRoot: cfg.TransferRoot,
+		Restart: func() { restartAsked.Store(true); cancel() }})
 	if err != nil {
 		logger.Error("cannot start the services", "err", err)
-		return 1
+		return 1, false
 	}
 	defer mounted.Close()
 	mountWebUI(srv)
@@ -105,9 +148,9 @@ func runContext(ctx context.Context, args []string, stdout io.Writer) int {
 	}
 	if err != nil {
 		logger.Error("server stopped", "err", err)
-		return 1
+		return 1, false
 	}
-	return 0
+	return 0, restartAsked.Load()
 }
 
 // advertiseOnLAN is the network announcement; tests replace it.

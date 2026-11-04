@@ -34,6 +34,9 @@ class Rig {
   int osAsked = 0;
   bool osAnswer = true;
 
+  /// What the device says is free (null: it cannot say).
+  int? freeDisk;
+
   Widget embed(BuildContext context, EmbedConfig c) {
     config = c;
     builds++;
@@ -71,6 +74,7 @@ Future<Rig> open(WidgetTester tester, {State? state, String? server = 'http://sr
           builder: (_) => PlayerScreen(
             embedBuilder: r.embed,
             screenAwake: r.awake,
+            readFreeDisk: () async => r.freeDisk,
             osMicrophone: () async {
               r.osAsked++;
               return r.osAnswer;
@@ -101,6 +105,16 @@ void main() {
     r.config!.onMessage('KantaheReady');
     await tester.pump();
     expect(argsOf(scriptsWith(r, 'setToken').single), ['t', 'me', 'http://srv:1']);
+  });
+
+  testWidgets('tells the page how much room the device has once it is ready, and keeps no timer when the screen goes away', (tester) async {
+    final r = await open(tester);
+    r.freeDisk = 8000000000;
+    r.config!.onMessage('KantaheReady');
+    await tester.pump();
+    expect(argsOf(scriptsWith(r, 'setFreeDisk').single), [8000000000]);
+    await tester.tap(find.text('Close')); // the screen goes away: the bridge stops asking (a timer left behind fails the test)
+    await tester.pumpAndSettle();
   });
 
   testWidgets('regression: the page may only navigate within the server address', (tester) async {

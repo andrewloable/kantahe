@@ -25,16 +25,29 @@ class SongSort extends $pb.ProtobufEnum {
       SongSort._(2, _omitEnumNames ? '' : 'SONG_SORT_TITLE');
   static const SongSort SONG_SORT_ARTIST =
       SongSort._(3, _omitEnumNames ? '' : 'SONG_SORT_ARTIST');
+  static const SongSort SONG_SORT_FORMAT =
+      SongSort._(4, _omitEnumNames ? '' : 'SONG_SORT_FORMAT');
+
+  /// By how the lyrics are timed: songs without timed lyrics first, then by line, then by word.
+  static const SongSort SONG_SORT_LYRIC_TIMING =
+      SongSort._(5, _omitEnumNames ? '' : 'SONG_SORT_LYRIC_TIMING');
+
+  /// Songs without a vocals track first.
+  static const SongSort SONG_SORT_VOCALS =
+      SongSort._(6, _omitEnumNames ? '' : 'SONG_SORT_VOCALS');
 
   static const $core.List<SongSort> values = <SongSort>[
     SONG_SORT_UNSPECIFIED,
     SONG_SORT_NUMBER,
     SONG_SORT_TITLE,
     SONG_SORT_ARTIST,
+    SONG_SORT_FORMAT,
+    SONG_SORT_LYRIC_TIMING,
+    SONG_SORT_VOCALS,
   ];
 
   static final $core.List<SongSort?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 3);
+      $pb.ProtobufEnum.$_initByValueList(values, 6);
   static SongSort? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 

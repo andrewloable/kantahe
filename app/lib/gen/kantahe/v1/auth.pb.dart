@@ -69,11 +69,13 @@ class GetServerInfoResponse extends $pb.GeneratedMessage {
     $core.String? version,
     $core.bool? setupRequired,
     $core.String? name,
+    $fixnum.Int64? startedUnixMs,
   }) {
     final result = GetServerInfoResponse._();
     if (version != null) result.version = version;
     if (setupRequired != null) result.setupRequired = setupRequired;
     if (name != null) result.name = name;
+    if (startedUnixMs != null) result.startedUnixMs = startedUnixMs;
     return result;
   }
 
@@ -93,6 +95,7 @@ class GetServerInfoResponse extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'version')
     ..aOB(2, _omitFieldNames ? '' : 'setupRequired')
     ..aOS(3, _omitFieldNames ? '' : 'name')
+    ..aInt64(4, _omitFieldNames ? '' : 'startedUnixMs')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -146,6 +149,17 @@ class GetServerInfoResponse extends $pb.GeneratedMessage {
   $core.bool hasName() => $_has(2);
   @$pb.TagNumber(3)
   void clearName() => $_clearField(3);
+
+  /// When this run of the server started, in Unix milliseconds. It changes when the server restarts (after an import), so that a page
+  /// can tell the restarted server from the one that is shutting down.
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get startedUnixMs => $_getI64(3);
+  @$pb.TagNumber(4)
+  set startedUnixMs($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasStartedUnixMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearStartedUnixMs() => $_clearField(4);
 }
 
 /// Creates the first admin and signs in the calling device.

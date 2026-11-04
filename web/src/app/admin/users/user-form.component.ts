@@ -16,7 +16,7 @@ export interface CreatedUser {
 @Component({
   selector: 'app-user-form',
   template: `
-    <h2>New user</h2>
+    <h2 id="new-user-title">New user</h2>
     <form (submit)="submit($event)" novalidate>
       <div class="field">
         <label for="new-email">Email</label>
@@ -43,16 +43,25 @@ export interface CreatedUser {
       <div class="roles">
         <input id="new-admin" type="checkbox" [checked]="admin()" (change)="admin.set(checked($event))" />
         <label for="new-admin">Administrator</label>
-        <input id="new-uploader" type="checkbox" [checked]="uploader()" (change)="uploader.set(checked($event))" />
-        <label for="new-uploader">May upload songs</label>
       </div>
       @if (failure()) {
         <p class="error" role="alert">{{ failure() }}</p>
       }
-      <button type="submit" [disabled]="busy()">Create user</button>
+      <div class="buttons">
+        <button class="primary" type="submit" [disabled]="busy()">Create user</button>
+        <button class="quiet" type="button" (click)="cancelled.emit()">Cancel</button>
+      </div>
     </form>
   `,
   styles: `
+    h2 {
+      margin-top: 0;
+    }
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
     .roles {
       display: flex;
       flex-wrap: wrap;
@@ -76,12 +85,13 @@ export class UserFormComponent {
   private readonly admins = injectClient(AdminService);
 
   readonly created = output<CreatedUser>();
+  /** Cancel was pressed (the dialog around the form closes). */
+  readonly cancelled = output<void>();
 
   protected readonly emailValue = signal('');
   protected readonly name = signal('');
   protected readonly temp = signal('');
   protected readonly admin = signal(false);
-  protected readonly uploader = signal(false);
   protected readonly busy = signal(false);
   protected readonly failure = signal('');
   private readonly submitted = signal(false);
@@ -121,7 +131,6 @@ export class UserFormComponent {
         displayName: this.name().trim(),
         temporaryPassword: password,
         admin: this.admin(),
-        uploader: this.uploader(),
       });
       if (res.user) this.created.emit({ user: res.user, password });
       this.clear();
@@ -137,7 +146,6 @@ export class UserFormComponent {
     this.name.set('');
     this.temp.set('');
     this.admin.set(false);
-    this.uploader.set(false);
     this.submitted.set(false);
     // the boxes may not have been redrawn since the last key
     const e = this.emailBox()?.nativeElement;

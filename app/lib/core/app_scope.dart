@@ -31,8 +31,8 @@ class AppServices {
     });
   }
 
-  /// Asks the server who the signed-in user is. Only the token is stored, so after a restart the roles
-  /// (uploader, administrator) and the "must change the password" flag are unknown until this has answered.
+  /// Asks the server who the signed-in user is. Only the token is stored, so after a restart the user and the
+  /// "must change the password" flag are unknown until this has answered.
   Future<void> loadUser() async {
     if (!auth.signedIn || auth.user != null) return;
     try {

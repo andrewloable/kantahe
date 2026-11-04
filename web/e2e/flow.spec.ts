@@ -1,6 +1,7 @@
 import { Browser, BrowserContext, expect, Locator, Page, test } from '@playwright/test';
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { karmp3 } from './fixtures/karmp3';
 
 const ADMIN = { email: 'admin@example.com', name: 'Admin', password: 'admin-password-1' };
 const USER = { email: 'una@example.com', name: 'Una', password: 'una-password-2' };
@@ -52,6 +53,7 @@ test('the whole flow: setup, accounts, upload, search, queue, play, score, rando
   await test.step('the administrator creates a user with a temporary password', async () => {
     await a.getByRole('link', { name: 'Admin' }).click();
     await expect(a).toHaveURL(/\/admin\/users$/);
+    await a.getByRole('button', { name: 'New user' }).click();
     await a.locator('#new-email').fill(USER.email);
     await a.locator('#new-name').fill(USER.name);
     await a.getByRole('button', { name: 'Generate' }).click();
@@ -152,8 +154,8 @@ test('the whole flow: setup, accounts, upload, search, queue, play, score, rando
   await test.step('Play here on the player page starts the MP3 and its lyrics are sung', async () => {
     await b.goto('/player');
     await b.getByRole('button', { name: 'Play here' }).click();
-    await expect(stage(b).locator('h1')).toHaveText('Title 1');
-    await expect(stage(b).locator('app-format-badge')).toHaveText('MP3');
+    await expect(stage(b).locator('header.song h1')).toHaveText('Title 1');
+    await expect(stage(b).locator('app-format-badge .badge').first()).toHaveText('MP3');
     const firstWord = stage(b).locator('app-lyrics-view .row').first().locator('.word').first();
     await expect(firstWord.locator('.base')).toHaveText('Sing ');
     await expectSung(firstWord);
@@ -171,7 +173,7 @@ test('the whole flow: setup, accounts, upload, search, queue, play, score, rando
     await c.goto('/player');
     await expect(c.getByText('Playing on Device 1')).toBeVisible();
     await c.getByRole('button', { name: 'Play here' }).click();
-    await expect(stage(c).locator('h1')).toHaveText('Title 1');
+    await expect(stage(c).locator('header.song h1')).toHaveText('Title 1');
     // pause at once: the song was loaded and set to where the first device left it (past 0:01), not to the start
     await stage(c).getByRole('button', { name: 'Pause' }).click();
     await expect(stage(c).locator('.time')).toHaveText(/^\s*0:0[1-9]\s+\//);
@@ -186,7 +188,7 @@ test('the whole flow: setup, accounts, upload, search, queue, play, score, rando
   });
 
   await test.step('the MIDI entry plays next, through the synthesizer, with its lyrics', async () => {
-    await expect(stage(c).locator('app-format-badge')).toHaveText('MIDI', { timeout: 20_000 });
+    await expect(stage(c).locator('app-format-badge .badge').first()).toHaveText('MIDI', { timeout: 20_000 });
     const firstWord = stage(c).locator('app-lyrics-view .row').first().locator('.word').first();
     await expectSung(firstWord);
   });
@@ -194,7 +196,7 @@ test('the whole flow: setup, accounts, upload, search, queue, play, score, rando
   await test.step('after the queue is empty a random song plays', async () => {
     await expect(c.getByRole('dialog', { name: 'Score' })).toBeVisible({ timeout: 20_000 });
     await expect(c.getByRole('dialog', { name: 'Score' })).toBeHidden({ timeout: 15_000 });
-    await expect(stage(c).locator('h1')).toHaveText(/^Title \d+$/, { timeout: 15_000 });
+    await expect(stage(c).locator('header.song h1')).toHaveText(/^Title \d+$/, { timeout: 15_000 });
     const queue = await one.newPage();
     await queue.goto('/queue');
     await expect(queue.getByText('The queue is empty')).toBeVisible();
@@ -226,7 +228,8 @@ test('the whole flow: setup, accounts, upload, search, queue, play, score, rando
     await expect(b.getByRole('link', { name: 'Party' })).toBeVisible();
     await b.goto('/library');
     await b.getByLabel('Search songs').fill('Title 6');
-    await b.locator('li.row', { hasText: 'Title 6' }).getByRole('button', { name: 'Add Title 6 to a playlist' }).click();
+    await b.locator('li.row', { hasText: 'Title 6' }).getByRole('button', { name: 'More actions for Title 6' }).click();
+    await b.getByRole('menuitem', { name: 'Add to a playlist' }).click();
     await b.getByRole('button', { name: 'Party' }).click();
     await expect(b.getByText('Added Title 6 to Party')).toBeVisible();
     await b.goto('/me/playlists');
@@ -234,5 +237,41 @@ test('the whole flow: setup, accounts, upload, search, queue, play, score, rando
     await expect(b.locator('li.entry', { hasText: 'Title 6' })).toBeVisible();
     await b.getByRole('button', { name: 'Add all to queue' }).click();
     await expect(b.getByText('Added 1 song to the queue')).toBeVisible();
+  });
+
+  await test.step('an ordinary user has no Upload and cannot open it', async () => {
+    await b.goto('/library');
+    await expect(b.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Library' })).toBeVisible();
+    await expect(b.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Upload' })).toHaveCount(0);
+    await b.goto('/upload');
+    await expect(b).toHaveURL(/\/library$/);
+  });
+
+  await test.step('the administrator downloads a song file exactly as uploaded, replaces it, and the number stays', async () => {
+    await a.goto('/admin/songs');
+    // the list is searched a moment after typing: wait for that answer, so that the list does not change under the buttons
+    const searched = a.waitForResponse((r) => r.url().includes('CatalogService/SearchSongs') && (r.request().postData() ?? '').includes('Title 20'));
+    await a.getByLabel('Search songs').fill('Title 20');
+    await searched;
+    const row = a.locator('tbody tr', { hasText: 'MP3' }).filter({ hasText: 'Title 20' });
+    await expect(row).toHaveCount(1);
+    const [download] = await Promise.all([a.waitForEvent('download'), row.getByRole('button', { name: 'Download Title 20' }).click()]);
+    const number = (await row.locator('td.number').innerText()).trim();
+    expect(download.suggestedFilename()).toBe(`${number} - Artist 20 - Title 20.karmp3`);
+    const dir = process.env['E2E_UPLOAD_DIR'] as string;
+    const original = readFileSync(join(dir, readdirSync(dir).find((f) => f.endsWith('Title 20.karmp3'))!));
+    const got = readFileSync((await download.path())!);
+    expect(got.equals(original), 'the download is the uploaded file, byte for byte').toBe(true);
+
+    // the button opens the browser's file chooser; the file is given to it
+    const [chooser] = await Promise.all([a.waitForEvent('filechooser'), row.getByRole('button', { name: 'Replace file: Title 20' }).click()]);
+    await chooser.setFiles({ name: 'whatever.karmp3', mimeType: 'application/octet-stream', buffer: karmp3('Replaced title') });
+    const same = a.locator('tbody tr').filter({ has: a.locator('td.number', { hasText: number }) });
+    await expect(same.getByText(`Replaced ${number}.`)).toBeVisible();
+    await expect(same).toContainText('Replaced title');
+    // the song, as the user sees it, has the new title under the same number
+    await b.goto('/library');
+    await b.getByLabel('Search songs').fill('Replaced title');
+    await expect(b.locator('li.row', { hasText: number })).toContainText('Replaced title');
   });
 });

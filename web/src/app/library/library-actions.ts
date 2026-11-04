@@ -62,6 +62,38 @@ export class LibraryActions {
     }
   }
 
+  /**
+   * Queues the song right after the current one: AddToQueue, then MoveToTop of the new item (no call of its own on the server).
+   * If the move fails the song stays queued, at the end, and the toast says so.
+   */
+  async playNext(song: Song): Promise<boolean> {
+    if (song.failed) {
+      this.toast.show("That song can't be played.", 'error');
+      return false;
+    }
+    let itemId: string;
+    try {
+      itemId = (await this.session.addToQueue({ number: song.number })).item?.id ?? '';
+    } catch (e) {
+      this.toast.show(problem(e, { [Code.NotFound]: 'That song is no longer in the library.' }), 'error');
+      return false;
+    }
+    try {
+      await this.session.moveToTop({ itemId });
+    } catch {
+      this.toast.show(`Added ${song.title} at the end of the queue`);
+      return true;
+    }
+    this.toast.show(`${song.title} plays next`, 'info', {
+      label: 'Undo',
+      run: () =>
+        void this.session
+          .removeFromQueue({ itemId })
+          .catch((e) => this.toast.show(problem(e, { [Code.NotFound]: `${song.title} has already started or left the queue.` }), 'error')),
+    });
+    return true;
+  }
+
   /** The user's playlists, for choosing where a song goes. */
   async playlists(): Promise<PlaylistSummary[]> {
     return (await this.userLibrary.listPlaylists({})).playlists;
@@ -85,6 +117,15 @@ export class LibraryActions {
     this.setStar(song.number, !before); // shown at once; undone below if the server refuses
     try {
       await this.userLibrary.setFavourite({ number: song.number, favourite: !before });
+      // taking a star off can be a slip (in Favourites the song leaves the list): one tap puts it back
+      // (Undo only ever stars: if the star is back on already, by hand, it does nothing)
+      if (before)
+        this.toast.show(`Removed ${song.title} from favourites`, 'info', {
+          label: 'Undo',
+          run: () => {
+            if (!this.isFavourite(song)) void this.toggleFavourite(song);
+          },
+        });
     } catch (e) {
       this.setStar(song.number, before);
       this.toast.show(problem(e, { [Code.NotFound]: 'That song is no longer in the library.' }), 'error');

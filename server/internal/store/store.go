@@ -47,8 +47,18 @@ const BusyTimeout = 5 * time.Second
 // BEGIN, so concurrent writers queue on busy_timeout instead of failing on a
 // lock upgrade; plain queries outside a transaction are unaffected.
 func openRaw(path string) (*sql.DB, error) {
+	return openWith(path, "journal_mode(WAL)", "foreign_keys(1)", fmt.Sprintf("busy_timeout(%d)", BusyTimeout.Milliseconds()), "synchronous(NORMAL)")
+}
+
+// OpenFile opens an existing database file as it is: no migration, and no WAL, so that nothing but the file itself is left behind
+// once it is closed (a snapshot that is hashed and copied afterwards).
+func OpenFile(path string) (*sql.DB, error) {
+	return openWith(path, "journal_mode(DELETE)", "foreign_keys(1)", fmt.Sprintf("busy_timeout(%d)", BusyTimeout.Milliseconds()))
+}
+
+func openWith(path string, pragmas ...string) (*sql.DB, error) {
 	q := url.Values{}
-	for _, p := range []string{"journal_mode(WAL)", "foreign_keys(1)", fmt.Sprintf("busy_timeout(%d)", BusyTimeout.Milliseconds()), "synchronous(NORMAL)"} {
+	for _, p := range pragmas {
 		q.Add("_pragma", p)
 	}
 	q.Set("_txlock", "immediate")

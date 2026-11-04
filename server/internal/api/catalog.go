@@ -3,6 +3,9 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 
 	"connectrpc.com/connect"
 
@@ -54,6 +57,12 @@ func songSort(s kantahev1.SongSort) (catalog.Sort, error) {
 		return catalog.SortTitle, nil
 	case kantahev1.SongSort_SONG_SORT_ARTIST:
 		return catalog.SortArtist, nil
+	case kantahev1.SongSort_SONG_SORT_FORMAT:
+		return catalog.SortFormat, nil
+	case kantahev1.SongSort_SONG_SORT_LYRIC_TIMING:
+		return catalog.SortLyricTiming, nil
+	case kantahev1.SongSort_SONG_SORT_VOCALS:
+		return catalog.SortVocals, nil
 	}
 	return 0, invalidArgument("unknown sort")
 }
@@ -74,8 +83,19 @@ func (s *CatalogServer) SearchSongs(ctx context.Context, req *connect.Request[ka
 	default:
 		return nil, invalidArgument("unknown format")
 	}
+	timing := 0
+	switch m.LyricTiming {
+	case kantahev1.LyricTiming_LYRIC_TIMING_UNSPECIFIED:
+	case kantahev1.LyricTiming_LYRIC_TIMING_LINE:
+		timing = 1
+	case kantahev1.LyricTiming_LYRIC_TIMING_WORD:
+		timing = 2
+	default:
+		return nil, invalidArgument("unknown lyric timing")
+	}
 	songs, next, err := s.cat.SearchPage(ctx, catalog.SearchParams{
 		Query: m.Query, Format: library.Format(m.Format), Sort: sort, Letter: m.Letter,
+		HasVocals: m.HasVocals, LyricTiming: timing, Descending: m.Descending,
 	}, m.PageToken, int(m.PageSize))
 	if err != nil {
 		return nil, fromCatalog(s.d.Logger, "SearchSongs", err)
@@ -130,6 +150,29 @@ func (s *CatalogServer) GetLyrics(ctx context.Context, req *connect.Request[kant
 	return connect.NewResponse(&kantahev1.GetLyricsResponse{Lyrics: l}), nil
 }
 
+// fileVersion tells a player whether the file behind a media URL is still the one it has: the size and the modification time in milliseconds.
+// "" when the file cannot be read. (The contents are not hashed: GetPlayback is called for every song that plays.)
+func fileVersion(path string) string {
+	if path == "" {
+		return ""
+	}
+	st, err := os.Stat(path)
+	if err != nil || !st.Mode().IsRegular() {
+		return ""
+	}
+	return fmt.Sprintf("%d-%d", st.Size(), st.ModTime().UnixMilli())
+}
+
+// renderVersion is the version of a rendered file: its name (which holds the song's hash and the render settings) and its size. The
+// modification time is not part of it: the render cache sets it on every play to evict the least recently played file first.
+func renderVersion(path string) string {
+	st, err := os.Stat(path)
+	if err != nil || !st.Mode().IsRegular() {
+		return ""
+	}
+	return fmt.Sprintf("%s-%d", filepath.Base(path), st.Size())
+}
+
 // GetPlayback describes how the calling device plays a song: signed relative
 // URLs (clients prefix their server URL), the lyrics, and for a MIDI song the
 // per-song SoundFont, or the server's rendered audio for a device in SERVER mode.
@@ -152,8 +195,14 @@ func (s *CatalogServer) GetPlayback(ctx context.Context, req *connect.Request[ka
 	case library.FormatMP3:
 		pb.Kind = kantahev1.PlaybackKind_PLAYBACK_KIND_AUDIO
 		pb.AudioUrl = signed
+		mediaPath, err := library.MediaPathOf(ctx, s.d.DB, song.Number)
+		if err != nil {
+			return nil, internalErr(s.d.Logger, "GetPlayback", err)
+		}
+		pb.AudioVersion = fileVersion(mediaPath)
 		if song.HasVocals {
 			pb.VocalsUrl = s.media.Sign("/media/vocals/"+song.Number, id.UserID, exp)
+			pb.VocalsVersion = fileVersion(library.VocalsPathOf(mediaPath))
 		}
 		// the gain that brings the song to the common loudness, once the server has measured it
 		if g, ok, err := library.GainOf(ctx, s.d.DB, song.Number); err != nil {
@@ -186,10 +235,15 @@ func (s *CatalogServer) GetPlayback(ctx context.Context, req *connect.Request[ka
 					rd.Prepare(song.Number)
 					pb.Ready = false
 					pb.RetryAfterMs = 1000
-				} else if g, ok := rd.Gain(ctx, song.Number); ok {
+				} else {
+					if path, err := rd.Path(ctx, song.Number); err == nil {
+						pb.AudioVersion = renderVersion(path)
+					}
 					// the gain that brings the rendered song to the common loudness
-					gain := float32(g)
-					pb.GainDb = &gain
+					if g, ok := rd.Gain(ctx, song.Number); ok {
+						gain := float32(g)
+						pb.GainDb = &gain
+					}
 				}
 			}
 		}

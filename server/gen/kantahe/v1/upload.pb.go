@@ -29,6 +29,8 @@ const (
 	UploadStatus_UPLOAD_STATUS_ADDED       UploadStatus = 1
 	UploadStatus_UPLOAD_STATUS_DUPLICATE   UploadStatus = 2
 	UploadStatus_UPLOAD_STATUS_REJECTED    UploadStatus = 3
+	// The file replaced the content of the song named in replace_number; the response carries the song.
+	UploadStatus_UPLOAD_STATUS_UPDATED UploadStatus = 4
 )
 
 // Enum value maps for UploadStatus.
@@ -38,12 +40,14 @@ var (
 		1: "UPLOAD_STATUS_ADDED",
 		2: "UPLOAD_STATUS_DUPLICATE",
 		3: "UPLOAD_STATUS_REJECTED",
+		4: "UPLOAD_STATUS_UPDATED",
 	}
 	UploadStatus_value = map[string]int32{
 		"UPLOAD_STATUS_UNSPECIFIED": 0,
 		"UPLOAD_STATUS_ADDED":       1,
 		"UPLOAD_STATUS_DUPLICATE":   2,
 		"UPLOAD_STATUS_REJECTED":    3,
+		"UPLOAD_STATUS_UPDATED":     4,
 	}
 )
 
@@ -76,9 +80,11 @@ func (UploadStatus) EnumDescriptor() ([]byte, []int) {
 
 // The original filename (its leading digits become the song number) and the file bytes (at most the configured limit).
 type UploadSongRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
-	Content       []byte                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Filename string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
+	Content  []byte                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	// When not empty: the number of an existing song whose file this upload replaces. The format (.kar or .karmp3) must be the song's own.
+	ReplaceNumber string `protobuf:"bytes,3,opt,name=replace_number,json=replaceNumber,proto3" json:"replace_number,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -125,6 +131,13 @@ func (x *UploadSongRequest) GetContent() []byte {
 		return x.Content
 	}
 	return nil
+}
+
+func (x *UploadSongRequest) GetReplaceNumber() string {
+	if x != nil {
+		return x.ReplaceNumber
+	}
+	return ""
 }
 
 // status ADDED carries the song, REJECTED carries the reason, DUPLICATE carries the existing song.
@@ -617,10 +630,11 @@ var File_kantahe_v1_upload_proto protoreflect.FileDescriptor
 const file_kantahe_v1_upload_proto_rawDesc = "" +
 	"\n" +
 	"\x17kantahe/v1/upload.proto\x12\n" +
-	"kantahe.v1\x1a\x17kantahe/v1/common.proto\"I\n" +
+	"kantahe.v1\x1a\x17kantahe/v1/common.proto\"p\n" +
 	"\x11UploadSongRequest\x12\x1a\n" +
 	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\fR\acontent\"\x84\x01\n" +
+	"\acontent\x18\x02 \x01(\fR\acontent\x12%\n" +
+	"\x0ereplace_number\x18\x03 \x01(\tR\rreplaceNumber\"\x84\x01\n" +
 	"\x12UploadSongResponse\x120\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x18.kantahe.v1.UploadStatusR\x06status\x12$\n" +
 	"\x04song\x18\x02 \x01(\v2\x10.kantahe.v1.SongR\x04song\x12\x16\n" +
@@ -650,12 +664,13 @@ const file_kantahe_v1_upload_proto_rawDesc = "" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\"6\n" +
 	"\x17AbortVideoUploadRequest\x12\x1b\n" +
 	"\tupload_id\x18\x01 \x01(\tR\buploadId\"\x1a\n" +
-	"\x18AbortVideoUploadResponse*\x7f\n" +
+	"\x18AbortVideoUploadResponse*\x9a\x01\n" +
 	"\fUploadStatus\x12\x1d\n" +
 	"\x19UPLOAD_STATUS_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13UPLOAD_STATUS_ADDED\x10\x01\x12\x1b\n" +
 	"\x17UPLOAD_STATUS_DUPLICATE\x10\x02\x12\x1a\n" +
-	"\x16UPLOAD_STATUS_REJECTED\x10\x032\xe1\x03\n" +
+	"\x16UPLOAD_STATUS_REJECTED\x10\x03\x12\x19\n" +
+	"\x15UPLOAD_STATUS_UPDATED\x10\x042\xe1\x03\n" +
 	"\rUploadService\x12K\n" +
 	"\n" +
 	"UploadSong\x12\x1d.kantahe.v1.UploadSongRequest\x1a\x1e.kantahe.v1.UploadSongResponse\x12]\n" +

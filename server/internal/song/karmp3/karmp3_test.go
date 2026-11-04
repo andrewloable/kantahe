@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/andrewloable/kantahe/server/internal/song/lyrics"
 	"github.com/andrewloable/kantahe/server/internal/testfix"
 )
 
@@ -460,5 +461,43 @@ func TestVocalsSameNameAsInstrumental(t *testing.T) {
 	b := makeZip(t, map[string][]byte{"a.mp3": testfix.MP3Frames(2), "a.nfo": []byte(nfoOf("a.mp3", "a.mp3"))}, "a.mp3", "a.nfo")
 	if a := open(t, b); a.HasVocals() || a.VocalsProblem() != nil {
 		t.Fatalf("HasVocals %v, problem %v", a.HasVocals(), a.VocalsProblem())
+	}
+}
+
+const (
+	lrcWithMarks    = "[00:01.00]<00:01.00>Sing <00:01.50>along"
+	lrcWithoutMarks = "[00:01.00]Sing along"
+)
+
+func timingOf(t *testing.T, lrc, nfo string) lyrics.Timing {
+	t.Helper()
+	b := testfix.KARMP3("x", testfix.MP3Frames(100), lrc, nfo)
+	s, err := Parse(bytes.NewReader(b), int64(len(b)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s.Timing
+}
+
+func TestTimingFromTheNfoRowOrTheLyrics(t *testing.T) {
+	cases := []struct {
+		name, lrc, nfo string
+		want           lyrics.Timing
+	}{
+		{"the row says word, the lrc has no marks", lrcWithoutMarks, "Title : T\nTiming by : word", lyrics.TimingWord},
+		{"the row says line, the lrc has marks", lrcWithMarks, "Title : T\nTiming by : line", lyrics.TimingLine},
+		{"the row in capitals and padded", lrcWithoutMarks, "Title : T\nTIMING BY  :   Word  ", lyrics.TimingWord},
+		{"no row, marks", lrcWithMarks, "Title : T", lyrics.TimingWord},
+		{"no row, no marks", lrcWithoutMarks, "Title : T", lyrics.TimingLine},
+		{"a row we do not know falls back to the lrc (marks)", lrcWithMarks, "Title : T\nTiming by : maybe", lyrics.TimingWord},
+		{"a row we do not know falls back to the lrc (no marks)", lrcWithoutMarks, "Title : T\nTiming by : maybe", lyrics.TimingLine},
+		{"Maker's aligned layout", lrcWithoutMarks, "Title          : T\nTiming by     : word", lyrics.TimingWord},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := timingOf(t, c.lrc, c.nfo); got != c.want {
+				t.Fatalf("%v, want %v", got, c.want)
+			}
+		})
 	}
 }

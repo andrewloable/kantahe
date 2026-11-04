@@ -1,12 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { Format, LyricTiming } from '../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from '../core/api';
 import { ToastService } from '../core/toast';
 import { PlaylistDetailComponent } from './playlist-detail.component';
 import { fakeMe, song } from './testing';
 
-const A = song('1', 'Alpha', 'A');
+const A = song('1', 'Alpha', 'A', Format.MP3, false, { lyricTiming: LyricTiming.WORD, hasVocals: true });
 const B = song('2', 'Bravo', 'B');
 const C = song('3', 'Charlie', 'C');
 
@@ -34,10 +35,31 @@ async function setup(songs = [A, B, C]) {
 }
 
 describe('PlaylistDetailComponent', () => {
+  it('shows the badge legend under the songs of a playlist', async () => {
+    const { el } = await setup();
+    expect(el.querySelector('app-badge-legend')).not.toBeNull();
+  });
+
+  it('Play next in the More menu of a song puts it right after the current one', async () => {
+    const { rows, settle, server } = await setup();
+    const more = rows()[1].querySelector<HTMLButtonElement>('button.more')!;
+    expect(more.getAttribute('aria-label')).toBe('More actions for ' + rows()[1].querySelector('.title')?.textContent);
+    more.click();
+    await settle();
+    Array.from(rows()[1].querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find((b) => b.textContent?.trim() === 'Play next')!.click();
+    await settle();
+    await settle();
+    expect(server.calls.session.length).toBe(2);
+    expect(server.calls.session[0]).toMatch(/^add /);
+    expect(server.calls.session[1]).toBe('top q-' + server.calls.session[0].slice(4));
+  });
+
   it('shows the name and the songs in order', async () => {
     const { el, titles } = await setup();
     expect(el.querySelector('h2')?.textContent).toContain('Party');
     expect(titles()).toEqual(['Alpha', 'Bravo', 'Charlie']);
+    expect(el.querySelector('.timing-badge')?.textContent).toBe('W');
+    expect(el.querySelector('.vocals-badge')?.textContent).toBe('V');
   });
 
   it('Move down sends the whole new order and replaces the songs', async () => {
@@ -117,7 +139,7 @@ describe('PlaylistDetailComponent', () => {
   it('every button names its song', async () => {
     const { rows } = await setup();
     const labels = Array.from(rows()[1].querySelectorAll('button')).map((b) => b.getAttribute('aria-label'));
-    expect(labels).toEqual(expect.arrayContaining(['Move Bravo up', 'Move Bravo down', 'Remove Bravo from the playlist']));
+    expect(labels).toEqual(expect.arrayContaining(['Move up: Bravo', 'Move down: Bravo', 'Remove Bravo from the playlist']));
   });
 
   it('Add all to queue appends the playlist and says how many', async () => {

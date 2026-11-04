@@ -3,6 +3,7 @@ import { afterNextRender, Component, inject, Injector } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, take } from 'rxjs';
+import { InstallPrompt } from './core/install';
 import { ScoreNotifier } from './core/score-notifier';
 import { removeSplash } from './core/splash';
 import { StateStore } from './core/state.store';
@@ -21,6 +22,8 @@ export class App {
   protected readonly state = inject(StateStore);
   // and the scores of songs sung on another device show up as toasts
   protected readonly scores = inject(ScoreNotifier);
+  // and the browser's install offer is caught the moment it fires (it fires once per page load, also on a page without the shell)
+  protected readonly install = inject(InstallPrompt);
 
   constructor() {
     // the splash of index.html stays until the first page is on screen: the first navigation (to whatever page it ends on, /login, /setup,

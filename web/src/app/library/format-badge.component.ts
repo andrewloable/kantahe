@@ -1,5 +1,5 @@
 import { Component, computed, input } from '@angular/core';
-import { Format } from '../../gen/kantahe/v1/common_pb';
+import { Format, LyricTiming } from '../../gen/kantahe/v1/common_pb';
 
 /** Badge colours; the stylesheet below uses exactly these (a test checks that, and the contrast). */
 export const BADGE_PALETTE = {
@@ -27,8 +27,21 @@ export function contrastRatio(a: string, b: string): number {
     @if (label()) {
       <span class="badge" [class.mp3]="format() === Format.MP3" [class.midi]="format() === Format.MIDI">{{ label() }}</span>
     }
+    @if (timingLabel(); as t) {
+      <span class="badge flag timing-badge" role="img" [attr.title]="t.text" [attr.aria-label]="t.text">{{ t.letter }}</span>
+    }
+    @if (vocals()) {
+      <span class="badge flag vocals-badge" role="img" title="Separate vocals track available" aria-label="Separate vocals track available">V</span>
+    }
   `,
   styles: `
+    :host {
+      /* the format, W or L, and V sit side by side and wrap when the place is narrow (a phone row) */
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.25rem;
+    }
     .badge {
       display: inline-block;
       padding: 0.1rem 0.45rem;
@@ -36,6 +49,10 @@ export function contrastRatio(a: string, b: string): number {
       font-size: 0.75rem;
       font-weight: 700;
       letter-spacing: 0.04em;
+    }
+    .flag {
+      border: 1px solid currentColor;
+      background: transparent;
     }
     .mp3 {
       background: #0b5d8a;
@@ -60,5 +77,16 @@ export function contrastRatio(a: string, b: string): number {
 export class FormatBadgeComponent {
   readonly format = input.required<Format>();
   protected readonly Format = Format;
+  /** How the lyrics are timed (the W or L badge); UNSPECIFIED shows nothing. */
+  readonly timing = input<LyricTiming>(LyricTiming.UNSPECIFIED);
+  /** The song has a separate vocals track (the V badge). */
+  readonly vocals = input(false);
+  protected readonly timingLabel = computed(() =>
+    this.timing() === LyricTiming.WORD
+      ? { letter: 'W', text: 'Word-by-word lyrics' }
+      : this.timing() === LyricTiming.LINE
+        ? { letter: 'L', text: 'Line-by-line lyrics' }
+        : undefined,
+  );
   protected readonly label = computed(() => (this.format() === Format.MP3 ? 'MP3' : this.format() === Format.MIDI ? 'MIDI' : ''));
 }

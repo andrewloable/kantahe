@@ -505,3 +505,23 @@ func TestVocalsRouteIsBoundToTheUser(t *testing.T) {
 		t.Fatalf("another user's id on the same signature: %d", res.StatusCode)
 	}
 }
+
+func TestDownloadName(t *testing.T) {
+	long := strings.Repeat("x", 300)
+	for _, c := range []struct{ number, artist, title, ext, want string }{
+		{"00001", "Band", "Tune", ".karmp3", "00001 - Band - Tune.karmp3"},
+		{"00002", "Singer", "Midi (live)", ".kar", "00002 - Singer - Midi (live).kar"},
+		{"00003", "", "Only title", ".kar", "00003 - Only title.kar"},
+		{"00004", "Bêta & Ünïcode", "Mañana", ".karmp3", "00004 - Bêta & Ünïcode - Mañana.karmp3"},
+		{"00005", "../../etc", "A/B\"C\r\nD: E", ".kar", "00005 - ____etc - A_B_C__D_ E.kar"},
+		{"00006", "a..b", "t", ".kar", "00006 - a_b - t.kar"},
+		{"00007", "  many   spaces ", "t", ".kar", "00007 - many spaces - t.kar"},
+	} {
+		if got := DownloadName(c.number, c.artist, c.title, c.ext); got != c.want {
+			t.Errorf("%q: got %q, want %q", c.title, got, c.want)
+		}
+	}
+	if got := DownloadName("00008", long, long, ".kar"); len([]rune(got)) != maxDownloadName+len(".kar") || !strings.HasSuffix(got, ".kar") {
+		t.Errorf("a long name is cut to %d characters and keeps its extension: %d %q", maxDownloadName, len([]rune(got)), got[len(got)-8:])
+	}
+}

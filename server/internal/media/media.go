@@ -185,6 +185,7 @@ func (s *Service) Verify(r *http.Request) (string, bool) {
 func (s *Service) Routes(handle func(pattern string, h http.Handler)) {
 	handle("GET /media/song/{number}", http.HandlerFunc(s.song))
 	handle("GET /media/vocals/{number}", http.HandlerFunc(s.vocals))
+	handle("GET /media/download/{number}", http.HandlerFunc(s.download))
 	handle("GET /media/video/{id}", http.HandlerFunc(s.video))
 	handle("GET /media/soundfont.sf2", http.HandlerFunc(s.fullSoundFont))
 	handle("GET /media/soundfont/{file}", http.HandlerFunc(s.songSoundFont))

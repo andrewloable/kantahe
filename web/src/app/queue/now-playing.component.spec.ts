@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
-import { AuthTokenSchema } from '../../gen/kantahe/v1/common_pb';
+import { AuthTokenSchema, LyricTiming } from '../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from '../core/api';
 import { AuthStore } from '../core/auth.store';
 import { StateStore } from '../core/state.store';
@@ -14,7 +14,7 @@ const PLAYING_AT_41S: StateInit = {
   status: PlayStatus.PLAYING,
   player: ME,
   devices: [device(ME, 'This browser', { isCaller: true })],
-  now: { song: song('01052', 'Hello', 'Adele', Format.MP3), positionMs: 41200, positionAtMs: 1000 },
+  now: { song: song('01052', 'Hello', 'Adele', Format.MP3, false, { lyricTiming: LyricTiming.WORD, hasVocals: true }), positionMs: 41200, positionAtMs: 1000 },
   serverTimeMs: 1000,
 };
 
@@ -49,6 +49,8 @@ describe('NowPlayingComponent', () => {
     expect(el.textContent).toContain('Hello');
     expect(el.textContent).toContain('Adele');
     expect(el.textContent).toContain('MP3');
+    expect(el.querySelector('.timing-badge')?.textContent).toBe('W');
+    expect(el.querySelector('.vocals-badge')?.textContent).toBe('V');
     expect(el.textContent).toContain('From the queue');
   });
 
@@ -165,6 +167,22 @@ describe('NowPlayingComponent', () => {
     button('Skip')!.click(); // once it has finished, Skip works again
     await settle(10);
     expect(server.calls.control.length).toBe(2);
+  });
+
+  it('regression: one primary button: Play here while another device plays (Play and Skip plain), Pause while this device plays', async () => {
+    const elsewhere = await setup({
+      ...PLAYING_AT_41S,
+      status: PlayStatus.PAUSED,
+      player: 'tv',
+      devices: [device(ME, 'This browser', { isCaller: true }), device('tv', 'Living room TV')],
+    });
+    expect(elsewhere.button('Play here')!.classList.contains('primary')).toBe(true);
+    expect(elsewhere.button('Play')!.className).toBe('');
+    expect(elsewhere.button('Skip')!.className).toBe('');
+    TestBed.resetTestingModule();
+    const here = await setup(PLAYING_AT_41S);
+    expect(here.button('Play here')).toBeUndefined();
+    expect(here.button('Pause')!.classList.contains('primary')).toBe(true);
   });
 
   it('another device plays: says which one and offers Play here', async () => {

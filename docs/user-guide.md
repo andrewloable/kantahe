@@ -16,34 +16,59 @@ This is for the people who sing. The person who installs and looks after the ser
   [Singing on a TV](#singing-on-a-tv). On iOS, allow the app to find devices on your local network when asked.
   A server that runs in Docker on its default network cannot be found this way; see [install.md](install.md).
 
+## Getting around
+
+The menu has **Library**, **Queue**, **Player** and **Me** (and **Admin** for administrators), each with a small picture and its
+name; the page that is open is the filled one. On a phone the menu is a bar at the bottom of the screen, in reach of the thumb; on a
+wider screen it is a row under the name Kantahe. The last line of every page shows the copyright and the version of the
+server (for example *Kantahe 1.2.0*); say it when you ask for help.
+
 ## Finding a song
 
 The *Library* page has three ways in:
 
-* **Search**: type part of a title or an artist. Digits only look for a song number. The *All / MP3 / MIDI* buttons
+* **Search**: type part of a title or an artist (an empty box lists every song). Digits only look for a song number. The *All / MP3 / MIDI* buttons
   narrow the list to one format.
 * **Number**: tap the digits of a song number, as in a karaoke bar, and the song appears.
-* **Browse**: pick a letter, and then an artist or a title.
 
-Every entry has a number, and a badge that says **MP3** or **MIDI**. The same song can be in the library twice, once
-in each format. A song marked as unplayable cannot be queued. The star makes a song a **favourite**; the **+** button
-puts it on one of your playlists. Browse opens with "Choose a letter": pick a letter to list its songs. Long titles are
-cut to two lines in the list; hold the pointer over one to read all of it.
+Every entry has a number, and a badge that says **MP3** or **MIDI**. A small **W** beside it says the lyrics are timed word by word (the words light up one at a time), an **L** says line by line; songs made with Kantahe Maker 1.2.6 or later say it themselves, older ones are read from their lyrics. A **V** says the song has a separate vocals track that the *Vocals* button of the player can play. The same song can be in the library twice, once
+in each format. A song marked as unplayable cannot be queued. The star makes a song a **favourite**. The **⋯** button (*More actions*)
+opens a short menu: **Play next** puts the song right after the one that is playing, ahead of the rest of the queue (the
+message that confirms it has **Undo**), and **Add to a playlist** puts it on one of your playlists (in the Library,
+administrators also find **Delete** there; your own lists never delete anything from the library). On a TV the **+** and the delete button stay in the row. Long titles are
+cut to two lines in the list; hold the pointer over one to read all of it. Songs are added to the library by an administrator (ordinary users have no Upload); ask yours if a song is missing.
 
 Lists are shown **50 songs at a time**, however many songs the library has. **Previous** and **Next** under the list move
 between pages, and the page number is shown between them. The next page is read in the background, so Next is usually
 instant. The same goes for Favourites and for the administrator's Songs table.
 
+## Help in the app
+
+*Me → Help* is the short version of this guide, inside the app. Under every list of songs one line says what the small **W**,
+**L** and **V** badges mean; **Hide** removes it (the browser remembers), and **What do W, L and V mean?** brings it back.
+A library with no songs says how songs get in: administrators are pointed to *Admin → Upload*, others are asked to talk to
+their administrator.
+
+## Keyboard shortcuts
+
+On a computer a few single keys save the trip to the mouse. On the **player**: **Space** or **K** plays or pauses, **N** skips,
+**F** fills the screen, **+** and **−** change the volume, **V** switches the guide vocals on and off (for songs that have them).
+In the **Library**: **/** goes to the search box. Anywhere: **?** shows this list. The keys never act while you type in a field or
+hold Ctrl, Alt or Cmd, and they are not used on a TV or inside the phone apps. *Me → Appearance and account* has a
+**Keyboard shortcuts** switch that turns them all off.
+
 ## Light or dark
 
-The **Theme** choice in the top bar is *Auto (system)*, *Light* or *Dark*. Auto follows your device; the choice is
-remembered in that browser. The player is always dark.
+*Me → Appearance and account* chooses the theme: *Auto (system)*, *Light* or *Dark*. Auto follows your device; the choice is
+remembered in that browser. The player is always dark. The same page shows the account you are signed in with and has
+**Sign out**. On a wider screen the theme choice and Sign out are also in the top bar (and before signing in the theme choice is
+there on a phone too).
 
 ## Your queue
 
 * Choosing a song adds it to **your queue**. The queue is yours alone, kept on the server, and the same on all your
   devices. A song you add while another plays waits its turn.
-* A slim bar under the menu on every other page says what is playing, on which device, and how many songs are coming up; tap it to open *Queue*.
+* A slim bar under the top of every other page says what is playing, on which device, and how many songs are coming up; tap it to open *Queue*.
 * *Queue* shows what is now playing and "Coming up". *Move to top* and *Remove* change the order.
 * When the queue is empty a **random song** plays, and keeps doing so until you add songs. The next one is already
   chosen, so you can see what is coming.
@@ -101,13 +126,17 @@ New accounts start with Random and Low.
 
 ## Favourites, history and playlists
 
-*Me* holds your own lists: **Favourites** (the stars), **History** (the songs you sang, with their scores) and
-**Playlists** (named lists; *Add all to queue* queues a whole playlist). They belong to you, other users do not see them.
+*Me* holds your own lists: **Favourites** (the stars; taking a star off says so with **Undo**, and in Favourites the
+song leaves the list until you undo it), **History** (the songs you sang, with their scores) and
+**Playlists** (named lists; *Add all to queue* queues a whole playlist). The **⋯** button of a song in History or in a
+playlist has **Play next** too. They belong to you, other users do not see them.
 
 ## MIDI songs on different devices
 
-A MIDI song has no recording in it: a device has to turn the notes into sound. *Me → Devices* has a **MIDI mode** for each
-of your devices:
+A MIDI song has no recording in it: a device has to turn the notes into sound. *Me → Devices* lists your devices, this one
+first, one line each (name, type, online or offline, the MIDI mode in use); the **Settings** button of a line opens that
+device's settings (this device's are open from the start). **Remove devices offline for 30 days** signs out, after asking,
+the devices that are offline and were last seen more than 30 days ago (never the one you are using). Each device has a **MIDI mode**:
 
 * **Auto** (the default) chooses by the device's memory and steps down by itself if the sound stutters.
 * **Full**: the full sound; needs plenty of memory. **Low power**: lighter, for a weak device. **Server**: the server
@@ -151,6 +180,30 @@ Right at the end) move on to the next control. *Me → Appearance* chooses *Auto
 heard. On a TV that reaches your server over plain `http://` the page cannot run the MIDI synthesizer, so the server renders MIDI songs
 and the device counts as using a lighter sound mode: under *Auto* it then shows **no** video. Choose *Me → My devices → Background video →
 On* for that TV to see them. One Sony Android TV (3 GB) played 1080p and 720p loops for ten minutes next to MIDI and MP3 songs without trouble.
+
+## Installing Kantahe on a phone
+
+Kantahe can sit on the home screen of your phone and open like an app, without the browser's address bar. It needs the server to
+be reached through **https://** (ask your administrator if yours is not).
+
+* **Android** (Chrome and similar browsers): a bar at the top says *Install Kantahe on this phone*; press **Install** and confirm.
+  *Not now* hides the bar for 30 days; *Me → Install the app* does the same later. The browser's own menu also has *Install app*
+  (or *Add to Home screen*).
+* **iPhone and iPad** (Safari): press **How to** in the bar (or *Me → Install the app*). The steps are: tap the **Share** button,
+  choose **Add to Home Screen**, tap **Add**.
+
+Nothing is offered where Kantahe already runs installed, in the Android, iOS and TV apps, or on a page that is not https.
+
+## Songs kept on the device
+
+A screen that plays songs keeps the ones it has played, so the next play starts at once and does not use the network again. The song that
+is next in the queue is fetched while the current one plays. When the space is used up, the oldest songs are removed first, and some room is
+always left for the other apps on the device. *Me → Devices* shows what is kept on the device you are using, with a switch **Keep played
+songs on this device** and a **Clear song cache** button. If the admin replaces a song's file, the device fetches the new one by itself.
+
+A browser that opens the server through a plain `http://` address on the network (not `https://`) cannot tell how much room the device has,
+so it keeps nothing and the songs come from the server every time. The phone and TV apps know the free space of the device and keep songs
+whatever the address.
 
 ## When something is wrong
 

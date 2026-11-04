@@ -164,4 +164,41 @@ abstract final class AdminService {
     kantahev1admin.UpdateServerSettingsRequest.new,
     kantahev1admin.UpdateServerSettingsResponse.new,
   );
+
+  /// Admin only. Writes a copy of the whole server (database, settings, every song file, extracted MP3s, background videos) into a new or
+  /// empty folder on the server's disk. Streams progress; the last message has done = true. INVALID_ARGUMENT for a folder that is not
+  /// allowed; FAILED_PRECONDITION while another export or import runs.
+  static const exportData = connect.Spec(
+    '/$name/ExportData',
+    connect.StreamType.server,
+    kantahev1admin.ExportDataRequest.new,
+    kantahev1admin.ExportDataResponse.new,
+  );
+
+  /// Admin only. Reads the manifest of an export folder and says whether it can be imported; changes nothing.
+  static const inspectExport = connect.Spec(
+    '/$name/InspectExport',
+    connect.StreamType.unary,
+    kantahev1admin.InspectExportRequest.new,
+    kantahev1admin.InspectExportResponse.new,
+  );
+
+  /// Admin only. Checks and stages an export folder; the server then restarts and replaces all of its data with it. Streams progress; the
+  /// last message has done = true. INVALID_ARGUMENT for a folder that cannot be imported; FAILED_PRECONDITION while another export or
+  /// import runs.
+  static const importData = connect.Spec(
+    '/$name/ImportData',
+    connect.StreamType.server,
+    kantahev1admin.ImportDataRequest.new,
+    kantahev1admin.ImportDataResponse.new,
+  );
+
+  /// Admin only. A signed address (valid for 10 minutes, for the asking administrator) from which the stored file of a song is downloaded as it is: the
+  /// .karmp3 ZIP or the .kar file. NOT_FOUND for a number that is not a live song.
+  static const getSongDownload = connect.Spec(
+    '/$name/GetSongDownload',
+    connect.StreamType.unary,
+    kantahev1admin.GetSongDownloadRequest.new,
+    kantahev1admin.GetSongDownloadResponse.new,
+  );
 }

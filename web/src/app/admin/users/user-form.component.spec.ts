@@ -9,7 +9,9 @@ function setup() {
   TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: server.transport }] });
   const fixture = TestBed.createComponent(UserFormComponent);
   const created = vi.fn();
+  const cancelled = vi.fn();
   fixture.componentInstance.created.subscribe(created);
+  fixture.componentInstance.cancelled.subscribe(cancelled);
   fixture.detectChanges();
   const el = fixture.nativeElement as HTMLElement;
   const settle = async () => {
@@ -26,14 +28,22 @@ function setup() {
     el.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
     await settle();
   };
-  return { fixture, el, server, created, settle, fill, submit };
+  return { fixture, el, server, created, cancelled, settle, fill, submit };
 }
 
 describe('UserFormComponent', () => {
   it('has a labelled field for each thing, and checkboxes for the roles', () => {
     const { el } = setup();
     for (const input of Array.from(el.querySelectorAll('input'))) expect(el.querySelector(`label[for="${input.id}"]`), input.id).not.toBeNull();
-    expect(Array.from(el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')).map((c) => c.id)).toEqual(['new-admin', 'new-uploader']);
+    expect(Array.from(el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')).map((c) => c.id)).toEqual(['new-admin']);
+  });
+
+  it('names itself for the dialog around it, and Cancel says so without sending anything', () => {
+    const { el, cancelled, server } = setup();
+    expect(el.querySelector('h2')?.id).toBe('new-user-title');
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Cancel')!.click();
+    expect(cancelled).toHaveBeenCalledTimes(1);
+    expect(server.calls.create.length).toBe(0);
   });
 
   it('Generate fills in 12 random characters', async () => {
@@ -49,11 +59,12 @@ describe('UserFormComponent', () => {
     fill('new-email', ' bob@example.com ');
     fill('new-name', 'Bob');
     fill('new-password', 'Abcd2345wxyz');
-    el.querySelector<HTMLInputElement>('#new-uploader')!.click();
+    el.querySelector<HTMLInputElement>('#new-admin')!.click();
     await submit();
     expect(server.calls.create.length).toBe(1);
     const c = server.calls.create[0];
-    expect([c.email, c.displayName, c.temporaryPassword, c.admin, c.uploader]).toEqual(['bob@example.com', 'Bob', 'Abcd2345wxyz', false, true]);
+    expect([c.email, c.displayName, c.temporaryPassword, c.admin]).toEqual(['bob@example.com', 'Bob', 'Abcd2345wxyz', true]);
+    expect(c.uploader).toBe(false); // the old role is not offered and not sent
     expect(created).toHaveBeenCalledTimes(1);
     expect(created.mock.calls[0][0]).toMatchObject({ user: { email: 'bob@example.com' }, password: 'Abcd2345wxyz' });
   });

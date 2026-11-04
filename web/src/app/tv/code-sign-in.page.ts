@@ -28,7 +28,7 @@ export function tvDeviceName(type: DeviceType): string {
 @Component({
   selector: 'app-code-sign-in-page',
   template: `
-    <main class="card tv-card">
+    <div class="card tv-card">
       <h1>Sign in to Kantahe</h1>
       @switch (phase()) {
         @case ('starting') {
@@ -51,7 +51,7 @@ export function tvDeviceName(type: DeviceType): string {
         }
         @case ('expired') {
           <p class="expired">Code expired</p>
-          <button #primary type="button" (click)="start()">New code</button>
+          <button #primary class="primary" type="button" (click)="start()">New code</button>
         }
         @case ('failed') {
           <p class="error" role="alert">{{ failure() }}</p>
@@ -59,7 +59,7 @@ export function tvDeviceName(type: DeviceType): string {
         }
       }
       <p><button type="button" class="link" (click)="otherServer()">Use another server</button></p>
-    </main>
+    </div>
   `,
   styles: `
     .tv-card {

@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { Format, LyricTiming } from '../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from '../core/api';
 import { HistoryComponent } from './history.component';
 import { fakeMe, historyEntry, song } from './testing';
@@ -6,7 +7,7 @@ import { fakeMe, historyEntry, song } from './testing';
 const WHEN = 1_767_268_800n; // some moment; shown in the local time zone
 
 async function setup(history = [
-  historyEntry(song('1', 'Alpha', 'A'), { hasScore: true, score: 87, sungAtUnix: WHEN }),
+  historyEntry(song('1', 'Alpha', 'A', Format.MP3, false, { lyricTiming: LyricTiming.LINE, hasVocals: true }), { hasScore: true, score: 87, sungAtUnix: WHEN }),
   historyEntry(song('2', 'Bravo', 'B'), { skipped: true, sungAtUnix: WHEN + 60n }),
   historyEntry(song('3', 'Charlie', 'C'), { sungAtUnix: WHEN + 120n }),
 ]) {
@@ -24,6 +25,19 @@ async function setup(history = [
 }
 
 describe('HistoryComponent', () => {
+  it('Play next in the More menu of a row puts that song right after the current one', async () => {
+    const { el, settle, server } = await setup();
+    const row = el.querySelectorAll('li')[1];
+    const more = row.querySelector<HTMLButtonElement>('button.more')!;
+    expect(more.getAttribute('aria-label')).toBe('More actions for Bravo');
+    more.click();
+    await settle();
+    Array.from(row.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find((b) => b.textContent?.trim() === 'Play next')!.click();
+    await settle();
+    await settle();
+    expect(server.calls.session).toEqual(['add 2', 'top q-2']);
+  });
+
   it('shows the score, "skipped", or that there was no score', async () => {
     const { el, settle } = await setup();
     let rows = Array.from(el.querySelectorAll('li'));
@@ -49,6 +63,8 @@ describe('HistoryComponent', () => {
     expect(row.textContent).toContain('Alpha');
     expect(row.textContent).toContain('A');
     expect(row.textContent).toContain('MP3');
+    expect(row.querySelector('.timing-badge')?.textContent).toBe('L');
+    expect(row.querySelector('.vocals-badge')?.textContent).toBe('V');
   });
 
   it('pages with the returned token', async () => {
@@ -58,9 +74,11 @@ describe('HistoryComponent', () => {
     expect(server.calls.history).toEqual(['', '2']);
   });
 
-  it('Sing again adds the song to the queue', async () => {
+  it('Sing again adds the song to the queue; its name starts with what it shows (WCAG 2.5.3)', async () => {
     const { el, server, settle } = await setup();
-    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Sing again'))!.click();
+    const sing = Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Sing again'))!;
+    expect(sing.getAttribute('aria-label')).toMatch(/^Sing again: /);
+    sing.click();
     await settle();
     expect(server.calls.add).toEqual(['1']);
   });

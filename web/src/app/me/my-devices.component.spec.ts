@@ -2,24 +2,32 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
-import { AuthTokenSchema, BackgroundMode, DeviceType, MidiMode } from '../../gen/kantahe/v1/common_pb';
+import { AuthTokenSchema, BackgroundMode, Device, DeviceType, MidiMode } from '../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from '../core/api';
 import { AuthStore } from '../core/auth.store';
 import { StateStore } from '../core/state.store';
+import { SONG_CACHE } from '../player/cache/song-cache';
+import { asSongCache, FakeSongCache } from '../player/testing';
 import { ToastService } from '../core/toast';
 import { device, stateOf } from '../queue/testing';
 import { MyDevicesComponent } from './my-devices.component';
 import { fakeMe } from './testing';
 
-async function setup(opts: { failFirst?: boolean } = {}) {
+const DAY = 24 * 60 * 60;
+/** Seconds since the epoch, as the server's last_seen_unix is: `days` ago. */
+const daysAgo = (days: number) => BigInt(Math.floor(Date.now() / 1000) - days * DAY);
+
+async function setup(opts: { failFirst?: boolean; cache?: FakeSongCache; more?: Device[] } = {}) {
+  const cache = opts.cache ?? new FakeSongCache();
   const mine = [
     device('me', 'This browser', { isCaller: true, type: DeviceType.WEB, midiMode: MidiMode.AUTO }),
     device('tv', 'Living room TV', { type: DeviceType.ANDROID_TV, online: false, midiMode: MidiMode.AUTO }),
+    ...(opts.more ?? []),
   ];
   const server = fakeMe({ devices: mine });
   if (opts.failFirst) server.failNext(new ConnectError('down', Code.Unavailable));
   localStorage.clear();
-  TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: TRANSPORT, useValue: server.transport }] });
+  TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: TRANSPORT, useValue: server.transport }, { provide: SONG_CACHE, useValue: asSongCache(cache) }] });
   TestBed.inject(AuthStore).signIn(create(AuthTokenSchema, { token: 't', deviceId: 'me' }));
   // the live state knows who is online and what the server made of each setting
   TestBed.inject(StateStore).state.set(
@@ -40,13 +48,125 @@ async function setup(opts: { failFirst?: boolean } = {}) {
   };
   fixture.detectChanges();
   await settle();
-  const row = (name: string) => Array.from(el.querySelectorAll('li.device')).find((li) => li.textContent?.includes(name)) as HTMLElement;
+  /** The line of a device as it is on screen (a collapsed device shows its summary only). */
+  const peek = (name: string) => Array.from(el.querySelectorAll('li.device')).find((li) => li.textContent?.includes(name)) as HTMLElement;
+  /** The device with its settings open: the other tests are about the settings, so this opens them first. */
+  const row = (name: string) => {
+    const li = peek(name);
+    const toggle = li.querySelector<HTMLButtonElement>('button.toggle-settings');
+    if (toggle?.getAttribute('aria-expanded') === 'false') {
+      toggle.click();
+      fixture.detectChanges();
+    }
+    return li;
+  };
   const button = (within: ParentNode, text: string) => Array.from(within.querySelectorAll('button')).find((b) => b.textContent?.trim().startsWith(text))!;
-  return { fixture, el, server, settle, row, button, nav };
+  return { fixture, el, server, settle, row, peek, button, nav, cache };
 }
 
 describe('MyDevicesComponent', () => {
   afterEach(() => TestBed.inject(StateStore).stop());
+
+  describe('collapsed devices (kantahe-tlf.3.7)', () => {
+    const many = Array.from({ length: 13 }, (_, i) => device(`old${i}`, `Browser ${i}`, { online: false, lastSeenUnix: daysAgo(40 + i) }));
+
+    it('REGRESSION: 15 devices are 15 summary lines and one open form, this device\'s; the others start closed', async () => {
+      const { el, peek } = await setup({ more: many });
+      expect(el.querySelectorAll('li.device')).toHaveLength(15);
+      expect(el.querySelectorAll('select.midi-mode')).toHaveLength(1);
+      expect(peek('This browser').querySelector('select.midi-mode')).not.toBeNull();
+      expect(peek('Living room TV').querySelector('select')).toBeNull();
+      expect(peek('Browser 3').querySelector('select')).toBeNull();
+      expect(peek('This browser').querySelector('button.toggle-settings')?.getAttribute('aria-expanded')).toBe('true');
+      expect(peek('Browser 3').querySelector('button.toggle-settings')?.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('this device is listed first', async () => {
+      const { el } = await setup({ more: many });
+      expect(el.querySelector('li.device .name')?.textContent).toBe('This browser');
+    });
+
+    it('a summary says the name, the type, online or offline and the MIDI mode in use', async () => {
+      const { peek } = await setup();
+      const text = peek('Living room TV').textContent ?? '';
+      expect(text).toContain('Android TV');
+      expect(text).toContain('online');
+      expect(text).toContain('MIDI: Server');
+    });
+
+    it('Settings for <name> opens and closes the settings of that device; the button says what it is for', async () => {
+      const { peek, fixture } = await setup();
+      const tv = peek('Living room TV');
+      const toggle = tv.querySelector<HTMLButtonElement>('button.toggle-settings')!;
+      expect(toggle.textContent?.trim()).toBe('Settings');
+      expect(toggle.getAttribute('aria-label')).toBe('Settings for Living room TV');
+      toggle.click();
+      fixture.detectChanges();
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+      expect(tv.querySelector('select')).not.toBeNull();
+      toggle.click();
+      fixture.detectChanges();
+      expect(tv.querySelector('select')).toBeNull();
+    });
+
+    it('every setting is still reachable on a closed device after opening it (the mode of another device is still sent)', async () => {
+      const { row, server, settle } = await setup({ more: many });
+      const select = row('Browser 3').querySelector<HTMLSelectElement>('select.midi-mode')!;
+      select.value = String(MidiMode.FULL);
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      await settle();
+      expect(server.calls.midi).toEqual([{ deviceId: 'old3', mode: MidiMode.FULL }]);
+    });
+  });
+
+  describe('removing devices offline for 30 days (kantahe-tlf.3.7)', () => {
+    const stale = [
+      device('s1', 'Old laptop', { online: false, lastSeenUnix: daysAgo(31) }),
+      device('s2', 'Old phone', { online: false, lastSeenUnix: daysAgo(90) }),
+      device('f1', 'Last week', { online: false, lastSeenUnix: daysAgo(7) }),
+      device('u1', 'Never seen', { online: false, lastSeenUnix: 0n }),
+    ];
+    const removeButton = (el: HTMLElement) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim().startsWith('Remove devices offline for 30 days'));
+
+    it('asks first, how many, and then signs out exactly the devices not seen for more than 30 days: never this device, an online one or one with no last-seen time', async () => {
+      const { el, server, settle, fixture } = await setup({ more: stale });
+      // the TV is online by the live state; this device is online too
+      removeButton(el)!.click();
+      fixture.detectChanges();
+      expect(el.textContent).toContain('Sign out 2 devices that have been offline for more than 30 days?');
+      expect(server.calls.revoke).toEqual([]);
+      Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Yes, sign out all 2')!.click();
+      await settle();
+      expect(server.calls.revoke.sort()).toEqual(['s1', 's2']);
+      expect(server.calls.listDevices).toBe(2); // the list is read again
+    });
+
+    it('Cancel sends nothing', async () => {
+      const { el, server, settle, fixture } = await setup({ more: stale });
+      removeButton(el)!.click();
+      fixture.detectChanges();
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.bulk button')).find((b) => b.textContent?.trim() === 'Cancel')!.click();
+      await settle();
+      expect(server.calls.revoke).toEqual([]);
+      expect(removeButton(el)).toBeDefined();
+    });
+
+    it('is not offered when no device qualifies', async () => {
+      const { el } = await setup({ more: [stale[2], stale[3]] });
+      expect(removeButton(el)).toBeUndefined();
+    });
+
+    it('a failing call stops the removal, says why and reads the list again', async () => {
+      const { el, server, settle, fixture } = await setup({ more: stale });
+      removeButton(el)!.click();
+      fixture.detectChanges();
+      server.failNext(new ConnectError('nope', Code.Internal));
+      Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim().startsWith('Yes, sign out all'))!.click();
+      await settle();
+      expect(TestBed.inject(ToastService).toasts()[0].kind).toBe('error');
+      expect(server.calls.listDevices).toBe(2);
+    });
+  });
 
   it('lists the devices with their type; this one is marked; online comes from the live state', async () => {
     const { row } = await setup();
@@ -298,6 +418,76 @@ describe('MyDevicesComponent', () => {
     const tv = row('Living room TV');
     expect(tv.querySelector('select')?.getAttribute('aria-label')).toBe('MIDI mode of Living room TV');
     expect(Array.from(tv.querySelectorAll('button')).map((b) => b.getAttribute('aria-label'))).toContain('Sign out Living room TV');
+  });
+
+  describe('the song cache', () => {
+    const kept = () => {
+      const c = new FakeSongCache();
+      c.statsNow = { count: 3, bytes: 12.5 * 1024 * 1024, capBytes: 2 * 1024 ** 3 };
+      return c;
+    };
+
+    it('is on this device only, and says what is kept and the most it keeps', async () => {
+      const { row } = await setup({ cache: kept() });
+      expect(row('This browser').textContent).toContain('Keep played songs on this device');
+      expect(row('This browser').textContent).toContain('3 songs, 12.5 MB of up to 2 GB');
+      expect(row('Living room TV').textContent).not.toContain('Keep played songs');
+    });
+
+    it('is not offered where the browser cannot keep files', async () => {
+      const c = kept();
+      c.supportedNow = false;
+      const { row } = await setup({ cache: c });
+      expect(row('This browser').textContent).not.toContain('Keep played songs');
+    });
+
+    it('the switch is on by default and turning it off is remembered through the cache', async () => {
+      const { row, cache, settle } = await setup({ cache: kept() });
+      const box = row('This browser').querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+      expect(box.checked).toBe(true);
+      box.checked = false;
+      box.dispatchEvent(new Event('change'));
+      await settle();
+      expect(cache.setEnabled).toHaveBeenCalledWith(false);
+    });
+
+    it('Clear song cache asks first, then clears, and shows that nothing is kept', async () => {
+      const { row, button, cache, settle } = await setup({ cache: kept() });
+      button(row('This browser'), 'Clear song cache').click();
+      await settle();
+      expect(cache.clear).not.toHaveBeenCalled();
+      expect(row('This browser').textContent).toContain('Delete the 3 kept songs from this device?');
+      button(row('This browser'), 'Yes, clear').click();
+      await settle();
+      expect(cache.clear).toHaveBeenCalledTimes(1);
+      expect(row('This browser').textContent).toContain('Nothing is kept');
+    });
+
+    it('REGRESSION: the question says "the kept song" for one song, not "1 kept songs"', async () => {
+      const c = kept();
+      c.statsNow = { count: 1, bytes: 1024 * 1024, capBytes: 2 * 1024 ** 3 };
+      const { row, button, settle } = await setup({ cache: c });
+      button(row('This browser'), 'Clear song cache').click();
+      await settle();
+      expect(row('This browser').textContent).toContain('Delete the kept song from this device?');
+      expect(row('This browser').textContent).not.toContain('1 kept songs');
+    });
+
+    it('Cancel leaves the songs alone', async () => {
+      const { row, button, cache, settle } = await setup({ cache: kept() });
+      button(row('This browser'), 'Clear song cache').click();
+      await settle();
+      button(row('This browser'), 'Cancel').click();
+      await settle();
+      expect(cache.clear).not.toHaveBeenCalled();
+      expect(row('This browser').textContent).toContain('3 songs');
+    });
+
+    it('there is nothing to clear when nothing is kept', async () => {
+      const { row, button } = await setup({ cache: new FakeSongCache() });
+      expect(row('This browser').textContent).toContain('Nothing is kept');
+      expect(button(row('This browser'), 'Clear song cache').disabled).toBe(true);
+    });
   });
 
   describe('layout', () => {

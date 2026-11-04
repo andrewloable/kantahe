@@ -1,6 +1,7 @@
 import { Component, DestroyRef, effect, inject, untracked, viewChild } from '@angular/core';
 import { AuthStore } from '../core/auth.store';
 import { ServerUrl, validServerUrl } from '../core/server-url';
+import { SONG_CACHE } from './cache/song-cache';
 import { PlayerViewComponent } from './player-view.component';
 import { MAX_CONTROLS_HEIGHT, NativeControls } from './native-controls';
 import { VOCALS_MAX, VOCALS_STEP, VocalsPrefs } from './vocals-prefs';
@@ -11,6 +12,8 @@ interface KantaheBridge {
   setVocals(on: boolean, pct: number): void;
   /** How tall the app's own buttons are, in pixels: the page keeps that much room free at the bottom. */
   setControlsHeight(px: number): void;
+  /** The free space of the device in bytes, read by the app; the song cache counts it besides the browser's own estimate. */
+  setFreeDisk(bytes: number): void;
 }
 
 interface HostWindow {
@@ -50,6 +53,7 @@ export class EmbedPlayerPage {
   private readonly serverUrl = inject(ServerUrl);
   private readonly prefs = inject(VocalsPrefs);
   private readonly controls = inject(NativeControls);
+  private readonly cache = inject(SONG_CACHE);
   private readonly view = viewChild(PlayerViewComponent);
 
   constructor() {
@@ -58,6 +62,7 @@ export class EmbedPlayerPage {
       setToken: (token, deviceId, serverUrl) => this.setToken(token, deviceId, serverUrl),
       setVocals: (on, pct) => this.setVocals(on, pct),
       setControlsHeight: (px) => this.setControlsHeight(px),
+      setFreeDisk: (bytes) => this.setFreeDisk(bytes),
     };
     this.reportVocals(host);
     inject(DestroyRef).onDestroy(() => delete host.kantahe);
@@ -79,6 +84,12 @@ export class EmbedPlayerPage {
   private setControlsHeight(px: unknown): void {
     if (typeof px !== 'number' || !Number.isFinite(px)) return;
     this.controls.height.set(Math.min(MAX_CONTROLS_HEIGHT, Math.max(0, Math.round(px))));
+  }
+
+  /** Anything that is not a finite number of bytes, 0 or more, is ignored. */
+  private setFreeDisk(bytes: unknown): void {
+    if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) return;
+    this.cache.setNativeFreeBytes(Math.floor(bytes));
   }
 
   /** Tells the app what the vocals do, once per change; what was true at the start is not news. */

@@ -15,6 +15,7 @@ import (
 	"github.com/andrewloable/kantahe/server/internal/fsutil"
 	"github.com/andrewloable/kantahe/server/internal/song/kar"
 	"github.com/andrewloable/kantahe/server/internal/song/karmp3"
+	"github.com/andrewloable/kantahe/server/internal/song/lyrics"
 )
 
 const maxReasonLen = 200
@@ -33,6 +34,7 @@ type metadata struct {
 	hasVocals     bool   // the .karmp3 has a vocals track and it was extracted next to mediaPath
 	vocalsSkipped string // why a vocals track the file names was left out; the song is not failed for it
 	failedReason  string // non-empty marks the song failed
+	timing        int    // lyric_timing: 1 by line, 2 by word, 9 no lyrics (0 when the file failed)
 }
 
 // vocalsPathOf is the extracted vocals track that goes with an extracted instrumental (<sha>.mp3 and <sha>.vocals.mp3 in the
@@ -42,6 +44,17 @@ func vocalsPathOf(mediaPath string) string {
 		return ""
 	}
 	return strings.TrimSuffix(mediaPath, ".mp3") + ".vocals.mp3"
+}
+
+// timingValue is how a lyric timing is kept in songs.lyric_timing (migration 0014).
+func timingValue(t lyrics.Timing) int {
+	switch t {
+	case lyrics.TimingLine:
+		return 1
+	case lyrics.TimingWord:
+		return 2
+	}
+	return 9
 }
 
 func shortReason(err error) string {
@@ -88,7 +101,7 @@ func parseMIDI(body []byte) metadata {
 	if err != nil {
 		return metadata{failedReason: shortReason(err)}
 	}
-	md := metadata{title: song.Title, artist: song.Artist, durationMs: song.DurationMs}
+	md := metadata{title: song.Title, artist: song.Artist, durationMs: song.DurationMs, timing: timingValue(song.Timing)}
 	if !song.HasMusic {
 		md.failedReason = noMusicReason
 	}
@@ -100,7 +113,7 @@ func parseKARMP3(r io.ReaderAt, size int64) metadata {
 	if err != nil {
 		return metadata{failedReason: shortReason(err)}
 	}
-	return metadata{title: song.Title, artist: song.Artist, durationMs: song.DurationMs}
+	return metadata{title: song.Title, artist: song.Artist, durationMs: song.DurationMs, timing: timingValue(song.Timing)}
 }
 
 // CheckContent judges uploaded bytes before anything is stored: it returns the
@@ -216,15 +229,15 @@ func (im *Importer) processMetadata(ctx context.Context, number string) error {
 	}
 	failed := md.failedReason != ""
 	if failed {
-		md.mediaPath, md.hasVocals = "", false
+		md.mediaPath, md.hasVocals, md.timing = "", false, 0
 	}
 	if md.vocalsSkipped != "" && !failed {
 		im.logger.Warn("vocals track left out", "song", number, "reason", md.vocalsSkipped)
 	}
 	return im.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `UPDATE songs SET file_title = ?, file_artist = ?, duration_ms = ?, media_path = ?, has_vocals = ?, failed = ?, failed_reason = ?, metadata_done = 1
+		res, err := tx.ExecContext(ctx, `UPDATE songs SET file_title = ?, file_artist = ?, duration_ms = ?, media_path = ?, has_vocals = ?, lyric_timing = ?, failed = ?, failed_reason = ?, metadata_done = 1
 			WHERE number = ? AND sha256 = ? AND deleted = 0`,
-			strings.TrimSpace(md.title), strings.TrimSpace(md.artist), md.durationMs, md.mediaPath, b2i(md.hasVocals), b2i(failed), md.failedReason, number, sha)
+			strings.TrimSpace(md.title), strings.TrimSpace(md.artist), md.durationMs, md.mediaPath, b2i(md.hasVocals), md.timing, b2i(failed), md.failedReason, number, sha)
 		if err != nil {
 			return err
 		}

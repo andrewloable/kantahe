@@ -271,3 +271,25 @@ func TestDecodeAlwaysProducesValidUTF8(t *testing.T) {
 		t.Fatalf("invalid UTF-8 in song: %q %q %v", s.Title, s.Lines, err)
 	}
 }
+
+func TestTimingIsByWordWhenEverySyllableIsTimed(t *testing.T) {
+	b := testfix.KAR("Song", "Singer", []testfix.Syllable{{Tick: 0, Text: "/Hel"}, {Tick: 240, Text: "lo "}, {Tick: 480, Text: "world"}})
+	s, err := Parse(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Timing != lyrics.TimingWord {
+		t.Fatalf("timing %v, want word", s.Timing)
+	}
+}
+
+func TestTimingIsByLineWhenEveryLineIsOneWord(t *testing.T) {
+	b := testfix.KAR("Song", "Singer", []testfix.Syllable{{Tick: 0, Text: "/Hello"}, {Tick: 960, Text: "/World"}})
+	s, err := Parse(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Lines) != 2 || s.Timing != lyrics.TimingLine {
+		t.Fatalf("lines %d timing %v, want 2 and line", len(s.Lines), s.Timing)
+	}
+}

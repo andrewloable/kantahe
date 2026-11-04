@@ -39,6 +39,9 @@ message GetServerInfoResponse {
   bool setup_required = 2;
   // Human-readable server name, the --name flag; also the mDNS instance name.
   string name = 3;
+  // When this run of the server started, in Unix milliseconds. It changes when the server restarts (after an import), so that a page
+  // can tell the restarted server from the one that is shutting down.
+  int64 started_unix_ms = 4;
 }
 
 // Creates the first admin and signs in the calling device.

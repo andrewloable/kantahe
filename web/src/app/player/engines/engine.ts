@@ -1,7 +1,7 @@
 import { inject, InjectionToken } from '@angular/core';
 import { Playback } from '../../../gen/kantahe/v1/catalog_pb';
 import { ServerUrl } from '../../core/server-url';
-import { Mp3Engine } from './mp3-engine';
+import { AudioContextLike, Mp3Engine } from './mp3-engine';
 import { MidiEngine } from './midi-engine';
 
 /** What the player needs from something that makes sound: an MP3 file or a MIDI synthesizer. */
@@ -30,8 +30,13 @@ export interface MidiOptions {
   effects: boolean;
 }
 
+/** An audio context that the two tracks of a song with vocals share (see Mp3Engine). */
+export interface Mp3Options {
+  context?: AudioContextLike;
+}
+
 export interface Engines {
-  mp3(): Engine;
+  mp3(options?: Mp3Options): Engine;
   midi(options: MidiOptions): Engine;
 }
 
@@ -40,8 +45,14 @@ export const ENGINES = new InjectionToken<Engines>('kantahe engines', {
   providedIn: 'root',
   factory: () => {
     const server = inject(ServerUrl);
-    return { mp3: () => new Mp3Engine(server.base()), midi: (options) => new MidiEngine(server.base(), options) };
+    return { mp3: (options) => new Mp3Engine(server.base(), undefined, undefined, options?.context), midi: (options) => new MidiEngine(server.base(), options) };
   },
+});
+
+/** Makes the audio context that the instrumental and the vocals of a song share; undefined where the page has none. Tests replace it. */
+export const AUDIO_CONTEXT = new InjectionToken<() => AudioContextLike | undefined>('kantahe audio context', {
+  providedIn: 'root',
+  factory: () => () => (typeof AudioContext === 'undefined' ? undefined : (new AudioContext() as unknown as AudioContextLike)),
 });
 
 /** Whether this browser plays FLAC in an audio element (the server's rendered MIDI songs are FLAC); tests replace it. */
@@ -59,8 +70,8 @@ export const CAN_SYNTHESIZE = new InjectionToken<() => boolean>('kantahe can syn
   factory: () => () => typeof AudioContext !== 'undefined' && 'audioWorklet' in AudioContext.prototype,
 });
 
-/** A media address from the server: a path is put behind the server's base address. */
+/** A media address from the server: a path is put behind the server's base address. A full address, or an object URL of a file kept on this device, stays as it is. */
 export function mediaUrl(base: string, url: string): string {
-  if (/^https?:\/\//i.test(url)) return url;
+  if (/^(https?:\/\/|blob:)/i.test(url)) return url;
   return `${base.replace(/\/+$/, '')}/${url.replace(/^\/+/, '')}`;
 }

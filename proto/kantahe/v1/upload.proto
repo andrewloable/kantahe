@@ -4,9 +4,10 @@ package kantahe.v1;
 
 import "kantahe/v1/common.proto";
 
-// Song upload; requires the uploader role (PERMISSION_DENIED otherwise).
+// Song upload; for administrators only (PERMISSION_DENIED otherwise). The uploader role of a user has no effect since 1.2.0.
 service UploadService {
-  // Uploader or admin. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+  // Admin only. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+  // With replace_number set the file replaces the content of that song (it keeps its number, edits, favourites, playlists and history).
   rpc UploadSong(UploadSongRequest) returns (UploadSongResponse);
   // Admin only. Starts, or resumes, the upload of one background video: a video is too big for one message, so it goes up in chunks of
   // unary calls (D3). REJECTED with a reason when the name, the size or the limit is refused; received > 0 when an earlier upload of the same file by the same admin is resumed.
@@ -25,12 +26,16 @@ enum UploadStatus {
   UPLOAD_STATUS_ADDED = 1;
   UPLOAD_STATUS_DUPLICATE = 2;
   UPLOAD_STATUS_REJECTED = 3;
+  // The file replaced the content of the song named in replace_number; the response carries the song.
+  UPLOAD_STATUS_UPDATED = 4;
 }
 
 // The original filename (its leading digits become the song number) and the file bytes (at most the configured limit).
 message UploadSongRequest {
   string filename = 1;
   bytes content = 2;
+  // When not empty: the number of an existing song whose file this upload replaces. The format (.kar or .karmp3) must be the song's own.
+  string replace_number = 3;
 }
 
 // status ADDED carries the song, REJECTED carries the reason, DUPLICATE carries the existing song.

@@ -14,6 +14,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     stack.fixtures(['-out', library, '-mp3', '3', '-midi', '4', '-sf2', font]);
     stack.fixtures(['-out', uploads, '-first', '20', '-mp3', '1', '-midi', '2']);
     process.env['E2E_UPLOAD_DIR'] = uploads;
+    process.env['E2E_DATA_DIR'] = join(stack.work, 'data'); // the data folder of the server: the transfer spec looks for its backup there
 
     await stack.startServer(['--library', library, '--soundfont', font, '--score-seconds', '3']);
     await stack.startApp();

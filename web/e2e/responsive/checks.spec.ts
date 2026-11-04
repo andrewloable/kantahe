@@ -161,6 +161,37 @@ test.describe('tightTargets', () => {
   test('a target inside another is not tight with it', async ({ page }) => {
     expect(of(await run(page, '<a href="#x" style="display:block;width:200px;height:60px"><button style="width:44px;height:44px">i</button></a>'), 'tightTargets')).toHaveLength(0);
   });
+  // a tab bar fixed at the bottom: the page scrolls past it, so how close a control of the page comes to it depends on the scroll position
+  const bar = (pageGap: number, tabGap: number) =>
+    button(44, 44, 0, 700 - 44 - 44 - pageGap, 'Page') +
+    `<nav style="position:fixed;left:0;bottom:0;width:400px;height:44px"><button style="width:44px;height:44px">Tab</button><button style="width:44px;height:44px;margin-left:${tabGap}px">Tab 2</button></nav>`;
+  test('a control of the page that scrolls past a fixed bar is not tight with the bar', async ({ page }) => {
+    expect(of(await run(page, bar(2, 20)), 'tightTargets')).toHaveLength(0);
+  });
+  // a sticky toast: while the page is scrolled it is stuck at the top and the page slides under it, like under a fixed bar
+  const sticky = (gap: number) =>
+    `<div style="height:300px"></div><div style="position:sticky;top:0;z-index:5;height:44px"><button style="width:44px;height:44px">x</button></div><button style="display:block;margin-top:${gap}px;width:44px;height:44px">Page</button><div style="height:2000px"></div>`;
+  test('a control of the page 2 px under a sticky element that is stuck is not tight with it', async ({ page }) => {
+    await page.setContent(BASE + sticky(400));
+    await page.evaluate(() => window.scrollTo(0, 300 + 44 + 400 - 46));
+    expect(of(await page.evaluate(pageChecks, optionsFor(page)), 'tightTargets')).toHaveLength(0);
+  });
+  test('the same sticky element at rest, 2 px from a control, is reported', async ({ page }) => {
+    expect(of(await run(page, sticky(2)), 'tightTargets').map((r) => r.text)).toEqual(['x | Page']);
+  });
+  // an open popup menu lies over the page: how close its items come to the controls under it says nothing
+  const popup = (gap: number) =>
+    `<div style="position:relative"><ul role="menu" style="position:absolute;top:0;left:0;margin:0;padding:0;list-style:none;background:#fff"><li><button role="menuitem" style="width:120px;height:44px">Delete</button></li><li><button role="menuitem" style="width:120px;height:44px;margin-top:${gap}px">Download</button></li></ul></div>` +
+    button(44, 44, 0, 44 + 5, 'Under');
+  test('an item of an open menu 5 px from a control under the menu is not tight with it', async ({ page }) => {
+    expect(of(await run(page, popup(8)), 'tightTargets').map((r) => r.text)).toEqual([]);
+  });
+  test('two items of the same menu 2 px apart are still reported', async ({ page }) => {
+    expect(of(await run(page, popup(2)), 'tightTargets').map((r) => r.text)).toEqual(['Delete | Download']);
+  });
+  test('two controls inside the same fixed bar 2 px apart are still reported', async ({ page }) => {
+    expect(of(await run(page, bar(20, 2)), 'tightTargets').map((r) => r.text)).toEqual(['Tab | Tab 2']);
+  });
 });
 
 test.describe('controls behind a modal dialog', () => {
@@ -221,6 +252,22 @@ test.describe('overlap', () => {
   });
   test('a dialog is meant to cover the page', async ({ page }) => {
     expect(of(await run(page, button(100, 50, 10, 600, 'Pay') + footer('role="dialog"')), 'overlap')).toHaveLength(0);
+  });
+  test('a button drawn above the fixed footer (a dialog over a tab bar) is not covered by it', async ({ page }) => {
+    const above = button(100, 50, 10, 600, 'Save').replace('position:absolute;', 'position:absolute;z-index:50;');
+    expect(of(await run(page, above + footer()), 'overlap')).toHaveLength(0);
+  });
+  test('a button partly scrolled out of a dialog over the footer is not covered (what shows of it is above the footer)', async ({ page }) => {
+    const dialog =
+      '<div role="dialog" style="position:fixed;z-index:50;left:10px;top:400px;width:300px;height:250px;overflow-y:auto;background:#fff"><div style="height:230px"></div><button style="width:100px;height:50px">Save</button></div>';
+    expect(of(await run(page, footer() + dialog), 'overlap')).toHaveLength(0);
+  });
+  test('a control that is only for screen readers (clip-path inset 50%) is not covered: nothing of it is drawn', async ({ page }) => {
+    const hidden = '<div style="position:absolute;left:10px;top:620px;clip-path:inset(50%)"><button style="width:100px;height:50px">Hidden</button></div>';
+    expect(of(await run(page, hidden + footer()), 'overlap')).toHaveLength(0);
+  });
+  test('a button half under the fixed footer is still reported', async ({ page }) => {
+    expect(of(await run(page, button(100, 50, 10, 575, 'Pay') + footer()), 'overlap').map((r) => r.text)).toEqual(['Pay']);
   });
   test('a button inside the fixed footer is not covered by it', async ({ page }) => {
     expect(of(await run(page, '<div style="position:fixed;left:0;right:0;bottom:0;height:100px"><button style="width:60px;height:50px">Go</button></div>'), 'overlap')).toHaveLength(0);

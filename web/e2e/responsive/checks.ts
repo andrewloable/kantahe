@@ -88,6 +88,8 @@ export function pageChecks(options: Options): Raw[] {
     for (let n: Element | null = el; n; n = n.parentElement) {
       const s = getComputedStyle(n);
       if (s.display === 'none' || s.visibility === 'hidden' || s.visibility === 'collapse' || Number(s.opacity) === 0) return false;
+      // the visually hidden idiom: clipped down to nothing, there only for screen readers
+      if (s.clipPath === 'inset(50%)' || (s.position === 'absolute' && /^rect\(0(px)?,? 0(px)?,? 0(px)?,? 0(px)?\)$/.test(s.clip))) return false;
     }
     return true;
   };
@@ -171,12 +173,23 @@ export function pageChecks(options: Options): Raw[] {
     return filled || bordered;
   };
 
-  // (d) two targets side by side with a gap of less than the minimum, touching ones included: nothing in the app is meant to be joined edge to edge
+  // (d) two targets side by side with a gap of less than the minimum, touching ones included: nothing in the app is meant to be joined edge to edge.
+  // A target in a fixed bar, or in a sticky one while it is stuck (the page scrolled and it sits at its offset), and one that scrolls past
+  // it have no distance of their own: it changes with scrolling ((f) looks at covering). An open menu lies over the page the same way.
+  const layerRoot = (el: Element): Element | null => {
+    for (let e: Element | null = el; e; e = e.parentElement) {
+      const s = getComputedStyle(e);
+      if (s.position === 'fixed' || e.getAttribute('role') === 'menu') return e; // an open menu is a popup over the page
+      if (s.position === 'sticky' && window.scrollY > 0 && s.top !== 'auto' && Math.abs(e.getBoundingClientRect().top - parseFloat(s.top)) < 0.5) return e;
+    }
+    return null;
+  };
+  const roots = targets.map(layerRoot);
   for (let i = 0; i < targets.length; i++) {
     for (let j = i + 1; j < targets.length; j++) {
       const a = targets[i];
       const b = targets[j];
-      if (a.contains(b) || b.contains(a)) continue;
+      if (a.contains(b) || b.contains(a) || roots[i] !== roots[j]) continue;
       const ra = a.getBoundingClientRect();
       const rb = b.getBoundingClientRect();
       const gapX = Math.max(ra.left - rb.right, rb.left - ra.right);
@@ -213,6 +226,20 @@ export function pageChecks(options: Options): Raw[] {
     if (el.closest('[role=dialog], [role=alertdialog], [aria-modal=true]') || !visible(el)) return false;
     return (el.textContent ?? '').trim() !== '' || el.querySelector(NATIVE) !== null;
   });
+  // the part of a target that shows: cut by every ancestor that clips or scrolls, up to the first fixed one (a dialog that scrolls inside)
+  const shown = (el: Element) => {
+    const r = el.getBoundingClientRect();
+    let [left, top, right, bottom] = [r.left, r.top, r.right, r.bottom];
+    for (let p = el.parentElement; p && p !== document.body && p !== document.documentElement; p = p.parentElement) {
+      const s = getComputedStyle(p);
+      if (s.overflowX !== 'visible' || s.overflowY !== 'visible') {
+        const b = p.getBoundingClientRect();
+        [left, top, right, bottom] = [Math.max(left, b.left), Math.max(top, b.top), Math.min(right, b.right), Math.min(bottom, b.bottom)];
+      }
+      if (s.position === 'fixed') break;
+    }
+    return { left, top, right, bottom };
+  };
   if (covering.length > 0) {
     const was = window.scrollY;
     const seen = new Set<string>();
@@ -223,13 +250,16 @@ export function pageChecks(options: Options): Raw[] {
         if (!wanted(o, ro)) continue;
         for (const t of targets) {
           if (o.contains(t) || covering.some((c) => c.contains(t))) continue;
-          const rt = t.getBoundingClientRect();
+          const rt = shown(t);
           const w = Math.min(ro.right, rt.right) - Math.max(ro.left, rt.left);
           const h = Math.min(ro.bottom, rt.bottom) - Math.max(ro.top, rt.top);
           const key = `${selectorOf(o)}>${selectorOf(t)}`;
+          // what is painted on top in the middle of the shared part: a target drawn above the fixed element (a dialog over a tab bar) is not under it
+          const top = w * h > 4 ? document.elementFromPoint((Math.max(ro.left, rt.left) + Math.min(ro.right, rt.right)) / 2, (Math.max(ro.top, rt.top) + Math.min(ro.bottom, rt.bottom)) / 2) : null;
+          if (top && t.contains(top)) continue;
           if (w * h > 4 && !seen.has(key)) {
             seen.add(key);
-            out.push({ check: 'overlap', selector: selectorOf(t), text: textOf(t), rect: rectOf(rt), detail: `under ${selectorOf(o)}` });
+            out.push({ check: 'overlap', selector: selectorOf(t), text: textOf(t), rect: rectOf(t.getBoundingClientRect()), detail: `under ${selectorOf(o)}` });
           }
         }
       }

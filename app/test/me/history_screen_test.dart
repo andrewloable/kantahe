@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 import 'package:kantahe/me/history_screen.dart';
 
 import 'fakes.dart';
@@ -13,11 +14,13 @@ Future<MeRig> open(WidgetTester tester, {MeRig? rig}) async {
 void main() {
   testWidgets('shows title, artist and the format badge', (tester) async {
     final r = MeRig();
-    r.server.onHistory = (_) => (items: [entry(song('1', 'Yesterday', 'The Band'))], next: '');
+    r.server.onHistory = (_) => (items: [entry(song('1', 'Yesterday', 'The Band', lyricTiming: LyricTiming.LYRIC_TIMING_WORD, hasVocals: true))], next: '');
     await open(tester, rig: r);
     expect(find.text('Yesterday'), findsOneWidget);
     expect(find.text('The Band'), findsOneWidget);
     expect(find.text('MP3'), findsOneWidget);
+    expect(find.text('W'), findsOneWidget);
+    expect(find.text('V'), findsOneWidget);
   });
 
   testWidgets('shows the score, "skipped", or that there was no score', (tester) async {

@@ -39,16 +39,16 @@ const songs = (n: number) => (n === 1 ? '1 broken song' : `${n} broken songs`);
                 <span class="why">{{ b.reason }}</span>
               </span>
               @if (b.song) {
-                <app-format-badge [format]="b.song.format" />
+                <app-format-badge [format]="b.song.format" [timing]="b.song.lyricTiming" [vocals]="b.song.hasVocals" />
               }
               <span class="row-actions">
                 @if (asking() === b.song?.number) {
                   <span>Take "{{ b.song?.title }}" off the list, or delete its file too?</span>
-                  <button type="button" (click)="removeOne(b, true)">Remove from list</button>
-                  <button type="button" (click)="removeOne(b, false)">Delete file too</button>
-                  <button type="button" (click)="asking.set(undefined)">Cancel</button>
+                  <button class="danger" type="button" (click)="removeOne(b, true)">Remove from list</button>
+                  <button class="danger" type="button" (click)="removeOne(b, false)">Delete file too</button>
+                  <button class="quiet" type="button" (click)="asking.set(undefined)">Cancel</button>
                 } @else {
-                  <button type="button" [attr.aria-label]="'Remove ' + b.song?.title" (click)="asking.set(b.song?.number)">Remove</button>
+                  <button class="danger" type="button" [attr.aria-label]="'Remove ' + b.song?.title" (click)="asking.set(b.song?.number)">Remove</button>
                 }
                 @if (rowError()[b.song?.number ?? '']) {
                   <span class="error" role="alert">{{ rowError()[b.song?.number ?? ''] }}</span>
@@ -67,13 +67,13 @@ const songs = (n: number) => (n === 1 ? '1 broken song' : `${n} broken songs`);
                 Remove {{ label(total()) }} and delete their files? The files are deleted for good.
               }
             </span>
-            <button type="button" (click)="removeAll(ask === 'files')" [disabled]="busy()">{{ ask === 'list' ? 'Remove' : 'Delete files' }}</button>
-            <button type="button" (click)="bulkAsk.set(undefined)" [disabled]="busy()">Cancel</button>
+            <button class="danger primary" type="button" (click)="removeAll(ask === 'files')" [disabled]="busy()">{{ ask === 'list' ? 'Remove' : 'Delete files' }}</button>
+            <button class="quiet" type="button" (click)="bulkAsk.set(undefined)" [disabled]="busy()">Cancel</button>
           </div>
         } @else {
           <p class="bulk">
-            <button type="button" (click)="bulkAsk.set('list')">Remove all {{ total() }} {{ total() === 1 ? 'broken song' : 'broken songs' }} from the list</button>
-            <button type="button" (click)="bulkAsk.set('files')">Remove them and delete their files</button>
+            <button class="danger" type="button" (click)="bulkAsk.set('list')">Remove all {{ total() }} {{ total() === 1 ? 'broken song' : 'broken songs' }} from the list</button>
+            <button class="danger" type="button" (click)="bulkAsk.set('files')">Remove them and delete their files</button>
           </p>
         }
       }

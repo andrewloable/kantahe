@@ -6,12 +6,13 @@
 import "package:connectrpc/connect.dart" as connect;
 import "upload.pb.dart" as kantahev1upload;
 
-/// Song upload; requires the uploader role (PERMISSION_DENIED otherwise).
+/// Song upload; for administrators only (PERMISSION_DENIED otherwise). The uploader role of a user has no effect since 1.2.0.
 abstract final class UploadService {
   /// Fully-qualified name of the UploadService service.
   static const name = 'kantahe.v1.UploadService';
 
-  /// Uploader or admin. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+  /// Admin only. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+  /// With replace_number set the file replaces the content of that song (it keeps its number, edits, favourites, playlists and history).
   static const uploadSong = connect.Spec(
     '/$name/UploadSong',
     connect.StreamType.unary,

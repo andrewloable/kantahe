@@ -10,7 +10,7 @@ import { Errors, fieldValue, fromServer, passwordLengthOk, problem } from './for
   selector: 'app-change-password-page',
   imports: [RouterLink],
   template: `
-    <main class="card">
+    <div class="card">
       <h1>Change password</h1>
       @if (done()) {
         <p role="status">Password changed. Other devices were signed out.</p>
@@ -47,10 +47,10 @@ import { Errors, fieldValue, fromServer, passwordLengthOk, problem } from './for
           @if (failure()) {
             <p class="error" role="alert">{{ failure() }}</p>
           }
-          <button type="submit" [disabled]="busy()">Change password</button>
+          <button class="primary" type="submit" [disabled]="busy()">Change password</button>
         </form>
       }
-    </main>
+    </div>
   `,
 })
 export class ChangePasswordPage {

@@ -69,6 +69,22 @@ void main() {
     expect(shows('From the queue'), isTrue);
   });
 
+  testWidgets('shows W and V beside the badge of the song that plays', (tester) async {
+    await open(
+      tester,
+      stateOf(
+        status: PlayStatus.PLAY_STATUS_PLAYING,
+        now: nowPlaying(
+          song('00001', 'Yesterday', 'The Band', lyricTiming: LyricTiming.LYRIC_TIMING_LINE, hasVocals: true),
+          positionMs: 1000,
+          positionAtMs: 1000,
+        ),
+      ),
+    );
+    expect(find.text('L'), findsOneWidget);
+    expect(find.text('V'), findsOneWidget);
+  });
+
   testWidgets('says when a song was picked at random', (tester) async {
     await open(tester, playing(source: SongSource.SONG_SOURCE_RANDOM));
     expect(shows('Picked at random'), isTrue);

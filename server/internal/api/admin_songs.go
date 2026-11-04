@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"path/filepath"
 	"strings"
 	"unicode/utf8"
 
@@ -12,6 +13,7 @@ import (
 	kantahev1 "github.com/andrewloable/kantahe/server/gen/kantahe/v1"
 	"github.com/andrewloable/kantahe/server/internal/catalog"
 	"github.com/andrewloable/kantahe/server/internal/library"
+	"github.com/andrewloable/kantahe/server/internal/media"
 	"github.com/andrewloable/kantahe/server/internal/settings"
 )
 
@@ -278,4 +280,31 @@ func (s *AdminServer) UpdateServerSettings(ctx context.Context, req *connect.Req
 		return nil, internalErr(s.d.Logger, "UpdateServerSettings", err)
 	}
 	return connect.NewResponse(&kantahev1.UpdateServerSettingsResponse{Settings: cur}), nil
+}
+
+// GetSongDownload gives the administrator a signed address from which the stored file of a song is downloaded (docs/PLAN.md section 6).
+func (s *AdminServer) GetSongDownload(ctx context.Context, req *connect.Request[kantahev1.GetSongDownloadRequest]) (*connect.Response[kantahev1.GetSongDownloadResponse], error) {
+	id, err := requireAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	number, ok := library.CanonicalNumber(req.Msg.Number)
+	if !ok {
+		return nil, newErr(connect.CodeNotFound, "no such song")
+	}
+	info, err := library.GetSong(ctx, s.d.DB, number)
+	if errors.Is(err, library.ErrNotFound) {
+		return nil, newErr(connect.CodeNotFound, "no such song")
+	}
+	if err != nil {
+		return nil, internalErr(s.d.Logger, "GetSongDownload", err)
+	}
+	p, err := s.d.Importer.PathOf(ctx, number)
+	if err != nil {
+		return nil, internalErr(s.d.Logger, "GetSongDownload", err)
+	}
+	url, exp := s.media.DownloadURL(number, id.UserID, s.d.Now())
+	return connect.NewResponse(&kantahev1.GetSongDownloadResponse{
+		Url: url, FileName: media.DownloadName(number, info.Artist, info.Title, strings.ToLower(filepath.Ext(p))), ExpiresUnix: exp.Unix(),
+	}), nil
 }

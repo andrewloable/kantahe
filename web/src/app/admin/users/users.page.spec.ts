@@ -27,7 +27,7 @@ async function setup(opts: { revoked?: number } = {}) {
   fixture.detectChanges();
   await settle();
   const row = (email: string) => Array.from(el.querySelectorAll('tbody tr')).find((r) => r.textContent?.includes(email)) as HTMLElement;
-  const box = (email: string, role: 'admin' | 'uploader' | 'disabled') => row(email).querySelector<HTMLInputElement>(`input[type="checkbox"][data-role="${role}"]`)!;
+  const box = (email: string, role: 'admin' | 'disabled') => row(email).querySelector<HTMLInputElement>(`input[type="checkbox"][data-role="${role}"]`)!;
   const button = (within: ParentNode, text: string) => Array.from(within.querySelectorAll('button')).find((b) => b.textContent?.trim().startsWith(text))!;
   return { fixture, el, server, settle, row, box, button };
 }
@@ -38,8 +38,6 @@ describe('UsersPage', () => {
     expect(el.querySelectorAll('tbody tr').length).toBe(3);
     expect(row('ann@example.com').textContent).toContain('Ann');
     expect(box('ann@example.com', 'admin').checked).toBe(true);
-    expect(box('ann@example.com', 'uploader').checked).toBe(true);
-    expect(box('bob@example.com', 'uploader').checked).toBe(false);
     expect(box('cy@example.com', 'disabled').checked).toBe(true);
     expect(row('bob@example.com').textContent).toContain('must change password');
     expect(row('ann@example.com').textContent).not.toContain('must change password');
@@ -53,29 +51,20 @@ describe('UsersPage', () => {
   it('regression: a table wider than a phone scrolls inside the page and does not widen it (the page scrolled sideways at 390 px)', async () => {
     await setup();
     const css = Array.from(document.querySelectorAll('style')).map((st) => st.textContent ?? '').join('\n');
-    expect(css).toMatch(/\[_nghost[^\]]*\]\s*\{[^}]*display:\s*block[^}]*overflow-x:\s*auto/);
+    expect(css).toMatch(/\.page\[[^\]]*\]\s*\{[^}]*overflow-x:\s*auto/); // the page box; the dialog is outside it (a scroller would clip it)
   });
 
   it('is a table with column headers, and every checkbox names its user and role', async () => {
     const { el, box } = await setup();
-    expect(Array.from(el.querySelectorAll('th')).map((h) => h.textContent?.trim())).toEqual(['Email', 'Name', 'Admin', 'Uploader', 'Disabled', 'Account', 'Actions']);
-    expect(box('bob@example.com', 'uploader').getAttribute('aria-label')).toBe('Uploader: bob@example.com');
+    expect(Array.from(el.querySelectorAll('th')).map((h) => h.textContent?.trim())).toEqual(['Email', 'Name', 'Admin', 'Disabled', 'Account', 'Actions']);
     expect(box('bob@example.com', 'admin').getAttribute('aria-label')).toBe('Admin: bob@example.com');
     expect(box('bob@example.com', 'disabled').getAttribute('aria-label')).toBe('Disabled: bob@example.com');
   });
 
-  it('toggling uploader sends UpdateUser with only the uploader set', async () => {
-    const { box, server, settle } = await setup();
-    box('bob@example.com', 'uploader').click();
-    await settle();
-    expect(server.calls.update.length).toBe(1);
-    const req = server.calls.update[0];
-    expect(req.userId).toBe('u2');
-    expect(req.uploader).toBe(true);
-    expect(req.admin).toBeUndefined();
-    expect(req.disabled).toBeUndefined();
-    expect(req.displayName).toBeUndefined();
-    expect(box('bob@example.com', 'uploader').checked).toBe(true);
+  it('has no Uploader column or switch: only administrators upload', async () => {
+    const { el } = await setup();
+    expect(el.textContent).not.toContain('Uploader');
+    expect(el.querySelector('input[data-role="uploader"]')).toBeNull();
   });
 
   it('toggling admin and disabled each send only their own field', async () => {
@@ -84,8 +73,9 @@ describe('UsersPage', () => {
     await settle();
     box('cy@example.com', 'disabled').click();
     await settle();
-    expect([server.calls.update[0].admin, server.calls.update[0].uploader, server.calls.update[0].disabled]).toEqual([true, undefined, undefined]);
-    expect([server.calls.update[1].disabled, server.calls.update[1].admin, server.calls.update[1].uploader]).toEqual([false, undefined, undefined]);
+    expect([server.calls.update[0].admin, server.calls.update[0].disabled]).toEqual([true, undefined]);
+    expect([server.calls.update[1].disabled, server.calls.update[1].admin]).toEqual([false, undefined]);
+    expect(server.calls.update.map((u) => u.uploader)).toEqual([undefined, undefined]); // the old role is never sent
   });
 
   it('the last admin protection of the server is shown on that row and the box goes back', async () => {
@@ -99,23 +89,23 @@ describe('UsersPage', () => {
 
   it('regression: a role box is off limits while its change is on its way, so two clicks make one change', async () => {
     const { box, server, settle, fixture } = await setup();
-    const first = box('bob@example.com', 'uploader');
+    const first = box('bob@example.com', 'disabled');
     first.click();
     fixture.detectChanges();
     expect(first.disabled).toBe(true);
     await settle();
     expect(first.disabled).toBe(false);
     expect(server.calls.update.length).toBe(1);
-    box('bob@example.com', 'uploader').click();
+    box('bob@example.com', 'disabled').click();
     await settle();
     expect(server.calls.update.length).toBe(2);
-    expect(server.calls.update[1].uploader).toBe(false);
+    expect(server.calls.update[1].disabled).toBe(false);
   });
 
   it('regression: a user who is gone says so and the list is read again', async () => {
     const { box, server, settle, row } = await setup();
     server.failNext(new ConnectError('not found', Code.NotFound));
-    box('bob@example.com', 'uploader').click();
+    box('bob@example.com', 'disabled').click();
     await settle();
     expect(server.calls.list).toBe(2);
     expect(row('bob@example.com')?.textContent ?? '').not.toContain('That user no longer exists.'); // the row is re-read; the message is shown where it can be seen
@@ -141,7 +131,18 @@ describe('UsersPage', () => {
     expect(el.innerHTML).not.toContain(sent.temporaryPassword);
   });
 
-  it('regression: Reset password and Sign out devices ask first, and Cancel does nothing', async () => {
+  it('regression: Delete and Sign out devices are danger buttons, Reset password a plain one, Cancel a quiet one', async () => {
+  const { settle, row, button } = await setup();
+  expect(button(row('bob@example.com'), 'Delete').classList.contains('danger')).toBe(true);
+  expect(button(row('bob@example.com'), 'Sign out devices').classList.contains('danger')).toBe(true);
+  expect(button(row('bob@example.com'), 'Reset password').className).toBe('');
+  button(row('bob@example.com'), 'Reset password').click();
+  await settle();
+  expect(button(row('bob@example.com'), 'Cancel').classList.contains('quiet')).toBe(true);
+  expect(button(row('bob@example.com'), 'Yes, reset').classList.contains('primary')).toBe(true);
+});
+
+it('regression: Reset password and Sign out devices ask first, and Cancel does nothing', async () => {
     const { server, settle, row, button } = await setup();
     button(row('bob@example.com'), 'Reset password').click();
     await settle();
@@ -245,21 +246,88 @@ describe('UsersPage', () => {
     expect(row('ann@example.com').querySelector('[role="alert"]')?.textContent).toContain('you cannot delete your own account');
   });
 
-  it('a user created with the form appears in the table and the password is shown once', async () => {
-    const { el, settle, server } = await setup();
-    const fill = (id: string, value: string) => {
-      const i = el.querySelector<HTMLInputElement>('#' + id)!;
-      i.value = value;
-      i.dispatchEvent(new Event('input', { bubbles: true }));
+  describe('New user', () => {
+    const open = async () => {
+      const r = await setup();
+      const opener = r.button(r.el, 'New user') as HTMLButtonElement;
+      const fill = (id: string, value: string) => {
+        const i = r.el.querySelector<HTMLInputElement>('#' + id)!;
+        i.value = value;
+        i.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      const dialog = () => r.el.querySelector('[role="dialog"]');
+      return { ...r, opener, fill, dialog };
     };
-    fill('new-email', 'dee@example.com');
-    fill('new-name', 'Dee');
-    fill('new-password', 'Abcd2345wxyz');
-    el.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
-    await settle();
-    expect(server.calls.create.length).toBe(1);
-    expect(el.querySelectorAll('tbody tr').length).toBe(4);
-    expect(el.querySelector<HTMLInputElement>('app-temp-password-panel input')?.value).toBe('Abcd2345wxyz');
+
+    it('the page has a New user button and no form until it is pressed', async () => {
+      const { el, opener, dialog } = await open();
+      expect(opener).toBeTruthy();
+      expect(el.querySelector('#new-email')).toBeNull();
+      expect(dialog()).toBeNull();
+    });
+
+    it('pressing it opens a modal dialog named New user with the four fields, and the focus is on Email', async () => {
+      const { el, opener, dialog, settle } = await open();
+      opener.click();
+      await settle();
+      await settle();
+      const d = dialog()!;
+      expect(d.getAttribute('aria-modal')).toBe('true');
+      expect(d.hasAttribute('data-back-closes')).toBe(true);
+      expect(d.getAttribute('aria-labelledby')).toBe('new-user-title');
+      expect(el.querySelector('#new-user-title')?.textContent?.trim()).toBe('New user');
+      for (const id of ['new-email', 'new-name', 'new-password', 'new-admin']) expect(d.querySelector('#' + id), id).not.toBeNull();
+      expect(Array.from(d.querySelectorAll('button')).map((b) => b.textContent?.trim())).toEqual(expect.arrayContaining(['Generate', 'Create user', 'Cancel']));
+      expect(document.activeElement?.id).toBe('new-email');
+    });
+
+    it('Cancel, Escape and the backdrop close it without sending anything, and the focus goes back to the button', async () => {
+      const { el, opener, dialog, settle, server, button } = await open();
+      for (const how of ['cancel', 'escape', 'backdrop']) {
+        opener.click();
+        await settle();
+        await settle();
+        expect(dialog(), how).not.toBeNull();
+        if (how === 'cancel') (button(dialog()!, 'Cancel') as HTMLButtonElement).click();
+        else if (how === 'escape') dialog()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        else el.querySelector<HTMLElement>('.backdrop')!.click();
+        await settle();
+        await settle();
+        expect(dialog(), how).toBeNull();
+        expect(document.activeElement, how).toBe(opener);
+      }
+      expect(server.calls.create.length).toBe(0);
+    });
+
+    it('a user created in it appears in the table, the dialog closes and the password is shown once', async () => {
+      const { el, opener, fill, dialog, settle, server } = await open();
+      opener.click();
+      await settle();
+      fill('new-email', 'dee@example.com');
+      fill('new-name', 'Dee');
+      fill('new-password', 'Abcd2345wxyz');
+      el.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+      await settle();
+      expect(server.calls.create.length).toBe(1);
+      expect(dialog()).toBeNull();
+      expect(el.querySelectorAll('tbody tr').length).toBe(4);
+      expect(el.querySelector<HTMLInputElement>('app-temp-password-panel input')?.value).toBe('Abcd2345wxyz');
+    });
+
+    it('a refusal (the email is in use) stays in the dialog, with its fields', async () => {
+      const { el, opener, fill, dialog, settle, server } = await open();
+      opener.click();
+      await settle();
+      fill('new-email', 'ann@example.com');
+      fill('new-name', 'Another Ann');
+      fill('new-password', 'Abcd2345wxyz');
+      server.failNext(new ConnectError('exists', Code.AlreadyExists));
+      el.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+      await settle();
+      expect(dialog()).not.toBeNull();
+      expect(dialog()!.querySelector('[role="alert"]')?.textContent).toContain('Email already in use');
+      expect(dialog()!.querySelector<HTMLInputElement>('#new-name')!.value).toBe('Another Ann');
+    });
   });
 
   it('the list failing to load is said, with a way to try again', async () => {

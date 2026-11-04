@@ -19,7 +19,7 @@ import { ToastService } from '../core/toast';
           <p class="error" role="alert">{{ nameError() }}</p>
         }
       </div>
-      <button type="submit" [disabled]="busy()">Create</button>
+      <button class="primary" type="submit" [disabled]="busy()">Create</button>
     </form>
     @if (loadError()) {
       <p class="error" role="alert">{{ loadError() }} <button type="button" (click)="load()">Try again</button></p>
@@ -35,19 +35,19 @@ import { ToastService } from '../core/toast';
           @if (confirming() === p.id) {
             <span class="ask" role="group">
               <span>Delete "{{ p.name }}"?</span>
-              <button type="button" (click)="remove(p)">Yes, delete</button>
-              <button type="button" (click)="confirming.set(undefined)">Cancel</button>
+              <button class="danger primary" type="button" (click)="remove(p)">Yes, delete</button>
+              <button class="quiet" type="button" (click)="confirming.set(undefined)">Cancel</button>
             </span>
           } @else {
             <button type="button" [attr.aria-label]="'Rename ' + p.name" (click)="edit(p)">Rename</button>
-            <button type="button" [attr.aria-label]="'Delete ' + p.name" (click)="confirming.set(p.id)">Delete</button>
+            <button class="danger" type="button" [attr.aria-label]="'Delete ' + p.name" (click)="confirming.set(p.id)">Delete</button>
           }
           @if (editing() === p.id) {
             <span class="edit">
               <label [for]="'rename-' + p.id" class="sr-only">New name of {{ p.name }}</label>
               <input [id]="'rename-' + p.id" type="text" maxlength="100" [value]="renameTo()" (input)="renameTo.set(value($event))" />
-              <button type="button" (click)="rename(p)">Save</button>
-              <button type="button" (click)="editing.set(undefined)">Cancel</button>
+              <button class="primary" type="button" (click)="rename(p)">Save</button>
+              <button class="quiet" type="button" (click)="editing.set(undefined)">Cancel</button>
             </span>
           }
         </li>

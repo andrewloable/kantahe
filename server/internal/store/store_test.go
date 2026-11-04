@@ -609,3 +609,86 @@ func TestSongVocalsMigrationRequeuesTheRefusedFiles(t *testing.T) {
 		}
 	}
 }
+
+func TestLatestVersionIsTheNumberOfTheLastMigration(t *testing.T) {
+	entries, err := migrationFiles.ReadDir("migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	last := entries[len(entries)-1].Name() // ReadDir sorts by name, and the names start with the number
+	var want int
+	if _, err := fmt.Sscanf(last, "%d_", &want); err != nil || want < 13 {
+		t.Fatalf("%s: %v %d", last, err, want)
+	}
+	if got := LatestVersion(); got != want {
+		t.Fatalf("LatestVersion() = %d, want %d", got, want)
+	}
+}
+
+func TestSchemaOfIsTheSameForTwoFreshDatabasesAndSeesAnyChange(t *testing.T) {
+	a, b := openTemp(t), openTemp(t)
+	sa, err := SchemaOf(context.Background(), a.DB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb, err := SchemaOf(context.Background(), b.DB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sa) < 10 || strings.Join(sa, "\n") != strings.Join(sb, "\n") {
+		t.Fatalf("two fresh databases differ or the list is empty (%d entries)", len(sa))
+	}
+	for _, change := range []string{
+		`CREATE TABLE extra(x)`,
+		`CREATE INDEX extra_idx ON songs(sha256, path)`,
+		`CREATE TRIGGER extra_t AFTER INSERT ON songs BEGIN SELECT 1; END`,
+		`CREATE VIEW extra_v AS SELECT number FROM songs`,
+	} {
+		c := openTemp(t)
+		if _, err := c.Exec(change); err != nil {
+			t.Fatal(err)
+		}
+		sc, err := SchemaOf(context.Background(), c.DB)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Join(sa, "\n") == strings.Join(sc, "\n") {
+			t.Errorf("%q is not seen", change)
+		}
+	}
+}
+
+func TestLyricTimingMigrationAddsTheColumnWithoutTouchingTheSongs(t *testing.T) {
+	db := rawDB(t)
+	all, err := migrationFiles.ReadDir("migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	upTo := func(last string) fstest.MapFS {
+		m := fstest.MapFS{}
+		for _, f := range all {
+			if f.Name() <= last {
+				body, _ := migrationFiles.ReadFile("migrations/" + f.Name())
+				m[f.Name()] = &fstest.MapFile{Data: body}
+			}
+		}
+		return m
+	}
+	if err := migrateFS(context.Background(), db, upTo("0013_song_vocals.sql")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO songs(number, format, source, path, sha256, size, mtime, original_name, file_title, metadata_done, created_at)
+		VALUES ('00001', 1, 1, 'p', 'h', 1, 1, 'x.karmp3', 'Title', 1, 1)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrateFS(context.Background(), db, upTo("9999_x.sql")); err != nil {
+		t.Fatal(err)
+	}
+	var timing, done int
+	if err := db.QueryRow(`SELECT lyric_timing, metadata_done FROM songs WHERE number = '00001'`).Scan(&timing, &done); err != nil {
+		t.Fatal(err)
+	}
+	if timing != 0 || done != 1 {
+		t.Fatalf("lyric_timing %d metadata_done %d: an existing song must be left readable and wait for the backfill", timing, done)
+	}
+}

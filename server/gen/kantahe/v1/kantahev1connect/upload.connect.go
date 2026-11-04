@@ -52,7 +52,8 @@ const (
 
 // UploadServiceClient is a client for the kantahe.v1.UploadService service.
 type UploadServiceClient interface {
-	// Uploader or admin. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+	// Admin only. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+	// With replace_number set the file replaces the content of that song (it keeps its number, edits, favourites, playlists and history).
 	UploadSong(context.Context, *connect.Request[v1.UploadSongRequest]) (*connect.Response[v1.UploadSongResponse], error)
 	// Admin only. Starts, or resumes, the upload of one background video: a video is too big for one message, so it goes up in chunks of
 	// unary calls (D3). REJECTED with a reason when the name, the size or the limit is refused; received > 0 when an earlier upload of the same file by the same admin is resumed.
@@ -145,7 +146,8 @@ func (c *uploadServiceClient) AbortVideoUpload(ctx context.Context, req *connect
 
 // UploadServiceHandler is an implementation of the kantahe.v1.UploadService service.
 type UploadServiceHandler interface {
-	// Uploader or admin. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+	// Admin only. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+	// With replace_number set the file replaces the content of that song (it keeps its number, edits, favourites, playlists and history).
 	UploadSong(context.Context, *connect.Request[v1.UploadSongRequest]) (*connect.Response[v1.UploadSongResponse], error)
 	// Admin only. Starts, or resumes, the upload of one background video: a video is too big for one message, so it goes up in chunks of
 	// unary calls (D3). REJECTED with a reason when the name, the size or the limit is refused; received > 0 when an earlier upload of the same file by the same admin is resumed.

@@ -46,6 +46,19 @@ service AdminService {
   rpc GetServerSettings(GetServerSettingsRequest) returns (GetServerSettingsResponse);
   // Admin only. Unset optional fields are left unchanged; INVALID_ARGUMENT for out-of-range values.
   rpc UpdateServerSettings(UpdateServerSettingsRequest) returns (UpdateServerSettingsResponse);
+  // Admin only. Writes a copy of the whole server (database, settings, every song file, extracted MP3s, background videos) into a new or
+  // empty folder on the server's disk. Streams progress; the last message has done = true. INVALID_ARGUMENT for a folder that is not
+  // allowed; FAILED_PRECONDITION while another export or import runs.
+  rpc ExportData(ExportDataRequest) returns (stream ExportDataResponse);
+  // Admin only. Reads the manifest of an export folder and says whether it can be imported; changes nothing.
+  rpc InspectExport(InspectExportRequest) returns (InspectExportResponse);
+  // Admin only. Checks and stages an export folder; the server then restarts and replaces all of its data with it. Streams progress; the
+  // last message has done = true. INVALID_ARGUMENT for a folder that cannot be imported; FAILED_PRECONDITION while another export or
+  // import runs.
+  rpc ImportData(ImportDataRequest) returns (stream ImportDataResponse);
+  // Admin only. A signed address (valid for 10 minutes, for the asking administrator) from which the stored file of a song is downloaded as it is: the
+  // .karmp3 ZIP or the .kar file. NOT_FOUND for a number that is not a live song.
+  rpc GetSongDownload(GetSongDownloadRequest) returns (GetSongDownloadResponse);
 }
 
 // Asks nothing.
@@ -62,6 +75,7 @@ message CreateUserRequest {
   string display_name = 2;
   string temporary_password = 3;
   bool admin = 4;
+  // Has no effect since 1.2.0: only administrators upload songs.
   bool uploader = 5;
 }
 
@@ -75,6 +89,7 @@ message UpdateUserRequest {
   string user_id = 1;
   optional string display_name = 2;
   optional bool admin = 3;
+  // Has no effect since 1.2.0: only administrators upload songs.
   optional bool uploader = 4;
   optional bool disabled = 5;
 }
@@ -287,3 +302,68 @@ message DeleteVideoRequest {
 
 // Nothing to report.
 message DeleteVideoResponse {}
+
+// The folder to write the export into, an absolute path on the server's disk.
+message ExportDataRequest {
+  string folder = 1;
+}
+
+// Progress of an export; the last message has done = true.
+message ExportDataResponse {
+  int32 files_done = 1;
+  int32 files_total = 2;
+  int64 bytes_done = 3;
+  int64 bytes_total = 4;
+  bool done = 5;
+  // Only on the last message: the numbers of live songs whose file could not be read; they are not in the export.
+  repeated string skipped_numbers = 6;
+  // Only on the last message: the cleaned absolute folder.
+  string folder = 7;
+}
+
+// The export folder to read, an absolute path on the server's disk.
+message InspectExportRequest {
+  string folder = 1;
+}
+
+// What an export folder holds.
+message InspectExportResponse {
+  string server_name = 1;
+  string kantahe_version = 2;
+  int64 created_unix = 3;
+  int32 songs = 4;
+  int32 users = 5;
+  int32 videos = 6;
+  int64 bytes_total = 7;
+  bool importable = 8;
+  // Why the folder cannot be imported; set when importable is false.
+  string reason = 9;
+}
+
+// The export folder to import, an absolute path on the server's disk.
+message ImportDataRequest {
+  string folder = 1;
+}
+
+// Progress of an import; the last message has done = true.
+message ImportDataResponse {
+  int32 files_done = 1;
+  int32 files_total = 2;
+  int64 bytes_done = 3;
+  int64 bytes_total = 4;
+  bool done = 5;
+  // Only on the last message: the server restarts now to apply the import.
+  bool restarting = 6;
+}
+
+// The song whose file is wanted.
+message GetSongDownloadRequest {
+  string number = 1;
+}
+
+// url is a path with a query, relative to the server address (like the media addresses); file_name is the name the file should be saved as.
+message GetSongDownloadResponse {
+  string url = 1;
+  string file_name = 2;
+  int64 expires_unix = 3;
+}

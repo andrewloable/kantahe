@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file kantahe/v1/upload.proto.
  */
 export const file_kantahe_v1_upload: GenFile = /*@__PURE__*/
-  fileDesc("ChdrYW50YWhlL3YxL3VwbG9hZC5wcm90bxIKa2FudGFoZS52MSI2ChFVcGxvYWRTb25nUmVxdWVzdBIQCghmaWxlbmFtZRgBIAEoCRIPCgdjb250ZW50GAIgASgMIm4KElVwbG9hZFNvbmdSZXNwb25zZRIoCgZzdGF0dXMYASABKA4yGC5rYW50YWhlLnYxLlVwbG9hZFN0YXR1cxIeCgRzb25nGAIgASgLMhAua2FudGFoZS52MS5Tb25nEg4KBnJlYXNvbhgDIAEoCSI/ChdCZWdpblZpZGVvVXBsb2FkUmVxdWVzdBIQCghmaWxlbmFtZRgBIAEoCRISCgpzaXplX2J5dGVzGAIgASgDIo0BChhCZWdpblZpZGVvVXBsb2FkUmVzcG9uc2USEQoJdXBsb2FkX2lkGAEgASgJEhIKCmNodW5rX3NpemUYAiABKAUSEAoIcmVjZWl2ZWQYAyABKAMSKAoGc3RhdHVzGAQgASgOMhgua2FudGFoZS52MS5VcGxvYWRTdGF0dXMSDgoGcmVhc29uGAUgASgJIk0KF1VwbG9hZFZpZGVvQ2h1bmtSZXF1ZXN0EhEKCXVwbG9hZF9pZBgBIAEoCRIOCgZvZmZzZXQYAiABKAMSDwoHY29udGVudBgDIAEoDCIsChhVcGxvYWRWaWRlb0NodW5rUmVzcG9uc2USEAoIcmVjZWl2ZWQYASABKAMiLwoaQ29tcGxldGVWaWRlb1VwbG9hZFJlcXVlc3QSEQoJdXBsb2FkX2lkGAEgASgJInkKG0NvbXBsZXRlVmlkZW9VcGxvYWRSZXNwb25zZRIoCgZzdGF0dXMYASABKA4yGC5rYW50YWhlLnYxLlVwbG9hZFN0YXR1cxIgCgV2aWRlbxgCIAEoCzIRLmthbnRhaGUudjEuVmlkZW8SDgoGcmVhc29uGAMgASgJIiwKF0Fib3J0VmlkZW9VcGxvYWRSZXF1ZXN0EhEKCXVwbG9hZF9pZBgBIAEoCSIaChhBYm9ydFZpZGVvVXBsb2FkUmVzcG9uc2UqfwoMVXBsb2FkU3RhdHVzEh0KGVVQTE9BRF9TVEFUVVNfVU5TUEVDSUZJRUQQABIXChNVUExPQURfU1RBVFVTX0FEREVEEAESGwoXVVBMT0FEX1NUQVRVU19EVVBMSUNBVEUQAhIaChZVUExPQURfU1RBVFVTX1JFSkVDVEVEEAMy4QMKDVVwbG9hZFNlcnZpY2USSwoKVXBsb2FkU29uZxIdLmthbnRhaGUudjEuVXBsb2FkU29uZ1JlcXVlc3QaHi5rYW50YWhlLnYxLlVwbG9hZFNvbmdSZXNwb25zZRJdChBCZWdpblZpZGVvVXBsb2FkEiMua2FudGFoZS52MS5CZWdpblZpZGVvVXBsb2FkUmVxdWVzdBokLmthbnRhaGUudjEuQmVnaW5WaWRlb1VwbG9hZFJlc3BvbnNlEl0KEFVwbG9hZFZpZGVvQ2h1bmsSIy5rYW50YWhlLnYxLlVwbG9hZFZpZGVvQ2h1bmtSZXF1ZXN0GiQua2FudGFoZS52MS5VcGxvYWRWaWRlb0NodW5rUmVzcG9uc2USZgoTQ29tcGxldGVWaWRlb1VwbG9hZBImLmthbnRhaGUudjEuQ29tcGxldGVWaWRlb1VwbG9hZFJlcXVlc3QaJy5rYW50YWhlLnYxLkNvbXBsZXRlVmlkZW9VcGxvYWRSZXNwb25zZRJdChBBYm9ydFZpZGVvVXBsb2FkEiMua2FudGFoZS52MS5BYm9ydFZpZGVvVXBsb2FkUmVxdWVzdBokLmthbnRhaGUudjEuQWJvcnRWaWRlb1VwbG9hZFJlc3BvbnNlQqcBCg5jb20ua2FudGFoZS52MUILVXBsb2FkUHJvdG9QAVo/Z2l0aHViLmNvbS9hbmRyZXdsb2FibGUva2FudGFoZS9zZXJ2ZXIvZ2VuL2thbnRhaGUvdjE7a2FudGFoZXYxogIDS1hYqgIKS2FudGFoZS5WMcoCCkthbnRhaGVcVjHiAhZLYW50YWhlXFYxXEdQQk1ldGFkYXRh6gILS2FudGFoZTo6VjFiBnByb3RvMw", [file_kantahe_v1_common]);
+  fileDesc("ChdrYW50YWhlL3YxL3VwbG9hZC5wcm90bxIKa2FudGFoZS52MSJOChFVcGxvYWRTb25nUmVxdWVzdBIQCghmaWxlbmFtZRgBIAEoCRIPCgdjb250ZW50GAIgASgMEhYKDnJlcGxhY2VfbnVtYmVyGAMgASgJIm4KElVwbG9hZFNvbmdSZXNwb25zZRIoCgZzdGF0dXMYASABKA4yGC5rYW50YWhlLnYxLlVwbG9hZFN0YXR1cxIeCgRzb25nGAIgASgLMhAua2FudGFoZS52MS5Tb25nEg4KBnJlYXNvbhgDIAEoCSI/ChdCZWdpblZpZGVvVXBsb2FkUmVxdWVzdBIQCghmaWxlbmFtZRgBIAEoCRISCgpzaXplX2J5dGVzGAIgASgDIo0BChhCZWdpblZpZGVvVXBsb2FkUmVzcG9uc2USEQoJdXBsb2FkX2lkGAEgASgJEhIKCmNodW5rX3NpemUYAiABKAUSEAoIcmVjZWl2ZWQYAyABKAMSKAoGc3RhdHVzGAQgASgOMhgua2FudGFoZS52MS5VcGxvYWRTdGF0dXMSDgoGcmVhc29uGAUgASgJIk0KF1VwbG9hZFZpZGVvQ2h1bmtSZXF1ZXN0EhEKCXVwbG9hZF9pZBgBIAEoCRIOCgZvZmZzZXQYAiABKAMSDwoHY29udGVudBgDIAEoDCIsChhVcGxvYWRWaWRlb0NodW5rUmVzcG9uc2USEAoIcmVjZWl2ZWQYASABKAMiLwoaQ29tcGxldGVWaWRlb1VwbG9hZFJlcXVlc3QSEQoJdXBsb2FkX2lkGAEgASgJInkKG0NvbXBsZXRlVmlkZW9VcGxvYWRSZXNwb25zZRIoCgZzdGF0dXMYASABKA4yGC5rYW50YWhlLnYxLlVwbG9hZFN0YXR1cxIgCgV2aWRlbxgCIAEoCzIRLmthbnRhaGUudjEuVmlkZW8SDgoGcmVhc29uGAMgASgJIiwKF0Fib3J0VmlkZW9VcGxvYWRSZXF1ZXN0EhEKCXVwbG9hZF9pZBgBIAEoCSIaChhBYm9ydFZpZGVvVXBsb2FkUmVzcG9uc2UqmgEKDFVwbG9hZFN0YXR1cxIdChlVUExPQURfU1RBVFVTX1VOU1BFQ0lGSUVEEAASFwoTVVBMT0FEX1NUQVRVU19BRERFRBABEhsKF1VQTE9BRF9TVEFUVVNfRFVQTElDQVRFEAISGgoWVVBMT0FEX1NUQVRVU19SRUpFQ1RFRBADEhkKFVVQTE9BRF9TVEFUVVNfVVBEQVRFRBAEMuEDCg1VcGxvYWRTZXJ2aWNlEksKClVwbG9hZFNvbmcSHS5rYW50YWhlLnYxLlVwbG9hZFNvbmdSZXF1ZXN0Gh4ua2FudGFoZS52MS5VcGxvYWRTb25nUmVzcG9uc2USXQoQQmVnaW5WaWRlb1VwbG9hZBIjLmthbnRhaGUudjEuQmVnaW5WaWRlb1VwbG9hZFJlcXVlc3QaJC5rYW50YWhlLnYxLkJlZ2luVmlkZW9VcGxvYWRSZXNwb25zZRJdChBVcGxvYWRWaWRlb0NodW5rEiMua2FudGFoZS52MS5VcGxvYWRWaWRlb0NodW5rUmVxdWVzdBokLmthbnRhaGUudjEuVXBsb2FkVmlkZW9DaHVua1Jlc3BvbnNlEmYKE0NvbXBsZXRlVmlkZW9VcGxvYWQSJi5rYW50YWhlLnYxLkNvbXBsZXRlVmlkZW9VcGxvYWRSZXF1ZXN0Gicua2FudGFoZS52MS5Db21wbGV0ZVZpZGVvVXBsb2FkUmVzcG9uc2USXQoQQWJvcnRWaWRlb1VwbG9hZBIjLmthbnRhaGUudjEuQWJvcnRWaWRlb1VwbG9hZFJlcXVlc3QaJC5rYW50YWhlLnYxLkFib3J0VmlkZW9VcGxvYWRSZXNwb25zZUKnAQoOY29tLmthbnRhaGUudjFCC1VwbG9hZFByb3RvUAFaP2dpdGh1Yi5jb20vYW5kcmV3bG9hYmxlL2thbnRhaGUvc2VydmVyL2dlbi9rYW50YWhlL3YxO2thbnRhaGV2MaICA0tYWKoCCkthbnRhaGUuVjHKAgpLYW50YWhlXFYx4gIWS2FudGFoZVxWMVxHUEJNZXRhZGF0YeoCC0thbnRhaGU6OlYxYgZwcm90bzM", [file_kantahe_v1_common]);
 
 /**
  * The original filename (its leading digits become the song number) and the file bytes (at most the configured limit).
@@ -29,6 +29,13 @@ export type UploadSongRequest = Message<"kantahe.v1.UploadSongRequest"> & {
    * @generated from field: bytes content = 2;
    */
   content: Uint8Array;
+
+  /**
+   * When not empty: the number of an existing song whose file this upload replaces. The format (.kar or .karmp3) must be the song's own.
+   *
+   * @generated from field: string replace_number = 3;
+   */
+  replaceNumber: string;
 };
 
 /**
@@ -285,6 +292,13 @@ export enum UploadStatus {
    * @generated from enum value: UPLOAD_STATUS_REJECTED = 3;
    */
   REJECTED = 3,
+
+  /**
+   * The file replaced the content of the song named in replace_number; the response carries the song.
+   *
+   * @generated from enum value: UPLOAD_STATUS_UPDATED = 4;
+   */
+  UPDATED = 4,
 }
 
 /**
@@ -294,13 +308,14 @@ export const UploadStatusSchema: GenEnum<UploadStatus> = /*@__PURE__*/
   enumDesc(file_kantahe_v1_upload, 0);
 
 /**
- * Song upload; requires the uploader role (PERMISSION_DENIED otherwise).
+ * Song upload; for administrators only (PERMISSION_DENIED otherwise). The uploader role of a user has no effect since 1.2.0.
  *
  * @generated from service kantahe.v1.UploadService
  */
 export const UploadService: GenService<{
   /**
-   * Uploader or admin. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+   * Admin only. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+   * With replace_number set the file replaces the content of that song (it keeps its number, edits, favourites, playlists and history).
    *
    * @generated from rpc kantahe.v1.UploadService.UploadSong
    */

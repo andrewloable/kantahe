@@ -87,7 +87,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ],
                       ),
                     ),
-                    if (e.hasSong()) FormatBadge(e.song.format),
+                    if (e.hasSong()) FormatBadge(e.song.format, timing: e.song.lyricTiming, vocals: e.song.hasVocals),
                     const SizedBox(width: 8),
                     Text(_result(e)),
                     if (e.hasSong()) IconButton(tooltip: 'Sing ${e.song.title} again', icon: const Icon(Icons.replay), onPressed: () => _actions.add(e.song)),

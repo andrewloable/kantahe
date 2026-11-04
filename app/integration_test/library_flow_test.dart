@@ -42,10 +42,17 @@ void main() {
     final services = await AppServices.create();
     await services.auth.signOut();
     await services.serverUrl.set(serverUrl);
-    final login = await services.api.auth.login(LoginRequest(email: userEmail, password: userPassword, deviceName: 'integration test', deviceType: DeviceType.DEVICE_TYPE_ANDROID));
+    final login = await services.api.auth.login(
+      LoginRequest(email: userEmail, password: userPassword, deviceName: 'integration test', deviceType: DeviceType.DEVICE_TYPE_ANDROID),
+    );
     await services.auth.signIn(login.auth);
 
-    await tester.pumpWidget(AppRoot(services: services, child: const MaterialApp(home: LibraryScreen())));
+    await tester.pumpWidget(
+      AppRoot(
+        services: services,
+        child: const MaterialApp(home: LibraryScreen()),
+      ),
+    );
 
     // 1. the library opens with every song
     await until(tester, () => shows('Title 1') && shows('Title 3'), 'the first page of the library');
@@ -81,19 +88,6 @@ void main() {
     await until(tester, () => tester.widget<Text>(find.byKey(const Key('digits'))).data == '', 'the pad to clear after adding');
     final state = await services.api.session.getState(GetStateRequest());
     expect(state.state.queue.map((q) => q.song.number), contains('00002'));
-
-    // 5. browse by letter: titles, then artists with their song counts
-    await tester.tap(find.text('Browse'));
-    await tester.pump(const Duration(milliseconds: 500));
-    await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'T')); // the letters scroll sideways
-    await tester.tap(find.widgetWithText(ChoiceChip, 'T'));
-    await until(tester, () => shows('Title 1'), 'titles under T');
-    await tester.tap(find.text('Artists'));
-    await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'A'));
-    await tester.tap(find.widgetWithText(ChoiceChip, 'A'));
-    await until(tester, () => shows('Artist 1') && shows('song'), 'artists under A');
-    await tester.tap(find.text('Artist 1'));
-    await until(tester, () => shows('Back to artists') && shows('Title 1'), "the artist's songs");
 
     await services.auth.signOut();
     await services.serverUrl.clear();

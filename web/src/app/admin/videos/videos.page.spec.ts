@@ -79,7 +79,7 @@ describe('VideosPage', () => {
     expect(v.volume).toBe(0);
     // the preview button plays it, still without sound
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve());
-    await click(button(row('Beach'), 'Play the preview of Beach'));
+    await click(button(row('Beach'), 'Preview: Beach'));
     expect(v.muted).toBe(true);
     expect(button(row('Beach'), 'Stop the preview of Beach')).not.toBeNull();
   });
@@ -183,17 +183,17 @@ describe('VideosPage', () => {
   describe('the list', () => {
     it('Move up on row 2 sends the new order of all ids; the ends cannot move out', async () => {
       const { server, row, button, click, rows } = await setup();
-      expect(button(row('Beach'), 'Move Beach up').disabled).toBe(true);
-      expect(button(row('City'), 'Move City down').disabled).toBe(true);
-      expect(button(row('Beach'), 'Move Beach down').disabled).toBe(false);
-      await click(button(row('Sunset'), 'Move Sunset up'));
+      expect(button(row('Beach'), 'Move up: Beach').disabled).toBe(true);
+      expect(button(row('City'), 'Move down: City').disabled).toBe(true);
+      expect(button(row('Beach'), 'Move down: Beach').disabled).toBe(false);
+      await click(button(row('Sunset'), 'Move up: Sunset'));
       expect(server.calls.reorder).toEqual([['v2', 'v1', 'v3']]);
       expect(rows().map((r) => r.querySelector('.name')?.textContent?.trim())).toEqual(['Sunset', 'Beach', 'City']);
     });
 
     it('Move down sends the new order too', async () => {
       const { server, row, button, click } = await setup();
-      await click(button(row('Beach'), 'Move Beach down'));
+      await click(button(row('Beach'), 'Move down: Beach'));
       expect(server.calls.reorder).toEqual([['v2', 'v1', 'v3']]);
     });
 
@@ -201,7 +201,7 @@ describe('VideosPage', () => {
       const { server, row, button, click } = await setup();
       server.fail.reorder = new ConnectError('the list does not match the videos on the server: reload', Code.InvalidArgument);
       const listings = server.calls.list;
-      await click(button(row('Sunset'), 'Move Sunset up'));
+      await click(button(row('Sunset'), 'Move up: Sunset'));
       expect(server.calls.list).toBe(listings + 1);
       expect(TestBed.inject(ToastService).toasts()[0].message).toContain('The videos changed on the server');
     });
@@ -249,7 +249,9 @@ describe('VideosPage', () => {
       const { server, row, el, settle } = await setup();
       const box = row('City').querySelector<HTMLInputElement>('input[type="checkbox"]')!;
       expect(box.checked).toBe(false);
-      expect(box.getAttribute('aria-label')).toBe('Play City in the loop');
+      // the name starts with the words beside the box (WCAG 2.5.3), then says which video
+      expect(box.getAttribute('aria-label')).toBe('Play this video: City');
+      expect(box.closest('label')!.textContent?.trim()).toBe('Play this video');
       box.checked = true;
       box.dispatchEvent(new Event('change', { bubbles: true }));
       await settle();
@@ -263,7 +265,7 @@ describe('VideosPage', () => {
       await click(button(row('Beach'), 'Delete Beach'));
       expect(row('Beach').querySelector('[role="alert"]')?.textContent).toContain('Delete "Beach" and its file? Players stop showing it.');
       expect(server.calls.remove).toEqual([]);
-      await click(button(row('Beach'), 'Keep Beach'));
+      await click(button(row('Beach'), 'Cancel: keep Beach'));
       expect(server.calls.remove).toEqual([]);
       expect(row('Beach').querySelector('[role="alert"]')).toBeNull();
     });
@@ -367,24 +369,24 @@ describe('VideosPage', () => {
 
     it('a move keeps focus on the same button of the same video, wherever that video went', async () => {
       const { row, button, click } = await setup();
-      button(row('Beach'), 'Move Beach down').focus();
-      await click(button(row('Beach'), 'Move Beach down')); // Beach is second now: both directions work, and the one just used keeps the focus
-      expect(label()).toBe('Move Beach down');
-      await click(button(row('Beach'), 'Move Beach down')); // and last: it cannot go further down
-      expect(label()).toBe('Move Beach up');
+      button(row('Beach'), 'Move down: Beach').focus();
+      await click(button(row('Beach'), 'Move down: Beach')); // Beach is second now: both directions work, and the one just used keeps the focus
+      expect(label()).toBe('Move down: Beach');
+      await click(button(row('Beach'), 'Move down: Beach')); // and last: it cannot go further down
+      expect(label()).toBe('Move up: Beach');
     });
 
     it('a move to the end leaves focus on the button that still works', async () => {
       const { row, button, click } = await setup();
-      await click(button(row('Sunset'), 'Move Sunset down')); // Sunset is last now
-      expect(label()).toBe('Move Sunset up');
+      await click(button(row('Sunset'), 'Move down: Sunset')); // Sunset is last now
+      expect(label()).toBe('Move up: Sunset');
     });
 
     it('Delete moves focus into the question, onto Cancel; Cancel gives it back to Delete; confirming lands on the heading of the list', async () => {
       const { row, button, click } = await setup();
       await click(button(row('Beach'), 'Delete Beach'));
-      expect(label()).toBe('Keep Beach');
-      await click(button(row('Beach'), 'Keep Beach'));
+      expect(label()).toBe('Cancel: keep Beach');
+      await click(button(row('Beach'), 'Cancel: keep Beach'));
       expect(label()).toBe('Delete Beach');
       await click(button(row('Beach'), 'Delete Beach'));
       await click(button(row('Beach'), 'Delete Beach for good'));

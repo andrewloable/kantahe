@@ -16,7 +16,7 @@ devices act as remotes.
 |---|---|---|
 | `server/` | Go, one static binary, pure Go (no cgo, no external programs) | Accounts, library (upload + watched folders), search, lyrics, media, per-user queue and playback state, favourites, history, playlists. Serves the web app. Runs on Linux, macOS, Windows (amd64/arm64) and Docker. |
 | `web/` | Angular (latest stable; 22.x at the time of writing) | The **default client**: full app in any browser (library, queue, player, admin, upload). Also packaged as a **Samsung Tizen** and an **LG webOS** TV app. Provides the **player page** that the Flutter apps embed. |
-| `app/` | Flutter | **Android, iOS, Android TV** apps. Native screens for sign-in, library, queue, devices, favourites/history/playlists, upload; the full-screen **player is the Angular player inside a WebView**. |
+| `app/` | Flutter | **Android, iOS, Android TV** apps. Native screens for sign-in, library, queue, devices, favourites/history/playlists: the app is for singing, so it only has the library, the player (with the queue) and the user's own pages; administration and uploading are done in the web app (owner, 2026-11-04). The full-screen **player is the Angular player inside a WebView**. |
 | `proto/` | Protobuf, buf | The ConnectRPC contract; generated code for Go, TypeScript and Dart. |
 | `deploy/` | Dockerfile, compose, service files, proxy examples | Packaging. |
 
@@ -50,7 +50,7 @@ Song formats: `.kar` (Standard MIDI file with lyrics as text events) and `.karmp
 **Library**
 5. **One shared library** for everyone. Users with upload permission upload single files, several
    files, or a ZIP; the server also imports files placed in **watched folders**.
-6. **Every file is its own entry with a unique number** (number pad, search, browse). A song present
+6. **Every file is its own entry with a unique number** (number pad, search). A song present
    as both `.karmp3` and `.kar` is listed twice; every entry shows an **MP3** or **MIDI** badge.
 7. The **admin can edit a song's title and artist** and delete songs; edits survive rescans.
 
@@ -84,6 +84,13 @@ in step; both are normalized to about -16 LUFS). **Entry names always come from 
 names the instrumental (a file of Maker 1.0.x has no such row, and its only `.mp3` is the instrumental) and the row `Vocals` names the
 vocals; no `Vocals` row, or a named entry that is missing or unusable, means no vocals (the song still plays, the problem is logged
 once). Unknown entries are ignored. Lyric times count from the start of both MP3s and need no offset.
+
+**How the lyrics are timed** (Kantahe Maker 1.2.6 and later write the `.nfo` row `Timing by : word` or `Timing by : line`; `word` when at least one lyric line
+of the `.lrc` has word marks): the server keeps it per song (`songs.lyric_timing`: 0 not read, 1 line, 2 word, 9 no lyrics; migration 0014) and sends
+`Song.lyric_timing` (`LyricTiming`: line, word; unspecified until read or without lyrics). The value is the row when it says `word` or `line` (any case),
+else what the lyrics show (a line with more than one word means word timing); a MIDI song is word-timed when a line has more than one syllable. The metadata pass
+sets it for new and changed songs, and a low-priority pass reads it once for songs imported before. Clients show a small **W** (word by word) or **L** (line by
+line) badge beside the MP3 or MIDI badge, and a **V** badge when the song has a separate vocals track (`Song.has_vocals`), in song lists and in the player.
 
 **Lyric timing** (computed on the server, D1; clients only compare times):
 * A word's colour wipe runs from its start to the next word's start (at least 50 ms).
@@ -275,12 +282,47 @@ half the memory), plain HTTP from the LAN. The agent measured with `adb` (`dumps
 * **A TV runtime change is not needed**: no packaging file was changed (the Android WebView plays inline with no user gesture already, and
   the Tizen and webOS packages are untested, so none was touched).
 
+### 4.3 Song cache (on the player device)
+
+A device that plays a song keeps the song's files, so that the next play starts from the device and is not downloaded again. It lives in the one
+web player (D2, D9), so browsers, the Samsung and LG packages and the Flutter apps' WebView all have it; where it cannot work the player behaves
+exactly as without it.
+
+* **What is kept:** the song's audio file (the MP3, or the FLAC the server rendered for a MIDI song) and the guide-vocals MP3. Not kept: MIDI
+  files, per-song SoundFonts, background videos, fanfares.
+* **Where:** Cache Storage (`kantahe-songs-v1`) in a secure context (HTTPS, localhost); **IndexedDB** (`kantahe-songs`, the bytes and the content
+  type of each file) on a page that is not one, which has no Cache Storage and no `navigator.storage` (plain `http://` from a LAN address). An index
+  in `localStorage` (version, size and last use of each file) serves both. Playing from the cache is an object URL of the stored file, so seeking works
+  as with a network file.
+* **Which file is current:** `Playback.audio_version` and `vocals_version` (task `kantahe-1im.1`): the file's size and modification time (a render:
+  its name and size, because the render cache touches the time on every play). A kept file is used only when its version equals the server's, so
+  a song file an admin replaces is downloaded again, and the old copy is deleted. Empty version: nothing is kept.
+* **When:** a song is kept after it has loaded and playing from the network (the player never waits for it; the download has low priority). The song
+  that is **up next** is kept ahead of time, once per song, after the current song's own download has finished; never for a MIDI song, not
+  while the page is hidden, not when the browser says "save data".
+* **Space (the owner's rule), checked before every store:** the cache never holds more than **2 GiB**; after a store the free space must still be
+  at least the reserve **max(512 MiB, 10 % of the quota)**, which is left for other apps. The free space is the browser's estimate
+  (`navigator.storage.estimate()`, quota minus usage) and, in the Flutter apps, the real free disk space of the device, which the app tells the page
+  (`window.kantahe.setFreeDisk`, read again every minute; the smaller of the two counts, and what was stored since the report is counted off).
+  Where there is no estimate (a page that is not a secure context) the app's number is the only one, and **without it nothing is kept**: the margin
+  for other apps could not be checked. To make room the file with the **oldest last use** (stored or played) is deleted first; the song that plays
+  and the one that is next are never deleted. A file that cannot fit after that is simply not kept. The numbers are in
+  `web/src/app/player/cache/cache-policy.ts` (pure, tested). A full disk during a store deletes the oldest file once and tries again.
+* **The user's controls:** *Me → Devices*, on the device in use only: the switch **Keep played songs on this device** (on by default, stored in
+  the browser, not on the server), what is kept, and **Clear song cache**.
+* **Limits:** a plain browser on a page that is not a secure context (plain `http://` from a LAN address, no Flutter app around it) keeps nothing; the
+  Flutter apps do, in IndexedDB, once the app has told the free space (the first song of a start may play from the network). It does not play a
+  song when the server cannot be reached (the server signs the media URLs). Two pages of one browser share one index (the last write wins; a file
+  whose row was lost is deleted at the next start). The browser, not Kantahe, may still clear site data when the device is short of space.
+* **Checked:** unit tests of the policy, the store and the player; a Playwright run in a real browser (`web/e2e/song-cache.spec.ts`: second play with
+  no request to `/media/song`, a replaced file downloaded once and kept, switch off, clear). Real devices: `docs/spikes/s5-song-cache.md`.
+
 ## 5. Accounts and sign-in
 
 * **Setup**: while no user exists, `AuthService.Setup` (and the `/setup` page) creates the first admin.
   It is refused once any user exists.
 * **Users**: email (unique, case-insensitive), display name, password hash (argon2id via
-  `golang.org/x/crypto/argon2`), roles `admin` and `uploader`, `must_change_password`, `disabled`.
+  `golang.org/x/crypto/argon2`), role `admin` (the old `uploader` column and field stay in the data and the contract but have no effect since 1.2.0: only administrators upload), `must_change_password`, `disabled`.
 * **Sign-in**: `Login(email, password, deviceName, deviceType)` returns a device token. After 5
   failures for one email or IP, further attempts are slowed (exponential back-off). Disabled users
   cannot sign in.
@@ -290,7 +332,7 @@ half the memory), plain HTTP from the LAN. The agent measured with `adb` (`dumps
 * **Admin password reset**: sets a temporary password and `must_change_password`; the user can do
   nothing but change it after signing in.
 * **Code sign-in for TVs**: the TV calls `StartCodeLogin` and shows a 6-character code (and a QR to the
-  approval page); a signed-in user opens "Approve a TV" (`/code` in the web app, or the Flutter app) and
+  approval page); a signed-in user opens "Approve a TV" (`/me/approve-tv` in the web app, a page of Me; the address `/code` that the TV shows leads there; or the Flutter app) and
   calls `ApproveCode(code)`; the TV's `WaitCodeLogin` stream then returns its device token. Codes
   expire after 5 minutes and work once.
 
@@ -301,9 +343,49 @@ half the memory), plain HTTP from the LAN. The agent measured with `adb` (`dumps
   at import to allow HTTP Range; a `.karmp3` with a vocals track also gets `media/SHA.vocals.mp3`, recorded in
   `songs.has_vocals`, kept and removed with the instrumental). `--library DIR` (repeatable) are **watched folders**: files are
   referenced in place, scanned at start, every 10 minutes and on the admin's "Rescan".
-* **Upload** (users with `uploader`): `UploadService.UploadSong(filename, bytes)`, one ConnectRPC call
+* **Export and import (admin)**: an administrator moves a whole server to another one in the web app (Admin, Transfer; the
+  Flutter apps have no such screen). Decisions of 2026-11-04:
+  * The folder is a path on the **server's disk**, typed by the administrator (with Docker it must be a mounted folder); nothing
+    goes through the browser. The export is **uncompressed**, a new or empty folder (never a folder that holds something, never
+    inside the data folder or a watched folder): `kantahe.db` (a consistent snapshot made with `VACUUM INTO`, so the server
+    keeps running), `songs/SHA.karmp3` and `songs/SHA.kar` (every live song file, **including those of watched folders**),
+    `media/SHA.mp3` and `media/SHA.vocals.mp3` (the extracted MP3s), `videos/SHA.mp4`, and `kantahe-export.json`, the manifest
+    (format, version of Kantahe, schema version, counts, and the size and SHA-256 of every file), **written last**: a folder
+    without it is unfinished and is never imported. The cache, the SoundFont folder and the server's own options (`--name`,
+    `--public-url`, `--library`, `--listen`) are not exported.
+  * In the snapshot a song whose file cannot be read is marked removed (the library's rule, so its number is never reused) and
+    is reported to the administrator; a song whose file changed since the last scan is stored under its real hash and asked to
+    be read again; a video without its file is dropped.
+  * The folder holds password hashes, device-token hashes and the media-signing secret: it is created with mode 0700 and its
+    files 0600, and the docs say to keep it private and delete it after use. `--transfer-root DIR` (`KANTAHE_TRANSFER_ROOT`)
+    limits every export and import folder to DIR; unset, any absolute folder is accepted.
+  * One export or import at a time per server (`FAILED_PRECONDITION` for the second, and for every one after a staged import
+    until the restart).
+  * **Import replaces everything** on the target: users with their password hashes, roles, devices and device tokens, settings, the
+    media-signing secret, queues, history, favourites, playlists, song edits, songs (same numbers) and videos. `InspectExport` is
+    the preview (server name, version, counts; `importable` and the reason when not). `ImportData` only **checks and stages**:
+    every listed file must be of an allowed shape (`kantahe.db`, `songs/SHA.kar|karmp3`, `media/SHA[.vocals].mp3`,
+    `videos/SHA.mp4`), a regular file of the listed size and SHA-256 (a song is also named after its content); the database must
+    pass `PRAGMA integrity_check`, have been made by this Kantahe or an older one (it is migrated), have exactly the tables, indexes,
+    triggers and views of a freshly migrated database, and an enabled administrator. The staged database is then made to point at
+    the files: every live song becomes an upload stored at `<data>/songs/SHA.EXT` (a song without a file in the export is marked
+    removed; one whose extracted MP3s are missing is read again), videos without files are dropped. All of it goes to
+    `<data>/import-pending`; the running database and the song, media and video folders are not touched.
+  * **The restart.** The services keep per-user state in memory (`session.Service`), so the database is never swapped under a
+    running server. After the last progress message `ImportData` asks `main` to restart (`Deps.Restart`, one second later, so that
+    the message arrives): the listener, the services and the database are closed, `transfer.ApplyPending` runs while nothing is
+    open, and the server starts again in the same process, on the same address. `ApplyPending` does, in this order and each step
+    safe to repeat after a crash: move the staged files into `<data>/songs|media|videos` (a file that is there is the same
+    content and stays); move the old `kantahe.db` (with its `-wal` and `-shm`) to `<data>/backups/before-import-<UTC time>/`; rename
+    the staged database into place; remove the staging folder. Nothing deletes the backup or the target's old song files. If it
+    fails while the old database is still in place, the server starts with its current data and the staged import is set aside as
+    `<data>/import-failed-<time>`; if it fails after the old database was moved away, the server does not start (an empty database
+    would hide the problem) and the next start finishes the job. The page that asked for the import waits for the restart by asking
+    `GetServerInfo` until `started_unix_ms` (when this run of the server started) is another number than before. Everyone signed in on the target is signed out: their tokens are not
+    in the imported database (a device that signed in to the exported server before the export stays signed in).
+* **Upload** (administrators only, owner decision 2026-11-04; ordinary users see no Upload and the call is `PERMISSION_DENIED`): `UploadService.UploadSong(filename, bytes)`, one ConnectRPC call
   per `.kar` or `.karmp3`. A `.zip` of songs is unpacked **on the client** (web: fflate, as in the
-  sample; Flutter: the `archive` package) and its songs are sent one call at a time with a progress
+  sample; the Flutter apps do not upload) and its songs are sent one call at a time with a progress
   bar. Server checks: `.kar` starts with `MThd`; `.karmp3` is a ZIP containing an `.mp3`, with entry
   count and uncompressed-size limits (ZIP bombs); size limit 50 MB per file (admin setting; the
   connect-go handler's read limit matches it); duplicates by SHA-256 are skipped. Each call returns
@@ -313,6 +395,13 @@ half the memory), plain HTTP from the LAN. The agent measured with `adb` (`dumps
   unfinished upload of the same file), `UploadVideoChunk` (at most 4 MiB at the offset the server expects, which is the length of the
   partial file `<data>/videos/.upload-<id>`), `CompleteVideoUpload` (checks length, `Inspect`, hashes the file and moves it to
   `<data>/videos/<sha256>.mp4`) and `AbortVideoUpload`. Unfinished uploads older than 24 hours are removed hourly.
+* **Download and replace (admin)**: *Admin, Songs* has a Download button (`AdminService.GetSongDownload` gives a signed address, valid 10 minutes and bound to the asking
+  administrator, for `GET /media/download/{number}`: the stored file exactly as it is, `Content-Disposition: attachment` named `NUMBER - Artist - Title.EXT` made safe, Range
+  works; the route also checks that the user is still an administrator) and a Replace file button (`UploadSong` with `replace_number`). A replace keeps the number and what
+  hangs on it (admin title and artist edits, favourites, playlists, queue, history); the file must be of the song's own format and valid, and its bytes must not be another
+  song's (`rejected`, naming that song); the same bytes are `duplicate`. An uploaded song gets the new file at `<data>/songs/SHA.EXT` and loses the old file once the new one has been read
+  (a failure puts the old one back); a song of a watched folder has its file **overwritten in place** (temporary file, then rename), so that the next scan sees nothing new
+  and the old content does not come back as another song. The answer is `updated`.
 * **Numbers** (unique per entry):
   * leading digits of the original filename (`NNN… - Artist - Title.ext`), any length;
   * no number: next free number above the highest one;
@@ -329,7 +418,7 @@ half the memory), plain HTTP from the LAN. The agent measured with `adb` (`dumps
   (`upload`/`folder`), `path`, `sha256`, `duration_ms`, `failed` (excluded from random).
 * **Search** `CatalogService.SearchSongs`: digits only → number prefix; otherwise FTS5 over title and
   artist, accent-folded, prefix match on the last word; `format` filter; 50 per page.
-  **Browse**: by title / artist / number with an A–Z (`#`) letter; `ListArtists(letter)`.
+  There is no Browse tab (owner, 2026-11-04): an empty search lists every song, and a search by artist name finds an artist's songs. `ListArtists` and the `sort` and `letter` fields of the request stay in the contract; the clients do not use them.
   **Number pad**: `GetSong(number)`.
 
 ## 7. Per-user playback state and API
@@ -395,9 +484,13 @@ service AdminService {        // admin only
   rpc Rescan(RescanRequest) returns (RescanResponse);
   rpc ListVideos / UpdateVideo / ReorderVideos / DeleteVideo;      // background videos (4.2): list with preview URL, rename/enable, loop order, delete
   rpc GetSettings / UpdateSettings;                                // upload limits, score seconds, SoundFont, video limit and background switches
+  rpc ExportData(ExportDataRequest) returns (stream ExportDataResponse);   // copies the whole server into a new or empty folder on the server's disk; progress; the last message lists the songs left out (section 6)
+  rpc InspectExport(InspectExportRequest) returns (InspectExportResponse); // reads the manifest of an export folder: server name, version, counts, importable and why not
+  rpc GetSongDownload(GetSongDownloadRequest) returns (GetSongDownloadResponse); // a signed 10-minute address (GET /media/download/{number}) of the stored .kar or .karmp3, as an attachment; admin only
+  rpc ImportData(ImportDataRequest) returns (stream ImportDataResponse);   // checks and stages an export folder, then the server restarts and replaces all of its data with it
 }
-service UploadService {       // users with the uploader role
-  rpc UploadSong(UploadSongRequest) returns (UploadSongResponse);  // filename + bytes (≤ 50 MB); added/duplicate/rejected
+service UploadService {       // administrators only
+  rpc UploadSong(UploadSongRequest) returns (UploadSongResponse);  // filename + bytes (≤ 50 MB); added/duplicate/rejected; replace_number: replace the file of that song (updated)
   rpc BeginVideoUpload / UploadVideoChunk / CompleteVideoUpload / AbortVideoUpload;  // admin only: a background video in chunks of ≤ 4 MiB (4.2)
 }
 service CatalogService {
@@ -437,14 +530,16 @@ secret content), and the static web app (with `/embed/player`).
 
 | Route | Screen |
 |---|---|
-| `/setup`, `/login`, `/code` | First admin; email + password sign-in; approve a TV code. |
-| `/library` | Search · Number pad · Browse (A–Z, artists), MP3/MIDI badges, format filter, add to queue, favourite. Song lists (library, favourites, admin Songs) draw **one page of 50 rows** with Previous / Next; the next page is read ahead, so a library of thousands never becomes thousands of rows (`PageWindow` in `web/src/app/library/page-window.ts`). |
+| `/setup`, `/login` | First admin; email + password sign-in. |
+| `/me/approve-tv` (`/code` redirects) | Approve a TV code, a page of Me. |
+| `/library` | Search · Number pad, MP3/MIDI badges, format filter, add to queue, favourite. Song lists (library, favourites, admin Songs) draw **one page of 50 rows** with Previous / Next; the next page is read ahead, so a library of thousands never becomes thousands of rows (`PageWindow` in `web/src/app/library/page-window.ts`). |
 | `/queue` | Queue (remove, move to top), up next, now playing, **devices** with "Play here" / which one plays, Play/Pause/Skip. |
-| every page but `/queue` and `/player` | A slim **now-playing bar** under the menu (shown once the state has arrived and a song plays or songs wait): title and artist, "Playing on <device>" / "Paused on <device>", how many are coming up; a link to `/queue`. No new RPC and no clock (positions are not pushed). |
+| every page but `/player` | The main menu (Library, Queue, Player, Me, and Admin for administrators; an icon and a label each, the open page filled): a **tab bar fixed at the bottom on a phone** (40rem wide or less, above the home indicator, the page keeps clear of it), a row of tabs under the brand on wider screens. |
+| every page but `/queue` and `/player` | A slim **now-playing bar** under the top bar (shown once the state has arrived and a song plays or songs wait): title and artist, "Playing on <device>" / "Paused on <device>", how many are coming up; a link to `/queue`. No new RPC and no clock (positions are not pushed). |
 | `/player` | Full-screen player: lyrics with colour wipe and count-in dots, title + badge, progress, Play/Pause/Skip, score screen with fanfare, "preparing…" while the SoundFont loads. Background videos (pictures only, never any sound) loop behind the lyrics on the device that plays, unless its Background video is off (section 4.2); a scrim keeps the lyrics readable, and the layer takes no focus and no pointer events. |
 | `/embed/player` | The same player without app navigation, for the Flutter WebView. Receives the device token from Flutter through a JavaScript channel (never in the URL), and the guide-vocals choice through `window.kantahe.setVocals(on, pct)`, and how tall the app's own buttons are through `window.kantahe.setControlsHeight(px)` (the page keeps that much room free below its time and progress bar, at least the 6rem of one row); it answers on the same channel with `KantaheVocals:<state>:<pct>` (state `off`, `loading`, `on` or `failed`). |
-| `/me` | Favourites, history, playlists, my devices, change password, score settings. |
-| `/admin` | Users (create, roles, reset password, revoke), songs (upload, edit title/artist, delete, rescan, import report), server settings. |
+| `/me` | Favourites, history, playlists, my devices, score settings, appearance and account (theme, the signed-in account, Sign out; on a phone the top bar has neither once signed in), change password. |
+| `/admin` | Upload (`/admin/upload`; the old `/upload` redirects there), users (create, roles, reset password, revoke), songs (edit title/artist, delete, rescan, import report), videos, server settings, transfer. |
 
 Player internals: MP3 (and server-rendered MIDI) through `<audio>`; otherwise MIDI through
 spessasynth's sequencer and synth with the song's trimmed SoundFont (full or low-power settings per
@@ -516,14 +611,14 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
 **Flutter app** (`app/`: Android, iOS, Android TV):
 
 * Native screens mirroring the web app: finding the server (the typed address only when none is found), email/password sign-in (code sign-in on
-  Android TV), library (search, number pad, browse), queue + devices, favourites/history/playlists,
-  settings, upload (file picker) for uploaders.
+  Android TV), library (search, number pad), queue + devices, favourites/history/playlists,
+  settings. No upload, user management or other administration: those are the web app's (owner decision 2026-11-04; 1.2.0 removed the upload screen).
 * **Splash**: the official one (`branding/kantahe-splash-logo.svg`: tile and wordmark on the flat background `#0a0e22`, dark in every theme) from the first frame the system draws until the first real screen. Android 12 and later draw the system splash (the tile in a circle, `splash-android12.png`); before 12 the window shows the logo (`splash-logo-native.png`, 240 dp); then `lib/bootstrap.dart` draws the same logo at once, before the stored address, the keystore and TV detection are read, and swaps to the app (or says "Kantahe could not start." with a Retry that the remote's Select presses). The window colour behind the app is `#0a0e22` too, so no black or white frame comes in between. The files come from `branding/build.py` through `scripts/sync-branding.sh`; the native files are regenerated by `scripts/sync-branding.sh --flutter`.
 * **Player**: a full-screen WebView loading `{server}/embed/player`; the device token is passed in via
   a JavaScript channel. Play/Pause/Skip are native controls that call `SessionService.Control`; the
   embedded player reacts to the state stream like any other player. For a song with a vocals track
   (`Song.has_vocals`, on the player device only) the native Vocals switch and its volume buttons call
-  `window.kantahe.setVocals(on, pct)`; the page plays the voice as a second audio track and reports its
+  `window.kantahe.setVocals(on, pct)`; the page plays the voice as a second audio track (the instrumental and the vocals of such a song play through one shared Web Audio context, so that they reach the speakers with the same delay; an element that plays on its own is heard earlier than one routed through a context, about 0.4 s on an Android TV) and reports its
   state back (`KantaheVocals:…`); the choice is kept in memory only. The app measures its block of buttons after every layout and tells the page (`setControlsHeight`), so that the buttons, which wrap to more rows on a narrow screen or with the vocals on, never cover the page's progress bar. On a TV the buttons are smaller than elsewhere (the TV's text enlargement is taken out again inside the player). On Android TV the D-pad drives
   the native controls; the WebView never needs focus. WebView settings: media playback without a user
   gesture; microphone permission forwarded for Microphone score mode.
@@ -575,6 +670,8 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
   listen port is the reachable one (change it with `KANTAHE_LISTEN`, not a `-p` remap), and set `KANTAHE_NAME`
   (the host name inside a container is its id). On a bridge network the Flutter apps find nothing and fall back to
   typing the address; a TV still finds a server published on host port 8080 or 80.
+* **Transfer folder (Docker)**: *Admin → Transfer* (section 6) reads and writes a folder on the server's disk, so a container needs one
+  mounted (`-v /srv/kantahe-transfer:/transfer`, readable and writable by user 65532); `--transfer-root /transfer` limits the page to it.
 * **Service files**: `deploy/systemd/kantahe.service` (dedicated user, hardened), `deploy/launchd/party.kantahe.plist`
   (login item), and for Windows a real service (`sc.exe create Kantahe ... start= auto`, `docs/install.md`): when the
   Windows service manager starts the program (`svc.IsWindowsService`), `main` runs it under `golang.org/x/sys/windows/svc`
@@ -586,7 +683,7 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
   `--render-cache-gb` (server-render cache, default 5),
   `--public-url` (for the approval QR shown on TVs), `--name` (the server's name shown in the list of servers, default
   "Kantahe on <host name>", at most 63 bytes) and `--discovery` (advertise over mDNS, default true; not advertised
-  when `--listen` is a loopback address).
+  when `--listen` is a loopback address) and `--transfer-root` (the only place admin exports and imports may use, section 6).
 * **Reverse proxy**: Caddy and nginx examples in `deploy/proxy/` (explained in `docs/reverse-proxy.md`, checked by
   `scripts/check-proxy-configs.sh`): HTTPS, streaming without buffering for
   `/kantahe.v1.SessionService/WatchState` and `/kantahe.v1.AuthService/WaitCodeLogin`, request body
@@ -651,7 +748,7 @@ root: `index.html` at the top), swapping `environment.ts` for `environment.tizen
     down one level; a user override wins; `GetPlayback` returns the URL matching the effective mode;
   * server render: synthetic MIDI renders to non-silent audio whose length matches the MIDI duration
     within 0.5 s; the render cache evicts least recently used files above the limit.
-* **Angular**: component tests (lyrics wipe, number pad, browse, badges, state store with reconnect and
+* **Angular**: component tests (lyrics wipe, number pad, badges, state store with reconnect and
   polling fallback) and one Playwright run against a real server with a synthetic library: setup →
   admin creates a user and uploads → user searches → queues an MP3 and a MIDI entry → both play with
   lyrics → score → random fill → second browser "Play here" takes over → favourite, history, playlist.
@@ -688,10 +785,11 @@ Phases 0–3 are the **MVP** (server + web). Each phase has an exit check.
 | **1 Go server** | Setup, accounts, tokens, code sign-in, admin; upload + watched folders, numbering, metadata pass, admin edits; search/browse/lyrics; media (MP3 extraction, signed URLs, full and per-song trimmed SoundFonts, fanfares); device MIDI modes; per-user state, devices, Play here, random fill, score; favourites, history, playlists; `WatchState`. | All section 11 Go tests pass; a large real library (`KANTAHE_TEST_LIBRARY`) imports with correct numbers and searches correctly. |
 | **2 Angular web app** | All routes in section 8 including admin, upload and `/embed/player`. | The section 11 Playwright run passes. |
 | **3 Packaging (MVP done)** | Release binaries, Docker image, compose, service files, reverse-proxy examples, install docs. | Fresh Docker host and fresh macOS/Windows/Linux machines reach the setup page and complete the Playwright flow. |
-| **4 Flutter Android + iOS** | Native screens, Dart client, player WebView, upload, phone as remote. | The same flow from both apps; a phone controls a web player and vice versa. |
+| **4 Flutter Android + iOS** | Native screens, Dart client, player WebView, upload (removed in 1.2.0: uploading is web only), phone as remote. | The same flow from both apps; a phone controls a web player and vice versa. |
 | **5 Server render + Android TV** | Server-render fallback (pure-Go synth, encoding, render cache, `/media/rendered`, `auto` step-down to server); Flutter Android TV: D-pad navigation, code sign-in, TV layout. | On the owner's cheap box: sign in with a code, queue from a phone, sing MP3 and MIDI songs without dropouts (in whatever mode `auto` picks). |
 | **6 Samsung Tizen + LG webOS** | Package the Angular app; server address screen, code sign-in, D-pad. | Installs and plays MP3 and MIDI songs on one Samsung and one LG TV. |
 | **7 Polish** | README, user and admin guides, store listings, licence notices (`THIRD_PARTY_NOTICES.md`, generated and checked by `scripts/licenses.sh`; links checked by `scripts/check-links.py`) (GeneralUser GS, spessasynth, fanfares), app icons and splash from `branding/`. | A stranger installs the server and an app from the docs alone. |
+| **8 Moving servers (1.2.0)** | *Admin → Transfer*: export the whole server into an uncompressed folder on its disk and import such a folder on another server, which restarts by itself (section 6); `--transfer-root`; the Flutter apps lose their upload screen (the apps are only the library, the player with its queue, and the user's own pages). | The Go round trip (`TestImportRestartsInProcess`), the Playwright `transfer.spec.ts`, and the owner's real move between two servers. |
 | **Later** | Offline downloads, email password reset, single sign-on, shared/party queues, guests, key/tempo, real pitch scoring. | — |
 
 ## 13. Decisions recorded and open items
@@ -721,5 +819,7 @@ Decided by the owner:
 | Domain | kantahe.party is the project's domain (website and project address). The server itself is self-hosted and needs no domain; HTTPS for a user's own domain is the user's reverse proxy (D10). |
 | Build order | Server → Angular web → packaging → Flutter Android/iOS → Android TV → Samsung/LG. |
 | Fanfares | The three clips in `server/internal/assets/fanfare/`. |
+| Moving a server | Admin only, web app only. Export into an uncompressed folder on the server's disk (typed by the admin; nothing goes through the browser), watched-folder songs included; import replaces everything on the target (backup of its database kept) and restarts the server in-process. Decided 2026-11-04 (section 6). |
+| Flutter apps | Only the library, the player (with the queue) and the user's own pages. No upload, user management or other administration: those are in the web app. Decided 2026-11-04. |
 
 No open questions remain. Next step: turn this plan into bd tasks.

@@ -23,6 +23,7 @@ type Song struct {
 	DurationMs    int64
 	HasMusic      bool // at least one audible note-on (see MinAudibleVelocity, MinAudibleKey)
 	Lines         []lyrics.Line
+	Timing        lyrics.Timing // word when a line has more than one syllable: a .kar times every syllable
 	Presets       []Preset
 }
 
@@ -70,6 +71,7 @@ func Parse(b []byte) (*Song, error) {
 	s.DurationMs = tm.TickToMs(last)
 	s.Title, s.Artist = metadata(smf)
 	s.Lines = lyrics.Layout(syllables(smf, tm))
+	s.Timing = lyrics.TimingOf(s.Lines)
 	return s, nil
 }
 

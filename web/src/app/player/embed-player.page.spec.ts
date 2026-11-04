@@ -12,25 +12,33 @@ import { Format } from '../../gen/kantahe/v1/common_pb';
 import { PlayStatus } from '../../gen/kantahe/v1/session_pb';
 import { NativeControls } from './native-controls';
 import { VocalsPrefs } from './vocals-prefs';
-import { asMic, fakeEngines, FakeMic, fakePlayerServer, playbackOf } from './testing';
+import { SONG_CACHE } from './cache/song-cache';
+import { asMic, asSongCache, fakeEngines, FakeMic, FakeSongCache, fakePlayerServer, playbackOf } from './testing';
 
 interface KantaheBridge {
   setToken(token: string, deviceId: string, serverUrl?: string): void;
   setVocals(on: unknown, pct: unknown): void;
   setControlsHeight(px: unknown): void;
+  setFreeDisk(bytes: unknown): void;
 }
 const bridge = () => (window as unknown as { kantahe?: KantaheBridge }).kantahe;
 
 function setup() {
   const server = fakePlayerServer();
   const fake = fakeEngines();
+  const cache = new FakeSongCache();
   localStorage.clear();
   TestBed.configureTestingModule({
-    providers: [{ provide: TRANSPORT, useValue: server.transport }, { provide: ENGINES, useValue: fake.engines }, { provide: MIC_METER, useValue: asMic(new FakeMic()) }],
+    providers: [
+      { provide: TRANSPORT, useValue: server.transport },
+      { provide: ENGINES, useValue: fake.engines },
+      { provide: MIC_METER, useValue: asMic(new FakeMic()) },
+      { provide: SONG_CACHE, useValue: asSongCache(cache) },
+    ],
   });
   const fixture = TestBed.createComponent(EmbedPlayerPage);
   fixture.detectChanges();
-  return { fixture, el: fixture.nativeElement as HTMLElement, server, fake };
+  return { fixture, el: fixture.nativeElement as HTMLElement, server, fake, cache };
 }
 
 describe('EmbedPlayerPage', () => {
@@ -40,6 +48,22 @@ describe('EmbedPlayerPage', () => {
     vi.useRealTimers();
     Reflect.deleteProperty(window, 'flutter_inappwebview');
     Reflect.deleteProperty(window, 'Kantahe');
+  });
+
+  describe('window.kantahe.setFreeDisk', () => {
+    it('hands the free space of the device to the song cache, as a whole number of bytes', () => {
+      const { cache } = setup();
+      bridge()!.setFreeDisk(5_000_000_000);
+      expect(cache.setNativeFreeBytes).toHaveBeenLastCalledWith(5_000_000_000);
+      bridge()!.setFreeDisk(1234.9);
+      expect(cache.setNativeFreeBytes).toHaveBeenLastCalledWith(1234);
+    });
+
+    it('ignores anything that is not a finite number of bytes, 0 or more', () => {
+      const { cache } = setup();
+      for (const bad of ['5', null, undefined, Number.NaN, Infinity, -1, {}]) bridge()!.setFreeDisk(bad);
+      expect(cache.setNativeFreeBytes).not.toHaveBeenCalled();
+    });
   });
 
   it('waits for the app and makes no request before it has a token', async () => {

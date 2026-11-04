@@ -44,7 +44,8 @@ function mp3(frames: number): Uint8Array {
 /** A .karmp3 in the order and with the .nfo rows of Kantahe Maker 1.1; without `vocals` it is a file of Maker 1.0.x. */
 function karmp3(title: string, frames: number, vocals: boolean): Buffer {
   const base = `00500 - Band - ${title}`;
-  const nfo = `Title : ${title}\nArtist : Band\n` + (vocals ? `Instrumental : ${base}.mp3\nVocals : ${base}.vocals.mp3\nVocals audio : MP3, 44.1 kHz, 64 kbps, mono\n` : '');
+  // Maker 1.2.6 says how the lyrics are timed: the songs with vocals say word; the plain one says line although its .lrc has word marks (the row wins)
+  const nfo = `Title : ${title}\nArtist : Band\n` + (vocals ? `Instrumental : ${base}.mp3\nVocals : ${base}.vocals.mp3\nVocals audio : MP3, 44.1 kHz, 64 kbps, mono\nTiming by : word\n` : 'Timing by : line\n');
   const entries: Record<string, Uint8Array> = { [`${base}.mp3`]: mp3(frames), [`${base}.lrc`]: strToU8('[00:01.00]<00:01.00>Sing <00:01.50>along'), [`${base}.nfo`]: strToU8(nfo) };
   if (vocals) entries[`${base}.vocals.mp3`] = mp3(frames - 20);
   return Buffer.from(zipSync(entries));
@@ -73,6 +74,8 @@ test('guide vocals: uploaded, offered only for songs that have them, played, rem
   });
 
   const dev = await device(browser, 'Player device');
+  // this test is about when the player asks for the vocals: the song cache (which also fetches the next song's files ahead of time) is off for it
+  await dev.addInitScript(() => localStorage.setItem('kantahe.songcache.enabled', 'false'));
   const p = await dev.newPage();
   const vocalsResponses: string[] = [];
   const failed: string[] = [];
@@ -91,6 +94,10 @@ test('guide vocals: uploaded, offered only for songs that have them, played, rem
       await p.goto('/library');
       await p.getByLabel('Search songs').fill(title);
       const row = p.locator('li.row', { hasText: title }).first();
+      // the badges of the list: W or L for the timing, V when there is a vocals track
+      await expect(row.locator('.timing-badge')).toHaveText(title === 'Plainsong' ? 'L' : 'W');
+      if (title === 'Plainsong') await expect(row.locator('.vocals-badge')).toHaveCount(0);
+      else await expect(row.locator('.vocals-badge')).toHaveText('V');
       await row.locator('button.main').click();
       await expect(p.getByText(`Added ${title}`).first()).toBeVisible();
     }
@@ -100,14 +107,17 @@ test('guide vocals: uploaded, offered only for songs that have them, played, rem
     await p.goto('/player');
     await p.getByRole('button', { name: 'Play here' }).click();
     // an earlier test (videos.spec) may have left a song playing for the account; Play here takes it over, and the queue is next
-    await expect(stage(p).locator('h1')).toHaveText(/\S/);
-    if ((await stage(p).locator('h1').innerText()) !== 'Vocalsong') {
+    await expect(stage(p).locator('header.song h1')).toHaveText(/\S/);
+    if ((await stage(p).locator('header.song h1').innerText()) !== 'Vocalsong') {
       await wake(p);
       await stage(p).getByRole('button', { name: 'Skip' }).click();
     }
-    await expect(stage(p).locator('h1')).toHaveText('Vocalsong');
+    await expect(stage(p).locator('header.song h1')).toHaveText('Vocalsong');
     await expect(p.getByRole('button', { name: 'Vocals: off' })).toBeVisible();
     await expect(p.getByRole('button', { name: 'Vocals: off' })).toHaveAttribute('aria-pressed', 'false');
+    // the player shows the same badges beside MP3
+    await expect(stage(p).locator('.timing-badge')).toHaveText('W');
+    await expect(stage(p).locator('.vocals-badge')).toHaveText('V');
     expect(vocalsResponses, 'nothing is fetched before the switch is used').toEqual([]);
   });
 
@@ -153,7 +163,7 @@ test('guide vocals: uploaded, offered only for songs that have them, played, rem
   await test.step('the next song has no vocals: no switch at all, whatever was chosen', async () => {
     await wake(p);
     await stage(p).getByRole('button', { name: 'Skip' }).click();
-    await expect(stage(p).locator('h1')).toHaveText('Plainsong');
+    await expect(stage(p).locator('header.song h1')).toHaveText('Plainsong');
     await expect(p.getByRole('button', { name: /^Vocals/ })).toHaveCount(0);
     await expect(stage(p).getByText('Vocals volume')).toHaveCount(0);
   });
@@ -162,7 +172,7 @@ test('guide vocals: uploaded, offered only for songs that have them, played, rem
     const before = vocalsResponses.length;
     await wake(p);
     await stage(p).getByRole('button', { name: 'Skip' }).click();
-    await expect(stage(p).locator('h1')).toHaveText('Vocalsongtwo');
+    await expect(stage(p).locator('header.song h1')).toHaveText('Vocalsongtwo');
     await expect(p.getByRole('button', { name: 'Vocals: on' })).toBeVisible({ timeout: 20_000 });
     await expect(stage(p).getByText('Vocals volume 40%')).toBeVisible();
     await expect.poll(() => vocalsResponses.length, { message: 'the second voice was fetched' }).toBeGreaterThan(before);

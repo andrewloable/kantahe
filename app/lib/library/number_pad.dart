@@ -150,7 +150,7 @@ class _NumberPadState extends State<NumberPad> {
                           const SizedBox(width: 8),
                           Flexible(child: Text(found.artist, overflow: TextOverflow.ellipsis)),
                           const SizedBox(width: 8),
-                          FormatBadge(found.format),
+                          FormatBadge(found.format, timing: found.lyricTiming, vocals: found.hasVocals),
                         ],
                       ),
                       _ => const SizedBox.shrink(),

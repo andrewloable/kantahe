@@ -11,3 +11,6 @@ const kSplashLogoWidth = 240.0;
 
 /// The official splash logo, tile and wordmark (a copy of branding/export/splash-logo.png).
 const kSplashLogoAsset = 'assets/branding/splash-logo.png';
+
+/// The copyright of the footer: the holder and year of the LICENSE file. The web footer shows the same text (web/src/app/core/server-version.ts).
+const kCopyright = '© 2020 Andrew Loable';

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantahe/core/auth_store.dart';
 import 'package:kantahe/core/server_url.dart';
@@ -40,7 +41,12 @@ class FakeHost implements EmbedHost {
 
 List<Object?> argsOf(String script) => jsonDecode('[${script.substring(script.indexOf('(') + 1, script.lastIndexOf(')'))}]') as List<Object?>;
 
-Future<({EmbedBridge bridge, FakeHost host, AuthStore auth})> make({bool signedIn = true, String server = 'http://srv:1'}) async {
+Future<({EmbedBridge bridge, FakeHost host, AuthStore auth})> make({
+  bool signedIn = true,
+  String server = 'http://srv:1',
+  Future<int?> Function()? readFreeDisk,
+  Duration freeDiskEvery = const Duration(seconds: 60),
+}) async {
   final auth = AuthStore(MemoryStore());
   if (signedIn) {
     await auth.signIn(
@@ -54,10 +60,85 @@ Future<({EmbedBridge bridge, FakeHost host, AuthStore auth})> make({bool signedI
   final serverUrl = ServerUrl(MemoryStore());
   await serverUrl.set(server);
   final host = FakeHost();
-  return (bridge: EmbedBridge(auth: auth, serverUrl: serverUrl, host: host), host: host, auth: auth);
+  return (bridge: EmbedBridge(auth: auth, serverUrl: serverUrl, host: host, readFreeDisk: readFreeDisk, freeDiskEvery: freeDiskEvery), host: host, auth: auth);
 }
 
 void main() {
+  group('the free space of the device', () {
+    List<String> freeDiskScripts(FakeHost h) => h.scripts.where((s) => s.contains('setFreeDisk')).toList();
+
+    test('buildSetFreeDiskScript_is_plain: a guarded call with a whole number of bytes, 0 or more and no more than JavaScript can count', () {
+      expect(buildSetFreeDiskScript(5000000000), 'window.kantahe && window.kantahe.setFreeDisk && window.kantahe.setFreeDisk(5000000000);');
+      expect(argsOf(buildSetFreeDiskScript(-5)), [0]);
+      expect(argsOf(buildSetFreeDiskScript(1 << 62)), [9007199254740991]);
+    });
+
+    test('the page is told the free space once it is ready, and not before', () async {
+      final m = await make(readFreeDisk: () async => 7000000000);
+      await m.bridge.refreshFreeDisk(); // the page has not said it is ready
+      expect(freeDiskScripts(m.host), isEmpty);
+      await m.bridge.onMessage('KantaheReady');
+      expect(freeDiskScripts(m.host), ['window.kantahe && window.kantahe.setFreeDisk && window.kantahe.setFreeDisk(7000000000);']);
+      m.bridge.dispose();
+    });
+
+    test('REGRESSION: a reader that fails or knows nothing sends nothing, and the page still gets its token', () async {
+      for (final reader in <Future<int?> Function()>[() async => throw Exception('no disk'), () async => null]) {
+        final m = await make(readFreeDisk: reader);
+        await m.bridge.onMessage('KantaheReady');
+        expect(freeDiskScripts(m.host), isEmpty);
+        expect(m.host.scripts.first, startsWith('window.kantahe.setToken('));
+        m.bridge.dispose();
+      }
+    });
+
+    test('without a reader nothing is sent (a platform that cannot tell)', () async {
+      final m = await make();
+      await m.bridge.onMessage('KantaheReady');
+      expect(freeDiskScripts(m.host), isEmpty);
+    });
+
+    test('REGRESSION: the value is read again about every minute while the page is open, and no more once the bridge is disposed', () {
+      fakeAsync((async) {
+        var free = 9000000000;
+        late ({EmbedBridge bridge, FakeHost host, AuthStore auth}) m;
+        make(readFreeDisk: () async => free).then((v) => m = v);
+        async.flushMicrotasks();
+        m.bridge.onMessage('KantaheReady');
+        async.flushMicrotasks();
+        expect(argsOf(freeDiskScripts(m.host).last), [9000000000]);
+        free = 400000000;
+        async.elapse(const Duration(seconds: 61));
+        async.flushMicrotasks();
+        expect(freeDiskScripts(m.host).map((s) => argsOf(s).first), [9000000000, 400000000]);
+        async.elapse(const Duration(seconds: 60));
+        async.flushMicrotasks();
+        expect(freeDiskScripts(m.host), hasLength(3));
+        m.bridge.dispose();
+        async.elapse(const Duration(minutes: 5));
+        async.flushMicrotasks();
+        expect(freeDiskScripts(m.host), hasLength(3));
+      });
+    });
+
+    test('a page that starts again is told again, and one timer is enough', () {
+      fakeAsync((async) {
+        late ({EmbedBridge bridge, FakeHost host, AuthStore auth}) m;
+        make(readFreeDisk: () async => 123).then((v) => m = v);
+        async.flushMicrotasks();
+        m.bridge.onMessage('KantaheReady');
+        async.flushMicrotasks();
+        m.bridge.onMessage('KantaheReady');
+        async.flushMicrotasks();
+        expect(freeDiskScripts(m.host), hasLength(2));
+        async.elapse(const Duration(seconds: 61));
+        async.flushMicrotasks();
+        expect(freeDiskScripts(m.host), hasLength(3)); // not two timers: one more send, not two
+        m.bridge.dispose();
+      });
+    });
+  });
+
   group('room for the buttons', () {
     test('buildSetControlsHeightScript_is_plain: a guarded call with a whole number between 0 and 600', () {
       expect(buildSetControlsHeightScript(180), 'window.kantahe && window.kantahe.setControlsHeight && window.kantahe.setControlsHeight(180);');

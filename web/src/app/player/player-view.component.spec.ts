@@ -1,13 +1,15 @@
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
-import { AuthTokenSchema, Format, UserSchema } from '../../gen/kantahe/v1/common_pb';
+import { AuthTokenSchema, Format, LyricTiming, UserSchema } from '../../gen/kantahe/v1/common_pb';
 import { GetBackgroundResponseSchema, PlaybackKind } from '../../gen/kantahe/v1/catalog_pb';
 import { By } from '@angular/platform-browser';
 import { provideRouter, Router } from '@angular/router';
 import { ControlAction, PlayStatus, ScoreSchema } from '../../gen/kantahe/v1/session_pb';
 import { TRANSPORT } from '../core/api';
 import { AuthStore } from '../core/auth.store';
+import { KeyboardShortcuts } from '../core/shortcuts';
 import { StateStore } from '../core/state.store';
+import { ToastService } from '../core/toast';
 import { device, song, stateOf, StateInit } from '../queue/testing';
 import { BackgroundVideoComponent } from './background/background-video.component';
 import { bgVideo, stubMedia } from './background/testing';
@@ -18,7 +20,7 @@ import { PlayerViewComponent } from './player-view.component';
 import { asMic, fakeEngines, FakeMic, fakePlayerServer, playbackOf } from './testing';
 
 const ME = 'me';
-const SONG = song('21628', 'Hello', 'Adele', Format.MIDI);
+const SONG = song('21628', 'Hello', 'Adele', Format.MIDI, false, { lyricTiming: LyricTiming.WORD });
 const PLAYING: StateInit = {
   status: PlayStatus.PLAYING,
   player: ME,
@@ -65,6 +67,153 @@ describe('PlayerViewComponent', () => {
     vi.useRealTimers();
   });
 
+  it('regression: the toasts of the player are in the flow of the stage under the top bar, not over its buttons, while the view lives', async () => {
+    const { el, fixture, settle } = setup();
+    await settle();
+    const toasts = TestBed.inject(ToastService);
+    expect(toasts.inShell()).toBe(true);
+    toasts.show('The vocals could not be loaded. The song plays without them.', 'error');
+    await settle();
+    const host = el.querySelector('main.stage > app-toasts');
+    expect(host, 'app-toasts is a child of the stage').not.toBeNull();
+    expect(host!.textContent).toContain('The vocals could not be loaded');
+    fixture.destroy();
+    expect(toasts.inShell()).toBe(false);
+  });
+
+  describe('keyboard shortcuts (kantahe-tlf.4.7)', () => {
+    const press = (key: string, init: KeyboardEventInit = {}, target: Element = document.body) => {
+      const e = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
+      target.dispatchEvent(e);
+      return e;
+    };
+    const actions = (server: ReturnType<typeof setup>['server']) => server.calls.control.map((c) => c.action);
+
+    it('REGRESSION: Space and K play or pause, N skips (nothing happened on the keys before)', async () => {
+      const { push, server, settle } = setup();
+      await push(PLAYING);
+      const space = press(' ');
+      await settle();
+      expect(actions(server)).toEqual([ControlAction.PAUSE]);
+      expect(space.defaultPrevented, 'Space must not also scroll the page').toBe(true);
+      press('k');
+      press('K');
+      press('n');
+      await settle();
+      expect(actions(server)).toEqual([ControlAction.PAUSE, ControlAction.PAUSE, ControlAction.PAUSE, ControlAction.SKIP]);
+    });
+
+    it('REGRESSION: while the score screen covers the player no shortcut acts (its controls are inert; N skipped the score away)', async () => {
+      const { fixture, server, settle } = setup();
+      const s = stateOf(PLAYING);
+      s.score = create(ScoreSchema, { number: '21628', hasValue: true, value: 87, comment: 'You are a good singer.', fanfare: 2, untilMs: 9000n });
+      server.push(s);
+      await settle();
+      await vi.advanceTimersByTimeAsync(1500);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.player-content')?.hasAttribute('inert')).toBe(true);
+      for (const key of [' ', 'k', 'n', '+', '-', 'v', 'f']) press(key);
+      await settle();
+      expect(actions(server)).toEqual([]);
+    });
+
+    it('a paused song is started by the same key', async () => {
+      const { push, server, settle } = setup();
+      await push({ ...PLAYING, status: PlayStatus.PAUSED });
+      press(' ');
+      await settle();
+      expect(actions(server)).toEqual([ControlAction.PLAY]);
+    });
+
+    it('+ and - change the volume of this device, = and _ too (no Shift needed), and a held key repeats', async () => {
+      const { push, server, settle } = setup();
+      await push(PLAYING);
+      press('+');
+      press('=', { repeat: true });
+      press('-');
+      press('_');
+      await vi.advanceTimersByTimeAsync(600);
+      await settle();
+      expect(server.calls.volume.length).toBeGreaterThan(0);
+    });
+
+    it('F asks the browser for the full screen, when it can; without that ability it does nothing', async () => {
+      const request = vi.fn(() => Promise.resolve());
+      const root = document.documentElement as unknown as { requestFullscreen?: () => Promise<void> };
+      root.requestFullscreen = request;
+      Object.defineProperty(document, 'fullscreenEnabled', { value: true, configurable: true });
+      try {
+        const { push } = setup();
+        await push(PLAYING);
+        press('f');
+        expect(request).toHaveBeenCalledTimes(1);
+        TestBed.resetTestingModule();
+        Object.defineProperty(document, 'fullscreenEnabled', { value: false, configurable: true });
+        const without = setup();
+        await without.push(PLAYING);
+        press('f');
+        expect(request).toHaveBeenCalledTimes(1);
+      } finally {
+        delete root.requestFullscreen;
+        Object.defineProperty(document, 'fullscreenEnabled', { value: undefined, configurable: true });
+      }
+    });
+
+    it('V turns the guide vocals on and off for a song that has them, and does nothing for one that has not', async () => {
+      const { push, server, settle, button } = setup();
+      const MP3_SONG = song('21628', 'Hello', 'Adele', Format.MP3, false, { lyricTiming: LyricTiming.LINE, hasVocals: true });
+      server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21628?sig=a', vocalsUrl: '/media/vocals/21628?sig=v', song: MP3_SONG });
+      await push({ ...PLAYING, now: { song: MP3_SONG, positionMs: 0, positionAtMs: 1000 } });
+      press('v');
+      await settle();
+      expect(button('Vocals: off')).toBeUndefined();
+      press('v');
+      await settle();
+      expect(button('Vocals: off')).toBeDefined();
+    });
+
+    it('REGRESSION: typing in a field sends nothing, and neither do Ctrl, Alt or Meta with a key', async () => {
+      const { push, server, settle } = setup();
+      await push(PLAYING);
+      const input = document.createElement('input');
+      document.body.appendChild(input);
+      input.focus();
+      press('n', {}, input);
+      press(' ', {}, input);
+      press('n', { ctrlKey: true });
+      press('n', { altKey: true });
+      press('n', { metaKey: true });
+      await settle();
+      expect(actions(server)).toEqual([]);
+      input.remove();
+    });
+
+    it('Space on a focused button presses that button only (it was a double action)', async () => {
+      const { push, server, settle, button } = setup();
+      await push(PLAYING);
+      press(' ', {}, button('Skip')!);
+      await settle();
+      expect(actions(server)).toEqual([]);
+    });
+
+    it('does nothing when the shortcuts are turned off, inside the app (embedded), or on a device that is not the player', async () => {
+      const { fixture, push, server, settle } = setup();
+      await push({ ...PLAYING, player: 'tv' });
+      press('n');
+      expect(actions(server)).toEqual([]);
+      await push(PLAYING);
+      TestBed.inject(KeyboardShortcuts).setEnabled(false);
+      press('n');
+      expect(actions(server)).toEqual([]);
+      TestBed.inject(KeyboardShortcuts).setEnabled(true);
+      fixture.componentRef.setInput('embedded', true);
+      await settle();
+      press('n');
+      await settle();
+      expect(actions(server)).toEqual([]);
+    });
+  });
+
   it('says it is connecting until the first state arrives', async () => {
     const { el, settle } = setup();
     await settle();
@@ -77,6 +226,8 @@ describe('PlayerViewComponent', () => {
     expect(el.textContent).toContain('Hello');
     expect(el.textContent).toContain('Adele');
     expect(el.textContent).toContain('MIDI');
+    expect(el.querySelector('.timing-badge')?.textContent).toBe('W');
+    expect(el.querySelector('.vocals-badge')).toBeNull();
     expect(el.querySelector('app-lyrics-view')).not.toBeNull();
     expect(el.querySelector('progress')).toBeNull(); // the length is not known for this fake song
   });
@@ -118,7 +269,7 @@ describe('PlayerViewComponent', () => {
   });
 
   describe('guide vocals', () => {
-    const MP3_SONG = song('21628', 'Hello', 'Adele', Format.MP3);
+    const MP3_SONG = song('21628', 'Hello', 'Adele', Format.MP3, false, { lyricTiming: LyricTiming.LINE, hasVocals: true });
     const MP3_STATE: StateInit = { ...PLAYING, now: { song: MP3_SONG, positionMs: 0, positionAtMs: 1000 } };
     const withVocals = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21628?sig=a', vocalsUrl: '/media/vocals/21628?sig=v', song: MP3_SONG });
     const labels = (el: HTMLElement) => Array.from(el.querySelectorAll('.controls button')).map((b) => b.textContent?.trim());
@@ -142,6 +293,8 @@ describe('PlayerViewComponent', () => {
       server.handlers.playback = withVocals;
       await push(MP3_STATE);
       expect(el.querySelectorAll('.vocals')).toHaveLength(1);
+      expect(el.querySelector('.vocals-badge')?.textContent).toBe('V'); // the song also says so beside its format
+      expect(el.querySelector('.timing-badge')?.textContent).toBe('L');
       expect(button('Vocals: off')?.getAttribute('aria-pressed')).toBe('false');
       expect(button('Vocals quieter')).toBeUndefined();
       expect(button('Vocals louder')).toBeUndefined();
@@ -607,6 +760,16 @@ describe('PlayerViewComponent', () => {
     await push({ ...PLAYING, player: '', status: PlayStatus.PAUSED });
     expect(el.textContent).toContain('No device is playing');
     expect(button('Play here')).toBeDefined();
+  });
+
+  it('regression: there is one h1 in every state (nothing playing, another device, no device, a song here)', async () => {
+    const { el, push, settle } = setup();
+    await settle();
+    expect(el.querySelectorAll('h1'), 'connecting').toHaveLength(1);
+    for (const init of [{ ...PLAYING, player: 'tv' }, { ...PLAYING, player: '', status: PlayStatus.PAUSED }, PLAYING]) {
+      await push(init);
+      expect(el.querySelectorAll('h1'), JSON.stringify({ player: init.player })).toHaveLength(1);
+    }
   });
 
   it('every control has a text label', async () => {

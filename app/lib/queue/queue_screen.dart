@@ -130,7 +130,7 @@ class _QueueRow extends StatelessWidget {
               ),
             ),
           ),
-          if (item.hasSong()) FormatBadge(item.song.format),
+          if (item.hasSong()) FormatBadge(item.song.format, timing: item.song.lyricTiming, vocals: item.song.hasVocals),
           if (!first)
             IconButton(tooltip: 'Move $title to the top of the queue', icon: const Icon(Icons.vertical_align_top), onPressed: () => actions.moveToTop(item)),
           IconButton(tooltip: 'Remove $title from the queue', icon: const Icon(Icons.delete_outline), onPressed: () => actions.remove(item)),

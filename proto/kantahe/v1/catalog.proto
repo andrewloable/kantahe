@@ -27,6 +27,11 @@ enum SongSort {
   SONG_SORT_NUMBER = 1;
   SONG_SORT_TITLE = 2;
   SONG_SORT_ARTIST = 3;
+  SONG_SORT_FORMAT = 4;
+  // By how the lyrics are timed: songs without timed lyrics first, then by line, then by word.
+  SONG_SORT_LYRIC_TIMING = 5;
+  // Songs without a vocals track first.
+  SONG_SORT_VOCALS = 6;
 }
 
 // How a song is played on the calling device.
@@ -38,7 +43,7 @@ enum PlaybackKind {
   PLAYBACK_KIND_MIDI_SYNTH = 2;
 }
 
-// Page size defaults to 50; format and letter are optional filters.
+// Page size defaults to 50; format, letter, has_vocals and lyric_timing are optional filters.
 message SearchSongsRequest {
   string query = 1;
   Format format = 2;
@@ -46,6 +51,12 @@ message SearchSongsRequest {
   string letter = 4;
   string page_token = 5;
   int32 page_size = 6;
+  // Absent: any song. True: only songs with a vocals track. False: only songs without one.
+  optional bool has_vocals = 7;
+  // Unspecified: any song. Else only songs whose lyrics are timed by line or by word.
+  LyricTiming lyric_timing = 8;
+  // Reverses the main sort key; the number stays the tie-breaker, in ascending order. Ignored when the order is by relevance.
+  bool descending = 9;
 }
 
 // One page; next_page_token is empty on the last page.
@@ -115,6 +126,11 @@ message Playback {
   // The signed URL of the song's vocals track (the singer's voice alone, same start and length as audio_url, so the two play in step);
   // it has the same signing and lifetime as audio_url. Empty when the song has none.
   string vocals_url = 11;
+  // A value that changes whenever the file behind audio_url changes (a replaced song file, a render made again). Empty: unknown, a player must not
+  // keep a copy of the file. Players compare it for equality only and never read a meaning into it.
+  string audio_version = 12;
+  // The same for the file behind vocals_url; empty when there is no vocals track.
+  string vocals_version = 13;
 }
 
 // The playback description.

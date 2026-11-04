@@ -25,6 +25,7 @@ const UploadStatus$json = {
     {'1': 'UPLOAD_STATUS_ADDED', '2': 1},
     {'1': 'UPLOAD_STATUS_DUPLICATE', '2': 2},
     {'1': 'UPLOAD_STATUS_REJECTED', '2': 3},
+    {'1': 'UPLOAD_STATUS_UPDATED', '2': 4},
   ],
 };
 
@@ -32,7 +33,7 @@ const UploadStatus$json = {
 final $typed_data.Uint8List uploadStatusDescriptor = $convert.base64Decode(
     'CgxVcGxvYWRTdGF0dXMSHQoZVVBMT0FEX1NUQVRVU19VTlNQRUNJRklFRBAAEhcKE1VQTE9BRF'
     '9TVEFUVVNfQURERUQQARIbChdVUExPQURfU1RBVFVTX0RVUExJQ0FURRACEhoKFlVQTE9BRF9T'
-    'VEFUVVNfUkVKRUNURUQQAw==');
+    'VEFUVVNfUkVKRUNURUQQAxIZChVVUExPQURfU1RBVFVTX1VQREFURUQQBA==');
 
 @$core.Deprecated('Use uploadSongRequestDescriptor instead')
 const UploadSongRequest$json = {
@@ -40,13 +41,15 @@ const UploadSongRequest$json = {
   '2': [
     {'1': 'filename', '3': 1, '4': 1, '5': 9, '10': 'filename'},
     {'1': 'content', '3': 2, '4': 1, '5': 12, '10': 'content'},
+    {'1': 'replace_number', '3': 3, '4': 1, '5': 9, '10': 'replaceNumber'},
   ],
 };
 
 /// Descriptor for `UploadSongRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List uploadSongRequestDescriptor = $convert.base64Decode(
     'ChFVcGxvYWRTb25nUmVxdWVzdBIaCghmaWxlbmFtZRgBIAEoCVIIZmlsZW5hbWUSGAoHY29udG'
-    'VudBgCIAEoDFIHY29udGVudA==');
+    'VudBgCIAEoDFIHY29udGVudBIlCg5yZXBsYWNlX251bWJlchgDIAEoCVINcmVwbGFjZU51bWJl'
+    'cg==');
 
 @$core.Deprecated('Use uploadSongResponseDescriptor instead')
 const UploadSongResponse$json = {

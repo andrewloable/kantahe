@@ -36,7 +36,7 @@ const (
 	maxNameRunes     = 100
 	chunk            = 400 // numbers per IN (...) query
 	visible          = `s.deleted = 0 AND s.failed = 0 AND s.metadata_done = 1`
-	songCols         = `s.number, s.format, s.songbook_number, s.duration_ms, s.has_vocals <> 0, s.display_title, s.display_artist`
+	songCols         = `s.number, s.format, s.songbook_number, s.duration_ms, s.has_vocals <> 0, s.lyric_timing, s.display_title, s.display_artist`
 )
 
 // Library is the per-user data access.
@@ -51,7 +51,7 @@ func New(db *store.DB, now func() int64) *Library { return &Library{db: db, now:
 func scanSong(row interface{ Scan(...any) error }) (library.SongInfo, error) {
 	var s library.SongInfo
 	var format int
-	err := row.Scan(&s.Number, &format, &s.Songbook, &s.DurationMs, &s.HasVocals, &s.Title, &s.Artist)
+	err := row.Scan(&s.Number, &format, &s.Songbook, &s.DurationMs, &s.HasVocals, &s.LyricTiming, &s.Title, &s.Artist)
 	s.Format = library.Format(format)
 	return s, err
 }

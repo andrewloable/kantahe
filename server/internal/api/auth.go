@@ -75,6 +75,13 @@ type Deps struct {
 	UserLib *userlib.Library
 	// PublicURL is the external base URL (--public-url), "" when not set.
 	PublicURL string
+	// Libraries are the watched folders (--library); an export folder must not be inside one.
+	Libraries []string
+	// Restart makes the server stop and start again in the same process, so that an import that was staged is applied. Nil: it
+	// stays staged until the next start (tests).
+	Restart func()
+	// TransferRoot is --transfer-root: the folder that every export and import folder must be inside, "" for no limit.
+	TransferRoot string
 }
 
 // SessionOverrides replaces parts of the playback service; zero values mean the defaults.
@@ -88,6 +95,7 @@ type SessionOverrides struct {
 // AuthServer implements AuthService: accounts, devices and the TV code sign-in.
 type AuthServer struct {
 	d       Deps
+	started int64 // Unix milliseconds when this run of the server started
 	backoff *auth.Backoff
 	h       *hasher
 	codes   *auth.CodeLogins
@@ -108,7 +116,7 @@ func newAuthServer(d Deps, b *auth.Backoff, h *hasher) *AuthServer {
 	if d.Modes == nil {
 		d.Modes = devices.NewModes(d.Render)
 	}
-	return &AuthServer{d: d, backoff: b, h: h, codes: auth.NewCodeLogins(d.Now)}
+	return &AuthServer{d: d, started: d.Now().UnixMilli(), backoff: b, h: h, codes: auth.NewCodeLogins(d.Now)}
 }
 
 // Mounted is the set of services registered by Mount.
@@ -119,6 +127,7 @@ type Mounted struct {
 	backoff *auth.Backoff // tests inspect it
 	codes   *auth.CodeLogins
 	uploads *UploadServer // its cleanup of unfinished video uploads runs in Run
+	admin   *AdminServer  // tests reach its hooks
 }
 
 // Run does the background work of the services (building SoundFonts) until ctx is cancelled.
@@ -217,7 +226,7 @@ func mount(handle func(pattern string, h http.Handler), d Deps) (*Mounted, error
 	handle(kantahev1connect.NewCatalogServiceHandler(newCatalogServer(d, cat, mediaSvc), opts...))
 	handle(kantahev1connect.NewSessionServiceHandler(newSessionServer(d, sess, cat), opts...))
 	handle(kantahev1connect.NewUserLibraryServiceHandler(newUserLibraryServer(d), opts...))
-	return &Mounted{media: mediaSvc, render: renderSvc, session: sess, backoff: backoff, codes: authSrv.codes, uploads: uploadSrv}, nil
+	return &Mounted{media: mediaSvc, render: renderSvc, session: sess, backoff: backoff, codes: authSrv.codes, uploads: uploadSrv, admin: adminSrv}, nil
 }
 
 // dummy is verified against when the email is unknown, so that an unknown
@@ -299,7 +308,7 @@ func (s *AuthServer) GetServerInfo(ctx context.Context, _ *connect.Request[kanta
 	if err != nil {
 		return nil, internalErr(s.d.Logger, "GetServerInfo", err)
 	}
-	return connect.NewResponse(&kantahev1.GetServerInfoResponse{Version: s.d.Version, Name: s.d.Name, SetupRequired: n == 0}), nil
+	return connect.NewResponse(&kantahev1.GetServerInfoResponse{Version: s.d.Version, Name: s.d.Name, SetupRequired: n == 0, StartedUnixMs: s.started}), nil
 }
 
 var errSetupDone = errors.New(setupDoneText)

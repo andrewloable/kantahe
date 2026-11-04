@@ -1,6 +1,9 @@
 import { Component, computed, DestroyRef, effect, ElementRef, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthStore } from '../core/auth.store';
+import { KeyboardShortcuts } from '../core/shortcuts';
+import { ToastService } from '../core/toast';
+import { ToastsComponent } from '../core/toasts.component';
 import { ControlAction, PlayStatus } from '../../gen/kantahe/v1/session_pb';
 import { FormatBadgeComponent } from '../library/format-badge.component';
 import { clock } from '../queue/now-playing.component';
@@ -16,12 +19,12 @@ const IDLE_MS = 3000;
 /** The full-screen player: lyrics, song, progress and controls; on a device that is not the player, a pointer to the one that is. */
 @Component({
   selector: 'app-player-view',
-  imports: [LyricsViewComponent, FormatBadgeComponent, ScoreScreenComponent, BackgroundVideoComponent],
+  imports: [LyricsViewComponent, FormatBadgeComponent, ScoreScreenComponent, BackgroundVideoComponent, ToastsComponent],
   providers: [PlayerController],
   // any move, touch or key on the player shows its buttons again
-  host: { '(mousemove)': 'wake()', '(pointerdown)': 'wake(false)', '(touchstart)': 'wake(false)', '(keydown)': 'wake(true)', '(focusin)': 'wake()' },
+  host: { '(mousemove)': 'wake()', '(pointerdown)': 'wake(false)', '(touchstart)': 'wake(false)', '(keydown)': 'wake(true)', '(focusin)': 'wake()', '(document:keydown)': 'onShortcut($event)' },
   template: `
-    <main class="stage fill" [class.embedded]="embedded()" [class.idle]="idle()" [style.--native-controls]="embedded() ? controls.height() + 'px' : null">
+    <main id="main" class="stage fill" [class.embedded]="embedded()" [class.idle]="idle()" [style.--native-controls]="embedded() ? controls.height() + 'px' : null">
       @if (!embedded()) {
         <div class="topbar">
           <button type="button" (click)="leave('/library')">Back to Kantahe</button>
@@ -32,6 +35,12 @@ const IDLE_MS = 3000;
             <button type="button" class="fs" (click)="toggleFullscreen()">{{ fullscreen() ? 'Exit full screen' : 'Full screen' }}</button>
           }
         </div>
+      }
+      <!-- the toasts of the player take room under the top bar: over the buttons at the bottom they took the taps -->
+      <app-toasts [inShell]="true" [centered]="true" />
+      <!-- one h1 in every state: the song's title while one is on this device, else this one for screen readers -->
+      @if (!(c.state() && c.isPlayer() && song())) {
+        <h1 class="sr-only">Player</h1>
       }
       @if (!c.state()) {
         <p role="status">Connecting…</p>
@@ -51,7 +60,7 @@ const IDLE_MS = 3000;
               <h1 [attr.title]="s.title">{{ s.title }}</h1>
               <p>
                 <span class="artist" [attr.title]="s.artist">{{ s.artist }}</span>
-                <app-format-badge [format]="s.format" />
+                <app-format-badge [format]="s.format" [timing]="s.lyricTiming" [vocals]="s.hasVocals" />
               </p>
             </header>
             <app-lyrics-view [lyrics]="c.lyrics()" [timeMs]="c.timeMs()" />
@@ -109,6 +118,14 @@ const IDLE_MS = 3000;
     </main>
   `,
   styles: `
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
     /* the stage is dark whatever the theme: it is read from a distance */
     .stage {
       --text: #ffffff;
@@ -228,20 +245,24 @@ const IDLE_MS = 3000;
     .controls {
       display: flex;
       flex-wrap: wrap;
-      gap: 1rem;
+      gap: 0.75rem;
       justify-content: center;
       margin-top: 1.5rem;
     }
+    /* the player's own buttons stay filled (kantahe-tlf.3.1 leaves the player as it was) but small: a 44 px target; a TV scales with its root font size */
     .controls button,
     .big {
-      min-width: 8rem;
-      min-height: 3.5rem;
-      font-size: 1.25rem;
+      min-width: 6rem;
+      min-height: 2.75rem;
+      border: 0;
+      background: var(--accent);
+      color: var(--on-accent);
+      font-size: 1rem;
     }
     .level {
       align-self: center;
-      min-width: 11rem;
-      font-size: 1.25rem;
+      min-width: 9rem;
+      font-size: 1rem;
       text-align: center;
     }
     .elsewhere {
@@ -288,6 +309,24 @@ export class PlayerViewComponent {
   protected readonly fullscreen = signal(typeof document !== 'undefined' && !!document.fullscreenElement);
 
   private readonly router = inject(Router);
+  private readonly shortcuts = inject(KeyboardShortcuts);
+
+  /** Space or K play or pause, N skip, F full screen, + and - the volume, V the guide vocals (only for the device that plays; not in the app's WebView). */
+  protected onShortcut(e: KeyboardEvent): void {
+    const key = e.key.toLowerCase();
+    const volume = key === '+' || key === '=' || key === '-' || key === '_';
+    // not behind the score screen: its controls are inert, so no key may reach them either
+    if (this.embedded() || !this.c.state() || !this.c.isPlayer() || this.scoreOpen() || !this.shortcuts.accepts(e, volume)) return;
+    const run = (fn: () => void) => {
+      e.preventDefault();
+      fn();
+    };
+    if (key === ' ' || key === 'k') run(() => void this.c.control(this.c.playing() ? ControlAction.PAUSE : ControlAction.PLAY));
+    else if (key === 'n') run(() => void this.c.control(ControlAction.SKIP));
+    else if (key === 'f' && this.canFullscreen) run(() => this.toggleFullscreen());
+    else if (volume && this.c.volume()) run(() => this.c.changeVolume(key === '+' || key === '=' ? 1 : -1));
+    else if (key === 'v' && this.c.hasVocals()) run(() => this.c.setVocals(this.c.vocalsState() === 'off'));
+  }
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly auth = inject(AuthStore);
   protected readonly isAdmin = computed(() => this.auth.user()?.admin === true);
@@ -296,6 +335,9 @@ export class PlayerViewComponent {
   private idleTimer?: ReturnType<typeof setTimeout>;
 
   constructor() {
+    const toasts = inject(ToastService);
+    toasts.inShell.set(true);
+    inject(DestroyRef).onDestroy(() => toasts.inShell.set(false));
     // a song that starts playing starts the count; a pause brings everything back
     effect(() => {
       const playing = this.c.playing();

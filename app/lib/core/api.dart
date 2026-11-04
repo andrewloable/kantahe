@@ -5,11 +5,9 @@ import 'package:connectrpc/connect.dart';
 import 'package:connectrpc/io.dart';
 import 'package:connectrpc/protobuf.dart';
 import 'package:connectrpc/protocol/connect.dart' as protocol;
-import 'package:kantahe/gen/kantahe/v1/admin.connect.client.dart';
 import 'package:kantahe/gen/kantahe/v1/auth.connect.client.dart';
 import 'package:kantahe/gen/kantahe/v1/catalog.connect.client.dart';
 import 'package:kantahe/gen/kantahe/v1/session.connect.client.dart';
-import 'package:kantahe/gen/kantahe/v1/upload.connect.client.dart';
 import 'package:kantahe/gen/kantahe/v1/user_library.connect.client.dart';
 
 const _mustChange = 'password change required';
@@ -118,7 +116,5 @@ class Api {
   late final AuthServiceClient auth = AuthServiceClient(transport);
   late final SessionServiceClient session = SessionServiceClient(transport);
   late final CatalogServiceClient catalog = CatalogServiceClient(transport);
-  late final AdminServiceClient admin = AdminServiceClient(transport);
-  late final UploadServiceClient upload = UploadServiceClient(transport);
   late final UserLibraryServiceClient userLibrary = UserLibraryServiceClient(transport);
 }

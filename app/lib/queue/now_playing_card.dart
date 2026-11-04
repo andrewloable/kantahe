@@ -106,7 +106,7 @@ class _NowPlayingCardState extends State<NowPlayingCard> with SingleTickerProvid
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(now.song.artist, style: TextStyle(color: muted)),
-                        if (now.hasSong()) FormatBadge(now.song.format),
+                        if (now.hasSong()) FormatBadge(now.song.format, timing: now.song.lyricTiming, vocals: now.song.hasVocals),
                         Text(now.source == SongSource.SONG_SOURCE_RANDOM ? 'Picked at random' : 'From the queue', style: TextStyle(color: muted)),
                       ],
                     ),

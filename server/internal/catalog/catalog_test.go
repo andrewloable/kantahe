@@ -586,3 +586,168 @@ func TestSongsCarryHasVocals(t *testing.T) {
 		t.Fatalf("Search: %+v, %v", songs, err)
 	}
 }
+
+// attrs makes a small library for the filters and sorts of the admin list:
+//
+//	00001 Alpha   MP3  vocals  word
+//	00002 Bravo   MP3  -       line
+//	00003 Charlie MIDI -       line
+//	00010 Delta   MP3  -       word
+func (e *env) attrs(t *testing.T) {
+	t.Helper()
+	e.add(t, "00001", "Alpha", "Band")
+	e.add(t, "00002", "Bravo", "Band")
+	e.add(t, "00003", "Charlie", "Band", midi())
+	e.add(t, "00010", "Delta", "Band")
+	for number, a := range map[string][2]int{"00001": {1, 2}, "00002": {0, 1}, "00003": {0, 1}, "00010": {0, 2}} {
+		if _, err := e.db.Exec(`UPDATE songs SET has_vocals = ?, lyric_timing = ? WHERE number = ?`, a[0], a[1], number); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func yes() *bool { v := true; return &v }
+func no() *bool  { v := false; return &v }
+
+func TestSearchFiltersByVocals(t *testing.T) {
+	e := newEnv(t)
+	e.attrs(t)
+	for name, c := range map[string]struct {
+		p    SearchParams
+		want []string
+	}{
+		"any":     {SearchParams{}, []string{"00001", "00002", "00003", "00010"}},
+		"with":    {SearchParams{HasVocals: yes()}, []string{"00001"}},
+		"without": {SearchParams{HasVocals: no()}, []string{"00002", "00003", "00010"}},
+	} {
+		if got, _ := e.search(t, c.p); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("%s: %v, want %v", name, got, c.want)
+		}
+	}
+}
+
+func TestSearchFiltersByLyricTiming(t *testing.T) {
+	e := newEnv(t)
+	e.attrs(t)
+	for name, c := range map[string]struct {
+		p    SearchParams
+		want []string
+	}{
+		"word":             {SearchParams{LyricTiming: 2}, []string{"00001", "00010"}},
+		"line":             {SearchParams{LyricTiming: 1}, []string{"00002", "00003"}},
+		"midi and line":    {SearchParams{Format: library.Format(2), LyricTiming: 1}, []string{"00003"}},
+		"mp3 and word":     {SearchParams{Format: library.Format(1), LyricTiming: 2}, []string{"00001", "00010"}},
+		"word, no vocals":  {SearchParams{LyricTiming: 2, HasVocals: no()}, []string{"00010"}},
+		"text and timing":  {SearchParams{Query: "delta", LyricTiming: 2}, []string{"00010"}},
+		"text not timing":  {SearchParams{Query: "delta", LyricTiming: 1}, nil},
+		"letter and vocal": {SearchParams{Letter: "A", HasVocals: yes()}, []string{"00001"}},
+		"text and vocals":  {SearchParams{Query: "band", HasVocals: yes()}, []string{"00001"}},
+	} {
+		if got, _ := e.search(t, c.p); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("%s: %v, want %v", name, got, c.want)
+		}
+	}
+}
+
+func TestSortByFormatVocalsAndLyricTiming(t *testing.T) {
+	e := newEnv(t)
+	e.attrs(t)
+	for name, c := range map[string]struct {
+		p    SearchParams
+		want []string
+	}{
+		"format up":   {SearchParams{Sort: SortFormat}, []string{"00001", "00002", "00010", "00003"}},
+		"format down": {SearchParams{Sort: SortFormat, Descending: true}, []string{"00003", "00001", "00002", "00010"}},
+		"vocals up":   {SearchParams{Sort: SortVocals}, []string{"00002", "00003", "00010", "00001"}},
+		"vocals down": {SearchParams{Sort: SortVocals, Descending: true}, []string{"00001", "00002", "00003", "00010"}},
+		"timing up":   {SearchParams{Sort: SortLyricTiming}, []string{"00002", "00003", "00001", "00010"}},
+		"timing down": {SearchParams{Sort: SortLyricTiming, Descending: true}, []string{"00001", "00010", "00002", "00003"}},
+	} {
+		if got, _ := e.search(t, c.p); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("%s: %v, want %v", name, got, c.want)
+		}
+	}
+}
+
+func TestSortDescendingByNumberTitleAndArtist(t *testing.T) {
+	e := newEnv(t)
+	e.attrs(t)
+	// the numbers 00010 and 00002 are compared by length, then text, in reverse too
+	if got, _ := e.search(t, SearchParams{Sort: SortNumber, Descending: true}); !reflect.DeepEqual(got, []string{"00010", "00003", "00002", "00001"}) {
+		t.Errorf("number down: %v", got)
+	}
+	if got, _ := e.search(t, SearchParams{Sort: SortTitle, Descending: true}); !reflect.DeepEqual(got, []string{"00010", "00003", "00002", "00001"}) {
+		t.Errorf("title down: %v", got)
+	}
+	e2 := newEnv(t)
+	e2.add(t, "00001", "Same", "Zed")
+	e2.add(t, "00002", "Same", "Amy")
+	e2.add(t, "00003", "Other", "Amy")
+	// artist down: Zed first; the two songs of Amy keep title then number in ascending order
+	if got, _ := e2.search(t, SearchParams{Sort: SortArtist, Descending: true}); !reflect.DeepEqual(got, []string{"00001", "00003", "00002"}) {
+		t.Errorf("artist down: %v", got)
+	}
+}
+
+func TestDescendingOrderPagesWithoutRepeatsOrGaps(t *testing.T) {
+	e := newEnv(t)
+	for i := 1; i <= 30; i++ {
+		e.add(t, fmt.Sprintf("%05d", i), fmt.Sprintf("Song %d", i), "Band")
+	}
+	for _, sort := range []Sort{SortFormat, SortVocals, SortLyricTiming} {
+		var got []string
+		token := ""
+		for {
+			songs, next, err := e.c.SearchPage(context.Background(), SearchParams{Sort: sort, Descending: true}, token, 7)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, s := range songs {
+				got = append(got, s.Number)
+			}
+			if next == "" {
+				break
+			}
+			token = next
+		}
+		// every song has the same value of the main key: the number, ascending, decides
+		if len(got) != 30 || got[0] != "00001" || got[29] != "00030" {
+			t.Fatalf("sort %d: %v", sort, got)
+		}
+		for i := 1; i < len(got); i++ {
+			if got[i-1] >= got[i] {
+				t.Fatalf("sort %d: %s before %s", sort, got[i-1], got[i])
+			}
+		}
+	}
+}
+
+func TestDescendingDoesNotChangeTheRelevanceOrder(t *testing.T) {
+	e := newEnv(t)
+	e.attrs(t)
+	up, _ := e.search(t, SearchParams{Query: "band"})
+	down, _ := e.search(t, SearchParams{Query: "band", Descending: true})
+	if !reflect.DeepEqual(up, down) {
+		t.Errorf("relevance order changed by Descending: %v vs %v", up, down)
+	}
+}
+
+func TestSortByLyricTimingKeepsSongsWithoutTimedLyricsTogether(t *testing.T) {
+	e := newEnv(t)
+	e.add(t, "00001", "Alpha", "Band")
+	e.add(t, "00002", "Bravo", "Band")
+	e.add(t, "00005", "Echo", "Band")
+	e.add(t, "00006", "Foxtrot", "Band")
+	// 0 unknown, 1 line, 2 word, 9 no lyrics: the list shows a badge for line and word only
+	for number, timing := range map[string]int{"00001": 2, "00002": 1, "00005": 0, "00006": 9} {
+		if _, err := e.db.Exec(`UPDATE songs SET lyric_timing = ? WHERE number = ?`, timing, number); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, _ := e.search(t, SearchParams{Sort: SortLyricTiming}); !reflect.DeepEqual(got, []string{"00005", "00006", "00002", "00001"}) {
+		t.Errorf("up: %v", got)
+	}
+	if got, _ := e.search(t, SearchParams{Sort: SortLyricTiming, Descending: true}); !reflect.DeepEqual(got, []string{"00001", "00002", "00005", "00006"}) {
+		t.Errorf("down: %v", got)
+	}
+}

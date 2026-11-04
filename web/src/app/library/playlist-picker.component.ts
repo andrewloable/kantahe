@@ -27,7 +27,7 @@ import { LibraryActions } from './library-actions';
           }
         </ul>
       }
-      <button type="button" class="close" (click)="closed.emit()">Close</button>
+      <button type="button" class="close quiet" (click)="closed.emit()">Close</button>
     </div>
   `,
   styles: `

@@ -11,8 +11,8 @@ let nextId = 1;
       <input [id]="id" type="text" readonly autocomplete="off" [value]="password()" (focus)="select($event)" />
       <p>This password is shown only now. Give it to the user; they must change it when they first sign in.</p>
       <div class="buttons">
-        <button type="button" (click)="copy()">Copy</button>
-        <button type="button" (click)="closed.emit()">Close</button>
+        <button class="primary" type="button" (click)="copy()">Copy</button>
+        <button class="quiet" type="button" (click)="closed.emit()">Close</button>
       </div>
       <p role="status">{{ message() }}</p>
     </section>

@@ -80,7 +80,9 @@ type Importer struct {
 
 	hookWalk     func() // tests only
 	hookMetadata func() // tests only: runs between reading a file and storing the result
-	hookCheck    func() // tests only: runs before CheckLibrary judges each song
+	// tests only: runs after Replace has read the new file's metadata, before it looks at the result
+	hookAfterReplace func()
+	hookCheck        func() // tests only: runs before CheckLibrary judges each song
 }
 
 type fileSig struct{ size, mtime int64 }
@@ -285,7 +287,7 @@ func resetSong(ctx context.Context, tx *sql.Tx, number string, c candidate) (sta
 		return "", err
 	}
 	_, err = tx.ExecContext(ctx, `UPDATE songs SET sha256 = ?, size = ?, mtime = ?, metadata_done = 0, failed = 0, failed_reason = '',
-		file_title = '', file_artist = '', duration_ms = 0, media_path = '', has_vocals = 0, gain_db = NULL, loudness_done = 0 WHERE number = ?`, c.sha, c.size, c.mtime, number)
+		file_title = '', file_artist = '', duration_ms = 0, media_path = '', has_vocals = 0, lyric_timing = 0, gain_db = NULL, loudness_done = 0 WHERE number = ?`, c.sha, c.size, c.mtime, number)
 	if err != nil {
 		return "", err
 	}
@@ -359,6 +361,14 @@ func (im *Importer) worker(ctx context.Context) {
 		interrupted, err := im.ProcessLoudness(ctx)
 		if err != nil && ctx.Err() == nil {
 			im.logger.Error("loudness pass failed", "err", err)
+		}
+		if interrupted {
+			continue
+		}
+		// the lyric timing of the songs that were imported before it was read, after the loudness
+		interrupted, err = im.ProcessLyricTiming(ctx)
+		if err != nil && ctx.Err() == nil {
+			im.logger.Error("lyric timing pass failed", "err", err)
 		}
 		if interrupted {
 			continue

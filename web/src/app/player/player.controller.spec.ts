@@ -9,7 +9,7 @@ import { AuthStore } from '../core/auth.store';
 import { StateStore } from '../core/state.store';
 import { ToastService } from '../core/toast';
 import { device, song, stateOf, StateInit } from '../queue/testing';
-import { CAN_PLAY_FLAC, CAN_SYNTHESIZE, ENGINES } from './engines/engine';
+import { AUDIO_CONTEXT, CAN_PLAY_FLAC, CAN_SYNTHESIZE, ENGINES } from './engines/engine';
 import { MIC_METER } from './mic';
 import { PlayerController } from './player.controller';
 import { VocalsPrefs } from './vocals-prefs';
@@ -26,7 +26,7 @@ const PLAYING: StateInit = {
   serverTimeMs: 1000,
 };
 
-function setup(opts: { memory?: number; secure?: boolean; flac?: boolean; synth?: boolean } = {}) {
+function setup(opts: { memory?: number; secure?: boolean; flac?: boolean; synth?: boolean; audioContext?: () => unknown } = {}) {
   const server = fakePlayerServer();
   const fake = fakeEngines();
   const mic = new FakeMic();
@@ -39,6 +39,7 @@ function setup(opts: { memory?: number; secure?: boolean; flac?: boolean; synth?
       { provide: CAN_PLAY_FLAC, useValue: () => opts.flac ?? true },
       { provide: CAN_SYNTHESIZE, useValue: () => opts.synth ?? true },
       { provide: MIC_METER, useValue: asMic(mic) },
+      { provide: AUDIO_CONTEXT, useValue: opts.audioContext ?? (() => undefined) },
       PlayerController,
     ],
   });
@@ -96,6 +97,61 @@ describe('PlayerController: guide vocals', () => {
     };
     return () => release();
   }
+
+  describe('one audio context for both tracks', () => {
+    const fakeContext = () => ({ close: vi.fn().mockResolvedValue(undefined) });
+
+    it('vocals_song_shares_one_context: the instrumental and the vocals get the same context, made once', async () => {
+      const ctx = fakeContext();
+      const factory = vi.fn(() => ctx);
+      const t = setup({ audioContext: factory });
+      t.server.handlers.playback = () => vocalsPlayback();
+      await t.push(stateWith());
+      expect(factory).toHaveBeenCalledTimes(1);
+      expect(t.fake.created[0].options).toEqual({ context: ctx });
+      t.player.setVocals(true);
+      await t.flush();
+      expect(t.fake.created[1].options).toEqual({ context: ctx });
+      expect(factory).toHaveBeenCalledTimes(1);
+    });
+
+    it('plain_song_uses_no_shared_context: as before, no context is made', async () => {
+      const factory = vi.fn(fakeContext);
+      const t = setup({ audioContext: factory });
+      t.server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21631?sig=a', song: PLAIN_SONG });
+      await t.push(stateWith(PLAIN_SONG));
+      expect(factory).not.toHaveBeenCalled();
+      expect(t.fake.created[0].options).toBeUndefined();
+    });
+
+    it('shared_context_closed_with_the_song: once, after both engines were let go', async () => {
+      const ctx = fakeContext();
+      const t = setup({ audioContext: () => ctx });
+      t.server.handlers.playback = () => vocalsPlayback();
+      await t.push(stateWith());
+      t.player.setVocals(true);
+      await t.flush();
+      const [inst, voc] = [t.fake.created[0].engine, t.fake.created[1].engine];
+      t.server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21631?sig=a', song: PLAIN_SONG });
+      await t.push(stateWith(PLAIN_SONG));
+      expect(ctx.close).toHaveBeenCalledTimes(1);
+      const closedAt = ctx.close.mock.invocationCallOrder[0];
+      expect(inst.dispose.mock.invocationCallOrder[0]).toBeLessThan(closedAt);
+      expect(voc.dispose.mock.invocationCallOrder[0]).toBeLessThan(closedAt);
+    });
+
+    it('no_audio_context_in_the_page: both engines are made without one and the vocals still play', async () => {
+      const t = setup({ audioContext: () => undefined });
+      t.server.handlers.playback = () => vocalsPlayback();
+      await t.push(stateWith());
+      t.player.setVocals(true);
+      await t.flush();
+      expect(t.fake.created[0].options).toEqual({ context: undefined });
+      expect(t.fake.created[1].options).toEqual({ context: undefined });
+      expect(t.fake.created[1].engine.play).toHaveBeenCalled();
+      expect(t.player.vocalsState()).toBe('on');
+    });
+  });
 
   it('controller_hides_vocals_without_vocals_url: no vocals for a plain MP3 song, a MIDI song or a device that is not the player', async () => {
     const { server, fake, push, player } = setup();

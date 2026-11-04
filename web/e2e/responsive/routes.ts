@@ -39,6 +39,20 @@ const LONG_ERROR =
 
 const json = (route: Route, body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
+/**
+ * The list of broken songs answered in the browser: six songs whose files are missing. The seeded broken songs do not last the whole
+ * audit (the server's scan every 10 minutes takes songs whose files are gone off the list), and a question about them needs them.
+ */
+const brokenSongs: Pick<RouteState, 'before'> = {
+  before: async ({ page }) => {
+    const songs = [9101, 9102, 9103, 9104, 9105, 9106].map((n) => ({
+      song: { number: `0${n}`, title: `Title ${n}`, artist: `Artist ${n}`, format: 'FORMAT_MIDI' },
+      reason: 'the file is missing',
+    }));
+    await page.route('**/kantahe.v1.AdminService/ListBrokenSongs', (r) => json(r, { songs, total: songs.length }));
+  },
+};
+
 /** Makes one call fail the way the server does; the state ignores the console message the browser writes for it. */
 const failing = (...calls: string[]): Pick<RouteState, 'before' | 'ignore'> => ({
   before: async ({ page }) => {
@@ -105,9 +119,9 @@ export function states(selftest = false): RouteState[] {
         await expect(page.getByRole('alert').first()).toBeVisible();
       },
     }),
-    at('/code', 'empty', 'scratch', '/code', { core: true }),
-    at('/code', 'typed', 'scratch', '/code', { core: true, after: ({ page }) => page.getByLabel('Code').fill('ABC234') }),
-    at('/code', 'error', 'scratch', '/code', {
+    at('/me/approve-tv', 'empty', 'scratch', '/me/approve-tv', { core: true }),
+    at('/me/approve-tv', 'typed', 'scratch', '/me/approve-tv', { core: true, after: ({ page }) => page.getByLabel('Code').fill('ABC234') }),
+    at('/me/approve-tv', 'error', 'scratch', '/me/approve-tv', {
       core: true,
       before: ({ page }) => page.route('**/kantahe.v1.AuthService/ApproveCode', (r) => json(r, { code: 'not_found', message: 'That code does not exist or has expired. Check the code on the TV and try again.' }, 404)),
       ignore: [/Failed to load resource/, /AuthService\/ApproveCode/],
@@ -127,6 +141,14 @@ export function states(selftest = false): RouteState[] {
         await expect(page.getByText(/no songs/i).first()).toBeVisible();
       },
     }),
+    // a server with no songs at all: the answer to every search is empty (the page then says how songs get in)
+    at('/library', 'empty-library', 'admin', '/library', {
+      core: true,
+      before: async ({ page }) => {
+        await page.route('**/kantahe.v1.CatalogService/SearchSongs', (r) => json(r, {}));
+      },
+      after: ({ page }) => expect(page.getByText('The library is empty.')).toBeVisible(),
+    }),
     at('/library', 'long-text', 'user', '/library', {
       core: true,
       after: async ({ page, seed }) => {
@@ -139,8 +161,35 @@ export function states(selftest = false): RouteState[] {
       core: true,
       after: async ({ page }) => {
         await expect(page.locator('li.row').first()).toBeVisible();
-        await tap(page.locator('li.row button.menu').first());
-        await expect(page.locator('li.row button.menu[aria-expanded=true]')).toBeVisible();
+        await tap(page.locator('li.row button.more').first());
+        await tap(page.getByRole('menuitem', { name: 'Add to a playlist' }));
+        await expect(page.locator('li.row app-playlist-picker').first()).toBeVisible();
+      },
+    }),
+    at('/library', 'many-admin', 'admin', '/library', { after: ({ page }) => expect(page.locator('li.row').first()).toBeVisible() }),
+    // the install bar (Android's own event, faked: the audit browser never fires one) and the iPhone guide
+    at('/library', 'install-banner', 'user', '/library', {
+      before: async ({ page }) => {
+        await page.addInitScript(() => {
+          const fire = () => window.dispatchEvent(Object.assign(new Event('beforeinstallprompt', { cancelable: true }), { prompt: () => Promise.resolve() }));
+          const timer = setInterval(fire, 100);
+          setTimeout(() => clearInterval(timer), 3000);
+        });
+      },
+      after: ({ page }) => expect(page.getByText(/Install Kantahe on this/)).toBeVisible(),
+    }),
+    at('/library', 'shortcuts-dialog', 'user', '/library', {
+      after: async ({ page }) => {
+        await expect(page.locator('li.row').first()).toBeVisible();
+        await page.keyboard.press('?');
+        await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeVisible();
+      },
+    }),
+    at('/library', 'more-menu', 'admin', '/library', {
+      after: async ({ page }) => {
+        await expect(page.locator('li.row').first()).toBeVisible();
+        await tap(page.locator('li.row button.more').first());
+        await expect(page.getByRole('menu')).toBeVisible();
       },
     }),
     at('/library', 'toast', 'scratch', '/library', {
@@ -152,11 +201,10 @@ export function states(selftest = false): RouteState[] {
       },
     }),
     at('/library', 'number-pad', 'user', '/library', { core: true, after: ({ page }) => tap(page.getByRole('tab', { name: 'Number' })) }),
-    at('/library', 'browse', 'user', '/library', { core: true, after: ({ page }) => tap(page.getByRole('tab', { name: 'Browse' })) }),
 
-    // upload: three files whose answers are made up, so that the library stays the same
-    at('/upload', 'empty', 'admin', '/upload'),
-    at('/upload', 'results', 'admin', '/upload', {
+    // Admin > Upload: three files whose answers are made up, so that the library stays the same
+    at('/admin/upload', 'empty', 'admin', '/admin/upload'),
+    at('/admin/upload', 'results', 'admin', '/admin/upload', {
       before: async ({ page }) => {
         let calls = 0;
         await page.route('**/kantahe.v1.UploadService/UploadSong', (r) => {
@@ -228,14 +276,23 @@ export function states(selftest = false): RouteState[] {
       after: ({ page }) => expect(page.getByText(/no longer exists/i)).toBeVisible(),
     },
     at('/me/devices', 'list', 'user', '/me/devices', { after: ({ page }) => expect(page.locator('li.device').nth(2)).toBeVisible() }),
-    at('/me/devices', 'sign-out-question', 'user', '/me/devices', { after: ({ page }) => click(page, 'Sign out Living room TV') }),
+    at('/me/devices', 'sign-out-question', 'user', '/me/devices', {
+      after: async ({ page }) => {
+        await click(page, 'Settings for Living room TV');
+        await click(page, 'Sign out Living room TV');
+      },
+    }),
+    at('/me/devices', 'settings-open', 'user', '/me/devices', { after: ({ page }) => click(page, 'Settings for Living room TV') }),
     at('/me/devices', 'error', 'user', '/me/devices', { ...failing('AuthService/ListMyDevices') }),
     at('/me/settings', 'form', 'user', '/me/settings'),
+    at('/me/help', 'page', 'user', '/me/help'),
+    at('/me/appearance', 'form', 'user', '/me/appearance'),
     at('/me/password', 'form', 'user', '/me/password'),
     at('/me/password', 'errors', 'user', '/me/password', { after: ({ page }) => click(page, 'Change password') }),
 
     // the administration
     at('/admin/users', 'many', 'admin', '/admin/users', { after: ({ page }) => expect(page.locator('tbody tr').nth(3)).toBeVisible() }),
+    at('/admin/users', 'new-user', 'admin', '/admin/users', { after: ({ page }) => click(page, 'New user') }),
     at('/admin/users', 'delete-question', 'admin', '/admin/users', { after: ({ page }) => click(page, /^Delete a-very-long-address/) }),
     at('/admin/users', 'reset-question', 'admin', '/admin/users', { after: ({ page }) => click(page, /^Reset password of a-very-long-address/) }),
     at('/admin/users', 'temp-password', 'admin', '/admin/users', {
@@ -286,6 +343,17 @@ export function states(selftest = false): RouteState[] {
         await expect(page.getByText(/Delete 2 songs and their files/)).toBeVisible();
       },
     }),
+    at('/admin/songs', 'more-menu', 'admin', '/admin/songs', {
+      after: async ({ page }) => {
+        await expect(page.locator('tbody tr').first()).toBeVisible();
+        const more = page.locator('tbody tr app-action-menu button.more').first();
+        // the menu is only in the narrow layout; at a wide size the row's own buttons are the state
+        if (await more.isVisible()) {
+          await tap(more);
+          await expect(page.getByRole('menu')).toBeVisible();
+        }
+      },
+    }),
     at('/admin/songs', 'delete-question', 'admin', '/admin/songs', {
       after: async ({ page }) => {
         await expect(page.locator('tbody tr').first()).toBeVisible();
@@ -293,6 +361,7 @@ export function states(selftest = false): RouteState[] {
       },
     }),
     at('/admin/songs', 'broken-list-question', 'admin', '/admin/songs', {
+      ...brokenSongs,
       after: async ({ page }) => {
         await expect(page.getByRole('heading', { name: 'Check the library' })).toBeVisible();
         await click(page, /^Remove all \d+ broken songs from the list$/);
@@ -300,6 +369,7 @@ export function states(selftest = false): RouteState[] {
       },
     }),
     at('/admin/songs', 'broken-files-question', 'admin', '/admin/songs', {
+      ...brokenSongs,
       after: async ({ page }) => {
         await expect(page.getByRole('heading', { name: 'Check the library' })).toBeVisible();
         await click(page, 'Remove them and delete their files');
@@ -309,6 +379,7 @@ export function states(selftest = false): RouteState[] {
     at('/admin/songs', 'error', 'admin', '/admin/songs', { ...failing('CatalogService/SearchSongs') }),
     at('/admin/settings', 'form', 'admin', '/admin/settings'),
     at('/admin/settings', 'error', 'admin', '/admin/settings', { ...failing('AdminService/GetServerSettings') }),
+    at('/admin/transfer', 'form', 'admin', '/admin/transfer'),
   ];
   if (selftest) {
     // a page of the harness with a table 500 px wide, to see that the audit notices and fails

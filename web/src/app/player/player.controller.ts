@@ -1,16 +1,19 @@
 import { computed, effect, inject, Injectable, OnDestroy, signal, untracked } from '@angular/core';
-import { create } from '@bufbuild/protobuf';
+import { clone, create } from '@bufbuild/protobuf';
 import { CatalogService, Playback, PlaybackKind, PlaybackSchema } from '../../gen/kantahe/v1/catalog_pb';
 import { Format, MidiMode } from '../../gen/kantahe/v1/common_pb';
 import { ControlAction, PlayStatus, ScoreMode, SessionService } from '../../gen/kantahe/v1/session_pb';
 import { injectClient } from '../core/api';
 import { AuthStore } from '../core/auth.store';
 import { problem } from '../core/errors';
+import { ServerUrl } from '../core/server-url';
 import { StateStore } from '../core/state.store';
 import { ToastService } from '../core/toast';
+import { SONG_CACHE } from './cache/song-cache';
 import { deviceMemoryMb } from './device-report';
 import { DropoutMonitor } from './dropouts';
-import { CAN_PLAY_FLAC, CAN_SYNTHESIZE, Engine, ENGINES, MidiOptions } from './engines/engine';
+import { AUDIO_CONTEXT, CAN_PLAY_FLAC, CAN_SYNTHESIZE, Engine, ENGINES, MidiOptions, mediaUrl } from './engines/engine';
+import { AudioContextLike } from './engines/mp3-engine';
 import { MIC_METER } from './mic';
 import { VOCALS_MAX, VOCALS_STEP, VocalsPrefs } from './vocals-prefs';
 
@@ -54,6 +57,9 @@ export class PlayerController implements OnDestroy {
   private readonly mic = inject(MIC_METER);
   private readonly toast = inject(ToastService);
   private readonly prefs = inject(VocalsPrefs);
+  private readonly cache = inject(SONG_CACHE);
+  private readonly server = inject(ServerUrl);
+  private readonly makeAudioContext = inject(AUDIO_CONTEXT);
   private readonly catalog = injectClient(CatalogService);
   private readonly session = injectClient(SessionService);
 
@@ -93,6 +99,8 @@ export class PlayerController implements OnDestroy {
    * first goes on (lazy) and thrown away when it goes off or the song ends; the instrumental stays the clock, the lyrics follow it.
    */
   private vocals?: Engine;
+  /** The one audio context of a song with vocals: the instrumental and the vocals both play through it, so they are heard together. */
+  private sharedContext?: AudioContextLike;
   private vocalsGeneration = 0;
   private vocalsLoaded = false;
   private instrumentalPlaying = false;
@@ -106,7 +114,16 @@ export class PlayerController implements OnDestroy {
   readonly vocalsState = signal<'off' | 'loading' | 'on'>('off');
   readonly vocalsPct = computed(() => this.prefs.pct());
 
+  /** The song that is next, whose files this device is keeping ahead of time (pinned in the cache with the current song). */
+  private aheadNumber?: string;
+  /** Songs already asked for ahead of time in this page's life: each only once. */
+  private readonly askedAhead = new Set<string>();
+  /** The keeping of the current song's files; the next song waits for it, so that the two downloads do not compete. */
+  private keepingNow?: Promise<void>;
   private engine?: Engine;
+  /** The object URLs of the kept files this song plays from (audio, vocals); let go of when the file is no longer used. */
+  private audioBlob?: string;
+  private vocalsBlob?: string;
   private number?: string;
   private generation = 0;
   private readonly loaded = signal(false);
@@ -145,6 +162,12 @@ export class PlayerController implements OnDestroy {
     effect(() => {
       const state = this.vocalsState();
       untracked(() => this.prefs.state.set(state));
+    });
+    effect(() => {
+      // the song has loaded (the phase is only 'ready' on the player device): the song that is next is kept ahead of time
+      const ready = this.phase() === 'ready';
+      const next = this.state()?.upNext?.song;
+      untracked(() => this.keepAhead(ready ? next : undefined));
     });
     effect(() => {
       // the device's volume changed (from any device): the song that plays gets it at once
@@ -308,14 +331,33 @@ export class PlayerController implements OnDestroy {
       return;
     }
     this.phase.set('loading');
-    const engine = this.makeEngine(playback);
-    engine.setVolume(this.volumeFactor(playback)); // before the song loads: an MP3 then asks for its media with CORS when it needs a gain node
-    this.engine = engine; // from here on stop() can dispose it, even while it loads
-    try {
-      await engine.load(playback);
-    } catch {
-      if (mine === this.generation) this.fail();
+    this.cache.pin(this.pinned(number));
+    // the file kept on this device, if it is still the server's file; the song plays from it instead of from the network
+    let kept = playback.kind === PlaybackKind.AUDIO && playback.audioVersion ? await this.cache.lookup('audio', number, playback.audioVersion) : undefined;
+    if (mine !== this.generation) {
+      if (kept) this.cache.release(kept);
       return;
+    }
+    let engine = this.startEngine(playback, kept);
+    try {
+      await engine.load(this.sourceOf(playback, kept));
+    } catch {
+      if (mine !== this.generation) return;
+      if (!kept) {
+        this.fail();
+        return;
+      }
+      // the kept file would not play: it is deleted and the song is played from the server instead
+      this.disposeEngine();
+      void this.cache.discard('audio', number);
+      kept = undefined;
+      engine = this.startEngine(playback, undefined);
+      try {
+        await engine.load(playback);
+      } catch {
+        if (mine === this.generation) this.fail();
+        return;
+      }
     }
     if (mine !== this.generation) return;
     engine.onEnded(() => void this.songEnded(number, mine));
@@ -344,6 +386,10 @@ export class PlayerController implements OnDestroy {
     this.phase.set('ready');
     this.loaded.set(true);
     this.applyStatus(this.playing());
+    // played from the server: keep the file for next time (the song does not wait for it, and a failure changes nothing)
+    if (!kept && playback.kind === PlaybackKind.AUDIO && playback.audioVersion) {
+      this.keepNow(this.cache.store('audio', number, playback.audioVersion, mediaUrl(this.server.base(), playback.audioUrl)));
+    }
     // the choice made on an earlier song (or while this one loaded): the vocals start by themselves, and the song is not waiting for them
     if (this.prefs.on() && this.hasVocals()) void this.startVocals();
   }
@@ -395,8 +441,74 @@ export class PlayerController implements OnDestroy {
     }
   }
 
+  /** The files that are never evicted: those of the song that plays and of the one that is next. */
+  private pinned(current: string): string[] {
+    const numbers = this.aheadNumber ? [current, this.aheadNumber] : [current];
+    return numbers.flatMap((n) => [`audio/${n}`, `vocals/${n}`]);
+  }
+
+  /**
+   * Keeps the files of the song that is next while the current one plays, so that it starts from this device. Once per song, never for a MIDI
+   * song, not while the page is hidden or the user asked the browser to save data; every failure is silent.
+   */
+  private keepAhead(next: { number: string; format: Format } | undefined): void {
+    const current = this.number;
+    this.aheadNumber = next && next.format !== Format.MIDI && next.number !== current ? next.number : undefined;
+    if (!current || !this.aheadNumber || !this.cache.available() || this.askedAhead.has(this.aheadNumber)) return;
+    if (document.visibilityState === 'hidden' || (navigator as { connection?: { saveData?: boolean } }).connection?.saveData) return;
+    const number = this.aheadNumber;
+    this.askedAhead.add(number);
+    this.cache.pin(this.pinned(current));
+    void this.fetchAhead(number, current);
+  }
+
+  /** Remembers a download of the current song's file (whatever it ends in) for the next song to wait for. */
+  private keepNow(job: Promise<boolean>): void {
+    const done = job.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.keepingNow = Promise.all([this.keepingNow, done]).then(() => undefined);
+  }
+
+  private async fetchAhead(number: string, current: string): Promise<void> {
+    try {
+      await this.keepingNow;
+      if (this.number !== current) return;
+      const playback = (await this.catalog.getPlayback({ number })).playback;
+      if (!playback?.ready || playback.kind !== PlaybackKind.AUDIO || this.number !== current) return;
+      const base = this.server.base();
+      if (playback.audioVersion) await this.cache.store('audio', number, playback.audioVersion, mediaUrl(base, playback.audioUrl));
+      if (playback.vocalsUrl && playback.vocalsVersion) await this.cache.store('vocals', number, playback.vocalsVersion, mediaUrl(base, playback.vocalsUrl));
+    } catch {
+      // the song is simply fetched when it is its turn
+    }
+  }
+
+  /** Makes the engine for the song and sets it up (volume, and the kept file's object URL to let go of); from here on stop() can dispose it. */
+  private startEngine(playback: Playback, kept: string | undefined): Engine {
+    const engine = this.makeEngine(playback);
+    engine.setVolume(this.volumeFactor(playback)); // before the song loads: an MP3 then asks for its media with CORS when it needs a gain node
+    this.engine = engine;
+    this.audioBlob = kept;
+    return engine;
+  }
+
+  /** What the engine loads: the playback, with the kept file's object URL in place of the server's address when there is one. */
+  private sourceOf(playback: Playback, kept: string | undefined): Playback {
+    if (!kept) return playback;
+    const copy = clone(PlaybackSchema, playback);
+    copy.audioUrl = kept;
+    return copy;
+  }
+
   private makeEngine(playback: Playback): Engine {
-    if (playback.kind === PlaybackKind.AUDIO) return this.engines.mp3();
+    if (playback.kind === PlaybackKind.AUDIO) {
+      if (!playback.vocalsUrl || playback.song?.format === Format.MIDI) return this.engines.mp3();
+      // a song with vocals: its instrumental goes through the context the vocals will share, from the start (a path cannot change later)
+      this.sharedContext = this.makeAudioContext();
+      return this.engines.mp3({ context: this.sharedContext });
+    }
     return this.engines.midi(playback.effectiveMidiMode === MidiMode.LOW_POWER ? LOW_POWER : FULL_POWER);
   }
 
@@ -510,6 +622,7 @@ export class PlayerController implements OnDestroy {
     this.micOn = false;
     this.dropoutReported = false;
     this.disposeEngine();
+    this.keepingNow = undefined;
     this.number = undefined;
     this.loaded.set(false);
     this.wantPlay = false;
@@ -523,9 +636,15 @@ export class PlayerController implements OnDestroy {
     this.engine = undefined;
     this.instrumentalPlaying = false;
     this.stopVocals();
-    if (!engine) return;
-    engine.pause();
-    engine.dispose();
+    if (engine) {
+      engine.pause();
+      engine.dispose();
+    }
+    // after both tracks let go of it
+    void this.sharedContext?.close();
+    this.sharedContext = undefined;
+    if (this.audioBlob) this.cache.release(this.audioBlob);
+    this.audioBlob = undefined;
   }
 
   /** The vocals switch: on starts the voice at the instrumental's position, off lets it go. The choice is remembered for the next song. */
@@ -558,18 +677,38 @@ export class PlayerController implements OnDestroy {
 
   private async startVocals(): Promise<void> {
     const engine = this.engine;
-    const url = this.playback()?.vocalsUrl;
-    if (this.vocals || !engine || !this.loaded() || !url) return; // a song that is still loading calls this again when it is ready
+    const playback = this.playback();
+    const url = playback?.vocalsUrl;
+    const number = this.number;
+    if (this.vocals || !engine || !this.loaded() || !url || !number) return; // a song that is still loading calls this again when it is ready
     const mine = ++this.vocalsGeneration;
-    const vocals = this.engines.mp3();
-    this.vocals = vocals;
     this.vocalsState.set('loading');
-    vocals.setVolume(this.vocalsFactor());
-    try {
-      await vocals.load(create(PlaybackSchema, { audioUrl: url }));
-    } catch {
-      if (mine === this.vocalsGeneration) this.vocalsFailed();
+    // the file kept on this device, if it is still the server's file
+    const version = playback.vocalsVersion;
+    const kept = version ? await this.cache.lookup('vocals', number, version) : undefined;
+    if (mine !== this.vocalsGeneration) {
+      if (kept) this.cache.release(kept); // switched off, or the song changed, while it was looked up
       return;
+    }
+    let vocals = this.makeVocals(kept);
+    try {
+      await vocals.load(create(PlaybackSchema, { audioUrl: kept ?? url }));
+    } catch {
+      if (mine !== this.vocalsGeneration) return;
+      if (!kept) {
+        this.vocalsFailed();
+        return;
+      }
+      // the kept file would not play: it is deleted and the vocals come from the server instead
+      this.disposeVocals();
+      void this.cache.discard('vocals', number);
+      vocals = this.makeVocals(undefined);
+      try {
+        await vocals.load(create(PlaybackSchema, { audioUrl: url }));
+      } catch {
+        if (mine === this.vocalsGeneration) this.vocalsFailed();
+        return;
+      }
     }
     if (mine !== this.vocalsGeneration) {
       vocals.dispose(); // switched off, or the song changed, while it loaded
@@ -579,6 +718,26 @@ export class PlayerController implements OnDestroy {
     this.vocalsState.set('on');
     if (this.instrumentalPlaying) this.playVocals();
     else vocals.seek(engine.timeMs());
+    if (!this.vocalsBlob && version) this.keepNow(this.cache.store('vocals', number, version, mediaUrl(this.server.base(), url)));
+  }
+
+  /** Makes the vocals engine, sets its volume and remembers the kept file's object URL to let go of. */
+  private makeVocals(kept: string | undefined): Engine {
+    const vocals = this.engines.mp3({ context: this.sharedContext });
+    this.vocals = vocals;
+    this.vocalsBlob = kept;
+    vocals.setVolume(this.vocalsFactor());
+    return vocals;
+  }
+
+  /** Lets go of the vocals engine that is in the making (not the generation: the caller goes on with another). */
+  private disposeVocals(): void {
+    const vocals = this.vocals;
+    this.vocals = undefined;
+    if (this.vocalsBlob) this.cache.release(this.vocalsBlob);
+    this.vocalsBlob = undefined;
+    vocals?.pause();
+    vocals?.dispose();
   }
 
   /** Starts the voice at the instrumental's position; a voice that cannot play is dropped, the song is not touched. */
@@ -627,6 +786,8 @@ export class PlayerController implements OnDestroy {
     this.vocalsState.set('off');
     vocals?.pause();
     vocals?.dispose();
+    if (this.vocalsBlob) this.cache.release(this.vocalsBlob);
+    this.vocalsBlob = undefined;
   }
 
   /** The voice could not be loaded or played: it is switched off, with a short message, and the song goes on. */

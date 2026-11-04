@@ -10,12 +10,12 @@ password. This works only once. From then on accounts are made by an admin; ther
 
 ## Users
 
-*Admin → Users* lists everyone, with **Admin**, **Uploader** and **Disabled** switches:
+*Admin → Users* lists everyone, with **Admin** and **Disabled** switches:
 
-* **New user**: an email, a name and a **temporary password** (8 to 256 characters; the form can make one). Pass it on; the
-  user must change it at the first sign-in.
-* **Uploader** lets a user add songs (admins can always). **Admin** gives all of this. **Disabled** stops a user signing
-  in without deleting anything.
+* **New user**: the button above the list opens a window for an email, a name and a **temporary password** (8 to 256
+  characters; the window can make one). Pass it on; the user must change it at the first sign-in.
+* **Admin** lets a user manage the server, and add, download and replace songs (only administrators upload; the old *Uploader*
+  setting has no effect any more). **Disabled** stops a user signing in without deleting anything.
 * **Reset password**: sets a new temporary password for someone who forgot theirs, shown to you once. They can do nothing
   but change it after signing in. There is no email: you tell them.
 * **Sign out devices**: signs out everything the user is signed in on (a lost phone). The user can also do this for
@@ -29,7 +29,7 @@ reverse proxy, start the server with `--trusted-proxies` so that it sees the rea
 
 Two ways, both feeding one shared library:
 
-* **Upload**: users with the uploader role (and admins) use *Upload* to send `.kar` and `.karmp3` files, several at once, or
+* **Upload**: administrators use *Admin → Upload* in the web app (the first page of *Admin*; the old address `/upload` still leads there; ordinary users have no Upload, and the Android, iOS and TV apps do not upload) to send `.kar` and `.karmp3` files, several at once, or
   ZIP files of them (they are opened in the browser, and each song is sent on its own with a progress count and a report of
   what was added, what was already there and what was refused and why; a `.kar` with no audible instrument notes, only
   lyric timing, is refused with "the file contains no music" before it is stored). The limit is **50 MB per file** by default;
@@ -56,6 +56,34 @@ songbook number. Numbers of deleted songs are not reused.
 
 Kantahe reads the title and artist from inside each file in the background. In *Admin → Songs* press **Edit** to change
 them: your edit always wins and survives rescans (empty a field to go back to what the file says).
+
+## Filtering and sorting the song list
+
+*Admin → Songs* lists every song, 50 rows to a page. Under the search field three choices narrow the list (they work together, and with
+the search text):
+
+* **Format**: all, MP3 or MIDI.
+* **Vocals**: any, with vocals (the song has a separate vocals track, the **V** badge) or without vocals.
+* **Lyrics**: any, by word (**W**) or by line (**L**), as the file says how its lyrics are timed.
+
+**Clear filters** puts all three back. The column headers (**Number, Title, Artist, Format, Lyrics, Vocals**) are buttons: press one to sort
+by it, press it again to turn the order round; an arrow shows which column sorts and which way. Songs without timed lyrics come first
+when sorting by Lyrics, and songs without vocals come first when sorting by Vocals. With no header chosen, a search lists the best match
+first and a plain list goes by number. On a narrow screen, where the table turns into blocks and the header row is hidden, a **Sort by**
+choice and an Ascending/Descending button above the list do the same. The filters and the sorting are done by the server, so they cover the
+whole library and not only the page on show.
+
+## Downloading and replacing song files
+
+In *Admin → Songs* every song has a **Download** button and a **Replace file** button (administrators only).
+
+* **Download** saves the song's file exactly as the server holds it: a `.karmp3` (the ZIP) or a `.kar`, named `NUMBER - Artist - Title`
+  and the extension. The address the browser uses works for ten minutes, only for you.
+* **Replace file** takes a `.kar` or `.karmp3` of the same kind as the song and puts its content in the song's place. The song keeps
+  its **number**, your edits of its title and artist, its place in favourites and playlists, the queue and the history. The new file
+  is checked like an upload; a file that is the same as the song's own does nothing, and a file that is already another song of the
+  library is refused (the message says which one). A song that was uploaded gets the new file and loses the old one; a song in a
+  watched folder has its file in that folder overwritten (the folder must be writable, as for deleting).
 
 ## Removing and deleting songs
 
@@ -143,19 +171,51 @@ mode, **On** always shows them, **Off** never does. A browser that asks for less
 
 *Admin → Settings*: the largest upload (above) and how long the score is shown (seconds). Server flags (see
 `kantahe --help`, and the [installation guide](install.md)): `--data`, `--library`, `--listen`, `--public-url`,
-`--trusted-proxies`, `--soundfont`, `--score-seconds`, `--render-cache-gb`.
+`--trusted-proxies`, `--soundfont`, `--score-seconds`, `--render-cache-gb`, `--transfer-root`.
 
 * `--public-url` is the address TVs show in the QR code of their sign-in code; set it when the server is behind a proxy.
 * `--soundfont` replaces the built-in SoundFont (the instrument sounds for MIDI songs).
 * `--render-cache-gb` limits the disk used by audio the server renders for devices that cannot play MIDI themselves (default
   5; `0` switches it off, and such devices then use a lighter mode).
 
+## Moving to another server
+
+*Admin → Transfer* copies a whole server into a folder on the server's disk and, on another server, replaces everything with
+such a folder. Only administrators see it, and only the web app has it.
+
+**What is moved:** users with their passwords and roles, the devices that are signed in, queues, history, favourites, playlists,
+the settings, the titles and artists you edited, every song (also the songs of the watched folders, and the guide vocals of a
+song that has them) and the background videos. **What is not moved:** the server's own options (`--name`, `--public-url`,
+`--library`, `--listen` and so on, which belong to the machine) and the cache.
+
+1. **Export.** On the old server open *Admin → Transfer*, type a folder on the server's disk that does not exist yet or is empty
+   (with Docker it must be a mounted folder, see the [installation guide](install.md)), and press *Export*. The folder must not
+   be inside the data folder or a watched folder. It fills with plain files (no ZIP): `kantahe.db`, the song, media and video
+   folders, and `kantahe-export.json`, which is written last: a folder without it is unfinished and is never imported. The
+   server goes on working while it exports. Songs whose file cannot be read are listed at the end and are left out.
+2. **Copy the folder** to the other machine (rsync, a USB disk, a shared mount).
+3. **Import.** On the new server open *Admin → Transfer*, type the folder, press *Check* and read what it says (the name and
+   version of the old server, how many songs, users and videos). Tick the box and press *Replace everything on this server*.
+   The server checks every file and the database first; nothing is changed if anything is wrong. Then it **restarts by itself**
+   within a few seconds, and the page says when it is back.
+4. **Sign in** with an account of the old server: everyone who was signed in on the new server is signed out.
+
+The database that was replaced is kept in the data folder, in `backups/before-import-DATE`; delete it when you no longer need it.
+Songs that were in a watched folder of the old server become uploaded songs on the new one and keep their numbers. The new
+server's own watched folders are scanned as usual, and files it has already are skipped. A folder made by a newer Kantahe cannot
+be imported into an older one: upgrade the new server first.
+
+**Keep the folder private.** It holds the password hashes, the sign-in data of the devices and the key that signs media addresses.
+It is created readable by the server's user only. Delete it after the move. To limit where exports and imports may read and write,
+start the server with `--transfer-root FOLDER` (or `KANTAHE_TRANSFER_ROOT`): every folder typed in the page must then be inside it.
+
 ## Backups and upgrades
 
 Stop the server, copy the whole **data folder** (the database and the songs people uploaded), start it again. The `cache`
 folder inside it can be left out and deleted at any time. Your own watched folders are backed up like any other folders.
 To upgrade, make a backup, then replace the program or pull the new image; the database is upgraded on start, and going back
-to an older version is done by restoring the backup.
+to an older version is done by restoring the backup. An export (*Admin → Transfer*, above) is a backup too, and needs no shell
+access to the machine.
 
 ## Reverse proxy and HTTPS
 

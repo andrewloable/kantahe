@@ -9,6 +9,47 @@ import 'harness.dart';
 bool buttonOn(WidgetTester tester) => tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Approve')).onPressed != null;
 
 void main() {
+  /// The screen is pushed from a page, as the Me screen does.
+  Future<Harness> pushed(WidgetTester tester) async {
+    final h = Harness();
+    await h.pump(
+      tester,
+      Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ApproveCodeScreen())),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('Approve a TV'), findsOneWidget);
+    return h;
+  }
+
+  testWidgets('Cancel goes back to the page below and sends nothing', (tester) async {
+    final h = await pushed(tester);
+    expect(find.widgetWithText(TextButton, 'Cancel'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('Approve a TV'), findsNothing);
+    expect(find.text('open'), findsOneWidget);
+    expect(h.approvals, isEmpty);
+  });
+
+  testWidgets('after a TV was approved the button says Done and goes back too', (tester) async {
+    final h = await pushed(tester);
+    await enter(tester, 'code', 'abcd23');
+    await tapText(tester, 'Approve');
+    expect(h.approvals, hasLength(1));
+    expect(find.widgetWithText(TextButton, 'Cancel'), findsNothing);
+    await tester.tap(find.widgetWithText(TextButton, 'Done'));
+    await tester.pumpAndSettle();
+    expect(find.text('Approve a TV'), findsNothing);
+  });
+
   testWidgets('labels the field and explains which characters a code has', (tester) async {
     final h = Harness();
     await h.pump(tester, const ApproveCodeScreen());

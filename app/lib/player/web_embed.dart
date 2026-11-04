@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:kantahe/player/embed_bridge.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -119,6 +121,14 @@ class _WebEmbedState extends State<WebEmbed> {
     }
     widget.config.onHost(_Host(_controller, widget.config.url));
     _controller.loadRequest(widget.config.url);
+  }
+
+  @override
+  void dispose() {
+    // Android keeps the page of a WebView that left the screen alive until the garbage collector comes, and that page still plays: two
+    // players of one device then take the audio focus from each other and the one on screen freezes. Ending the page ends its sound.
+    unawaited(_controller.loadRequest(Uri.parse('about:blank')));
+    super.dispose();
   }
 
   @override

@@ -22,7 +22,7 @@ export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 
 export 'catalog.pbenum.dart';
 
-/// Page size defaults to 50; format and letter are optional filters.
+/// Page size defaults to 50; format, letter, has_vocals and lyric_timing are optional filters.
 class SearchSongsRequest extends $pb.GeneratedMessage {
   factory SearchSongsRequest({
     $core.String? query,
@@ -31,6 +31,9 @@ class SearchSongsRequest extends $pb.GeneratedMessage {
     $core.String? letter,
     $core.String? pageToken,
     $core.int? pageSize,
+    $core.bool? hasVocals,
+    $0.LyricTiming? lyricTiming,
+    $core.bool? descending,
   }) {
     final result = SearchSongsRequest._();
     if (query != null) result.query = query;
@@ -39,6 +42,9 @@ class SearchSongsRequest extends $pb.GeneratedMessage {
     if (letter != null) result.letter = letter;
     if (pageToken != null) result.pageToken = pageToken;
     if (pageSize != null) result.pageSize = pageSize;
+    if (hasVocals != null) result.hasVocals = hasVocals;
+    if (lyricTiming != null) result.lyricTiming = lyricTiming;
+    if (descending != null) result.descending = descending;
     return result;
   }
 
@@ -63,6 +69,10 @@ class SearchSongsRequest extends $pb.GeneratedMessage {
     ..aOS(4, _omitFieldNames ? '' : 'letter')
     ..aOS(5, _omitFieldNames ? '' : 'pageToken')
     ..aI(6, _omitFieldNames ? '' : 'pageSize')
+    ..aOB(7, _omitFieldNames ? '' : 'hasVocals')
+    ..aE<$0.LyricTiming>(8, _omitFieldNames ? '' : 'lyricTiming',
+        enumValues: $0.LyricTiming.values)
+    ..aOB(9, _omitFieldNames ? '' : 'descending')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -140,6 +150,36 @@ class SearchSongsRequest extends $pb.GeneratedMessage {
   $core.bool hasPageSize() => $_has(5);
   @$pb.TagNumber(6)
   void clearPageSize() => $_clearField(6);
+
+  /// Absent: any song. True: only songs with a vocals track. False: only songs without one.
+  @$pb.TagNumber(7)
+  $core.bool get hasVocals => $_getBF(6);
+  @$pb.TagNumber(7)
+  set hasVocals($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasHasVocals() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearHasVocals() => $_clearField(7);
+
+  /// Unspecified: any song. Else only songs whose lyrics are timed by line or by word.
+  @$pb.TagNumber(8)
+  $0.LyricTiming get lyricTiming => $_getN(7);
+  @$pb.TagNumber(8)
+  set lyricTiming($0.LyricTiming value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasLyricTiming() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearLyricTiming() => $_clearField(8);
+
+  /// Reverses the main sort key; the number stays the tie-breaker, in ascending order. Ignored when the order is by relevance.
+  @$pb.TagNumber(9)
+  $core.bool get descending => $_getBF(8);
+  @$pb.TagNumber(9)
+  set descending($core.bool value) => $_setBool(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasDescending() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearDescending() => $_clearField(9);
 }
 
 /// One page; next_page_token is empty on the last page.
@@ -734,6 +774,8 @@ class Playback extends $pb.GeneratedMessage {
     $0.Lyrics? lyrics,
     $core.double? gainDb,
     $core.String? vocalsUrl,
+    $core.String? audioVersion,
+    $core.String? vocalsVersion,
   }) {
     final result = Playback._();
     if (song != null) result.song = song;
@@ -747,6 +789,8 @@ class Playback extends $pb.GeneratedMessage {
     if (lyrics != null) result.lyrics = lyrics;
     if (gainDb != null) result.gainDb = gainDb;
     if (vocalsUrl != null) result.vocalsUrl = vocalsUrl;
+    if (audioVersion != null) result.audioVersion = audioVersion;
+    if (vocalsVersion != null) result.vocalsVersion = vocalsVersion;
     return result;
   }
 
@@ -778,6 +822,8 @@ class Playback extends $pb.GeneratedMessage {
         subBuilder: $0.Lyrics.$_createMessage)
     ..aD(10, _omitFieldNames ? '' : 'gainDb', fieldType: $pb.PbFieldType.OF)
     ..aOS(11, _omitFieldNames ? '' : 'vocalsUrl')
+    ..aOS(12, _omitFieldNames ? '' : 'audioVersion')
+    ..aOS(13, _omitFieldNames ? '' : 'vocalsVersion')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -906,6 +952,27 @@ class Playback extends $pb.GeneratedMessage {
   $core.bool hasVocalsUrl() => $_has(10);
   @$pb.TagNumber(11)
   void clearVocalsUrl() => $_clearField(11);
+
+  /// A value that changes whenever the file behind audio_url changes (a replaced song file, a render made again). Empty: unknown, a player must not
+  /// keep a copy of the file. Players compare it for equality only and never read a meaning into it.
+  @$pb.TagNumber(12)
+  $core.String get audioVersion => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set audioVersion($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasAudioVersion() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearAudioVersion() => $_clearField(12);
+
+  /// The same for the file behind vocals_url; empty when there is no vocals track.
+  @$pb.TagNumber(13)
+  $core.String get vocalsVersion => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set vocalsVersion($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasVocalsVersion() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearVocalsVersion() => $_clearField(13);
 }
 
 /// The playback description.

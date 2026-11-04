@@ -485,3 +485,181 @@ func TestStateCarriesHasVocalsForTheQueueAndTheCurrentSong(t *testing.T) {
 		}
 	}
 }
+
+// timingOf looks a song up in a list.
+func timingOf(songs []*kantahev1.Song, number string) kantahev1.LyricTiming {
+	for _, s := range songs {
+		if s.Number == number {
+			return s.LyricTiming
+		}
+	}
+	return -1
+}
+
+func TestSongsCarryTheLyricTiming(t *testing.T) {
+	a := newAdminEnv(t)
+	up := func(name, nfo string) string {
+		res, err := a.uploadAs(a.admin.Token, name, testfix.KARMP3("x", testfix.MP3Frames(200), "[00:01.00]hi", nfo))
+		if err != nil || res.Status != kantahev1.UploadStatus_UPLOAD_STATUS_ADDED {
+			t.Fatalf("upload %s: %+v %v", name, res, err)
+		}
+		return res.Song.Number
+	}
+	word := up("W.karmp3", "Title : Word\nArtist : Band\nTiming by : word")
+	line := up("L.karmp3", "Title : Line\nArtist : Band\nTiming by : line")
+	midi := a.seed(t, "M.kar", "Midi", "Band", true)
+	ctx := context.Background()
+	want := map[string]kantahev1.LyricTiming{word: kantahev1.LyricTiming_LYRIC_TIMING_WORD, line: kantahev1.LyricTiming_LYRIC_TIMING_LINE, midi: kantahev1.LyricTiming_LYRIC_TIMING_WORD}
+
+	search, err := a.catalogClient().SearchSongs(ctx, with(connect.NewRequest(&kantahev1.SearchSongsRequest{}), a.admin.Token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for n, w := range want {
+		if got := timingOf(search.Msg.Songs, n); got != w {
+			t.Errorf("SearchSongs %s: %v, want %v", n, got, w)
+		}
+		one, err := a.catalogClient().GetSong(ctx, with(connect.NewRequest(&kantahev1.GetSongRequest{Number: n}), a.admin.Token))
+		if err != nil || one.Msg.Song.LyricTiming != w {
+			t.Errorf("GetSong %s: %v %v, want %v", n, one, err, w)
+		}
+		if err := a.fav(t, a.admin.Token, n, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	favs, err := a.libClient().ListFavourites(ctx, with(connect.NewRequest(&kantahev1.ListFavouritesRequest{}), a.admin.Token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for n, w := range want {
+		if got := timingOf(favs.Msg.Songs, n); got != w {
+			t.Errorf("ListFavourites %s: %v, want %v", n, got, w)
+		}
+	}
+	// a song that has not been read yet (as after the migration) says nothing
+	if _, err := a.db.Exec(`UPDATE songs SET lyric_timing = 0 WHERE number = ?`, word); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.db.Exec(`UPDATE songs SET lyric_timing = 9 WHERE number = ?`, line); err != nil {
+		t.Fatal(err)
+	}
+	search, err = a.catalogClient().SearchSongs(ctx, with(connect.NewRequest(&kantahev1.SearchSongsRequest{}), a.admin.Token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if timingOf(search.Msg.Songs, word) != 0 || timingOf(search.Msg.Songs, line) != 0 {
+		t.Errorf("not read yet and no lyrics: %v and %v, want unspecified", timingOf(search.Msg.Songs, word), timingOf(search.Msg.Songs, line))
+	}
+}
+
+// versionOf is what the server must report for a file: its size and its modification time in milliseconds.
+func versionOf(t *testing.T, path string) string {
+	t.Helper()
+	st, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return fmt.Sprintf("%d-%d", st.Size(), st.ModTime().UnixMilli())
+}
+
+func (a *adminEnv) mediaPath(t *testing.T, number string) string {
+	t.Helper()
+	var p string
+	if err := a.db.QueryRow(`SELECT media_path FROM songs WHERE number = ?`, number).Scan(&p); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestGetPlaybackVersionMP3(t *testing.T) {
+	a := newAdminEnv(t)
+	n := a.seed(t, "Tune.karmp3", "Tune", "Band", false)
+	pb := a.playback(t, n)
+	if want := versionOf(t, a.mediaPath(t, n)); pb.AudioVersion != want || pb.AudioVersion == "" {
+		t.Fatalf("audio_version = %q, want %q", pb.AudioVersion, want)
+	}
+	if pb.VocalsVersion != "" {
+		t.Errorf("a song without vocals has a vocals version: %q", pb.VocalsVersion)
+	}
+}
+
+func TestGetPlaybackVersionVocals(t *testing.T) {
+	a := newAdminEnv(t)
+	n := a.seedVocals(t, "Tune.karmp3", "Tune")
+	pb := a.playback(t, n)
+	media := a.mediaPath(t, n)
+	if want := versionOf(t, media); pb.AudioVersion != want {
+		t.Errorf("audio_version = %q, want %q", pb.AudioVersion, want)
+	}
+	if want := versionOf(t, strings.TrimSuffix(media, ".mp3")+".vocals.mp3"); pb.VocalsVersion != want || pb.VocalsVersion == "" {
+		t.Errorf("vocals_version = %q, want %q", pb.VocalsVersion, want)
+	}
+	if pb.AudioVersion == pb.VocalsVersion {
+		t.Errorf("two different files have the same version %q", pb.AudioVersion)
+	}
+}
+
+func TestGetPlaybackVersionChangesOnReplace(t *testing.T) {
+	a := newAdminEnv(t)
+	n := a.seed(t, "Old.karmp3", "Old", "Band", false)
+	before := a.playback(t, n).AudioVersion
+	if before == "" {
+		t.Fatal("no version before the replace")
+	}
+	if _, err := a.replace(a.admin.Token, n, "x.karmp3", karmp3Titled("New", 900)); err != nil {
+		t.Fatal(err)
+	}
+	if after := a.playback(t, n).AudioVersion; after == "" || after == before {
+		t.Fatalf("REGRESSION: the version after a replace is %q, before it was %q", after, before)
+	}
+}
+
+func TestGetPlaybackVersionMIDI(t *testing.T) {
+	a := newAdminEnv(t)
+	n := a.seed(t, "Song.kar", "Song", "Artist", true)
+	if pb := a.playback(t, n); pb.AudioVersion != "" || pb.VocalsVersion != "" {
+		t.Fatalf("a MIDI synth playback has versions: %q %q", pb.AudioVersion, pb.VocalsVersion)
+	}
+}
+
+func TestSearchSongsFiltersAndSortsForTheAdminList(t *testing.T) {
+	a := newAdminEnv(t)
+	voc := a.seedVocals(t, "Voc.karmp3", "Voc")
+	plain := a.seed(t, "Plain.karmp3", "Plain", "Band", false)
+	mid := a.seed(t, "Mid.kar", "Mid", "Band", true)
+	search := func(req *kantahev1.SearchSongsRequest) []string {
+		t.Helper()
+		res, err := a.catalogClient().SearchSongs(context.Background(), with(connect.NewRequest(req), a.user.Token))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, s := range res.Msg.Songs {
+			out = append(out, s.Number)
+		}
+		return out
+	}
+	yes, no := true, false
+	eq := func(got, want []string) {
+		t.Helper()
+		if strings.Join(got, ",") != strings.Join(want, ",") {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	}
+	eq(search(&kantahev1.SearchSongsRequest{HasVocals: &yes}), []string{voc})
+	eq(search(&kantahev1.SearchSongsRequest{HasVocals: &no}), []string{plain, mid})
+	eq(search(&kantahev1.SearchSongsRequest{Format: kantahev1.Format_FORMAT_MIDI}), []string{mid})
+	// MIDI sorts after MP3 by format; descending turns it round
+	eq(search(&kantahev1.SearchSongsRequest{Sort: kantahev1.SongSort_SONG_SORT_FORMAT}), []string{voc, plain, mid})
+	eq(search(&kantahev1.SearchSongsRequest{Sort: kantahev1.SongSort_SONG_SORT_FORMAT, Descending: true}), []string{mid, voc, plain})
+	eq(search(&kantahev1.SearchSongsRequest{Sort: kantahev1.SongSort_SONG_SORT_VOCALS, Descending: true}), []string{voc, plain, mid})
+	// the timing of the test files: the two karmp3 have word marks in their .lrc
+	if got := search(&kantahev1.SearchSongsRequest{LyricTiming: kantahev1.LyricTiming_LYRIC_TIMING_WORD, Format: kantahev1.Format_FORMAT_MP3}); len(got) != 2 {
+		t.Errorf("word-timed MP3 songs: %v", got)
+	}
+	// an unknown timing is refused
+	_, err := a.catalogClient().SearchSongs(context.Background(), with(connect.NewRequest(&kantahev1.SearchSongsRequest{LyricTiming: 7}), a.user.Token))
+	if code(err) != connect.CodeInvalidArgument {
+		t.Errorf("unknown timing: %v", err)
+	}
+}

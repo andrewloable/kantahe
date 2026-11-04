@@ -18,8 +18,16 @@ import 'package:kantahe/gen/kantahe/v1/session.pb.dart';
 import 'package:kantahe/gen/kantahe/v1/user_library.connect.spec.dart';
 import 'package:kantahe/gen/kantahe/v1/user_library.pb.dart';
 
-Song song(String number, String title, String artist, {Format format = Format.FORMAT_MP3, bool favourite = false, bool failed = false}) =>
-    Song(number: number, title: title, artist: artist, format: format, favourite: favourite, failed: failed);
+Song song(
+  String number,
+  String title,
+  String artist, {
+  Format format = Format.FORMAT_MP3,
+  bool favourite = false,
+  bool failed = false,
+  bool hasVocals = false,
+  LyricTiming lyricTiming = LyricTiming.LYRIC_TIMING_UNSPECIFIED,
+}) => Song(number: number, title: title, artist: artist, format: format, favourite: favourite, failed: failed, hasVocals: hasVocals, lyricTiming: lyricTiming);
 
 class Reply<T> {
   Reply(this.items, {this.next = ''});

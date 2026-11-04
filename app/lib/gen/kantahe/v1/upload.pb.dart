@@ -28,10 +28,12 @@ class UploadSongRequest extends $pb.GeneratedMessage {
   factory UploadSongRequest({
     $core.String? filename,
     $core.List<$core.int>? content,
+    $core.String? replaceNumber,
   }) {
     final result = UploadSongRequest._();
     if (filename != null) result.filename = filename;
     if (content != null) result.content = content;
+    if (replaceNumber != null) result.replaceNumber = replaceNumber;
     return result;
   }
 
@@ -51,6 +53,7 @@ class UploadSongRequest extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'filename')
     ..a<$core.List<$core.int>>(
         2, _omitFieldNames ? '' : 'content', $pb.PbFieldType.OY)
+    ..aOS(3, _omitFieldNames ? '' : 'replaceNumber')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -92,6 +95,16 @@ class UploadSongRequest extends $pb.GeneratedMessage {
   $core.bool hasContent() => $_has(1);
   @$pb.TagNumber(2)
   void clearContent() => $_clearField(2);
+
+  /// When not empty: the number of an existing song whose file this upload replaces. The format (.kar or .karmp3) must be the song's own.
+  @$pb.TagNumber(3)
+  $core.String get replaceNumber => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set replaceNumber($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasReplaceNumber() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearReplaceNumber() => $_clearField(3);
 }
 
 /// status ADDED carries the song, REJECTED carries the reason, DUPLICATE carries the existing song.
@@ -768,13 +781,14 @@ class AbortVideoUploadResponse extends $pb.GeneratedMessage {
   static AbortVideoUploadResponse? _defaultInstance;
 }
 
-/// Song upload; requires the uploader role (PERMISSION_DENIED otherwise).
+/// Song upload; for administrators only (PERMISSION_DENIED otherwise). The uploader role of a user has no effect since 1.2.0.
 class UploadServiceApi {
   final $pb.RpcClient _client;
 
   UploadServiceApi(this._client);
 
-  /// Uploader or admin. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+  /// Admin only. One .kar or .karmp3 per call (ZIPs are unpacked on the client); rejections are reported in the response, not as errors.
+  /// With replace_number set the file replaces the content of that song (it keeps its number, edits, favourites, playlists and history).
   $async.Future<UploadSongResponse> uploadSong(
           $pb.ClientContext? ctx, UploadSongRequest request) =>
       _client.invoke<UploadSongResponse>(

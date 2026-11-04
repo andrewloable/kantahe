@@ -59,6 +59,14 @@ abstract class AdminServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $1.GetServerSettingsRequest request);
   $async.Future<$1.UpdateServerSettingsResponse> updateServerSettings(
       $pb.ServerContext ctx, $1.UpdateServerSettingsRequest request);
+  $async.Future<$1.ExportDataResponse> exportData(
+      $pb.ServerContext ctx, $1.ExportDataRequest request);
+  $async.Future<$1.InspectExportResponse> inspectExport(
+      $pb.ServerContext ctx, $1.InspectExportRequest request);
+  $async.Future<$1.ImportDataResponse> importData(
+      $pb.ServerContext ctx, $1.ImportDataRequest request);
+  $async.Future<$1.GetSongDownloadResponse> getSongDownload(
+      $pb.ServerContext ctx, $1.GetSongDownloadRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
@@ -100,6 +108,14 @@ abstract class AdminServiceBase extends $pb.GeneratedService {
         return $1.GetServerSettingsRequest();
       case 'UpdateServerSettings':
         return $1.UpdateServerSettingsRequest();
+      case 'ExportData':
+        return $1.ExportDataRequest();
+      case 'InspectExport':
+        return $1.InspectExportRequest();
+      case 'ImportData':
+        return $1.ImportDataRequest();
+      case 'GetSongDownload':
+        return $1.GetSongDownloadRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -148,6 +164,14 @@ abstract class AdminServiceBase extends $pb.GeneratedService {
       case 'UpdateServerSettings':
         return updateServerSettings(
             ctx, request as $1.UpdateServerSettingsRequest);
+      case 'ExportData':
+        return exportData(ctx, request as $1.ExportDataRequest);
+      case 'InspectExport':
+        return inspectExport(ctx, request as $1.InspectExportRequest);
+      case 'ImportData':
+        return importData(ctx, request as $1.ImportDataRequest);
+      case 'GetSongDownload':
+        return getSongDownload(ctx, request as $1.GetSongDownloadRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }

@@ -9,6 +9,7 @@ import 'package:kantahe/gen/kantahe/v1/session.pb.dart' hide State;
 import 'package:kantahe/player/connect_card.dart';
 import 'package:kantahe/player/compact_controls.dart';
 import 'package:kantahe/player/embed_bridge.dart';
+import 'package:kantahe/player/free_disk.dart';
 import 'package:kantahe/player/platform.dart';
 import 'package:kantahe/player/web_embed.dart';
 import 'package:kantahe/queue/queue_actions.dart';
@@ -19,10 +20,19 @@ import 'package:kantahe/tv/focus.dart';
 /// While a song plays here and nobody presses anything for [_hideAfter], the buttons fade out; any key or touch
 /// brings them back (and is used up doing so: a hidden Pause is never pressed by the key that wakes it).
 class PlayerScreen extends StatefulWidget {
-  const PlayerScreen({super.key, this.embedBuilder = webEmbedBuilder, this.screenAwake = const WakelockAwake(), this.osMicrophone = askOsMicrophone});
+  const PlayerScreen({
+    super.key,
+    this.embedBuilder = webEmbedBuilder,
+    this.screenAwake = const WakelockAwake(),
+    this.osMicrophone = askOsMicrophone,
+    this.readFreeDisk = readFreeDiskBytes,
+  });
 
   final EmbedBuilder embedBuilder;
   final ScreenAwake screenAwake;
+
+  /// Reads the free space of the device in bytes (null: unknown); the page, which keeps songs on the device, is told it.
+  final Future<int?> Function() readFreeDisk;
 
   /// Asks the operating system for the microphone; true when it was granted.
   final Future<bool> Function() osMicrophone;
@@ -33,7 +43,7 @@ class PlayerScreen extends StatefulWidget {
 
 class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver {
   late final AppServices _services = AppScope.of(context);
-  late final EmbedBridge _bridge = EmbedBridge(auth: _services.auth, serverUrl: _services.serverUrl);
+  late final EmbedBridge _bridge = EmbedBridge(auth: _services.auth, serverUrl: _services.serverUrl, readFreeDisk: widget.readFreeDisk);
   late final QueueActions _actions = QueueActions(api: _services.api, notify: _notify);
   static const _hideAfter = Duration(seconds: 4);
   static const _connectCardTime = Duration(seconds: 10);
@@ -101,6 +111,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     }
     _hideTimer?.cancel();
     _connectTimer?.cancel();
+    _bridge.dispose();
     // a step chosen just before leaving is still sent
     for (final entry in _volumeTimers.entries.toList()) {
       entry.value.cancel();

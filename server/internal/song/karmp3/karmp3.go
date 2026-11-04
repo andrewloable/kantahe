@@ -244,7 +244,8 @@ type Song struct {
 	Title, Artist string
 	DurationMs    int64
 	Lines         []lyrics.Line
-	HasVocals     bool // a vocals track the player can offer
+	Timing        lyrics.Timing // how the lyrics are timed: the .nfo row "Timing by" (Kantahe Maker 1.2.6 and later), else what the .lrc has
+	HasVocals     bool          // a vocals track the player can offer
 }
 
 // Parse validates the archive and reads its metadata, duration and lyrics. It
@@ -272,13 +273,26 @@ func Parse(r io.ReaderAt, size int64) (*Song, error) {
 		}
 		return ""
 	}
+	lines := lyrics.Layout(words)
 	return &Song{
 		Title:      first(lookup(nfo, "Title"), tags["ti"]),
 		Artist:     first(lookup(nfo, "Artist"), tags["ar"]),
 		DurationMs: dur,
-		Lines:      lyrics.Layout(words),
+		Lines:      lines,
+		Timing:     timingFromRow(lookup(nfo, "Timing by"), lines),
 		HasVocals:  a.HasVocals(),
 	}, nil
+}
+
+// timingFromRow is what the "Timing by" row says (word or line, any case), and for a missing or unknown value what the lyrics themselves show.
+func timingFromRow(row string, lines []lyrics.Line) lyrics.Timing {
+	switch strings.ToLower(strings.TrimSpace(row)) {
+	case "word":
+		return lyrics.TimingWord
+	case "line":
+		return lyrics.TimingLine
+	}
+	return lyrics.TimingOf(lines)
 }
 
 // isJunk reports archiver metadata, such as the "__MACOSX/._NAME.mp3" resource

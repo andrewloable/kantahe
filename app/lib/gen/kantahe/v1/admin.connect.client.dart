@@ -352,4 +352,81 @@ extension type AdminServiceClient (connect.Transport _transport) {
       onTrailer: onTrailer,
     );
   }
+
+  /// Admin only. Writes a copy of the whole server (database, settings, every song file, extracted MP3s, background videos) into a new or
+  /// empty folder on the server's disk. Streams progress; the last message has done = true. INVALID_ARGUMENT for a folder that is not
+  /// allowed; FAILED_PRECONDITION while another export or import runs.
+  Stream<kantahev1admin.ExportDataResponse> exportData(
+    kantahev1admin.ExportDataRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).server(
+      specs.AdminService.exportData,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
+  /// Admin only. Reads the manifest of an export folder and says whether it can be imported; changes nothing.
+  Future<kantahev1admin.InspectExportResponse> inspectExport(
+    kantahev1admin.InspectExportRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.AdminService.inspectExport,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
+  /// Admin only. Checks and stages an export folder; the server then restarts and replaces all of its data with it. Streams progress; the
+  /// last message has done = true. INVALID_ARGUMENT for a folder that cannot be imported; FAILED_PRECONDITION while another export or
+  /// import runs.
+  Stream<kantahev1admin.ImportDataResponse> importData(
+    kantahev1admin.ImportDataRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).server(
+      specs.AdminService.importData,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
+  /// Admin only. A signed address (valid for 10 minutes, for the asking administrator) from which the stored file of a song is downloaded as it is: the
+  /// .karmp3 ZIP or the .kar file. NOT_FOUND for a number that is not a live song.
+  Future<kantahev1admin.GetSongDownloadResponse> getSongDownload(
+    kantahev1admin.GetSongDownloadRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.AdminService.getSongDownload,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
 }

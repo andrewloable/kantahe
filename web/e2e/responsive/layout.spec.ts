@@ -50,12 +50,32 @@ test('/selftest wide-table: the page of the audit itself is wider than the windo
 
 // kantahe-dk8.11: the top bar (brand, theme select, Sign out)
 test('/library many: the top bar fits inside the window at phone-320x568', async ({ browser }, info) => {
-  await layout(browser, info, '/library:many', 'phone-320x568', async (raw, page) => {
+  await layout(browser, info, '/library:many', 'phone-320x568', async (raw) => {
     none(raw, 'horizontalOverflow');
     none(raw, 'outsideViewport', 'div.top');
+  });
+});
+
+test('/library many: the Sign out button of the top bar is one line high at phone-landscape-667x375', async ({ browser }, info) => {
+  await layout(browser, info, '/library:many', 'phone-landscape-667x375', async (_raw, page) => {
     const signOut = await page.locator('button.signout').boundingBox();
     const select = await page.locator('select.theme').boundingBox();
     expect(signOut!.height, 'the Sign out button is one line high').toBeLessThanOrEqual(select!.height + 2);
+  });
+});
+
+// kantahe-tlf.2.3: on a phone the theme and Sign out are under Me > Appearance; the header keeps the brand
+test('/library many: the top bar has no theme select and no Sign out once signed in at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/library:many', 'phone-390x844', async (_raw, page) => {
+    await expect(page.locator('select.theme')).toBeHidden();
+    await expect(page.locator('button.signout')).toBeHidden();
+  });
+});
+
+test('/library many: the top bar keeps the theme select and Sign out at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/library:many', 'desktop-1280x800', async (_raw, page) => {
+    await expect(page.locator('select.theme')).toBeVisible();
+    await expect(page.locator('button.signout')).toBeVisible();
   });
 });
 
@@ -70,8 +90,8 @@ test('/library many: no two controls of the top bar are closer than 8 px at phon
 });
 
 // kantahe-dk8.35: the library tabs and the number pad at 200% text
-test('/library browse: the tabs are inside the window at phone-390x844-zoom200', async ({ browser }, info) => {
-  none(await layout(browser, info, '/library:browse', 'phone-390x844-zoom200', (r) => r), 'outsideViewport', 'tab-');
+test('/library number-pad: the tabs are inside the window at phone-390x844-zoom200', async ({ browser }, info) => {
+  none(await layout(browser, info, '/library:number-pad', 'phone-390x844-zoom200', (r) => r), 'outsideViewport', 'tab-');
 });
 
 test('/library number-pad: the keys are inside the window at phone-390x844-zoom200', async ({ browser }, info) => {
@@ -127,15 +147,6 @@ for (const viewport of ['phone-320x568', 'phone-390x844']) {
   });
 }
 
-// kantahe-dk8.25: toggle groups
-for (const viewport of ['phone-320x568', 'phone-390x844', 'phone-430x932']) {
-  test(`/library browse: every letter button is at least 44 x 44 and 8 px from its neighbours at ${viewport}`, async ({ browser }, info) => {
-    const raw = await layout(browser, info, '/library:browse', viewport, (r) => r);
-    none(raw, 'smallTargets', 'app-alpha-browse');
-    none(raw, 'tightTargets', 'app-alpha-browse');
-  });
-}
-
 test('/library many: tabs and chips are 8 px apart at phone-390x844', async ({ browser }, info) => {
   const raw = await layout(browser, info, '/library:many', 'phone-390x844', (r) => r);
   none(raw, 'tightTargets', 'tab-');
@@ -167,8 +178,8 @@ test('/admin/songs many: the search box is at least 44 px high at phone-390x844'
   none(await layout(browser, info, '/admin/songs:many', 'phone-390x844', (r) => r), 'smallTargets', '#admin-search');
 });
 
-test('/upload empty: the file picker is at least 44 px high at phone-390x844', async ({ browser }, info) => {
-  none(await layout(browser, info, '/upload:empty', 'phone-390x844', (r) => r), 'smallTargets', '#upload-files');
+test('/admin/upload empty: the file picker is at least 44 px high at phone-390x844', async ({ browser }, info) => {
+  none(await layout(browser, info, '/admin/upload:empty', 'phone-390x844', (r) => r), 'smallTargets', '#upload-files');
 });
 
 test('/me/settings form: each radio counts at least 44 px with its label at phone-390x844', async ({ browser }, info) => {
@@ -179,10 +190,9 @@ test('/me/devices list: the MIDI mode select is at least 44 px high at phone-390
   none(await layout(browser, info, '/me/devices:list', 'phone-390x844', (r) => r), 'smallTargets', 'select');
 });
 
-test('/admin/users many: the checkboxes of the new user count at least 44 px with their labels at phone-390x844', async ({ browser }, info) => {
-  const raw = await layout(browser, info, '/admin/users:many', 'phone-390x844', (r) => r);
+test('/admin/users new-user: the checkbox of the new user counts at least 44 px with its label at phone-390x844', async ({ browser }, info) => {
+  const raw = await layout(browser, info, '/admin/users:new-user', 'phone-390x844', (r) => r);
   none(raw, 'smallTargets', '#new-admin');
-  none(raw, 'smallTargets', '#new-uploader');
 });
 
 // kantahe-dk8.23: the song row
@@ -327,8 +337,8 @@ test('/queue one-long: Up next is one line high at phone-320x568', async ({ brow
 });
 
 // kantahe-dk8.44: the upload results
-test('/upload results: the details of a result are at least 200 px wide at phone-320x568', async ({ browser }, info) => {
-  await layout(browser, info, '/upload:results', 'phone-320x568', async (_raw, page) => {
+test('/admin/upload results: the details of a result are at least 200 px wide at phone-320x568', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/upload:results', 'phone-320x568', async (_raw, page) => {
     const rejected = page.locator('tbody tr').filter({ hasText: 'Rejected' });
     expect((await rejected.locator('td').nth(2).boundingBox())!.width).toBeGreaterThanOrEqual(200);
   });
@@ -461,7 +471,7 @@ test('/queue many: the now-playing card and the list share the left edge at tabl
 for (const id of ['/library:many', '/queue:many', '/me/favourites:many']) {
   test(`${id.replace(':', ' ')}: the page is at most 48rem wide at desktop-1920x1080`, async ({ browser }, info) => {
     await layout(browser, info, id, 'desktop-1920x1080', async (_raw, page) => {
-      const main = (await page.locator('main').first().boundingBox())!;
+      const main = (await page.locator('main#main').locator('.library, .queue-page, .me').first().boundingBox())!;
       expect(main.width, 'width of the page column').toBeLessThanOrEqual(768);
     });
   });
@@ -508,7 +518,7 @@ for (const theme of ['light', 'dark'] as const) {
   test(`/login empty: the border of the email field has a contrast of at least 3:1 to its card in the ${theme} theme at phone-390x844`, async ({ browser }, info) => {
     await layout(browser, info, '/login:empty', 'phone-390x844', async (_raw, page) => {
       const border = await page.locator('#email').evaluate((el) => getComputedStyle(el).borderTopColor);
-      const behind = await page.locator('main.card').evaluate((el) => getComputedStyle(el).backgroundColor);
+      const behind = await page.locator('main#main .card').evaluate((el) => getComputedStyle(el).backgroundColor);
       expect(contrast(border, behind), `${border} on ${behind}`).toBeGreaterThanOrEqual(3);
     }, theme);
   });
@@ -521,8 +531,8 @@ test('/me/devices list: the MIDI mode select has a font size of at least 16 px a
   });
 });
 
-test('/me/devices list: the theme select has a font size of at least 16 px at phone-390x844', async ({ browser }, info) => {
-  await layout(browser, info, '/me/devices:list', 'phone-390x844', async (_raw, page) => {
+test('/login empty: the theme select has a font size of at least 16 px at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/login:empty', 'phone-390x844', async (_raw, page) => {
     expect(await page.locator('select.theme').evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
   });
 });
@@ -559,8 +569,8 @@ for (const viewport of ['phone-390x844', 'phone-320x568', 'desktop-1280x800']) {
     none(await layout(browser, info, '/admin/users:temp-password', viewport, (r) => r), 'tightTargets', 'section.panel');
   });
 
-  test(`/admin/users many: the Generate button is at least 8 px from the password box at ${viewport}`, async ({ browser }, info) => {
-    none(await layout(browser, info, '/admin/users:many', viewport, (r) => r), 'tightTargets', 'new-password');
+  test(`/admin/users new-user: the Generate button is at least 8 px from the password box at ${viewport}`, async ({ browser }, info) => {
+    none(await layout(browser, info, '/admin/users:new-user', viewport, (r) => r), 'tightTargets', 'new-password');
   });
 
   test(`/me/playlists rename: the name box, Save and Cancel are at least 8 px apart at ${viewport}`, async ({ browser }, info) => {
@@ -586,3 +596,229 @@ for (const viewport of ['phone-390x844', 'phone-320x568', 'desktop-1280x800']) {
     none(await layout(browser, info, '/admin/songs:bulk-question', viewport, (r) => r), 'tightTargets', 'section.selection');
   });
 }
+
+// kantahe-tlf.2.1: the menu is a tab bar at the bottom of a phone
+test('/library many: the page starts within 160 px of the top at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/library:many', 'phone-390x844', async (_raw, page) => {
+    const main = (await page.locator('main').first().boundingBox())!;
+    expect(main.y, 'top of the page under the brand, the menu and the now bar').toBeLessThanOrEqual(160);
+  });
+});
+
+test('/library many: the tab bar leaves the end of the page visible at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/library:many', 'phone-390x844', async (raw, page) => {
+    none(raw, 'overlap');
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+    const next = (await page.getByRole('button', { name: 'Next' }).boundingBox())!;
+    const bar = (await page.locator('nav[aria-label="Main"]').boundingBox())!;
+    expect(next.y + next.height, 'bottom of Next against the top of the tab bar').toBeLessThanOrEqual(bar.y);
+  });
+});
+
+test('/library many: the tabs are 8 px below the controls of the top bar at desktop-1280x800', async ({ browser }, info) => {
+  none(await layout(browser, info, '/library:many', 'desktop-1280x800', (r) => r), 'tightTargets', 'nav');
+});
+
+for (const viewport of ['phone-landscape-568x320', 'phone-390x844-zoom200']) {
+  test(`/admin/songs edit-dialog: the tab bar does not cover Save and Cancel at ${viewport}`, async ({ browser }, info) => {
+    await layout(browser, info, '/admin/songs:edit-dialog', viewport, async (raw, page) => {
+      none(raw, 'overlap');
+      for (const name of ['Save', 'Cancel']) {
+        const button = page.getByRole('dialog').getByRole('button', { name, exact: true });
+        await button.scrollIntoViewIfNeeded();
+        const box = (await button.boundingBox())!;
+        const onTop = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.textContent?.trim(), [box.x + box.width / 2, box.y + box.height / 2]);
+        expect(onTop, `what is on top of ${name}`).toBe(name);
+      }
+    });
+  });
+}
+
+// kantahe-tlf.2.5: a toast keeps 8 px from the controls of the page
+test('/library toast: the buttons of a toast are 8 px from the other controls at phone-landscape-915x412', async ({ browser }, info) => {
+  await layout(browser, info, '/library:toast', 'phone-landscape-915x412', async (raw, page) => {
+    none(raw, 'tightTargets', 'toast');
+  });
+});
+
+test('/library toast: at the top of the page the toast is 8 px from the controls around it at phone-landscape-915x412', async ({ browser }, info) => {
+  await layout(browser, info, '/library:toast', 'phone-landscape-915x412', async (_raw, page) => {
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    none(await rawFindings(page), 'tightTargets', 'toast');
+  });
+});
+
+test('/library toast: the toast is fully visible, clear of the tab bar, at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/library:toast', 'phone-390x844', async (_raw, page) => {
+    const toast = (await page.locator('.toast').first().boundingBox())!;
+    const bar = (await page.locator('nav[aria-label="Main"]').boundingBox())!;
+    expect(toast.y, 'top of the toast').toBeGreaterThanOrEqual(0);
+    expect(toast.y + toast.height, 'bottom of the toast against the top of the tab bar').toBeLessThanOrEqual(bar.y);
+  });
+});
+
+// kantahe-tlf.2.6 review: a toast on the player (no page frame) lies over no button of the player
+for (const viewport of ['phone-390x844', 'phone-landscape-844x390', 'desktop-1280x800']) {
+  test(`/player playing: a toast covers no button of the player at ${viewport}`, async ({ browser }, info) => {
+    await layout(browser, info, '/player:playing', viewport, async (_raw, page) => {
+      await page.route('**/kantahe.v1.SessionService/SetVolume', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"internal","message":"no"}' }));
+      await page.mouse.move(10, 10);
+      await page.getByRole('button', { name: 'Volume up' }).click();
+      const toast = page.locator('.toast').first();
+      await expect(toast).toBeVisible({ timeout: 5_000 });
+      const t = (await toast.boundingBox())!;
+      for (const button of await page.locator('main.stage button:not(.toast *)').all()) {
+        const b = await button.boundingBox();
+        if (!b) continue;
+        const apart = b.x >= t.x + t.width || t.x >= b.x + b.width || b.y >= t.y + t.height || t.y >= b.y + b.height;
+        expect(apart, `the toast against ${await button.innerText()}`).toBe(true);
+      }
+    });
+  });
+}
+
+// kantahe-tlf.3.3: one line per song on a phone (the + and the bin wrapped every row to two lines, the Library was ~13,700 px tall)
+for (const id of ['/library:many', '/library:many-admin', '/me/favourites:many']) {
+  test(`${id.replace(':', ' ')}: a song row with a short title and artist is one line, at most 4.5rem tall, at phone-390x844`, async ({ browser }, info) => {
+    await layout(browser, info, id, 'phone-390x844', async (_raw, page) => {
+      // an ordinary row: a short title and a short artist (a long one may take two lines, by design)
+      const rows = page
+        .locator('li.row')
+        .filter({ has: page.locator('.title', { hasText: /^Title \d+$/ }) })
+        .filter({ has: page.locator('.artist', { hasText: /^Artist \d+$/ }) });
+      expect(await rows.count()).toBeGreaterThan(3);
+      for (const row of (await rows.all()).slice(0, 10)) {
+        const box = (await row.boundingBox())!;
+        expect(box.height, `height of ${(await row.innerText()).split('\n')[1]}`).toBeLessThanOrEqual(72);
+      }
+    });
+  });
+}
+
+test('/library many-admin: the page of 50 songs is at most 4,000 px tall (6,450 with the actions in the row) at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/library:many-admin', 'phone-390x844', async (_raw, page) => {
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(4000);
+  });
+});
+
+test('/admin/songs many: the page of 50 songs is less than half as tall as before (36,000 px) at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/songs:many', 'phone-390x844', async (_raw, page) => {
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThan(18000);
+  });
+});
+
+test('/library more-menu: the open menu is inside the window at phone-320x568', async ({ browser }, info) => {
+  await layout(browser, info, '/library:more-menu', 'phone-320x568', async (raw) => {
+    none(raw, 'outsideViewport', 'menu');
+    none(raw, 'horizontalOverflow');
+  });
+});
+
+for (const [id, viewport] of [
+  ['/admin/songs:more-menu', 'phone-390x844'],
+  ['/admin/songs:more-menu', 'phone-320x568'],
+  ['/library:more-menu', 'phone-390x844-zoom200'],
+]) {
+  test(`${id.replace(':', ' ')}: the open menu is inside the window at ${viewport}`, async ({ browser }, info) => {
+    await layout(browser, info, id, viewport, async (raw) => none(raw, 'outsideViewport', 'menu'));
+  });
+}
+
+// kantahe-tlf.3.5: a wider frame on a desktop for the admin tables; running text stays readable
+for (const id of ['/admin/songs:many', '/admin/users:many']) {
+  for (const viewport of ['desktop-1280x800', 'desktop-1920x1080']) {
+    test(`${id.replace(':', ' ')}: the action buttons of a row are on one line, each label on one line, at ${viewport}`, async ({ browser }, info) => {
+      await layout(browser, info, id, viewport, async (_raw, page) => {
+        for (const row of (await page.locator('tbody tr').all()).slice(0, 5)) {
+          const boxes = await row.locator('td.actions button:visible').evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect()).map((r) => ({ top: Math.round(r.top), height: r.height })));
+          const name = (await row.innerText()).slice(0, 40);
+          expect(new Set(boxes.map((b) => b.top)).size, `rows of buttons in ${name}`).toBe(1);
+          for (const b of boxes) expect(b.height, `height of a button in ${name} (a label on two lines is taller)`).toBeLessThanOrEqual(46);
+        }
+      });
+    });
+  }
+}
+
+for (const id of ['/admin/songs:many', '/admin/users:many']) {
+  test(`${id.replace(':', ' ')}: the table uses the wide frame (60rem left it 928 px with squeezed titles) at desktop-1280x800`, async ({ browser }, info) => {
+    await layout(browser, info, id, 'desktop-1280x800', async (_raw, page) => {
+      expect((await page.locator('table').boundingBox())!.width).toBeGreaterThanOrEqual(1100);
+    });
+  });
+}
+
+for (const id of ['/me/devices:list', '/me/settings:form', '/admin/settings:form']) {
+  test(`${id.replace(':', ' ')}: running text is at most 70 characters wide at desktop-1920x1080`, async ({ browser }, info) => {
+    await layout(browser, info, id, 'desktop-1920x1080', async (_raw, page) => {
+      // how far each long paragraph is wider than 70ch in its own font (a probe of width 70ch inside it: CSS's own ch)
+      const widest = await page.locator('main p, main .hint').evaluateAll((ps) =>
+        Math.max(
+          0,
+          ...ps
+            .filter((p) => (p.textContent ?? '').trim().length > 80)
+            .map((p) => {
+              const probe = document.createElement('span');
+              probe.style.cssText = 'position:absolute;visibility:hidden;display:block;width:70ch';
+              p.appendChild(probe);
+              const over = p.getBoundingClientRect().width - probe.getBoundingClientRect().width;
+              probe.remove();
+              return over;
+            }),
+        ),
+      );
+      expect(widest, 'px by which the widest paragraph is wider than 70ch').toBeLessThanOrEqual(1);
+    });
+  });
+}
+
+for (const id of ['/admin/settings:form', '/admin/users:new-user']) {
+  test(`${id.replace(':', ' ')}: a form keeps the 48rem reading column in the wide frame at desktop-1920x1080`, async ({ browser }, info) => {
+    await layout(browser, info, id, 'desktop-1920x1080', async (_raw, page) => {
+      expect((await page.locator('main#main form').first().boundingBox())!.width).toBeLessThanOrEqual(768);
+    });
+  });
+}
+
+// kantahe-tlf.3.7: a device that is not this one is one summary line until its settings are opened
+for (const viewport of ['phone-390x844', 'desktop-1280x800']) {
+  test(`/me/devices list: a closed device is one short line at ${viewport}`, async ({ browser }, info) => {
+    await layout(browser, info, '/me/devices:list', viewport, async (_raw, page) => {
+      const closed = page.locator('li.device').filter({ has: page.locator('button.toggle-settings[aria-expanded="false"]') });
+      expect(await closed.count()).toBeGreaterThan(0);
+      for (const li of await closed.all()) expect((await li.boundingBox())!.height, (await li.innerText()).split('\n')[0]).toBeLessThanOrEqual(viewport.startsWith('phone') ? 130 : 90);
+    });
+  });
+}
+
+// kantahe-tlf (player centring): the player is not in the app frame, so the 70ch cap on paragraphs must not apply: a paragraph capped at
+// 70ch is a narrow block at the left edge and its centred text was centred in that block, not in the window
+test('/player playing: the title, the artist row and the time are centred in the window at desktop-1920x1080', async ({ browser }, info) => {
+  await layout(browser, info, '/player:playing', 'desktop-1920x1080', async (_raw, page) => {
+    for (const selector of ['.stage h1', '.stage header.song p', '.stage p.time']) {
+      const box = (await page.locator(selector).first().boundingBox())!;
+      expect(Math.abs(box.x + box.width / 2 - 960), `${selector} is off the centre of the window`).toBeLessThanOrEqual(2);
+    }
+  });
+});
+
+test('/player idle: the line about who is playing is centred in the window at desktop-1920x1080', async ({ browser }, info) => {
+  await layout(browser, info, '/player:idle', 'desktop-1920x1080', async (_raw, page) => {
+    const box = (await page.locator('.stage p.elsewhere').boundingBox())!;
+    expect(Math.abs(box.x + box.width / 2 - 960), 'the line is off the centre of the window').toBeLessThanOrEqual(2);
+  });
+});
+
+// the player's buttons were 56 px high and 128 px wide at least: the owner asked for smaller ones; a 44 px target stays
+test('/player playing: the control buttons are 44 to 48 px high and at most 12rem wide at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/player:playing', 'desktop-1280x800', async (_raw, page) => {
+    const buttons = await page.locator('.stage .controls button').all();
+    expect(buttons.length).toBeGreaterThan(1);
+    for (const button of buttons) {
+      const box = (await button.boundingBox())!;
+      expect(box.height, await button.innerText()).toBeGreaterThanOrEqual(44);
+      expect(box.height, await button.innerText()).toBeLessThanOrEqual(48);
+      expect(box.width, await button.innerText()).toBeLessThanOrEqual(192);
+    }
+  });
+});

@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
-import { Format } from '../../gen/kantahe/v1/common_pb';
+import { Format, LyricTiming } from '../../gen/kantahe/v1/common_pb';
 import { TRANSPORT } from '../core/api';
 import { NumberPadComponent } from './number-pad.component';
 import { fakeLibrary, FakeLibrary, song, untilAborted } from './testing';
 
 function setup(h: FakeLibrary = {}) {
-  const f = fakeLibrary({ getSong: (r) => song(r.number, 'Hello', 'Adele', Format.MP3), ...h });
+  const f = fakeLibrary({ getSong: (r) => song(r.number, 'Hello', 'Adele', Format.MP3, false, { lyricTiming: LyricTiming.WORD, hasVocals: true }), ...h });
   TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: f.transport }] });
   const fixture = TestBed.createComponent(NumberPadComponent);
   fixture.detectChanges();
@@ -46,6 +46,8 @@ describe('NumberPadComponent', () => {
     expect(el.textContent).toContain('Hello');
     expect(el.textContent).toContain('Adele');
     expect(el.textContent).toContain('MP3');
+    expect(el.querySelector('.timing-badge')?.textContent).toBe('W');
+    expect(el.querySelector('.vocals-badge')?.textContent).toBe('V');
     expect(add().disabled).toBe(false);
   });
 

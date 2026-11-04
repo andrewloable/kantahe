@@ -36,7 +36,7 @@ const MB = 1024n * 1024n;
       @if (failure()) {
         <p class="error" role="alert">{{ failure() }}</p>
       }
-      <button type="submit" [disabled]="busy()">Save</button>
+      <button class="primary" type="submit" [disabled]="busy()">Save</button>
       @if (saved()) {
         <span role="status">Saved.</span>
       }

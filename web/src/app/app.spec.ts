@@ -10,6 +10,7 @@ import { appConfig } from './app.config';
 import { PageTitleStrategy } from './core/page-title';
 import { TRANSPORT } from './core/api';
 import { AuthStore } from './core/auth.store';
+import { INSTALL_ENV, InstallPrompt } from './core/install';
 import { StateStore } from './core/state.store';
 import { ToastService } from './core/toast';
 
@@ -25,6 +26,17 @@ describe('App', () => {
       }),
     );
     await TestBed.configureTestingModule({ imports: [App], providers: [provideRouter([]), { provide: TRANSPORT, useValue: transport }] }).compileComponents();
+  });
+
+  it('regression: listens for the browser\'s install event from the first moment, so that a page that starts without the shell (/player) still gets the offer later', () => {
+    const target = new EventTarget();
+    TestBed.overrideProvider(INSTALL_ENV, {
+      useValue: { target, secure: true, userAgent: 'Android Mobile', platform: 'Linux', maxTouchPoints: 5, standaloneNav: false, displayStandalone: () => false, now: () => 1_000_000_000_000 },
+    });
+    TestBed.createComponent(App);
+    target.dispatchEvent(Object.assign(new Event('beforeinstallprompt', { cancelable: true }), { prompt: () => Promise.resolve() }));
+    // the shell comes later: the service is asked for only now
+    expect(TestBed.inject(InstallPrompt).kind()).toBe('prompt');
   });
 
   it('should create the app', () => {

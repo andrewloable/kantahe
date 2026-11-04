@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file kantahe/v1/admin.proto.
  */
 export const file_kantahe_v1_admin: GenFile = /*@__PURE__*/
-  fileDesc("ChZrYW50YWhlL3YxL2FkbWluLnByb3RvEgprYW50YWhlLnYxIhIKEExpc3RVc2Vyc1JlcXVlc3QiNAoRTGlzdFVzZXJzUmVzcG9uc2USHwoFdXNlcnMYASADKAsyEC5rYW50YWhlLnYxLlVzZXIidQoRQ3JlYXRlVXNlclJlcXVlc3QSDQoFZW1haWwYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJEhoKEnRlbXBvcmFyeV9wYXNzd29yZBgDIAEoCRINCgVhZG1pbhgEIAEoCBIQCgh1cGxvYWRlchgFIAEoCCI0ChJDcmVhdGVVc2VyUmVzcG9uc2USHgoEdXNlchgBIAEoCzIQLmthbnRhaGUudjEuVXNlciK2AQoRVXBkYXRlVXNlclJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCRIZCgxkaXNwbGF5X25hbWUYAiABKAlIAIgBARISCgVhZG1pbhgDIAEoCEgBiAEBEhUKCHVwbG9hZGVyGAQgASgISAKIAQESFQoIZGlzYWJsZWQYBSABKAhIA4gBAUIPCg1fZGlzcGxheV9uYW1lQggKBl9hZG1pbkILCglfdXBsb2FkZXJCCwoJX2Rpc2FibGVkIjQKElVwZGF0ZVVzZXJSZXNwb25zZRIeCgR1c2VyGAEgASgLMhAua2FudGFoZS52MS5Vc2VyIkMKFFJlc2V0UGFzc3dvcmRSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSGgoSdGVtcG9yYXJ5X3Bhc3N3b3JkGAIgASgJIhcKFVJlc2V0UGFzc3dvcmRSZXNwb25zZSIkChFEZWxldGVVc2VyUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJIhQKEkRlbGV0ZVVzZXJSZXNwb25zZSIrChhSZXZva2VVc2VyRGV2aWNlc1JlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIsChlSZXZva2VVc2VyRGV2aWNlc1Jlc3BvbnNlEg8KB3Jldm9rZWQYASABKAUiYQoRVXBkYXRlU29uZ1JlcXVlc3QSDgoGbnVtYmVyGAEgASgJEhIKBXRpdGxlGAIgASgJSACIAQESEwoGYXJ0aXN0GAMgASgJSAGIAQFCCAoGX3RpdGxlQgkKB19hcnRpc3QiNAoSVXBkYXRlU29uZ1Jlc3BvbnNlEh4KBHNvbmcYASABKAsyEC5rYW50YWhlLnYxLlNvbmciNgoRRGVsZXRlU29uZ1JlcXVlc3QSDgoGbnVtYmVyGAEgASgJEhEKCWtlZXBfZmlsZRgCIAEoCCJSChJSZW1vdmVTb25nc1JlcXVlc3QSJgoFc2NvcGUYASABKA4yFy5rYW50YWhlLnYxLlJlbW92ZVNjb3BlEhQKDGRlbGV0ZV9maWxlcxgCIAEoCCJDChpSZW1vdmVTZWxlY3RlZFNvbmdzUmVxdWVzdBIPCgdudW1iZXJzGAEgAygJEhQKDGRlbGV0ZV9maWxlcxgCIAEoCCJbChtSZW1vdmVTZWxlY3RlZFNvbmdzUmVzcG9uc2USDwoHcmVtb3ZlZBgBIAEoBRIVCg1maWxlc19kZWxldGVkGAIgASgFEhQKDGZpbGVzX2ZhaWxlZBgDIAEoBSJTChNSZW1vdmVTb25nc1Jlc3BvbnNlEg8KB3JlbW92ZWQYASABKAUSFQoNZmlsZXNfZGVsZXRlZBgCIAEoBRIUCgxmaWxlc19mYWlsZWQYAyABKAUiFQoTQ2hlY2tMaWJyYXJ5UmVxdWVzdCJUChRDaGVja0xpYnJhcnlSZXNwb25zZRIPCgdjaGVja2VkGAEgASgFEg0KBXRvdGFsGAIgASgFEg4KBmJyb2tlbhgDIAEoBRIMCgRkb25lGAQgASgIIj8KFkxpc3RCcm9rZW5Tb25nc1JlcXVlc3QSEgoKcGFnZV90b2tlbhgBIAEoCRIRCglwYWdlX3NpemUYAiABKAUiPAoKQnJva2VuU29uZxIeCgRzb25nGAEgASgLMhAua2FudGFoZS52MS5Tb25nEg4KBnJlYXNvbhgCIAEoCSJoChdMaXN0QnJva2VuU29uZ3NSZXNwb25zZRIlCgVzb25ncxgBIAMoCzIWLmthbnRhaGUudjEuQnJva2VuU29uZxIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkSDQoFdG90YWwYAyABKAUiFAoSRGVsZXRlU29uZ1Jlc3BvbnNlIg8KDVJlc2NhblJlcXVlc3QiUQoOUmVzY2FuUmVzcG9uc2USDQoFYWRkZWQYASABKAUSDwoHdXBkYXRlZBgCIAEoBRIPCgdyZW1vdmVkGAMgASgFEg4KBmZhaWxlZBgEIAEoBSIaChhHZXRTZXJ2ZXJTZXR0aW5nc1JlcXVlc3QiSQoZR2V0U2VydmVyU2V0dGluZ3NSZXNwb25zZRIsCghzZXR0aW5ncxgBIAEoCzIaLmthbnRhaGUudjEuU2VydmVyU2V0dGluZ3MikgEKDlNlcnZlclNldHRpbmdzEhgKEG1heF91cGxvYWRfYnl0ZXMYASABKAMSFQoNc2NvcmVfc2Vjb25kcxgCIAEoBRIXCg9tYXhfdmlkZW9fYnl0ZXMYAyABKAMSGgoSYmFja2dyb3VuZF9lbmFibGVkGAQgASgIEhoKEmJhY2tncm91bmRfc2h1ZmZsZRgFIAEoCCKhAgobVXBkYXRlU2VydmVyU2V0dGluZ3NSZXF1ZXN0Eh0KEG1heF91cGxvYWRfYnl0ZXMYASABKANIAIgBARIaCg1zY29yZV9zZWNvbmRzGAIgASgFSAGIAQESHAoPbWF4X3ZpZGVvX2J5dGVzGAMgASgDSAKIAQESHwoSYmFja2dyb3VuZF9lbmFibGVkGAQgASgISAOIAQESHwoSYmFja2dyb3VuZF9zaHVmZmxlGAUgASgISASIAQFCEwoRX21heF91cGxvYWRfYnl0ZXNCEAoOX3Njb3JlX3NlY29uZHNCEgoQX21heF92aWRlb19ieXRlc0IVChNfYmFja2dyb3VuZF9lbmFibGVkQhUKE19iYWNrZ3JvdW5kX3NodWZmbGUiTAocVXBkYXRlU2VydmVyU2V0dGluZ3NSZXNwb25zZRIsCghzZXR0aW5ncxgBIAEoCzIaLmthbnRhaGUudjEuU2VydmVyU2V0dGluZ3MiEwoRTGlzdFZpZGVvc1JlcXVlc3QiNwoSTGlzdFZpZGVvc1Jlc3BvbnNlEiEKBnZpZGVvcxgBIAMoCzIRLmthbnRhaGUudjEuVmlkZW8iXgoSVXBkYXRlVmlkZW9SZXF1ZXN0EgoKAmlkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARIUCgdlbmFibGVkGAMgASgISAGIAQFCBwoFX25hbWVCCgoIX2VuYWJsZWQiNwoTVXBkYXRlVmlkZW9SZXNwb25zZRIgCgV2aWRlbxgBIAEoCzIRLmthbnRhaGUudjEuVmlkZW8iIwoUUmVvcmRlclZpZGVvc1JlcXVlc3QSCwoDaWRzGAEgAygJIjoKFVJlb3JkZXJWaWRlb3NSZXNwb25zZRIhCgZ2aWRlb3MYASADKAsyES5rYW50YWhlLnYxLlZpZGVvIiAKEkRlbGV0ZVZpZGVvUmVxdWVzdBIKCgJpZBgBIAEoCSIVChNEZWxldGVWaWRlb1Jlc3BvbnNlKnkKC1JlbW92ZVNjb3BlEhwKGFJFTU9WRV9TQ09QRV9VTlNQRUNJRklFRBAAEhcKE1JFTU9WRV9TQ09QRV9CUk9LRU4QAyIECAEQASIECAIQAioQUkVNT1ZFX1NDT1BFX0FMTCoVUkVNT1ZFX1NDT1BFX05PX01VU0lDMssMCgxBZG1pblNlcnZpY2USSAoJTGlzdFVzZXJzEhwua2FudGFoZS52MS5MaXN0VXNlcnNSZXF1ZXN0Gh0ua2FudGFoZS52MS5MaXN0VXNlcnNSZXNwb25zZRJLCgpDcmVhdGVVc2VyEh0ua2FudGFoZS52MS5DcmVhdGVVc2VyUmVxdWVzdBoeLmthbnRhaGUudjEuQ3JlYXRlVXNlclJlc3BvbnNlEksKClVwZGF0ZVVzZXISHS5rYW50YWhlLnYxLlVwZGF0ZVVzZXJSZXF1ZXN0Gh4ua2FudGFoZS52MS5VcGRhdGVVc2VyUmVzcG9uc2USVAoNUmVzZXRQYXNzd29yZBIgLmthbnRhaGUudjEuUmVzZXRQYXNzd29yZFJlcXVlc3QaIS5rYW50YWhlLnYxLlJlc2V0UGFzc3dvcmRSZXNwb25zZRJLCgpEZWxldGVVc2VyEh0ua2FudGFoZS52MS5EZWxldGVVc2VyUmVxdWVzdBoeLmthbnRhaGUudjEuRGVsZXRlVXNlclJlc3BvbnNlEmAKEVJldm9rZVVzZXJEZXZpY2VzEiQua2FudGFoZS52MS5SZXZva2VVc2VyRGV2aWNlc1JlcXVlc3QaJS5rYW50YWhlLnYxLlJldm9rZVVzZXJEZXZpY2VzUmVzcG9uc2USSwoKVXBkYXRlU29uZxIdLmthbnRhaGUudjEuVXBkYXRlU29uZ1JlcXVlc3QaHi5rYW50YWhlLnYxLlVwZGF0ZVNvbmdSZXNwb25zZRJLCgpEZWxldGVTb25nEh0ua2FudGFoZS52MS5EZWxldGVTb25nUmVxdWVzdBoeLmthbnRhaGUudjEuRGVsZXRlU29uZ1Jlc3BvbnNlEk4KC1JlbW92ZVNvbmdzEh4ua2FudGFoZS52MS5SZW1vdmVTb25nc1JlcXVlc3QaHy5rYW50YWhlLnYxLlJlbW92ZVNvbmdzUmVzcG9uc2USZgoTUmVtb3ZlU2VsZWN0ZWRTb25ncxImLmthbnRhaGUudjEuUmVtb3ZlU2VsZWN0ZWRTb25nc1JlcXVlc3QaJy5rYW50YWhlLnYxLlJlbW92ZVNlbGVjdGVkU29uZ3NSZXNwb25zZRJTCgxDaGVja0xpYnJhcnkSHy5rYW50YWhlLnYxLkNoZWNrTGlicmFyeVJlcXVlc3QaIC5rYW50YWhlLnYxLkNoZWNrTGlicmFyeVJlc3BvbnNlMAESWgoPTGlzdEJyb2tlblNvbmdzEiIua2FudGFoZS52MS5MaXN0QnJva2VuU29uZ3NSZXF1ZXN0GiMua2FudGFoZS52MS5MaXN0QnJva2VuU29uZ3NSZXNwb25zZRJLCgpMaXN0VmlkZW9zEh0ua2FudGFoZS52MS5MaXN0VmlkZW9zUmVxdWVzdBoeLmthbnRhaGUudjEuTGlzdFZpZGVvc1Jlc3BvbnNlEk4KC1VwZGF0ZVZpZGVvEh4ua2FudGFoZS52MS5VcGRhdGVWaWRlb1JlcXVlc3QaHy5rYW50YWhlLnYxLlVwZGF0ZVZpZGVvUmVzcG9uc2USVAoNUmVvcmRlclZpZGVvcxIgLmthbnRhaGUudjEuUmVvcmRlclZpZGVvc1JlcXVlc3QaIS5rYW50YWhlLnYxLlJlb3JkZXJWaWRlb3NSZXNwb25zZRJOCgtEZWxldGVWaWRlbxIeLmthbnRhaGUudjEuRGVsZXRlVmlkZW9SZXF1ZXN0Gh8ua2FudGFoZS52MS5EZWxldGVWaWRlb1Jlc3BvbnNlEj8KBlJlc2NhbhIZLmthbnRhaGUudjEuUmVzY2FuUmVxdWVzdBoaLmthbnRhaGUudjEuUmVzY2FuUmVzcG9uc2USYAoRR2V0U2VydmVyU2V0dGluZ3MSJC5rYW50YWhlLnYxLkdldFNlcnZlclNldHRpbmdzUmVxdWVzdBolLmthbnRhaGUudjEuR2V0U2VydmVyU2V0dGluZ3NSZXNwb25zZRJpChRVcGRhdGVTZXJ2ZXJTZXR0aW5ncxInLmthbnRhaGUudjEuVXBkYXRlU2VydmVyU2V0dGluZ3NSZXF1ZXN0Gigua2FudGFoZS52MS5VcGRhdGVTZXJ2ZXJTZXR0aW5nc1Jlc3BvbnNlQqYBCg5jb20ua2FudGFoZS52MUIKQWRtaW5Qcm90b1ABWj9naXRodWIuY29tL2FuZHJld2xvYWJsZS9rYW50YWhlL3NlcnZlci9nZW4va2FudGFoZS92MTtrYW50YWhldjGiAgNLWFiqAgpLYW50YWhlLlYxygIKS2FudGFoZVxWMeICFkthbnRhaGVcVjFcR1BCTWV0YWRhdGHqAgtLYW50YWhlOjpWMWIGcHJvdG8z", [file_kantahe_v1_common]);
+  fileDesc("ChZrYW50YWhlL3YxL2FkbWluLnByb3RvEgprYW50YWhlLnYxIhIKEExpc3RVc2Vyc1JlcXVlc3QiNAoRTGlzdFVzZXJzUmVzcG9uc2USHwoFdXNlcnMYASADKAsyEC5rYW50YWhlLnYxLlVzZXIidQoRQ3JlYXRlVXNlclJlcXVlc3QSDQoFZW1haWwYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJEhoKEnRlbXBvcmFyeV9wYXNzd29yZBgDIAEoCRINCgVhZG1pbhgEIAEoCBIQCgh1cGxvYWRlchgFIAEoCCI0ChJDcmVhdGVVc2VyUmVzcG9uc2USHgoEdXNlchgBIAEoCzIQLmthbnRhaGUudjEuVXNlciK2AQoRVXBkYXRlVXNlclJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCRIZCgxkaXNwbGF5X25hbWUYAiABKAlIAIgBARISCgVhZG1pbhgDIAEoCEgBiAEBEhUKCHVwbG9hZGVyGAQgASgISAKIAQESFQoIZGlzYWJsZWQYBSABKAhIA4gBAUIPCg1fZGlzcGxheV9uYW1lQggKBl9hZG1pbkILCglfdXBsb2FkZXJCCwoJX2Rpc2FibGVkIjQKElVwZGF0ZVVzZXJSZXNwb25zZRIeCgR1c2VyGAEgASgLMhAua2FudGFoZS52MS5Vc2VyIkMKFFJlc2V0UGFzc3dvcmRSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSGgoSdGVtcG9yYXJ5X3Bhc3N3b3JkGAIgASgJIhcKFVJlc2V0UGFzc3dvcmRSZXNwb25zZSIkChFEZWxldGVVc2VyUmVxdWVzdBIPCgd1c2VyX2lkGAEgASgJIhQKEkRlbGV0ZVVzZXJSZXNwb25zZSIrChhSZXZva2VVc2VyRGV2aWNlc1JlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSIsChlSZXZva2VVc2VyRGV2aWNlc1Jlc3BvbnNlEg8KB3Jldm9rZWQYASABKAUiYQoRVXBkYXRlU29uZ1JlcXVlc3QSDgoGbnVtYmVyGAEgASgJEhIKBXRpdGxlGAIgASgJSACIAQESEwoGYXJ0aXN0GAMgASgJSAGIAQFCCAoGX3RpdGxlQgkKB19hcnRpc3QiNAoSVXBkYXRlU29uZ1Jlc3BvbnNlEh4KBHNvbmcYASABKAsyEC5rYW50YWhlLnYxLlNvbmciNgoRRGVsZXRlU29uZ1JlcXVlc3QSDgoGbnVtYmVyGAEgASgJEhEKCWtlZXBfZmlsZRgCIAEoCCJSChJSZW1vdmVTb25nc1JlcXVlc3QSJgoFc2NvcGUYASABKA4yFy5rYW50YWhlLnYxLlJlbW92ZVNjb3BlEhQKDGRlbGV0ZV9maWxlcxgCIAEoCCJDChpSZW1vdmVTZWxlY3RlZFNvbmdzUmVxdWVzdBIPCgdudW1iZXJzGAEgAygJEhQKDGRlbGV0ZV9maWxlcxgCIAEoCCJbChtSZW1vdmVTZWxlY3RlZFNvbmdzUmVzcG9uc2USDwoHcmVtb3ZlZBgBIAEoBRIVCg1maWxlc19kZWxldGVkGAIgASgFEhQKDGZpbGVzX2ZhaWxlZBgDIAEoBSJTChNSZW1vdmVTb25nc1Jlc3BvbnNlEg8KB3JlbW92ZWQYASABKAUSFQoNZmlsZXNfZGVsZXRlZBgCIAEoBRIUCgxmaWxlc19mYWlsZWQYAyABKAUiFQoTQ2hlY2tMaWJyYXJ5UmVxdWVzdCJUChRDaGVja0xpYnJhcnlSZXNwb25zZRIPCgdjaGVja2VkGAEgASgFEg0KBXRvdGFsGAIgASgFEg4KBmJyb2tlbhgDIAEoBRIMCgRkb25lGAQgASgIIj8KFkxpc3RCcm9rZW5Tb25nc1JlcXVlc3QSEgoKcGFnZV90b2tlbhgBIAEoCRIRCglwYWdlX3NpemUYAiABKAUiPAoKQnJva2VuU29uZxIeCgRzb25nGAEgASgLMhAua2FudGFoZS52MS5Tb25nEg4KBnJlYXNvbhgCIAEoCSJoChdMaXN0QnJva2VuU29uZ3NSZXNwb25zZRIlCgVzb25ncxgBIAMoCzIWLmthbnRhaGUudjEuQnJva2VuU29uZxIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkSDQoFdG90YWwYAyABKAUiFAoSRGVsZXRlU29uZ1Jlc3BvbnNlIg8KDVJlc2NhblJlcXVlc3QiUQoOUmVzY2FuUmVzcG9uc2USDQoFYWRkZWQYASABKAUSDwoHdXBkYXRlZBgCIAEoBRIPCgdyZW1vdmVkGAMgASgFEg4KBmZhaWxlZBgEIAEoBSIaChhHZXRTZXJ2ZXJTZXR0aW5nc1JlcXVlc3QiSQoZR2V0U2VydmVyU2V0dGluZ3NSZXNwb25zZRIsCghzZXR0aW5ncxgBIAEoCzIaLmthbnRhaGUudjEuU2VydmVyU2V0dGluZ3MikgEKDlNlcnZlclNldHRpbmdzEhgKEG1heF91cGxvYWRfYnl0ZXMYASABKAMSFQoNc2NvcmVfc2Vjb25kcxgCIAEoBRIXCg9tYXhfdmlkZW9fYnl0ZXMYAyABKAMSGgoSYmFja2dyb3VuZF9lbmFibGVkGAQgASgIEhoKEmJhY2tncm91bmRfc2h1ZmZsZRgFIAEoCCKhAgobVXBkYXRlU2VydmVyU2V0dGluZ3NSZXF1ZXN0Eh0KEG1heF91cGxvYWRfYnl0ZXMYASABKANIAIgBARIaCg1zY29yZV9zZWNvbmRzGAIgASgFSAGIAQESHAoPbWF4X3ZpZGVvX2J5dGVzGAMgASgDSAKIAQESHwoSYmFja2dyb3VuZF9lbmFibGVkGAQgASgISAOIAQESHwoSYmFja2dyb3VuZF9zaHVmZmxlGAUgASgISASIAQFCEwoRX21heF91cGxvYWRfYnl0ZXNCEAoOX3Njb3JlX3NlY29uZHNCEgoQX21heF92aWRlb19ieXRlc0IVChNfYmFja2dyb3VuZF9lbmFibGVkQhUKE19iYWNrZ3JvdW5kX3NodWZmbGUiTAocVXBkYXRlU2VydmVyU2V0dGluZ3NSZXNwb25zZRIsCghzZXR0aW5ncxgBIAEoCzIaLmthbnRhaGUudjEuU2VydmVyU2V0dGluZ3MiEwoRTGlzdFZpZGVvc1JlcXVlc3QiNwoSTGlzdFZpZGVvc1Jlc3BvbnNlEiEKBnZpZGVvcxgBIAMoCzIRLmthbnRhaGUudjEuVmlkZW8iXgoSVXBkYXRlVmlkZW9SZXF1ZXN0EgoKAmlkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARIUCgdlbmFibGVkGAMgASgISAGIAQFCBwoFX25hbWVCCgoIX2VuYWJsZWQiNwoTVXBkYXRlVmlkZW9SZXNwb25zZRIgCgV2aWRlbxgBIAEoCzIRLmthbnRhaGUudjEuVmlkZW8iIwoUUmVvcmRlclZpZGVvc1JlcXVlc3QSCwoDaWRzGAEgAygJIjoKFVJlb3JkZXJWaWRlb3NSZXNwb25zZRIhCgZ2aWRlb3MYASADKAsyES5rYW50YWhlLnYxLlZpZGVvIiAKEkRlbGV0ZVZpZGVvUmVxdWVzdBIKCgJpZBgBIAEoCSIVChNEZWxldGVWaWRlb1Jlc3BvbnNlIiMKEUV4cG9ydERhdGFSZXF1ZXN0Eg4KBmZvbGRlchgBIAEoCSKdAQoSRXhwb3J0RGF0YVJlc3BvbnNlEhIKCmZpbGVzX2RvbmUYASABKAUSEwoLZmlsZXNfdG90YWwYAiABKAUSEgoKYnl0ZXNfZG9uZRgDIAEoAxITCgtieXRlc190b3RhbBgEIAEoAxIMCgRkb25lGAUgASgIEhcKD3NraXBwZWRfbnVtYmVycxgGIAMoCRIOCgZmb2xkZXIYByABKAkiJgoUSW5zcGVjdEV4cG9ydFJlcXVlc3QSDgoGZm9sZGVyGAEgASgJIsIBChVJbnNwZWN0RXhwb3J0UmVzcG9uc2USEwoLc2VydmVyX25hbWUYASABKAkSFwoPa2FudGFoZV92ZXJzaW9uGAIgASgJEhQKDGNyZWF0ZWRfdW5peBgDIAEoAxINCgVzb25ncxgEIAEoBRINCgV1c2VycxgFIAEoBRIOCgZ2aWRlb3MYBiABKAUSEwoLYnl0ZXNfdG90YWwYByABKAMSEgoKaW1wb3J0YWJsZRgIIAEoCBIOCgZyZWFzb24YCSABKAkiIwoRSW1wb3J0RGF0YVJlcXVlc3QSDgoGZm9sZGVyGAEgASgJIogBChJJbXBvcnREYXRhUmVzcG9uc2USEgoKZmlsZXNfZG9uZRgBIAEoBRITCgtmaWxlc190b3RhbBgCIAEoBRISCgpieXRlc19kb25lGAMgASgDEhMKC2J5dGVzX3RvdGFsGAQgASgDEgwKBGRvbmUYBSABKAgSEgoKcmVzdGFydGluZxgGIAEoCCIoChZHZXRTb25nRG93bmxvYWRSZXF1ZXN0Eg4KBm51bWJlchgBIAEoCSJPChdHZXRTb25nRG93bmxvYWRSZXNwb25zZRILCgN1cmwYASABKAkSEQoJZmlsZV9uYW1lGAIgASgJEhQKDGV4cGlyZXNfdW5peBgDIAEoAyp5CgtSZW1vdmVTY29wZRIcChhSRU1PVkVfU0NPUEVfVU5TUEVDSUZJRUQQABIXChNSRU1PVkVfU0NPUEVfQlJPS0VOEAMiBAgBEAEiBAgCEAIqEFJFTU9WRV9TQ09QRV9BTEwqFVJFTU9WRV9TQ09QRV9OT19NVVNJQzKbDwoMQWRtaW5TZXJ2aWNlEkgKCUxpc3RVc2VycxIcLmthbnRhaGUudjEuTGlzdFVzZXJzUmVxdWVzdBodLmthbnRhaGUudjEuTGlzdFVzZXJzUmVzcG9uc2USSwoKQ3JlYXRlVXNlchIdLmthbnRhaGUudjEuQ3JlYXRlVXNlclJlcXVlc3QaHi5rYW50YWhlLnYxLkNyZWF0ZVVzZXJSZXNwb25zZRJLCgpVcGRhdGVVc2VyEh0ua2FudGFoZS52MS5VcGRhdGVVc2VyUmVxdWVzdBoeLmthbnRhaGUudjEuVXBkYXRlVXNlclJlc3BvbnNlElQKDVJlc2V0UGFzc3dvcmQSIC5rYW50YWhlLnYxLlJlc2V0UGFzc3dvcmRSZXF1ZXN0GiEua2FudGFoZS52MS5SZXNldFBhc3N3b3JkUmVzcG9uc2USSwoKRGVsZXRlVXNlchIdLmthbnRhaGUudjEuRGVsZXRlVXNlclJlcXVlc3QaHi5rYW50YWhlLnYxLkRlbGV0ZVVzZXJSZXNwb25zZRJgChFSZXZva2VVc2VyRGV2aWNlcxIkLmthbnRhaGUudjEuUmV2b2tlVXNlckRldmljZXNSZXF1ZXN0GiUua2FudGFoZS52MS5SZXZva2VVc2VyRGV2aWNlc1Jlc3BvbnNlEksKClVwZGF0ZVNvbmcSHS5rYW50YWhlLnYxLlVwZGF0ZVNvbmdSZXF1ZXN0Gh4ua2FudGFoZS52MS5VcGRhdGVTb25nUmVzcG9uc2USSwoKRGVsZXRlU29uZxIdLmthbnRhaGUudjEuRGVsZXRlU29uZ1JlcXVlc3QaHi5rYW50YWhlLnYxLkRlbGV0ZVNvbmdSZXNwb25zZRJOCgtSZW1vdmVTb25ncxIeLmthbnRhaGUudjEuUmVtb3ZlU29uZ3NSZXF1ZXN0Gh8ua2FudGFoZS52MS5SZW1vdmVTb25nc1Jlc3BvbnNlEmYKE1JlbW92ZVNlbGVjdGVkU29uZ3MSJi5rYW50YWhlLnYxLlJlbW92ZVNlbGVjdGVkU29uZ3NSZXF1ZXN0Gicua2FudGFoZS52MS5SZW1vdmVTZWxlY3RlZFNvbmdzUmVzcG9uc2USUwoMQ2hlY2tMaWJyYXJ5Eh8ua2FudGFoZS52MS5DaGVja0xpYnJhcnlSZXF1ZXN0GiAua2FudGFoZS52MS5DaGVja0xpYnJhcnlSZXNwb25zZTABEloKD0xpc3RCcm9rZW5Tb25ncxIiLmthbnRhaGUudjEuTGlzdEJyb2tlblNvbmdzUmVxdWVzdBojLmthbnRhaGUudjEuTGlzdEJyb2tlblNvbmdzUmVzcG9uc2USSwoKTGlzdFZpZGVvcxIdLmthbnRhaGUudjEuTGlzdFZpZGVvc1JlcXVlc3QaHi5rYW50YWhlLnYxLkxpc3RWaWRlb3NSZXNwb25zZRJOCgtVcGRhdGVWaWRlbxIeLmthbnRhaGUudjEuVXBkYXRlVmlkZW9SZXF1ZXN0Gh8ua2FudGFoZS52MS5VcGRhdGVWaWRlb1Jlc3BvbnNlElQKDVJlb3JkZXJWaWRlb3MSIC5rYW50YWhlLnYxLlJlb3JkZXJWaWRlb3NSZXF1ZXN0GiEua2FudGFoZS52MS5SZW9yZGVyVmlkZW9zUmVzcG9uc2USTgoLRGVsZXRlVmlkZW8SHi5rYW50YWhlLnYxLkRlbGV0ZVZpZGVvUmVxdWVzdBofLmthbnRhaGUudjEuRGVsZXRlVmlkZW9SZXNwb25zZRI/CgZSZXNjYW4SGS5rYW50YWhlLnYxLlJlc2NhblJlcXVlc3QaGi5rYW50YWhlLnYxLlJlc2NhblJlc3BvbnNlEmAKEUdldFNlcnZlclNldHRpbmdzEiQua2FudGFoZS52MS5HZXRTZXJ2ZXJTZXR0aW5nc1JlcXVlc3QaJS5rYW50YWhlLnYxLkdldFNlcnZlclNldHRpbmdzUmVzcG9uc2USaQoUVXBkYXRlU2VydmVyU2V0dGluZ3MSJy5rYW50YWhlLnYxLlVwZGF0ZVNlcnZlclNldHRpbmdzUmVxdWVzdBooLmthbnRhaGUudjEuVXBkYXRlU2VydmVyU2V0dGluZ3NSZXNwb25zZRJNCgpFeHBvcnREYXRhEh0ua2FudGFoZS52MS5FeHBvcnREYXRhUmVxdWVzdBoeLmthbnRhaGUudjEuRXhwb3J0RGF0YVJlc3BvbnNlMAESVAoNSW5zcGVjdEV4cG9ydBIgLmthbnRhaGUudjEuSW5zcGVjdEV4cG9ydFJlcXVlc3QaIS5rYW50YWhlLnYxLkluc3BlY3RFeHBvcnRSZXNwb25zZRJNCgpJbXBvcnREYXRhEh0ua2FudGFoZS52MS5JbXBvcnREYXRhUmVxdWVzdBoeLmthbnRhaGUudjEuSW1wb3J0RGF0YVJlc3BvbnNlMAESWgoPR2V0U29uZ0Rvd25sb2FkEiIua2FudGFoZS52MS5HZXRTb25nRG93bmxvYWRSZXF1ZXN0GiMua2FudGFoZS52MS5HZXRTb25nRG93bmxvYWRSZXNwb25zZUKmAQoOY29tLmthbnRhaGUudjFCCkFkbWluUHJvdG9QAVo/Z2l0aHViLmNvbS9hbmRyZXdsb2FibGUva2FudGFoZS9zZXJ2ZXIvZ2VuL2thbnRhaGUvdjE7a2FudGFoZXYxogIDS1hYqgIKS2FudGFoZS5WMcoCCkthbnRhaGVcVjHiAhZLYW50YWhlXFYxXEdQQk1ldGFkYXRh6gILS2FudGFoZTo6VjFiBnByb3RvMw", [file_kantahe_v1_common]);
 
 /**
  * Asks nothing.
@@ -75,6 +75,8 @@ export type CreateUserRequest = Message<"kantahe.v1.CreateUserRequest"> & {
   admin: boolean;
 
   /**
+   * Has no effect since 1.2.0: only administrators upload songs.
+   *
    * @generated from field: bool uploader = 5;
    */
   uploader: boolean;
@@ -128,6 +130,8 @@ export type UpdateUserRequest = Message<"kantahe.v1.UpdateUserRequest"> & {
   admin?: boolean | undefined;
 
   /**
+   * Has no effect since 1.2.0: only administrators upload songs.
+   *
    * @generated from field: optional bool uploader = 4;
    */
   uploader?: boolean | undefined;
@@ -945,6 +949,271 @@ export const DeleteVideoResponseSchema: GenMessage<DeleteVideoResponse> = /*@__P
   messageDesc(file_kantahe_v1_admin, 39);
 
 /**
+ * The folder to write the export into, an absolute path on the server's disk.
+ *
+ * @generated from message kantahe.v1.ExportDataRequest
+ */
+export type ExportDataRequest = Message<"kantahe.v1.ExportDataRequest"> & {
+  /**
+   * @generated from field: string folder = 1;
+   */
+  folder: string;
+};
+
+/**
+ * Describes the message kantahe.v1.ExportDataRequest.
+ * Use `create(ExportDataRequestSchema)` to create a new message.
+ */
+export const ExportDataRequestSchema: GenMessage<ExportDataRequest> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_admin, 40);
+
+/**
+ * Progress of an export; the last message has done = true.
+ *
+ * @generated from message kantahe.v1.ExportDataResponse
+ */
+export type ExportDataResponse = Message<"kantahe.v1.ExportDataResponse"> & {
+  /**
+   * @generated from field: int32 files_done = 1;
+   */
+  filesDone: number;
+
+  /**
+   * @generated from field: int32 files_total = 2;
+   */
+  filesTotal: number;
+
+  /**
+   * @generated from field: int64 bytes_done = 3;
+   */
+  bytesDone: bigint;
+
+  /**
+   * @generated from field: int64 bytes_total = 4;
+   */
+  bytesTotal: bigint;
+
+  /**
+   * @generated from field: bool done = 5;
+   */
+  done: boolean;
+
+  /**
+   * Only on the last message: the numbers of live songs whose file could not be read; they are not in the export.
+   *
+   * @generated from field: repeated string skipped_numbers = 6;
+   */
+  skippedNumbers: string[];
+
+  /**
+   * Only on the last message: the cleaned absolute folder.
+   *
+   * @generated from field: string folder = 7;
+   */
+  folder: string;
+};
+
+/**
+ * Describes the message kantahe.v1.ExportDataResponse.
+ * Use `create(ExportDataResponseSchema)` to create a new message.
+ */
+export const ExportDataResponseSchema: GenMessage<ExportDataResponse> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_admin, 41);
+
+/**
+ * The export folder to read, an absolute path on the server's disk.
+ *
+ * @generated from message kantahe.v1.InspectExportRequest
+ */
+export type InspectExportRequest = Message<"kantahe.v1.InspectExportRequest"> & {
+  /**
+   * @generated from field: string folder = 1;
+   */
+  folder: string;
+};
+
+/**
+ * Describes the message kantahe.v1.InspectExportRequest.
+ * Use `create(InspectExportRequestSchema)` to create a new message.
+ */
+export const InspectExportRequestSchema: GenMessage<InspectExportRequest> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_admin, 42);
+
+/**
+ * What an export folder holds.
+ *
+ * @generated from message kantahe.v1.InspectExportResponse
+ */
+export type InspectExportResponse = Message<"kantahe.v1.InspectExportResponse"> & {
+  /**
+   * @generated from field: string server_name = 1;
+   */
+  serverName: string;
+
+  /**
+   * @generated from field: string kantahe_version = 2;
+   */
+  kantaheVersion: string;
+
+  /**
+   * @generated from field: int64 created_unix = 3;
+   */
+  createdUnix: bigint;
+
+  /**
+   * @generated from field: int32 songs = 4;
+   */
+  songs: number;
+
+  /**
+   * @generated from field: int32 users = 5;
+   */
+  users: number;
+
+  /**
+   * @generated from field: int32 videos = 6;
+   */
+  videos: number;
+
+  /**
+   * @generated from field: int64 bytes_total = 7;
+   */
+  bytesTotal: bigint;
+
+  /**
+   * @generated from field: bool importable = 8;
+   */
+  importable: boolean;
+
+  /**
+   * Why the folder cannot be imported; set when importable is false.
+   *
+   * @generated from field: string reason = 9;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message kantahe.v1.InspectExportResponse.
+ * Use `create(InspectExportResponseSchema)` to create a new message.
+ */
+export const InspectExportResponseSchema: GenMessage<InspectExportResponse> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_admin, 43);
+
+/**
+ * The export folder to import, an absolute path on the server's disk.
+ *
+ * @generated from message kantahe.v1.ImportDataRequest
+ */
+export type ImportDataRequest = Message<"kantahe.v1.ImportDataRequest"> & {
+  /**
+   * @generated from field: string folder = 1;
+   */
+  folder: string;
+};
+
+/**
+ * Describes the message kantahe.v1.ImportDataRequest.
+ * Use `create(ImportDataRequestSchema)` to create a new message.
+ */
+export const ImportDataRequestSchema: GenMessage<ImportDataRequest> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_admin, 44);
+
+/**
+ * Progress of an import; the last message has done = true.
+ *
+ * @generated from message kantahe.v1.ImportDataResponse
+ */
+export type ImportDataResponse = Message<"kantahe.v1.ImportDataResponse"> & {
+  /**
+   * @generated from field: int32 files_done = 1;
+   */
+  filesDone: number;
+
+  /**
+   * @generated from field: int32 files_total = 2;
+   */
+  filesTotal: number;
+
+  /**
+   * @generated from field: int64 bytes_done = 3;
+   */
+  bytesDone: bigint;
+
+  /**
+   * @generated from field: int64 bytes_total = 4;
+   */
+  bytesTotal: bigint;
+
+  /**
+   * @generated from field: bool done = 5;
+   */
+  done: boolean;
+
+  /**
+   * Only on the last message: the server restarts now to apply the import.
+   *
+   * @generated from field: bool restarting = 6;
+   */
+  restarting: boolean;
+};
+
+/**
+ * Describes the message kantahe.v1.ImportDataResponse.
+ * Use `create(ImportDataResponseSchema)` to create a new message.
+ */
+export const ImportDataResponseSchema: GenMessage<ImportDataResponse> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_admin, 45);
+
+/**
+ * The song whose file is wanted.
+ *
+ * @generated from message kantahe.v1.GetSongDownloadRequest
+ */
+export type GetSongDownloadRequest = Message<"kantahe.v1.GetSongDownloadRequest"> & {
+  /**
+   * @generated from field: string number = 1;
+   */
+  number: string;
+};
+
+/**
+ * Describes the message kantahe.v1.GetSongDownloadRequest.
+ * Use `create(GetSongDownloadRequestSchema)` to create a new message.
+ */
+export const GetSongDownloadRequestSchema: GenMessage<GetSongDownloadRequest> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_admin, 46);
+
+/**
+ * url is a path with a query, relative to the server address (like the media addresses); file_name is the name the file should be saved as.
+ *
+ * @generated from message kantahe.v1.GetSongDownloadResponse
+ */
+export type GetSongDownloadResponse = Message<"kantahe.v1.GetSongDownloadResponse"> & {
+  /**
+   * @generated from field: string url = 1;
+   */
+  url: string;
+
+  /**
+   * @generated from field: string file_name = 2;
+   */
+  fileName: string;
+
+  /**
+   * @generated from field: int64 expires_unix = 3;
+   */
+  expiresUnix: bigint;
+};
+
+/**
+ * Describes the message kantahe.v1.GetSongDownloadResponse.
+ * Use `create(GetSongDownloadResponseSchema)` to create a new message.
+ */
+export const GetSongDownloadResponseSchema: GenMessage<GetSongDownloadResponse> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_admin, 47);
+
+/**
  * Which songs RemoveSongs takes off the list.
  *
  * @generated from enum kantahe.v1.RemoveScope
@@ -1166,6 +1435,51 @@ export const AdminService: GenService<{
     methodKind: "unary";
     input: typeof UpdateServerSettingsRequestSchema;
     output: typeof UpdateServerSettingsResponseSchema;
+  },
+  /**
+   * Admin only. Writes a copy of the whole server (database, settings, every song file, extracted MP3s, background videos) into a new or
+   * empty folder on the server's disk. Streams progress; the last message has done = true. INVALID_ARGUMENT for a folder that is not
+   * allowed; FAILED_PRECONDITION while another export or import runs.
+   *
+   * @generated from rpc kantahe.v1.AdminService.ExportData
+   */
+  exportData: {
+    methodKind: "server_streaming";
+    input: typeof ExportDataRequestSchema;
+    output: typeof ExportDataResponseSchema;
+  },
+  /**
+   * Admin only. Reads the manifest of an export folder and says whether it can be imported; changes nothing.
+   *
+   * @generated from rpc kantahe.v1.AdminService.InspectExport
+   */
+  inspectExport: {
+    methodKind: "unary";
+    input: typeof InspectExportRequestSchema;
+    output: typeof InspectExportResponseSchema;
+  },
+  /**
+   * Admin only. Checks and stages an export folder; the server then restarts and replaces all of its data with it. Streams progress; the
+   * last message has done = true. INVALID_ARGUMENT for a folder that cannot be imported; FAILED_PRECONDITION while another export or
+   * import runs.
+   *
+   * @generated from rpc kantahe.v1.AdminService.ImportData
+   */
+  importData: {
+    methodKind: "server_streaming";
+    input: typeof ImportDataRequestSchema;
+    output: typeof ImportDataResponseSchema;
+  },
+  /**
+   * Admin only. A signed address (valid for 10 minutes, for the asking administrator) from which the stored file of a song is downloaded as it is: the
+   * .karmp3 ZIP or the .kar file. NOT_FOUND for a number that is not a live song.
+   *
+   * @generated from rpc kantahe.v1.AdminService.GetSongDownload
+   */
+  getSongDownload: {
+    methodKind: "unary";
+    input: typeof GetSongDownloadRequestSchema;
+    output: typeof GetSongDownloadResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_kantahe_v1_admin, 0);

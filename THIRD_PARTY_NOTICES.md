@@ -56,8 +56,6 @@ Direct dependencies are marked with *.
 
 ## Mobile and TV app (Dart packages)
 
-- android_file_picker 2.1.2: MIT (Copyright (c) 2018 Miguel Ruivo)
-- archive* 4.5.2: MIT (Copyright (c) 2013-2021 Brendan Duncan.)
 - args 2.7.0: BSD-3-Clause (Copyright 2013, the Dart project authors.)
 - async 2.13.1: BSD-3-Clause (Copyright 2015, the Dart project authors.)
 - bonsoir* 7.1.6: MIT (Copyright (c) 2019 Hugo DELAUNAY "Skyost")
@@ -71,7 +69,6 @@ Direct dependencies are marked with *.
 - code_assets 1.2.1: BSD-3-Clause (Copyright 2025, the Dart project authors.)
 - collection 1.19.1: BSD-3-Clause (Copyright 2015, the Dart project authors.)
 - connectrpc* 2.0.1: Apache-2.0
-- cross_file 0.3.5+5: BSD-3-Clause (Copyright 2013 The Flutter Authors)
 - crypto 3.0.8: BSD-3-Clause (Copyright 2015, the Dart project authors.)
 - cupertino_icons* 1.0.9: MIT (Copyright (c) 2016 Vladimir Kharlampidi)
 - dbus 0.8.0: MPL-2.0
@@ -80,11 +77,6 @@ Direct dependencies are marked with *.
 - ffi 2.2.0: BSD-3-Clause (Copyright 2019, the Dart project authors.)
 - ffi_leak_tracker 0.1.2: BSD-3-Clause (Copyright (c) 2026, Halil Durmus)
 - file 7.0.1: BSD-3-Clause (Copyright 2017, the Dart project authors. All rights reserved.)
-- file_picker* 13.3.0: MIT (Copyright (c) 2018 Miguel Ruivo)
-- file_picker_darwin 2.4.0: MIT (Copyright (c) 2018 Miguel Ruivo)
-- file_picker_linux 2.0.2: MIT (Copyright (c) 2018 Miguel Ruivo)
-- file_picker_platform_interface 4.2.0: MIT (Copyright (c) 2018 Miguel Ruivo)
-- file_picker_web 4.2.0: MIT (Copyright (c) 2018 Miguel Ruivo)
 - fixnum* 1.1.1: BSD-3-Clause (Copyright 2014, the Dart project authors.)
 - flutter* 0.0.0: BSD-3-Clause (Copyright 2014 The Flutter Authors. All rights reserved.)
 - flutter_secure_storage* 11.2.0: BSD-3-Clause (Copyright 2017 German Saprykin)
@@ -124,7 +116,6 @@ Direct dependencies are marked with *.
 - petitparser 7.0.2: MIT (Copyright (c) 2006-2024 Lukas Renggli.)
 - platform 3.2.0: BSD-3-Clause (Copyright 2017, the Dart project authors. All rights reserved.)
 - plugin_platform_interface 2.1.8: BSD-3-Clause (Copyright 2013 The Flutter Authors. All rights reserved.)
-- posix 6.5.4: MIT (Copyright (c) 2020 Brett Sutton)
 - protobuf* 6.1.0: BSD-3-Clause (Copyright 2013, the Dart project authors.)
 - pub_semver 2.2.1: BSD-3-Clause (Copyright 2014, the Dart project authors.)
 - qr 3.0.3: BSD-3-Clause (Copyright 2014, the Dart QR project authors. All rights reserved.)
@@ -152,7 +143,6 @@ Direct dependencies are marked with *.
 - webview_flutter_wkwebview* 3.27.2: BSD-3-Clause (Copyright 2013 The Flutter Authors)
 - win32 6.4.0: BSD-3-Clause (Copyright (c) 2024, Halil Durmus)
 - win32_registry 3.0.3: BSD-3-Clause (Copyright (c) 2023, Halil Durmus)
-- windows_file_picker 2.0.1: MIT (Copyright (c) 2018 Miguel Ruivo)
 - xdg_directories 1.1.0: BSD-3-Clause (Copyright 2013 The Flutter Authors. All rights reserved.)
 - xml 7.0.1: MIT (Copyright (c) 2006-2026 Lukas Renggli.)
 - yaml 3.1.4: MIT (Copyright (c) 2014, the Dart project authors.)
@@ -1954,36 +1944,6 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~~
 
-### BSD-3-Clause: cross_file 0.3.5+5, path_provider 2.1.6, path_provider_android 2.3.1, path_provider_foundation 2.6.0, path_provider_linux 2.2.2, path_provider_platform_interface 2.1.3, shared_preferences 2.5.6, shared_preferences_android 2.5.4, shared_preferences_foundation 2.5.7, shared_preferences_platform_interface 2.4.2, vector_math 2.4.3, webview_flutter 4.14.1, webview_flutter_android 4.14.1, webview_flutter_platform_interface 2.15.1, webview_flutter_wkwebview 3.27.2
-
-~~~~
-Copyright 2013 The Flutter Authors
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above
-      copyright notice, this list of conditions and the following
-      disclaimer in the documentation and/or other materials provided
-      with the distribution.
-    * Neither the name of Google Inc. nor the names of its
-      contributors may be used to endorse or promote products derived
-      from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-~~~~
-
 ### BSD-3-Clause: device_info_plus 13.3.0, device_info_plus_platform_interface 8.1.0, package_info_plus 10.2.2, package_info_plus_platform_interface 4.1.0
 
 ~~~~
@@ -2628,6 +2588,36 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ~~~~
 
+### BSD-3-Clause: path_provider 2.1.6, path_provider_android 2.3.1, path_provider_foundation 2.6.0, path_provider_linux 2.2.2, path_provider_platform_interface 2.1.3, shared_preferences 2.5.6, shared_preferences_android 2.5.4, shared_preferences_foundation 2.5.7, shared_preferences_platform_interface 2.4.2, vector_math 2.4.3, webview_flutter 4.14.1, webview_flutter_android 4.14.1, webview_flutter_platform_interface 2.15.1, webview_flutter_wkwebview 3.27.2
+
+~~~~
+Copyright 2013 The Flutter Authors
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+    * Neither the name of Google Inc. nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+~~~~
+
 ### BSD-3-Clause: path_provider_windows 2.3.0, plugin_platform_interface 2.1.8, shared_preferences_linux 2.4.1, shared_preferences_web 2.4.3, shared_preferences_windows 2.4.1, xdg_directories 1.1.0
 
 ~~~~
@@ -2938,59 +2928,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ~~~~
 
-### MIT: android_file_picker 2.1.2, file_picker 13.3.0, file_picker_darwin 2.4.0, file_picker_linux 2.0.2, file_picker_platform_interface 4.2.0, file_picker_web 4.2.0, windows_file_picker 2.0.1
-
-~~~~
-MIT License
-
-Copyright (c) 2018 Miguel Ruivo
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-~~~~
-
-### MIT: archive 4.5.2
-
-~~~~
-The MIT License
-
-Copyright (c) 2013-2021 Brendan Duncan.
-All rights reserved.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-~~~~
-
 ### MIT: bonsoir 7.1.6, bonsoir_android 7.1.4, bonsoir_darwin 7.1.2, bonsoir_linux 7.1.1, bonsoir_platform_interface 7.0.1, bonsoir_windows 7.3.1
 
 ~~~~
@@ -3270,32 +3207,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-~~~~
-
-### MIT: posix 6.5.4
-
-~~~~
-MIT License
-
-Copyright (c) 2020 Brett Sutton
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 ~~~~
 
 ### MIT: xml 7.0.1

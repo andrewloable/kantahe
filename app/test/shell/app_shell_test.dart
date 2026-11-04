@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' hide State;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kantahe/shell/app_footer.dart';
 import 'package:kantahe/shell/app_shell.dart';
 
 import '../queue/fakes.dart';
@@ -7,8 +8,8 @@ import '../queue/fakes.dart';
 const playerScreen = 'PLAYER SCREEN';
 
 /// The app opens in the player; unless [keepPlayer], it is closed (as Close does) to reach the screens behind it.
-Future<QueueRig> open(WidgetTester tester, {WidgetBuilder? playerBuilder, bool keepPlayer = false}) async {
-  final r = QueueRig();
+Future<QueueRig> open(WidgetTester tester, {WidgetBuilder? playerBuilder, bool keepPlayer = false, bool isTv = false}) async {
+  final r = QueueRig(isTv: isTv);
   await r.signIn('me');
   r.setState(stateOf(player: 'tv', devices: [device('tv', 'TV')], now: nowPlaying(song('1', 'On air', 'Star'))));
   await r.pump(
@@ -41,6 +42,19 @@ void main() {
     expect(xs, orderedEquals([...xs]..sort()), reason: 'the order of the labels');
     expect(xs.toSet(), hasLength(4));
     expect(find.text('Search songs'), findsOneWidget); // the library screen
+  });
+
+  testWidgets('footer_above_the_navigation_bar_on_a_phone: the copyright, small, between the screen and the bar', (tester) async {
+    await open(tester);
+    expect(find.text('© 2020 Andrew Loable · Kantahe'), findsOneWidget);
+    expect(tester.getBottomLeft(find.byType(AppFooter)).dy, lessThanOrEqualTo(tester.getTopLeft(find.byType(NavigationBar)).dy));
+    expect(tester.getSize(find.byType(AppFooter)).height, lessThan(40));
+  });
+
+  testWidgets('footer_beside_the_rail_on_a_tv: under the screens, to the right of the rail, not a focus stop', (tester) async {
+    await open(tester, isTv: true);
+    expect(find.text('© 2020 Andrew Loable · Kantahe'), findsOneWidget);
+    expect(tester.getTopLeft(find.byType(AppFooter)).dx, greaterThanOrEqualTo(tester.getTopRight(find.byType(NavigationRail)).dx));
   });
 
   testWidgets('opens_in_the_player_on_a_phone: as soon as the state is known, and it sends no command', (tester) async {

@@ -82,6 +82,16 @@ const (
 	// AdminServiceUpdateServerSettingsProcedure is the fully-qualified name of the AdminService's
 	// UpdateServerSettings RPC.
 	AdminServiceUpdateServerSettingsProcedure = "/kantahe.v1.AdminService/UpdateServerSettings"
+	// AdminServiceExportDataProcedure is the fully-qualified name of the AdminService's ExportData RPC.
+	AdminServiceExportDataProcedure = "/kantahe.v1.AdminService/ExportData"
+	// AdminServiceInspectExportProcedure is the fully-qualified name of the AdminService's
+	// InspectExport RPC.
+	AdminServiceInspectExportProcedure = "/kantahe.v1.AdminService/InspectExport"
+	// AdminServiceImportDataProcedure is the fully-qualified name of the AdminService's ImportData RPC.
+	AdminServiceImportDataProcedure = "/kantahe.v1.AdminService/ImportData"
+	// AdminServiceGetSongDownloadProcedure is the fully-qualified name of the AdminService's
+	// GetSongDownload RPC.
+	AdminServiceGetSongDownloadProcedure = "/kantahe.v1.AdminService/GetSongDownload"
 )
 
 // AdminServiceClient is a client for the kantahe.v1.AdminService service.
@@ -126,6 +136,19 @@ type AdminServiceClient interface {
 	GetServerSettings(context.Context, *connect.Request[v1.GetServerSettingsRequest]) (*connect.Response[v1.GetServerSettingsResponse], error)
 	// Admin only. Unset optional fields are left unchanged; INVALID_ARGUMENT for out-of-range values.
 	UpdateServerSettings(context.Context, *connect.Request[v1.UpdateServerSettingsRequest]) (*connect.Response[v1.UpdateServerSettingsResponse], error)
+	// Admin only. Writes a copy of the whole server (database, settings, every song file, extracted MP3s, background videos) into a new or
+	// empty folder on the server's disk. Streams progress; the last message has done = true. INVALID_ARGUMENT for a folder that is not
+	// allowed; FAILED_PRECONDITION while another export or import runs.
+	ExportData(context.Context, *connect.Request[v1.ExportDataRequest]) (*connect.ServerStreamForClient[v1.ExportDataResponse], error)
+	// Admin only. Reads the manifest of an export folder and says whether it can be imported; changes nothing.
+	InspectExport(context.Context, *connect.Request[v1.InspectExportRequest]) (*connect.Response[v1.InspectExportResponse], error)
+	// Admin only. Checks and stages an export folder; the server then restarts and replaces all of its data with it. Streams progress; the
+	// last message has done = true. INVALID_ARGUMENT for a folder that cannot be imported; FAILED_PRECONDITION while another export or
+	// import runs.
+	ImportData(context.Context, *connect.Request[v1.ImportDataRequest]) (*connect.ServerStreamForClient[v1.ImportDataResponse], error)
+	// Admin only. A signed address (valid for 10 minutes, for the asking administrator) from which the stored file of a song is downloaded as it is: the
+	// .karmp3 ZIP or the .kar file. NOT_FOUND for a number that is not a live song.
+	GetSongDownload(context.Context, *connect.Request[v1.GetSongDownloadRequest]) (*connect.Response[v1.GetSongDownloadResponse], error)
 }
 
 // NewAdminServiceClient constructs a client for the kantahe.v1.AdminService service. By default, it
@@ -253,6 +276,30 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(adminServiceMethods.ByName("UpdateServerSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		exportData: connect.NewClient[v1.ExportDataRequest, v1.ExportDataResponse](
+			httpClient,
+			baseURL+AdminServiceExportDataProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("ExportData")),
+			connect.WithClientOptions(opts...),
+		),
+		inspectExport: connect.NewClient[v1.InspectExportRequest, v1.InspectExportResponse](
+			httpClient,
+			baseURL+AdminServiceInspectExportProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("InspectExport")),
+			connect.WithClientOptions(opts...),
+		),
+		importData: connect.NewClient[v1.ImportDataRequest, v1.ImportDataResponse](
+			httpClient,
+			baseURL+AdminServiceImportDataProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("ImportData")),
+			connect.WithClientOptions(opts...),
+		),
+		getSongDownload: connect.NewClient[v1.GetSongDownloadRequest, v1.GetSongDownloadResponse](
+			httpClient,
+			baseURL+AdminServiceGetSongDownloadProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("GetSongDownload")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -277,6 +324,10 @@ type adminServiceClient struct {
 	rescan               *connect.Client[v1.RescanRequest, v1.RescanResponse]
 	getServerSettings    *connect.Client[v1.GetServerSettingsRequest, v1.GetServerSettingsResponse]
 	updateServerSettings *connect.Client[v1.UpdateServerSettingsRequest, v1.UpdateServerSettingsResponse]
+	exportData           *connect.Client[v1.ExportDataRequest, v1.ExportDataResponse]
+	inspectExport        *connect.Client[v1.InspectExportRequest, v1.InspectExportResponse]
+	importData           *connect.Client[v1.ImportDataRequest, v1.ImportDataResponse]
+	getSongDownload      *connect.Client[v1.GetSongDownloadRequest, v1.GetSongDownloadResponse]
 }
 
 // ListUsers calls kantahe.v1.AdminService.ListUsers.
@@ -374,6 +425,26 @@ func (c *adminServiceClient) UpdateServerSettings(ctx context.Context, req *conn
 	return c.updateServerSettings.CallUnary(ctx, req)
 }
 
+// ExportData calls kantahe.v1.AdminService.ExportData.
+func (c *adminServiceClient) ExportData(ctx context.Context, req *connect.Request[v1.ExportDataRequest]) (*connect.ServerStreamForClient[v1.ExportDataResponse], error) {
+	return c.exportData.CallServerStream(ctx, req)
+}
+
+// InspectExport calls kantahe.v1.AdminService.InspectExport.
+func (c *adminServiceClient) InspectExport(ctx context.Context, req *connect.Request[v1.InspectExportRequest]) (*connect.Response[v1.InspectExportResponse], error) {
+	return c.inspectExport.CallUnary(ctx, req)
+}
+
+// ImportData calls kantahe.v1.AdminService.ImportData.
+func (c *adminServiceClient) ImportData(ctx context.Context, req *connect.Request[v1.ImportDataRequest]) (*connect.ServerStreamForClient[v1.ImportDataResponse], error) {
+	return c.importData.CallServerStream(ctx, req)
+}
+
+// GetSongDownload calls kantahe.v1.AdminService.GetSongDownload.
+func (c *adminServiceClient) GetSongDownload(ctx context.Context, req *connect.Request[v1.GetSongDownloadRequest]) (*connect.Response[v1.GetSongDownloadResponse], error) {
+	return c.getSongDownload.CallUnary(ctx, req)
+}
+
 // AdminServiceHandler is an implementation of the kantahe.v1.AdminService service.
 type AdminServiceHandler interface {
 	// Admin only. Lists every user.
@@ -416,6 +487,19 @@ type AdminServiceHandler interface {
 	GetServerSettings(context.Context, *connect.Request[v1.GetServerSettingsRequest]) (*connect.Response[v1.GetServerSettingsResponse], error)
 	// Admin only. Unset optional fields are left unchanged; INVALID_ARGUMENT for out-of-range values.
 	UpdateServerSettings(context.Context, *connect.Request[v1.UpdateServerSettingsRequest]) (*connect.Response[v1.UpdateServerSettingsResponse], error)
+	// Admin only. Writes a copy of the whole server (database, settings, every song file, extracted MP3s, background videos) into a new or
+	// empty folder on the server's disk. Streams progress; the last message has done = true. INVALID_ARGUMENT for a folder that is not
+	// allowed; FAILED_PRECONDITION while another export or import runs.
+	ExportData(context.Context, *connect.Request[v1.ExportDataRequest], *connect.ServerStream[v1.ExportDataResponse]) error
+	// Admin only. Reads the manifest of an export folder and says whether it can be imported; changes nothing.
+	InspectExport(context.Context, *connect.Request[v1.InspectExportRequest]) (*connect.Response[v1.InspectExportResponse], error)
+	// Admin only. Checks and stages an export folder; the server then restarts and replaces all of its data with it. Streams progress; the
+	// last message has done = true. INVALID_ARGUMENT for a folder that cannot be imported; FAILED_PRECONDITION while another export or
+	// import runs.
+	ImportData(context.Context, *connect.Request[v1.ImportDataRequest], *connect.ServerStream[v1.ImportDataResponse]) error
+	// Admin only. A signed address (valid for 10 minutes, for the asking administrator) from which the stored file of a song is downloaded as it is: the
+	// .karmp3 ZIP or the .kar file. NOT_FOUND for a number that is not a live song.
+	GetSongDownload(context.Context, *connect.Request[v1.GetSongDownloadRequest]) (*connect.Response[v1.GetSongDownloadResponse], error)
 }
 
 // NewAdminServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -539,6 +623,30 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(adminServiceMethods.ByName("UpdateServerSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminServiceExportDataHandler := connect.NewServerStreamHandler(
+		AdminServiceExportDataProcedure,
+		svc.ExportData,
+		connect.WithSchema(adminServiceMethods.ByName("ExportData")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceInspectExportHandler := connect.NewUnaryHandler(
+		AdminServiceInspectExportProcedure,
+		svc.InspectExport,
+		connect.WithSchema(adminServiceMethods.ByName("InspectExport")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceImportDataHandler := connect.NewServerStreamHandler(
+		AdminServiceImportDataProcedure,
+		svc.ImportData,
+		connect.WithSchema(adminServiceMethods.ByName("ImportData")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceGetSongDownloadHandler := connect.NewUnaryHandler(
+		AdminServiceGetSongDownloadProcedure,
+		svc.GetSongDownload,
+		connect.WithSchema(adminServiceMethods.ByName("GetSongDownload")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/kantahe.v1.AdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminServiceListUsersProcedure:
@@ -579,6 +687,14 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 			adminServiceGetServerSettingsHandler.ServeHTTP(w, r)
 		case AdminServiceUpdateServerSettingsProcedure:
 			adminServiceUpdateServerSettingsHandler.ServeHTTP(w, r)
+		case AdminServiceExportDataProcedure:
+			adminServiceExportDataHandler.ServeHTTP(w, r)
+		case AdminServiceInspectExportProcedure:
+			adminServiceInspectExportHandler.ServeHTTP(w, r)
+		case AdminServiceImportDataProcedure:
+			adminServiceImportDataHandler.ServeHTTP(w, r)
+		case AdminServiceGetSongDownloadProcedure:
+			adminServiceGetSongDownloadHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -662,4 +778,20 @@ func (UnimplementedAdminServiceHandler) GetServerSettings(context.Context, *conn
 
 func (UnimplementedAdminServiceHandler) UpdateServerSettings(context.Context, *connect.Request[v1.UpdateServerSettingsRequest]) (*connect.Response[v1.UpdateServerSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.UpdateServerSettings is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) ExportData(context.Context, *connect.Request[v1.ExportDataRequest], *connect.ServerStream[v1.ExportDataResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.ExportData is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) InspectExport(context.Context, *connect.Request[v1.InspectExportRequest]) (*connect.Response[v1.InspectExportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.InspectExport is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) ImportData(context.Context, *connect.Request[v1.ImportDataRequest], *connect.ServerStream[v1.ImportDataResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.ImportData is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) GetSongDownload(context.Context, *connect.Request[v1.GetSongDownloadRequest]) (*connect.Response[v1.GetSongDownloadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.AdminService.GetSongDownload is not implemented"))
 }

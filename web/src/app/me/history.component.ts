@@ -4,10 +4,12 @@ import { injectClient } from '../core/api';
 import { FormatBadgeComponent } from '../library/format-badge.component';
 import { LibraryActions } from '../library/library-actions';
 import { Pager } from '../library/paged';
+import { ActionMenuComponent, MenuItem } from '../shared/action-menu.component';
+import { Song } from '../../gen/kantahe/v1/common_pb';
 
 @Component({
   selector: 'app-history',
-  imports: [FormatBadgeComponent],
+  imports: [FormatBadgeComponent, ActionMenuComponent],
   template: `
     <h2>History</h2>
     @if (pager.error()) {
@@ -22,11 +24,12 @@ import { Pager } from '../library/paged';
             <time [attr.datetime]="iso(e)">{{ when(e) }}</time>
           </span>
           @if (e.song) {
-            <app-format-badge [format]="e.song.format" />
+            <app-format-badge [format]="e.song.format" [timing]="e.song.lyricTiming" [vocals]="e.song.hasVocals" />
           }
           <span class="result">{{ e.skipped ? 'skipped' : e.hasScore ? 'Score ' + e.score : 'No score' }}</span>
           @if (e.song; as s) {
-            <button type="button" [attr.aria-label]="'Sing ' + s.title + ' again'" (click)="actions.add(s)">Sing again</button>
+            <button type="button" [attr.aria-label]="'Sing again: ' + s.title" (click)="actions.add(s)">Sing again</button>
+            <app-action-menu [label]="'More actions for ' + s.title" [items]="menuFor(s)" />
           }
         </li>
       }
@@ -73,6 +76,14 @@ import { Pager } from '../library/paged';
 export class HistoryComponent {
   private readonly user = injectClient(UserLibraryService);
   protected readonly actions = inject(LibraryActions);
+  private readonly menus = new WeakMap<Song, MenuItem[]>();
+
+  /** The More menu of a row: the same array for the same song, so that the menu is not rebuilt on every check. */
+  protected menuFor(s: Song): MenuItem[] {
+    let items = this.menus.get(s);
+    if (!items) this.menus.set(s, (items = [{ label: 'Play next', run: () => void this.actions.playNext(s) }]));
+    return items;
+  }
 
   protected readonly pager = new Pager<HistoryEntry>(async (pageToken, signal) => {
     const r = await this.user.listHistory({ pageToken }, { signal });

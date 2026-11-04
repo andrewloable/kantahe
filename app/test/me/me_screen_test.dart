@@ -6,7 +6,6 @@ import 'package:kantahe/me/me_screen.dart';
 import 'package:kantahe/me/my_devices_screen.dart';
 import 'package:kantahe/me/playlists_screen.dart';
 import 'package:kantahe/me/score_settings_screen.dart';
-import 'package:kantahe/upload/upload_screen.dart';
 import 'package:kantahe/auth/approve_code_screen.dart';
 import 'package:kantahe/auth/change_password_screen.dart';
 
@@ -47,18 +46,15 @@ void main() {
     }
   });
 
-  testWidgets('Upload is offered to uploaders and administrators only', (tester) async {
-    await open(tester);
-    expect(find.text('Upload songs'), findsNothing);
-    await tester.pumpWidget(const SizedBox());
-    await open(tester, uploader: true);
-    expect(find.text('Upload songs'), findsOneWidget);
-    await tester.tap(find.text('Upload songs'));
-    await tester.pumpAndSettle();
-    expect(find.byType(UploadScreen), findsOneWidget);
-    await tester.pumpWidget(const SizedBox());
-    await open(tester, admin: true);
-    expect(find.text('Upload songs'), findsOneWidget);
+  testWidgets('the Me menu has no Upload, whatever the roles of the user: songs are added in the web app', (tester) async {
+    for (final roles in [(uploader: false, admin: false), (uploader: true, admin: false), (uploader: false, admin: true), (uploader: true, admin: true)]) {
+      await open(tester, uploader: roles.uploader, admin: roles.admin);
+      expect(find.textContaining('Upload'), findsNothing, reason: '$roles');
+      for (final t in ['Favourites', 'History', 'Playlists', 'My devices', 'Appearance', 'Score', 'Change password', 'Approve a TV', 'Sign out']) {
+        expect(find.text(t), findsOneWidget, reason: '$t for $roles');
+      }
+      await tester.pumpWidget(const SizedBox());
+    }
   });
 
   testWidgets('Sign out signs the device out on the server and here', (tester) async {

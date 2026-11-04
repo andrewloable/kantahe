@@ -237,3 +237,27 @@ func TestInvalidDiscovery(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestTransferRoot(t *testing.T) {
+	c, err := Parse(nil, env(nil))
+	if err != nil || c.TransferRoot != "" {
+		t.Fatalf("default: %q %v", c.TransferRoot, err)
+	}
+	dir := t.TempDir()
+	other := t.TempDir()
+	c, err = Parse([]string{"--transfer-root", dir}, env(nil))
+	if err != nil || c.TransferRoot != dir {
+		t.Fatalf("flag: %q %v", c.TransferRoot, err)
+	}
+	c, err = Parse(nil, env(map[string]string{"KANTAHE_TRANSFER_ROOT": dir}))
+	if err != nil || c.TransferRoot != dir {
+		t.Fatalf("environment: %q %v", c.TransferRoot, err)
+	}
+	c, err = Parse([]string{"--transfer-root", other}, env(map[string]string{"KANTAHE_TRANSFER_ROOT": dir}))
+	if err != nil || c.TransferRoot != other {
+		t.Fatalf("the flag beats the environment: %q %v", c.TransferRoot, err)
+	}
+	if _, err = Parse([]string{"--transfer-root", "relative/folder"}, env(nil)); err == nil || !strings.Contains(err.Error(), "invalid --transfer-root") {
+		t.Fatalf("a relative folder must be refused: %v", err)
+	}
+}
