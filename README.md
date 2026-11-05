@@ -43,7 +43,7 @@ Open <http://localhost:8080> and create the first (admin) account. More ways to 
 * [User guide](docs/user-guide.md): signing in, finding and queueing songs, the player, score, favourites, playlists, TVs.
 * [Admin guide](docs/admin-guide.md): users, uploads and watched folders, settings, deleting songs, backups.
 * [Reverse proxy](docs/reverse-proxy.md): HTTPS with Caddy or nginx.
-* TV apps: [Samsung](docs/tv-samsung.md), [LG](docs/tv-lg.md).
+* TV apps: [Samsung](docs/tv-samsung.md), [LG](docs/tv-lg.md); [Android TV with an old WebView](docs/tv-android-webview.md).
 * [Plan and decisions](docs/PLAN.md): how it works and why.
 * [Releasing](docs/releasing.md): the checklist before a tag, with `scripts/ci-local.sh`.
 
@@ -54,6 +54,45 @@ Open <http://localhost:8080> and create the first (admin) account. More ways to 
 | Any browser | The web app, served by the server itself. |
 | Android, iOS, Android TV | A Flutter app in `app/` (native screens, with the web player inside). |
 | Samsung and LG TVs | The web app packaged for each TV (`tv/`), installed in developer mode. |
+
+## Android TV with an old WebView
+
+The Android and Android TV app shows the player in the system WebView, so an old TV box may not start it. The app and the player say
+"this screen's browser is too old" with the Chromium version when that happens. The player needs **Chromium 74 or newer**, and there
+are two ways to get there:
+
+1. **Do nothing (Chromium 74 to 84).** The server sends these engines to a second, older build of the player by itself. Android 10 and
+   11 boxes are in this range. Below 74 (Android 9 and older) nothing can be offered: update the WebView or use another device.
+2. **Update the WebView (Chromium 85 or newer).** The server then gives the normal player, which is the best tested one. On a TV with
+   Google Play, update *Android System WebView* in the store. On a box where the store does not offer it, the steps below work only on
+   firmware signed with the public Android test keys (an engineering build). **They change the TV's system software: use them on your
+   own device only, and keep the rollback command.** A retail TV needs its maker's firmware or another device.
+
+Steps (the full guide, with the reasons and what did not work, is [docs/tv-android-webview.md](docs/tv-android-webview.md)). Needs adb,
+and `aapt2` and `apksigner` from the Android SDK build tools:
+
+```sh
+TV=<tv-address>:5555 ; WORK=<an empty working folder>
+adb connect $TV
+adb -s $TV shell dumpsys webviewupdate | grep -E "Current WebView|Valid package"        # the version now
+adb -s $TV shell pm path com.android.webview                                             # for example /product/app/webview/webview.apk
+adb -s $TV pull <that path> $WORK/device-webview.apk                                     # keep it: it is the way back
+apksigner verify --print-certs $WORK/device-webview.apk                                  # must be CN=Android, SHA-256 a40da80a...f5dc (the public test key)
+adb -s $TV shell getprop ro.product.cpu.abilist                                          # armeabi-v7a -> arm, arm64-v8a -> arm64
+# the prebuilt WebView of Google's open-source tree (Chromium 113, branch android14-release); use "arm64" or "arm" below; Linux: base64 -d
+curl -s "https://android.googlesource.com/platform/external/chromium-webview/+/refs/heads/android14-release/prebuilt/arm/webview.apk?format=TEXT" | base64 -D > $WORK/aosp-webview.apk
+# the public test key, from the same tree: files testkey.pk8 and testkey.x509.pem in platform/build, folder target/product/security/
+openssl x509 -in $WORK/testkey.x509.pem -noout -fingerprint -sha256                      # must equal the SHA-256 of the TV's WebView
+apksigner sign --key $WORK/testkey.pk8 --cert $WORK/testkey.x509.pem --out $WORK/webview-signed.apk $WORK/aosp-webview.apk
+adb -s $TV install -r $WORK/webview-signed.apk                                           # an update of the system app
+adb -s $TV shell dumpsys webviewupdate | grep -E "Current WebView|Valid package"        # now 113
+adb -s $TV shell am force-stop party.kantahe                                             # then open the app again
+adb -s $TV uninstall com.android.webview                                                 # rollback: the built-in version comes back
+```
+
+Check before installing that the package is `com.android.webview`, that its version code is higher than the TV's, and that its
+minimum Android version is not higher than the TV's (`adb shell getprop ro.build.version.sdk`). If the certificate of the TV's WebView is
+anything but the public test key, stop: nobody but the maker can sign for it.
 
 ## Status
 

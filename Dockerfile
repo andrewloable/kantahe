@@ -10,7 +10,7 @@ WORKDIR /src/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
 COPY web/ ./
-RUN npx ng build
+RUN npx ng build && npm run build:legacy
 
 FROM --platform=$BUILDPLATFORM alpine:3.22 AS soundfont
 RUN apk add --no-cache curl ca-certificates
@@ -30,6 +30,8 @@ COPY server/go.mod server/go.sum ./
 RUN go mod download
 COPY server/ ./
 COPY --from=web /src/web/dist/web/browser/ internal/webui/dist/
+# the build for engines older than Chromium 85, which the server hands to them
+COPY --from=web /src/web/dist/web-legacy/browser/ internal/webui/dist-legacy/
 COPY --from=soundfont /GeneralUser-GS.sf2 internal/assets/soundfont/GeneralUser-GS.sf2
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o /out/kantahe ./cmd/kantahe

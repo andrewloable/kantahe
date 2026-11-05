@@ -167,6 +167,9 @@ asking for a password:
 
 On the TV use the arrow keys and OK. Back goes back, and leaves the app from the first page. You can also queue songs from
 your phone while the TV plays.
+If the player stays empty on an older Android TV box, its WebView is probably too old: the player then says *This screen's browser is
+too old* with its Chromium version (the player needs Chromium 74 or newer; a WebView between 74 and 84 gets a second, older build of the player from the server by itself). See
+[Android TV: when the WebView is too old](tv-android-webview.md).
 
 The **Android, iOS and TV app open in the player**, the screen that plays (once the server has answered; opening it never starts a
 song). The navigation, a bar at the bottom on a phone or tablet and a rail at the side on a TV, lists **Library, Queue, Player and

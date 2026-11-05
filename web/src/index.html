@@ -29,6 +29,10 @@
     @media (prefers-reduced-motion:no-preference){.splash-logo{animation:splash-in .3s ease-out}}
     @media (prefers-reduced-motion:reduce){#splash{transition:none}}
     html.embed .splash-logo,html.embed .splash-failed{display:none}
+    /* an engine too old to run the app (the guard script below): the message takes the place of the logo and the failure text */
+    .splash-old{display:none;max-width:32rem;margin:0 auto;padding:0 1.5rem;font-size:1.25rem}
+    html.old .splash-old{display:block}
+    html.old .splash-logo,html.old .splash-failed{display:none}
   </style>
   <script>try{var t=localStorage.getItem("kantahe.theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}if(location.pathname.indexOf("/embed/")===0)document.documentElement.className+=" embed"</script>
 </head>
@@ -81,6 +85,19 @@
       <!-- brand-splash:end -->
     </div>
     <p class="splash-failed">Kantahe could not start. Reload the page.</p>
+    <p class="splash-old" id="splash-old"></p>
+    <!-- The minimum engine. Plain old JavaScript on purpose: this has to run on the engine that cannot read the app. MIN_CHROMIUM is the same
+         number as kMinChromium in app/lib/player/min_webview.dart (web/src/app/min-engine.spec.ts checks it); docs/PLAN.md, "Minimum engine". -->
+    <script id="min-engine">
+    (function () {
+      var MIN_CHROMIUM = 85;
+      var m = /Chrome\/(\d+)/.exec(navigator.userAgent || '');
+      if (!m || +m[1] >= MIN_CHROMIUM) return;
+      document.documentElement.className += ' old';
+      var p = document.getElementById('splash-old');
+      if (p) p.textContent = "This screen's browser is too old (Chromium " + m[1] + "). Kantahe needs Chromium " + MIN_CHROMIUM + " or newer. Update Android System WebView (see the user guide, Android TV: when the WebView is too old), or use a newer device.";
+    })();
+    </script>
     <noscript><p>Kantahe needs JavaScript to run.</p></noscript>
   </div>
   <app-root></app-root>

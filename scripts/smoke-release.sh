@@ -31,6 +31,14 @@ for f in $hashed; do
   curl -fsI "$base/$f" | tr -d '\r' | grep -qi '^cache-control: public, max-age=31536000, immutable$' ||
     { echo "smoke: $f is not immutable" >&2; exit 1; }
 done
+# an engine older than Chromium 85 gets the legacy build, a current one the normal build (docs/PLAN.md, "Minimum engine")
+ua74='Mozilla/5.0 (Linux; Android 10; TV; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.186 Safari/537.36'
+ua113='Mozilla/5.0 (Linux; Android 14; TV; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/113.0.5672.136 Safari/537.36'
+[ "$(curl -s -o /dev/null -A "$ua74" -w '%{redirect_url}' "$base/embed/player")" = "$base/legacy/embed/player" ] ||
+  { echo "smoke: Chromium 74 is not sent to the legacy player" >&2; exit 1; }
+curl -fs -A "$ua74" "$base/legacy/embed/player" | grep -q '<base href="/legacy/">' || { echo "smoke: the legacy player page is not served" >&2; exit 1; }
+[ -z "$(curl -s -o /dev/null -A "$ua113" -w '%{redirect_url}' "$base/embed/player")" ] ||
+  { echo "smoke: Chromium 113 was sent away from the player" >&2; exit 1; }
 # a stale script name must be a 404, not the page
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/main-NOSUCHFILE.js")" = 404 ] ||
   { echo "smoke: a missing script was not a 404" >&2; exit 1; }

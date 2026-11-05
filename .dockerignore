@@ -12,4 +12,5 @@ web/test-results
 web/playwright-report
 server/dist
 server/internal/webui/dist/*
+server/internal/webui/dist-legacy/*
 server/internal/assets/soundfont/*.sf2

@@ -9,6 +9,7 @@ import 'package:kantahe/gen/kantahe/v1/session.pb.dart' hide State;
 import 'package:kantahe/player/connect_card.dart';
 import 'package:kantahe/player/compact_controls.dart';
 import 'package:kantahe/player/embed_bridge.dart';
+import 'package:kantahe/player/min_webview.dart';
 import 'package:kantahe/player/free_disk.dart';
 import 'package:kantahe/player/platform.dart';
 import 'package:kantahe/player/web_embed.dart';
@@ -75,6 +76,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   ModalRoute<void>? _route;
   bool _awake = false;
   String _loadError = '';
+
+  /// The major version of a WebView that is too old to run the player page, once known.
+  int? _oldEngine;
 
   @override
   void didChangeDependencies() {
@@ -382,12 +386,27 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                           setState(() => _loadError = description);
                           _wake(); // "Try again" must be in view
                         },
+                        onEngineTooOld: (major) {
+                          setState(() => _oldEngine = major);
+                          _wake();
+                        },
                         allowNavigation: (to) => to.toString() == 'about:blank' || sameOrigin(to.toString(), server),
                       ),
                     ),
                   ),
                 ),
-                if (_loadError.isNotEmpty)
+                if (_oldEngine != null)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Text(
+                        engineTooOldMessage(_oldEngine!),
+                        style: const TextStyle(color: Colors.white),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                if (_loadError.isNotEmpty && _oldEngine == null)
                   Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,

@@ -7,7 +7,11 @@ run on a real TV**: the owner's acceptance run (the last section) is what confir
 
 ## What you need
 
-* A Samsung TV from 2018 or later (Tizen 5.0 or newer). The package asks for Tizen 5.0. Which models really run it,
+* A Samsung TV whose web engine is Chromium 85 or newer. The package asks for Tizen 5.0 (2018 and later), but the engines
+  of Tizen 5.0 to 6.0 are about Chromium 64 to 78 (secondary sources; not yet measured on a TV), which is too old for the current
+  app, so treat a Tizen older than the 2022 models as not supported until a TV has been tried (docs/PLAN.md, "Minimum engine"). The build
+  for older engines (down to Chromium 74) is only for the player page of the Android TV app; this package is the normal build.
+  Which models really run it,
   and which play MIDI songs without dropouts, comes from spike S1 ([spikes/s1-web-player](../spikes/s1-web-player/README.md),
   report in [spikes/s1-web-player.md](spikes/s1-web-player.md)); the table there is empty until it has been run on TVs.
   MP3 songs do not need the synthesizer.

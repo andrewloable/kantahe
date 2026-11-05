@@ -575,6 +575,48 @@ another port is not found there, and the address is typed.
 **Samsung Tizen / LG webOS** (phase 6): build configurations of the same Angular app, packaged as a
 Tizen `.wgt` and a webOS `.ipk`. Differences: first-run "server address" screen, code sign-in,
 D-pad focus navigation, large type. Minimum TV model years come from spike S1.
+
+**Minimum engine.** The player page `/embed/player`, which the Android and Android TV app shows in the system WebView, runs on
+**Chromium 74 or newer**. The normal web build needs **Chromium 85**: optional chaining and `??` need 80, logical assignment (`||=`)
+needs 85. So the release carries a second build of the same app for the engines from 74 to 84: esbuild turns the finished normal build
+into `--target=chrome74` syntax, a small polyfill file adds the functions that Chromium 74 lacks (`Object.hasOwn`, `Array.prototype.at`,
+`String.prototype.replaceAll`) and a fallback stylesheet replaces the CSS it cannot read (flex `gap`, `inset`, `min()` and `clamp()`)
+(`web/scripts/build-legacy.mjs`, `web/legacy/`, `npm run build:legacy`; `npm run check:legacy` scans the result for syntax newer than 74).
+The server embeds it as `server/internal/webui/dist-legacy` and serves it under `/legacy/` (`<base href="/legacy/">`; the files of the two
+builds have the same names with different content, so they cannot share a folder). A request for `/embed/player` from a user agent with
+`Chrome/NN`, NN below 85 (`ModernMinChromium` in `server/internal/webui/webui.go`), is answered with a 302 to `/legacy/embed/player`
+(`Vary: User-Agent`); every other engine gets the normal build. The Docker image and the release binaries both carry the two builds.
+Below 74 nothing can be offered: `web/src/index.html` (and the legacy page) has a guard that says "this screen's browser is too
+old" in place of the logo, and the Flutter player screen says the same before it loads the page. The numbers are `MIN_CHROMIUM` in
+`index.html` (85 in the normal page, 74 in the legacy page: `LEGACY_MIN_CHROMIUM` in `build-legacy.mjs`) and `kMinChromium` (74) in
+`app/lib/player/min_webview.dart`; tests keep them equal to each other and to the server's threshold. 74 is the stock WebView of Android
+10, the oldest release that is still common on boxes; hard floors of the code, whatever the build, are ES modules (Chromium 61), dynamic
+`import()` (63) and BigInt (67, used by the 64-bit integers of the protocol), so nothing below 67 could run the player at all.
+`scripts/legacy-webview-check.sh` runs the real player on an Android 10 emulator with WebView 74 (and on API 35) and fails on any console
+error (`docs/tv-android-webview.md`, section 8). Only the player page is promised on engines below 85: the Samsung and LG packages are
+built from the normal build only, so they still need 85.
+
+What the engines of real devices are (2026-11-05):
+
+| Device | Engine | Runs the player |
+|---|---|---|
+| Android 8.1 box, stock WebView | Chromium 61 | no (below 67) |
+| Android 9 box, stock WebView | 66 | no (below 67) |
+| Android 10 box, stock WebView (also boxes that say a higher Android number on an Android 10 platform) | 74 | yes, the legacy build (checked on an emulator) |
+| Android 11, stock | 83 | yes, the legacy build |
+| Android 12, stock | 91 | yes |
+| Android 13, stock | 101 | yes |
+| Android 14, stock | 113 | yes |
+| Android 15, stock | 124 | yes |
+| Android 16, stock | 133 | yes |
+| Android TV or Google TV with Google Play (certified) | updates itself while Chromium supports its Android version | yes after the update |
+| LG webOS TV 4.x, 5.x, 6.x, 22 | 53, 68, 79, 87 ([LG's table](https://webostv.developer.lge.com/develop/specifications/web-api-and-web-engine)) | only webOS 22 and newer (the package has the normal build only) |
+| Samsung Tizen 5.0, 5.5, 6.0 | about 64, 69, 78 (secondary sources, not confirmed; measure on a TV) | not expected (the package has the normal build only) |
+
+"Stock" is the WebView the Android release ships (the newest Chromium named in that release's branch of Google's open-source
+`external/chromium-webview`); a box without Google Play keeps it unless its maker updates it. Which WebView the most common
+boxes ship is not published anywhere that could be found; boxes that are certified by Google update theirs through Google
+Play, and cheap uncertified boxes (Allwinner, Amlogic, Rockchip) keep the stock one.
 `ng build --configuration tizen` and `--configuration webos` write `web/dist/tizen` and `web/dist/webos` (the package
 root: `index.html` at the top), swapping `environment.ts` for `environment.tizen.ts` / `environment.webos.ts`
 (`isTv: true` and the device type that code sign-in reports). What a TV build does differently (`web/src/app/tv/`):

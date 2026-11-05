@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:kantahe/player/embed_bridge.dart';
+import 'package:kantahe/player/min_webview.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
@@ -18,6 +19,7 @@ class EmbedConfig {
     required this.onHost,
     required this.onError,
     required this.allowNavigation,
+    this.onEngineTooOld,
   });
 
   final Uri url;
@@ -36,6 +38,9 @@ class EmbedConfig {
 
   /// Whether the page may go to this address. Anything else is refused, so the page stays on the server.
   final bool Function(Uri to) allowNavigation;
+
+  /// The WebView of this device is older than the player page can run on (the major version of its Chromium); the page is not loaded.
+  final void Function(int major)? onEngineTooOld;
 }
 
 typedef EmbedBuilder = Widget Function(BuildContext context, EmbedConfig config);
@@ -120,7 +125,22 @@ class _WebEmbedState extends State<WebEmbed> {
       platform.setMediaPlaybackRequiresUserGesture(false);
     }
     widget.config.onHost(_Host(_controller, widget.config.url));
-    _controller.loadRequest(widget.config.url);
+    unawaited(_load());
+  }
+
+  /// Loads the player page, unless the WebView is too old to run it (the page would only show the splash and fail): then the screen is
+  /// told, and shows the reason instead.
+  Future<void> _load() async {
+    final tooOld = widget.config.onEngineTooOld;
+    if (tooOld != null) {
+      final major = await oldEngineMajor(_controller.getUserAgent);
+      if (!mounted) return;
+      if (major != null) {
+        tooOld(major);
+        return;
+      }
+    }
+    unawaited(_controller.loadRequest(widget.config.url));
   }
 
   @override

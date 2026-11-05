@@ -20,7 +20,10 @@ finds it before.
    `v0.0.0-dry` (any name that looks like `vX.Y.Z` or `vX.Y.Z-suffix`). It does everything a tag does except the publishing:
    the same checks, the six binaries and `SHA256SUMS` (7 files, kept as the workflow artifact `release-files` for 7 days), the
    smoke test, and the image for both platforms with *push* off. It cannot create a release or push an image, whatever you type.
-   Wait for green and look at the artifact.
+   Wait for green and look at the artifact. The web app is built twice, the normal build and the one for old WebViews (Chromium 74
+   to 84, `npm run build:legacy`): `build-release.sh` and the Dockerfile embed both, and the smoke tests check that Chromium 74 is sent to
+   `/legacy/embed/player` and Chromium 113 is not. `scripts/legacy-webview-check.sh` (an Android emulator, by hand, not part of CI) runs the
+   player on a real WebView 74; run it when the web app or the legacy files changed (`docs/tv-android-webview.md`, section 8).
 5. **Tag and push:** `git tag vX.Y.Z && git push origin vX.Y.Z`.
 6. **Verify the published release.** The last job of `release.yml`, *verify*, does it by itself: wait for it to turn green. Or run
    it yourself, any time: `scripts/verify-release.sh vX.Y.Z` (needs `gh`; add `--strict` to make a check that could not run, for example

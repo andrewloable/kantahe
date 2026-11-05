@@ -2,7 +2,8 @@
 # Builds the release binaries with the web app and the default SoundFont embedded.
 #   scripts/build-release.sh VERSION      e.g. v0.1.0
 # Writes dist/kantahe-VERSION-OS-ARCH[.exe] for linux, darwin and windows on amd64 and arm64, and
-# dist/SHA256SUMS. Needs go, node/npm, curl. The embedded files are removed again on exit so the
+# dist/SHA256SUMS. Needs go, node/npm, curl. The web app is embedded twice, the normal build and the one for
+# old engines (Chromium 74 to 84). The embedded files are removed again on exit so the
 # working tree stays clean (the placeholder page is put back).
 set -euo pipefail
 
@@ -12,6 +13,7 @@ version=${1:?usage: scripts/build-release.sh VERSION}
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
 webdist=server/internal/webui/dist
+legacydist=server/internal/webui/dist-legacy
 fontdir=server/internal/assets/soundfont
 
 sha256() { if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
@@ -24,6 +26,7 @@ grep -q 'Web app not built' "$webdist/index.html" ||
 cp "$webdist/index.html" "$placeholder"
 clean() {
   find "$webdist" -mindepth 1 -not -name .gitkeep -delete
+  find "$legacydist" -mindepth 1 -not -name .gitkeep -delete
   [ -n "$had_font" ] || find "$fontdir" -mindepth 1 -name '*.sf2' -delete
   cp "$placeholder" "$webdist/index.html"
   rm -f "$placeholder"
@@ -34,11 +37,16 @@ echo "== SoundFont"
 scripts/fetch-soundfont.sh "$fontdir"
 
 echo "== web app"
-(cd web && npm ci && npx ng build)
+(cd web && npm ci && npx ng build && npm run build:legacy)
 find "$webdist" -mindepth 1 -not -name .gitkeep -delete
 cp -R web/dist/web/browser/. "$webdist/"
 [ -f "$webdist/index.html" ] && ! grep -q 'Web app not built' "$webdist/index.html" ||
   { echo "build-release: the web build produced no index.html" >&2; exit 1; }
+# the build for engines older than Chromium 85 (the server hands it to them, see docs/PLAN.md, "Minimum engine")
+find "$legacydist" -mindepth 1 -not -name .gitkeep -delete
+cp -R web/dist/web-legacy/browser/. "$legacydist/"
+[ -f "$legacydist/index.html" ] ||
+  { echo "build-release: the legacy web build produced no index.html" >&2; exit 1; }
 
 echo "== binaries"
 mkdir -p dist

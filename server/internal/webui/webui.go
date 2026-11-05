@@ -27,6 +27,28 @@ func init() {
 //go:embed all:dist
 var embedded embed.FS
 
+// distLegacy holds the legacy build of the web app (web/dist/web-legacy: the same app converted for Chromium 74 and newer), served under
+// /legacy/ to engines that cannot read the modern build. It is empty (a .gitkeep) in a plain go build; scripts/build-release.sh fills it.
+//
+//go:embed all:dist-legacy
+var embeddedLegacy embed.FS
+
+// ModernMinChromium is the oldest Chromium that reads the modern build (docs/PLAN.md, "Minimum engine"; web/src/index.html names the same
+// number for its page). The player page of an older one is given the legacy build.
+const ModernMinChromium = 85
+
+var chromeToken = regexp.MustCompile(`Chrome/(\d+)`)
+
+// chromeMajor reads the major version of Chromium from a user agent ("... Chrome/74.0.3729.186 ..."); false when there is none.
+func chromeMajor(userAgent string) (int, bool) {
+	m := chromeToken.FindStringSubmatch(userAgent)
+	if m == nil {
+		return 0, false
+	}
+	n, err := strconv.Atoi(m[1])
+	return n, err == nil
+}
+
 // hashedName matches the content-hashed files of the Angular build, which sit in the root
 // (main-IZBVB4U4.js, chunk-DZXaOgK1.js, chunk-9n-1avh3.js): the hash may hold "-" and "_".
 var hashedName = regexp.MustCompile(`^[^/]+-[A-Za-z0-9_-]{8,}\.(js|css)$`)
@@ -37,7 +59,52 @@ func Handler() http.Handler {
 	if err != nil {
 		panic(err) // the directory is part of the embed pattern
 	}
-	return NewHandler(sub)
+	legacy, err := fs.Sub(embeddedLegacy, "dist-legacy")
+	if err != nil {
+		panic(err) // the directory is part of the embed pattern
+	}
+	return NewHandlerWithLegacy(sub, legacy)
+}
+
+// NewHandlerWithLegacy serves the web app like NewHandler and, when legacy holds a build (it has an index.html), also the legacy build
+// under /legacy/: a Chromium older than ModernMinChromium that asks for the player page (/embed/player, the page inside the Android and
+// Android TV app) is sent to /legacy/embed/player. Every other path, and every other browser, gets the modern build. With no legacy build
+// nothing is redirected and /legacy/ is not served.
+func NewHandlerWithLegacy(modern, legacy fs.FS) http.Handler {
+	if legacy != nil {
+		if _, err := fs.Stat(legacy, "index.html"); err != nil {
+			legacy = nil
+		}
+	}
+	modernHandler := NewHandler(modern)
+	if legacy == nil {
+		return modernHandler
+	}
+	legacyHandler := NewHandler(legacy)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := path.Clean("/" + r.URL.Path)
+		if p == "/embed/player" {
+			w.Header().Add("Vary", "User-Agent") // the answer depends on the browser: a cache must keep them apart
+			if r.Method == http.MethodGet || r.Method == http.MethodHead {
+				if major, ok := chromeMajor(r.UserAgent()); ok && major < ModernMinChromium {
+					w.Header().Set("Cache-Control", "no-store")
+					target := "/legacy/embed/player"
+					if r.URL.RawQuery != "" {
+						target += "?" + r.URL.RawQuery
+					}
+					http.Redirect(w, r, target, http.StatusFound)
+					return
+				}
+			}
+		}
+		if p == "/legacy" || strings.HasPrefix(p, "/legacy/") {
+			inner := r.Clone(r.Context())
+			inner.URL.Path = strings.TrimPrefix(p, "/legacy")
+			legacyHandler.ServeHTTP(w, inner)
+			return
+		}
+		modernHandler.ServeHTTP(w, r)
+	})
 }
 
 // NewHandler serves the files of fsys; a path that is not a file and has no extension is a route

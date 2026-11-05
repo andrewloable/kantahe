@@ -1,0 +1,96 @@
+/* Fallbacks for the player page on Chromium 74 (kantahe-org.7). Only the legacy build loads this file, and its page has class="legacy" on <html>:
+   every rule is scoped under html.legacy, so a modern engine would not change. An engine drops a declaration it does not know, so each rule
+   here restates what the player files (player-view, lyrics-view, score-screen, background-video, toasts) say with something Chromium 74 reads.
+   Chromium versions: flex gap 84, inset 87, min(), max() and clamp() 79. scripts/legacy-css.test.mjs fails when a player file starts to use one
+   of them without a rule here. Sizes that clamp() kept between a smallest and a largest value are steps of media queries here. */
+
+/* inset: 0 */
+html.legacy .layer,
+html.legacy .v,
+html.legacy .scrim,
+html.legacy .overlay {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+/* gap in a row of buttons or items: a margin between neighbours */
+html.legacy .topbar > button + button:not(.fs) {
+  margin-left: 0.5rem;
+}
+
+html.legacy .song p > * + * {
+  margin-left: 0.75rem;
+}
+
+html.legacy .controls > * {
+  margin: 0.375rem;
+}
+
+html.legacy .dots > * + * {
+  margin-left: 0.5rem;
+}
+
+/* gap in a column: a margin between neighbours */
+html.legacy .toasts > * + * {
+  margin-top: 0.5rem;
+}
+
+html.legacy .toast > * + * {
+  margin-left: 0.75rem;
+}
+
+/* clamp(min, preferred, max) on the size of text: the smallest, then the largest from a wider window */
+html.legacy app-lyrics-view {
+  font-size: 7vmin;
+}
+
+html.legacy .song h1 {
+  font-size: 1.5rem;
+}
+
+html.legacy .number {
+  font-size: 5rem;
+}
+
+html.legacy .comment {
+  font-size: 1.5rem;
+}
+
+@media (min-width: 40rem) {
+  html.legacy .song h1 {
+    font-size: 2.5rem;
+  }
+
+  html.legacy .comment {
+    font-size: 3rem;
+  }
+}
+
+@media (min-width: 40rem) {
+  html.legacy .number {
+    font-size: 10rem;
+  }
+}
+
+@media (min-width: 70rem) {
+  html.legacy .number {
+    font-size: 14rem;
+  }
+}
+
+/* max(6rem, native controls + 1.5rem): the room for the app's buttons, never less than 6rem; the sum is the safe side of both */
+html.legacy .stage.embedded {
+  padding-bottom: calc(var(--native-controls, 0px) + 6rem);
+}
+
+/* min(40rem, 90%) and min(28rem, 100%) */
+html.legacy progress {
+  width: 90%;
+  max-width: 40rem;
+}
+
+html.legacy .toast {
+  max-width: 28rem;
+}

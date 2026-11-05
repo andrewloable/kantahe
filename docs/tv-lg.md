@@ -6,8 +6,11 @@ documentation and **has not yet been run on a real TV**: the owner's acceptance 
 
 ## What you need
 
-* An LG TV with webOS TV 5 (2020 models) or newer is expected to work: the app is built with ES modules and an
-  AudioWorklet, which the web engines of older webOS versions do not have. Which models really run it, and which play
+* An LG TV with **webOS TV 22 (2022 models) or newer**. The app needs a web engine of Chromium 85 or newer, and LG's table gives
+  webOS TV 4.x Chromium 53, 5.x 68, 6.x 79 and 22 87 ([web engine table](https://webostv.developer.lge.com/develop/specifications/web-api-and-web-engine)),
+  so webOS 5 and 6 cannot run the current app (it also needs an AudioWorklet and ES modules). The build for older engines (down to
+  Chromium 74) is given by the server to the player page of the Android TV app only; the package for LG TVs is the normal build
+  (docs/PLAN.md, "Minimum engine"). Which models really run it, and which play
   MIDI songs without dropouts, comes from spike S1 ([report](spikes/s1-web-player.md), empty until it has been run on
   TVs); an older model that does not run it is a result worth writing down there. MP3 songs do not need the synthesizer.
 * A computer on the same network as the TV with Node.js, this repository and the webOS TV CLI:
@@ -42,14 +45,14 @@ bash scripts/build-webos.sh
 
 It builds the `webos` configuration of the web app, assembles `build/webos/` (the build, `tv/webos/appinfo.json` and the
 two icons), checks the `appinfo.json` (`scripts/check-webos-appinfo.py`: the keys webOS needs, the icon files and their
-sizes), and runs `ares-package build/webos -o dist`, which leaves `dist/party.kantahe_1.2.0_all.ipk`. Without
+sizes), and runs `ares-package build/webos -o dist`, which leaves `dist/party.kantahe_1.3.0_all.ipk`. Without
 `ares-package` the script stops at once and says so. `bash scripts/build-webos.sh --stage-only` assembles and checks
 the folder without packaging.
 
 ## 4. Install and start it
 
 ```sh
-ares-install --device tv dist/party.kantahe_1.2.0_all.ipk
+ares-install --device tv dist/party.kantahe_1.3.0_all.ipk
 ares-launch --device tv party.kantahe
 ```
 

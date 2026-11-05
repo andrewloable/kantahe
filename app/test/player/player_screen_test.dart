@@ -337,6 +337,15 @@ void main() {
       expect(controlsOpacity(tester), 0);
     });
 
+    testWidgets('an engine that is too old says so, with the versions, and offers no Try again (retrying cannot help)', (tester) async {
+      final r = await open(tester);
+      r.config!.onEngineTooOld!(66);
+      await tester.pump();
+      expect(find.textContaining('Chromium 66'), findsOneWidget);
+      expect(find.textContaining('Chromium 74 or newer'), findsOneWidget);
+      expect(find.text('Try again'), findsNothing);
+    });
+
     testWidgets('a page that does not load keeps its Try again in view', (tester) async {
       final r = await open(tester);
       r.config!.onError('net::ERR');

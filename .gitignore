@@ -16,7 +16,8 @@ Network Trash Folder
 Temporary Items
 .apdisk
 # custom folder icons: the name is Icon followed by a carriage return
-Icon
+Icon
+
 
 # Beads / Dolt files (added by bd init)
 .dolt/
@@ -35,6 +36,8 @@ Icon
 /server/internal/webui/dist/*
 !/server/internal/webui/dist/.gitkeep
 !/server/internal/webui/dist/index.html
+/server/internal/webui/dist-legacy/*
+!/server/internal/webui/dist-legacy/.gitkeep
 /server/internal/assets/soundfont/*.sf2
 
 # TV packages (scripts/build-tizen.sh, scripts/build-webos.sh)

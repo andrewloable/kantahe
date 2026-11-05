@@ -23,6 +23,10 @@ class FakeWebController extends PlatformWebViewController {
   final scripts = <String>[];
   final channels = <String, JavaScriptChannelParams>{};
   int reloads = 0;
+
+  /// What the next controller says its user agent is (set before the screen is built: the controller is created inside it).
+  static String? nextUserAgent;
+  String? userAgent = nextUserAgent;
   JavaScriptMode? mode;
   Color? background;
   void Function(PlatformWebViewPermissionRequest request)? onPermission;
@@ -35,6 +39,9 @@ class FakeWebController extends PlatformWebViewController {
 
   @override
   Future<void> reload() async => reloads++;
+
+  @override
+  Future<String?> getUserAgent() async => userAgent;
 
   @override
   Future<String?> currentUrl() async => loaded.isEmpty ? null : loaded.last.toString();

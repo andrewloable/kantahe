@@ -174,6 +174,9 @@ job_web() {
   run web 'npx ng test --watch=false' || return 1
   run web 'TZ=Pacific/Kiritimati npx ng test --watch=false' || return 1
   run web 'npx ng build' || return 1
+  run web 'npm run build:legacy' || return 1
+  run web 'npm run check:legacy' || return 1
+  run web 'npm run test:legacy' || return 1
   run web 'npx ng build --configuration tizen' || return 1
   run web 'npx ng build --configuration webos' || return 1
 }

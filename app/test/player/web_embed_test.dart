@@ -9,6 +9,7 @@ import 'fake_webview_platform.dart';
 class Seen {
   final messages = <String>[];
   final errors = <String>[];
+  final tooOld = <int>[];
   final asked = <Set<EmbedPermission>>[];
   EmbedHost? host;
   bool answer = true;
@@ -22,13 +23,15 @@ class Seen {
     },
     onHost: (h) => host = h,
     onError: errors.add,
+    onEngineTooOld: tooOld.add,
     allowNavigation: (uri) => uri.host == 'srv',
   );
 }
 
-Future<({Seen seen, FakeWebViewPlatform platform})> open(WidgetTester tester) async {
+Future<({Seen seen, FakeWebViewPlatform platform})> open(WidgetTester tester, {String? userAgent}) async {
   final platform = FakeWebViewPlatform();
   WebViewPlatform.instance = platform;
+  FakeWebController.nextUserAgent = userAgent;
   final seen = Seen();
   await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) => webEmbedBuilder(context, seen.config()))));
   await tester.pump();
@@ -42,6 +45,40 @@ void main() {
     expect(o.platform.controller!.loaded, [Uri.parse('http://srv:1/embed/player')]);
     expect(o.platform.controller!.mode, JavaScriptMode.unrestricted);
     expect(o.platform.controller!.background, Colors.black);
+  });
+
+  group('an engine that is too old', () {
+    const chrome66 = 'Mozilla/5.0 (Linux; Android 9; TV; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/66.0.3359.158 Safari/537.36';
+    const chrome74 = 'Mozilla/5.0 (Linux; Android 10; TV; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.186 Safari/537.36';
+    const chrome113 = 'Mozilla/5.0 (Linux; Android 14; TV; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/113.0.5672.136 Safari/537.36';
+
+    testWidgets('is reported, and the page is not loaded (it could only fail to start)', (tester) async {
+      final o = await open(tester, userAgent: chrome66);
+      await tester.pump();
+      expect(o.seen.tooOld, [66]);
+      expect(o.platform.controller!.loaded, isEmpty);
+    });
+
+    testWidgets('Chromium 74 loads the page: the server gives it the legacy player', (tester) async {
+      final o = await open(tester, userAgent: chrome74);
+      await tester.pump();
+      expect(o.seen.tooOld, isEmpty);
+      expect(o.platform.controller!.loaded, [Uri.parse('http://srv:1/embed/player')]);
+    });
+
+    testWidgets('a current engine loads the page and reports nothing', (tester) async {
+      final o = await open(tester, userAgent: chrome113);
+      await tester.pump();
+      expect(o.seen.tooOld, isEmpty);
+      expect(o.platform.controller!.loaded, [Uri.parse('http://srv:1/embed/player')]);
+    });
+
+    testWidgets('an engine that does not say its version loads the page as before', (tester) async {
+      final o = await open(tester);
+      await tester.pump();
+      expect(o.seen.tooOld, isEmpty);
+      expect(o.platform.controller!.loaded, [Uri.parse('http://srv:1/embed/player')]);
+    });
   });
 
   testWidgets('REGRESSION: when the screen goes away the page is unloaded, so no old player page goes on playing behind it', (tester) async {
