@@ -3,6 +3,7 @@ package library
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/andrewloable/kantahe/server/internal/testfix"
@@ -36,7 +37,7 @@ func TestTheMetadataPassStoresTheLyricTiming(t *testing.T) {
 	e.process(t)
 	want := map[string]int{"word.karmp3": 2, "line.karmp3": 1, "old.karmp3": 1, "marks.karmp3": 2, "midi.kar": 2}
 	for name, v := range want {
-		if got := e.timing(t, e.numberOfPath(t, e.lib+"/"+name)); got != v {
+		if got := e.timing(t, e.numberOfPath(t, filepath.Join(e.lib, name))); got != v {
 			t.Errorf("%s: lyric_timing %d, want %d", name, got, v)
 		}
 	}
@@ -68,7 +69,7 @@ func TestTheBackfillFillsSongsThatWereImportedBeforeTheColumnExisted(t *testing.
 	gone := e.put(t, "b.karmp3", timedKARMP3("b", "line", "[00:01.00]Sing along"))
 	e.scan(t)
 	e.process(t)
-	a, b := e.numberOfPath(t, e.lib+"/a.karmp3"), e.numberOfPath(t, gone)
+	a, b := e.numberOfPath(t, filepath.Join(e.lib, "a.karmp3")), e.numberOfPath(t, gone)
 	// as after the migration: metadata read, timing not
 	if _, err := e.db.Exec(`UPDATE songs SET lyric_timing = 0`); err != nil {
 		t.Fatal(err)

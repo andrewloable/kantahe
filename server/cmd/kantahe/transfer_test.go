@@ -112,7 +112,9 @@ func TestImportRestartsInProcess(t *testing.T) {
 	}
 }
 
-// A staged import that cannot be applied (here a folder that must hold files holds a file) leaves the server as it was.
+// A staged import that cannot be applied (here the folder for the backup of the old database is a file, which no operating system lets a
+// folder be made over) leaves the server as it was. The way of failing must be the same on Linux, macOS and Windows: reading a folder that
+// is a file fails with "not a directory" on Linux but with "not found" on Windows, so a file where a staged folder belongs does not do.
 func TestAnImportThatCannotBeAppliedStartsWithTheCurrentData(t *testing.T) {
 	data := filepath.Join(t.TempDir(), "data")
 	if err := os.MkdirAll(data, 0o750); err != nil {
@@ -135,7 +137,7 @@ func TestAnImportThatCannotBeAppliedStartsWithTheCurrentData(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(pending, "kantahe.db"), []byte("not the one"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(pending, "songs"), []byte("a file where a folder belongs"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(data, "backups"), []byte("a file where the folder of the backups belongs"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	addr, _, stop := runServerAt(t, data, "--discovery=false", "--render-cache-gb", "0")
@@ -167,8 +169,15 @@ func TestAnInterruptedSwapDoesNotStartAnEmptyServer(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(pending, "kantahe.db"), []byte("the new one"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	// make step 1 fail with no database in the data folder
-	if err := os.WriteFile(filepath.Join(pending, "media"), []byte("a file where a folder belongs"), 0o600); err != nil {
+	// make step 1 fail with no database in the data folder: the staged media go into a folder, and the data folder has a file of that name
+	// (making the folder fails with "not a directory" on every operating system)
+	if err := os.MkdirAll(filepath.Join(pending, "media"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pending, "media", "a.mp3"), []byte("staged"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(data, "media"), []byte("a file where the folder of the media belongs"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if applyStagedImport(data, slog.New(slog.NewTextHandler(io.Discard, nil))) {
