@@ -202,6 +202,15 @@ func (c *CodeLogins) Approve(code, userID string) (deviceName string, err error)
 }
 
 // Wait blocks until the code is approved (ErrCodeExpired when it ran out first) or ctx is done.
+// Waiting reports whether a Wait of the login is open now. Nothing in the server needs it; tests use it to know that a stream has really been
+// claimed instead of sleeping and hoping.
+func (c *CodeLogins) Waiting(loginID string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e, ok := c.byID[loginID]
+	return ok && e.waiting
+}
+
 // Only one Wait at a time per login id; the entry is deleted once Wait has returned its result,
 // but a Wait that ends because ctx is done leaves it for the TV to reconnect.
 func (c *CodeLogins) Wait(ctx context.Context, loginID string) (Approval, error) {

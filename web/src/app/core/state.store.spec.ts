@@ -312,7 +312,11 @@ describe('StateStore', () => {
     await vi.advanceTimersByTimeAsync(120_000);
     expect(h.attempts.length).toBe(attempts);
     expect(h.polls.length).toBe(polls);
-    expect(vi.getTimerCount()).toBe(0); // 120 s later every finite timer has fired, so any timer left is the store's
+    // 120 s later every finite timer has fired, so any timer left is the store's. One exception: Angular's change detection keeps a setTimeout and a
+    // requestAnimationFrame (two fake timers) for a moment after a signal changes, and on a busy machine the last change of stop() can come after the
+    // clock has stopped: give those a little time. A timer of the store's own (the poll interval, a retry, the watchdog) never goes away.
+    for (let i = 0; i < 5 && vi.getTimerCount() > 0; i++) await vi.advanceTimersByTimeAsync(1000);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('stop during a back-off wait cancels the retry', async () => {

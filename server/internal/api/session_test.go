@@ -748,19 +748,21 @@ func TestWatchStateKeepAliveRepeatsTheSnapshotOnAnIdleStream(t *testing.T) {
 
 func TestWatchStateKeepAliveWaitsWhileMessagesKeepComing(t *testing.T) {
 	old := keepAlive
-	keepAlive = 400 * time.Millisecond
+	// A wide margin: a change every 100 ms against a keep-alive of 1.5 s, so that a call that takes a second on a busy machine (a CI runner) still does
+	// not let the keep-alive fire between two changes (it did, with 150 ms against 400 ms: "7 messages for 6 changes").
+	keepAlive = 1500 * time.Millisecond
 	a := newAdminEnv(t)
 	n := a.seed(t, "One.kar", "One", "X", true)
 	w := a.watch(t, a.admin.Token)
 	defer func() { w.stop(); keepAlive = old }()
 	w.next(t, 2*time.Second)
-	// a change every 150 ms for about a second: each one is sent, and no repeat is added between them
+	// a change every 100 ms for about a second: each one is sent, and no repeat is added between them
 	changes := 0
 	for end := time.Now().Add(1100 * time.Millisecond); time.Now().Before(end); changes++ {
 		a.addToQueue(t, a.admin.Token, n)
-		time.Sleep(150 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	got := 0
 drain:
 	for {
@@ -775,7 +777,7 @@ drain:
 		t.Fatalf("%d messages for %d changes: the keep-alive fired while messages were coming", got, changes)
 	}
 	// and once the changes stop, the keep-alive starts again
-	w.next(t, 2*time.Second)
+	w.next(t, 5*time.Second)
 }
 
 func (a *adminEnv) setBackground(token, deviceID string, mode kantahev1.BackgroundMode) (*kantahev1.SetBackgroundModeResponse, error) {

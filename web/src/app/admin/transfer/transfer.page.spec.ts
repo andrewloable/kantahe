@@ -6,7 +6,8 @@ import { TRANSPORT } from '../../core/api';
 import { exportMsg, fakeAdminTransfer, gate, importMsg, infoMsg, inspectMsg } from '../testing';
 import { TRANSFER_TIMING, TransferPage } from './transfer.page';
 
-async function setup(timing = { pollMs: 1, giveUpMs: 300 }) {
+// giveUpMs is the page's own wall-clock budget for the server to come back: wide, so that a slow machine does not use it up; the test of giving up passes a small one
+async function setup(timing = { pollMs: 1, giveUpMs: 10_000 }) {
   const server = fakeAdminTransfer();
   TestBed.configureTestingModule({
     providers: [provideRouter([]), { provide: TRANSPORT, useValue: server.transport }, { provide: TRANSFER_TIMING, useValue: timing }],
@@ -40,7 +41,16 @@ async function setup(timing = { pollMs: 1, giveUpMs: 300 }) {
     await settle(1);
   };
   const text = () => el.textContent!.replace(/\s+/g, ' ');
-  return { server, auth, fixture, el, settle, type, button, click, tick, text };
+  // waits for what the page will show instead of guessing how long it takes: re-checks every 5 ms, up to `ms` (5 s)
+  const until = async (done: () => boolean, ms = 5000) => {
+    const end = Date.now() + ms;
+    for (;;) {
+      await settle(1);
+      if (done() || Date.now() > end) return;
+      await new Promise((r) => setTimeout(r, 5));
+    }
+  };
+  return { server, auth, fixture, el, settle, type, button, click, tick, text, until };
 }
 
 describe('TransferPage', () => {
@@ -207,9 +217,7 @@ describe('TransferPage', () => {
       expect(t.server.calls.import.map((r) => r.folder)).toEqual(['/good']);
       expect(t.el.querySelector('progress')?.getAttribute('aria-label')).toBe('Import progress');
       stage.open();
-      await t.settle(40);
-      await new Promise((r) => setTimeout(r, 60));
-      await t.settle();
+      await t.until(() => t.text().includes('The server is back.'));
       expect(t.text()).toContain('The server is back. Sign in with an account of the exported server.');
       expect(t.auth.token()).toBeUndefined();
       const link = Array.from(t.el.querySelectorAll('a')).find((a) => a.getAttribute('href') === '/login');
@@ -224,8 +232,7 @@ describe('TransferPage', () => {
       await t.click('Check');
       await t.tick('import-confirm');
       await t.click('Replace everything on this server');
-      await new Promise((r) => setTimeout(r, 150));
-      await t.settle();
+      await t.until(() => t.text().includes('The server has not come back yet.'));
       expect(t.text()).toContain('The server has not come back yet. Check its log.');
       expect(t.text()).not.toContain('The server is back');
       expect(t.auth.token()).toBe('token');

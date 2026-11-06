@@ -91,7 +91,7 @@ func TestApproveFlow(t *testing.T) {
 	}
 	out := make(chan res, 1)
 	go func() { a, err := cl.Wait(context.Background(), id); out <- res{a, err} }()
-	time.Sleep(20 * time.Millisecond)
+	waitingNow(t, cl, id)
 	name, err := cl.Approve(code, "user-1")
 	if err != nil || name != "Living room" {
 		t.Fatalf("Approve = %q, %v", name, err)
@@ -138,7 +138,7 @@ func TestExpiresWhileWaiting(t *testing.T) {
 	id, _, _, _ := cl.Start("TV", 1, ip1)
 	out := make(chan error, 1)
 	go func() { _, err := cl.Wait(context.Background(), id); out <- err }()
-	time.Sleep(20 * time.Millisecond)
+	waitingNow(t, cl, id)
 	c.advance(5*time.Minute + time.Second)
 	select {
 	case err := <-out:
@@ -246,7 +246,7 @@ func TestOneWaiterAtATime(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	first := make(chan error, 1)
 	go func() { _, err := cl.Wait(ctx, id); first <- err }()
-	time.Sleep(20 * time.Millisecond)
+	waitingNow(t, cl, id)
 	if _, err := cl.Wait(context.Background(), id); !errors.Is(err, ErrCodeBusy) {
 		t.Fatalf("second concurrent Wait: %v", err)
 	}
@@ -339,7 +339,7 @@ func TestRegression_WaitDoesNotDropANewerEntryWithTheSameCode(t *testing.T) {
 	defer cancel()
 	gone := make(chan error, 1)
 	go func() { _, err := cl.Wait(ctx, id); gone <- err }()
-	time.Sleep(30 * time.Millisecond)
+	waitingNow(t, cl, id)
 	// under one lock: the first entry expires and is pruned, and a new one takes its code
 	cl.mu.Lock()
 	c.advance(5*time.Minute + time.Second)
@@ -352,5 +352,37 @@ func TestRegression_WaitDoesNotDropANewerEntryWithTheSameCode(t *testing.T) {
 	}
 	if name, err := cl.Approve(code, "u"); err != nil || name != "New TV" {
 		t.Fatalf("the newer entry was dropped by the old Wait: %q %v", name, err)
+	}
+}
+
+// waitingNow polls (5 ms, up to 10 s) until a Wait of the login is open: a test must not guess with a sleep how long a goroutine needs to get there.
+func waitingNow(t *testing.T, cl *CodeLogins, id string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for !cl.Waiting(id) {
+		if time.Now().After(deadline) {
+			t.Fatal("no Wait became open")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func TestWaitingReportsAnOpenStream(t *testing.T) {
+	cl, _ := newCodes()
+	id, _, _, _ := cl.Start("TV", 1, ip1)
+	if cl.Waiting(id) || cl.Waiting("no-such-login") {
+		t.Fatal("nothing is waiting yet")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { _, _ = cl.Wait(ctx, id); close(done) }()
+	waitingNow(t, cl, id)
+	if cl.Waiting("no-such-login") {
+		t.Fatal("an unknown login is never waiting")
+	}
+	cancel()
+	<-done
+	if cl.Waiting(id) {
+		t.Fatal("a cancelled Wait leaves the entry for the TV to reconnect, but nothing is waiting any more")
 	}
 }

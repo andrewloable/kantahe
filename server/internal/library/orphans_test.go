@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -141,9 +142,14 @@ func TestDeleteSongWaitingForABusyFileDoesNotStarveAnotherWriter(t *testing.T) {
 	e.process(t)
 	number := e.numberOfPath(t, p)
 	start := time.Now()
+	inTx := make(chan struct{}) // closed when the delete reaches the file: it is inside its write transaction then
+	var once sync.Once
 	t.Cleanup(fsutil.SetHooksForTest(fsutil.Hooks{
 		IsBusy: func(err error) bool { return errors.Is(err, errInUse) },
 		Remove: func(path string) error {
+			if path == p {
+				once.Do(func() { close(inTx) })
+			}
 			if path == p && time.Since(start) < 3*time.Second {
 				return &fs.PathError{Op: "remove", Path: path, Err: errInUse}
 			}
@@ -152,7 +158,11 @@ func TestDeleteSongWaitingForABusyFileDoesNotStarveAnotherWriter(t *testing.T) {
 	}))
 	deleted := make(chan error, 1)
 	go func() { deleted <- e.im.DeleteSong(context.Background(), number) }()
-	time.Sleep(300 * time.Millisecond) // the delete is inside its transaction now
+	select { // not a fixed sleep: on a slow machine the delete may take longer than any guess to reach its transaction
+	case <-inTx:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the delete never reached the file")
+	}
 	wrote := time.Now()
 	err := e.db.WriteTx(context.Background(), func(tx *sql.Tx) error {
 		_, err := tx.Exec(`INSERT INTO settings(key, value) VALUES ('probe', '1')`)

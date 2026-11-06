@@ -63,6 +63,19 @@ func (e *testEnv) waitCode(ctx context.Context, loginID string) (*kantahev1.Wait
 
 func fastPoll(e *testEnv) { e.mounted.codes.Poll = 5 * time.Millisecond }
 
+// streamOpen waits (up to 10 s) until the server holds a WaitCodeLogin stream for the login: a fixed sleep is a guess that fails on a slow runner, and
+// a second stream that gets in before the first one has claimed the login would block for ever instead of being refused.
+func (e *testEnv) streamOpen(t *testing.T, loginID string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for !e.mounted.codes.Waiting(loginID) {
+		if time.Now().After(deadline) {
+			t.Fatal("the server never held a stream for the login")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
 func TestCodeLoginApproveFlow(t *testing.T) {
 	a := newAdminEnv(t)
 	fastPoll(a.testEnv)
@@ -81,7 +94,7 @@ func TestCodeLoginApproveFlow(t *testing.T) {
 		}
 		got <- r
 	}()
-	time.Sleep(50 * time.Millisecond)
+	a.streamOpen(t, start.LoginId)
 	res, err := a.approve(a.user.Token, strings.ToLower(start.Code))
 	if err != nil || res.DeviceName != "Living room TV" {
 		t.Fatalf("%+v %v", res, err)
@@ -142,7 +155,7 @@ func TestCodeLoginExpiresWhileStreamIsOpen(t *testing.T) {
 	start := a.startCode(t, "")
 	got := make(chan *kantahev1.WaitCodeLoginResponse, 1)
 	go func() { r, _ := a.waitCode(context.Background(), start.LoginId); got <- r }()
-	time.Sleep(50 * time.Millisecond)
+	a.streamOpen(t, start.LoginId)
 	a.clock.advance(5*time.Minute + time.Second)
 	select {
 	case r := <-got:
@@ -262,7 +275,7 @@ func TestCodeLoginWaitCancelReleasesTheStream(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() { _, _ = a.waitCode(ctx, start.LoginId); close(done) }()
-	time.Sleep(100 * time.Millisecond)
+	a.streamOpen(t, start.LoginId)
 	// while the first stream is open a second one is refused
 	if _, err := a.waitCode(context.Background(), start.LoginId); code(err) != connect.CodeAborted {
 		t.Fatalf("second concurrent stream: %v", err)
