@@ -6,9 +6,12 @@ on:
   workflow_call:
   workflow_dispatch:
 
+# The Linux jobs run on ubuntu-24.04, not ubuntu-latest: on 2026-11-06 "latest" became 26.04, on which Playwright cannot install Chromium and the
+# nginx config check failed (nginx could not write /run/nginx.pid), so a release failed on a runner change alone. Move to a newer image on purpose, by hand.
+
 jobs:
   go:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: server
@@ -55,7 +58,7 @@ jobs:
           path: windows-test.log
 
   web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: web
@@ -80,7 +83,7 @@ jobs:
 
   scripts-and-docs:
     # the TV package files and the helper scripts, and the links in the Markdown docs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -108,7 +111,7 @@ jobs:
 
   e2e:
     # one run of the whole product: the real server with a synthetic library, the web app, a real browser
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
@@ -140,7 +143,7 @@ jobs:
 
   release-build:
     # the release script end to end: web app and SoundFont embedded, six binaries, the linux one started
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
@@ -161,7 +164,7 @@ jobs:
 
   docker:
     # the image on both architectures (arm64 under emulation): version, non-root user, web app, restart keeps the data
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -175,7 +178,7 @@ jobs:
 
   deploy-files:
     # the proxy examples are accepted by Caddy and nginx, the systemd unit passes systemd-analyze
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - run: scripts/check-proxy-configs.sh
@@ -187,7 +190,7 @@ jobs:
       - run: systemd-analyze verify deploy/systemd/kantahe.service
 
   flutter:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: app
@@ -204,7 +207,7 @@ jobs:
       - run: TZ=Pacific/Kiritimati flutter test
 
   flutter-android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: app
@@ -238,7 +241,7 @@ jobs:
       - run: flutter build ios --simulator --no-codesign --debug
 
   buf:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: bufbuild/buf-action@v1

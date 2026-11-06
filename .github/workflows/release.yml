@@ -30,7 +30,7 @@ env:
 jobs:
   plan:
     # refuses a tag that is not a version, or not greater than the existing ones, before anything is built
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     outputs:
@@ -69,7 +69,7 @@ jobs:
 
   release:
     needs: [plan, checks]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
@@ -104,7 +104,7 @@ jobs:
   image:
     # the multi-arch image on ghcr.io; "latest" only moves for versions without a pre-release suffix
     needs: [plan, checks]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -143,7 +143,7 @@ jobs:
     # If it is red the release stays published; docs/releasing.md says what to do.
     if: github.event_name == 'push'
     needs: [plan, release, image]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: read
