@@ -4,7 +4,7 @@
 # (docs/PLAN.md, "Minimum engine") on a real Chromium 74: Playwright cannot, and the syntax scanner does not see a missing
 # function or a CSS problem.
 #
-#   scripts/legacy-webview-check.sh [--build both|modern] [--api 29|35] [--without-polyfills] [--out DIR]
+#   scripts/legacy-webview-check.sh [--build both|modern] [--api 29|35] [--without-polyfills] [--amateur] [--out DIR]
 #
 #   --build both    (default) the server carries the modern and the legacy build, as a release does; an engine below
 #                   Chromium 85 is sent to the legacy one. Expected on --api 29: PASS.
@@ -15,6 +15,9 @@
 #                   did not break a modern engine (the server hands a modern engine the modern build in both modes).
 #   --without-polyfills  strips the polyfill script from the legacy page before it is served: the check must then FAIL
 #                   (a missing function in the console). It proves that the check can fail.
+#   --amateur       checks amateur singer mode instead of the plain player run: the library gets one song with a vocals track and four lyric
+#                   lines, the mode is switched on with the administrator's account, and app/integration_test/amateur_flow_test.dart expects the
+#                   app's Vocals button to read "on" by itself in the first two lines and "off" after the third line starts.
 #   --out DIR       where the screenshots, logcat and logs go (default: a new folder in the temp folder; printed).
 #
 # It creates the AVD kantahe_api<N> if it is missing (it touches no other AVD), builds the web app (both builds) into the
@@ -28,11 +31,13 @@ build=both
 api=29
 out=""
 no_polyfills=""
+amateur=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --build) build="$2"; shift 2 ;;
     --api) api="$2"; shift 2 ;;
     --without-polyfills) no_polyfills=1; shift ;;
+    --amateur) amateur=1; shift ;;
     --out) out="$2"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -137,7 +142,10 @@ fi
 (cd "$repo/server" && CGO_ENABLED=0 go build -o "$work/kantahe" ./cmd/kantahe && CGO_ENABLED=0 go build -o "$work/fixtures" ./cmd/kantahe-fixtures)
 restore
 
-"$work/fixtures" -out "$work/library" -mp3 3 -midi 4 -sf2 "$work/test.sf2" >/dev/null
+guide_number=90
+guide_args=()
+[ -z "$amateur" ] || guide_args=(-guide "$guide_number")
+"$work/fixtures" -out "$work/library" -mp3 3 -midi 4 -sf2 "$work/test.sf2" ${guide_args[@]+"${guide_args[@]}"} >/dev/null
 "$work/kantahe" --listen "127.0.0.1:$server_port" --data "$work/data" --library "$work/library" --soundfont "$work/test.sf2" --score-seconds 3 --discovery=false >"$out/server.log" 2>&1 </dev/null &
 server_pid=$!
 base="http://127.0.0.1:$server_port"
@@ -164,6 +172,14 @@ user_token=$(curl -s --noproxy '*' -H "$json" -d "{\"email\":\"user@example.test
 curl -s --noproxy '*' -o /dev/null -H "$json" -H "Authorization: Bearer $user_token" -d "{\"currentPassword\":\"$user_pw\",\"newPassword\":\"$user_pw-ok\"}" "$base/kantahe.v1.AuthService/ChangePassword"
 
 # --- 4. the run -------------------------------------------------------------------------------------------------------
+test_file=player_flow_test.dart
+test_defines=()
+if [ -n "$amateur" ]; then
+  curl -s --noproxy '*' -o /dev/null -H "$json" -H "Authorization: Bearer $admin_token" -d '{"amateurMode":true}' "$base/kantahe.v1.AdminService/UpdateServerSettings"
+  curl -s --noproxy '*' -H "$json" -H "Authorization: Bearer $admin_token" -d '{}' "$base/kantahe.v1.AdminService/GetServerSettings" | grep -Eq '"amateurMode": ?true' || die "amateur singer mode was not switched on"
+  test_file=amateur_flow_test.dart
+  test_defines=(--dart-define="GUIDE_NUMBER=$(printf %05d "$guide_number")")
+fi
 step "running the player on the emulator (build $build, server at http://10.0.2.2:$server_port)"
 "$adb" -s "$serial" logcat -c
 "$adb" -s "$serial" logcat -v time >"$out/logcat.txt" 2>&1 &
@@ -179,11 +195,11 @@ shots_pid=$!
 disown "$shots_pid"
 
 test_ok=1
-(cd "$repo/app" && flutter test integration_test/player_flow_test.dart -d "$serial" \
+(cd "$repo/app" && flutter test "integration_test/$test_file" -d "$serial" \
   --dart-define="SERVER_URL=http://10.0.2.2:$server_port" \
   --dart-define="USER_EMAIL=user@example.test" \
   --dart-define="USER_PASSWORD=$user_pw-ok" \
-  --dart-define="KANTAHE_NO_DISCOVERY=true") >"$out/flutter-test.log" 2>&1 || test_ok=""
+  --dart-define="KANTAHE_NO_DISCOVERY=true" ${test_defines[@]+"${test_defines[@]}"}) >"$out/flutter-test.log" 2>&1 || test_ok=""
 kill "$shots_pid" 2>/dev/null || true
 shots_pid=""
 kill "$logcat_pid" 2>/dev/null || true
@@ -200,7 +216,7 @@ if [ -n "$errors" ]; then
   echo "$errors" | head -20
 fi
 if [ -n "$test_ok" ] && [ -z "$errors" ]; then
-  echo "PASS: the player played both songs on $(sed 's/^ *//' "$out/webview.txt")"
+  echo "PASS: ${amateur:+amateur singer mode: the guide vocals followed the window; }the player played its songs on $(sed 's/^ *//' "$out/webview.txt")"
   exit 0
 fi
 echo "FAIL: build $build on API $api (test passed: ${test_ok:-no}; console errors: $(echo -n "$errors" | grep -c . || true))"

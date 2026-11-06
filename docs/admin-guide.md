@@ -41,7 +41,7 @@ A `.karmp3` made with Kantahe Maker 1.1 or later may carry a **vocals track** (t
 switch on as a guide. Such files are supported: nothing needs to be done for them. A file like that in a watched folder that an
 older version refused (it was listed as broken, "more than one .mp3 entry") is read again by itself at the first start of the new
 version; *Check for broken songs* brings back any that are left. A refused upload was never stored and must be uploaded again.
-If a file names a vocals track that is missing or damaged, the song still plays without it and the server log says so once.
+If a file names a vocals track that is missing or damaged, the song still plays without it and the server log says so once. *Admin → Settings → Amateur singer mode* makes the vocals play by themselves at the start of every song that has them (below).
 
 Only the songs matter to Kantahe: it ships none, and what you upload is your responsibility.
 
@@ -169,7 +169,11 @@ mode, **On** always shows them, **Off** never does. A browser that asks for less
 
 ## Settings
 
-*Admin → Settings*: the largest upload (above) and how long the score is shown (seconds). Server flags (see
+*Admin → Settings*: the largest upload (above), the largest background video, how long the score is shown (seconds), and **Amateur
+singer mode** (off by default). With it on, every song that has a vocals track plays the singer's voice by itself from the start until the
+third line of its lyrics begins (it fades out over about 0.3 seconds), as a guide for singers who do not know the song; a singer can still
+switch the voice off, and the next song is guided again. Songs without a vocals track, MIDI songs and songs with fewer than three lines of
+lyrics are not affected. A change applies from the next song a player loads. Server flags (see
 `kantahe --help`, and the [installation guide](install.md)): `--data`, `--library`, `--listen`, `--public-url`,
 `--trusted-proxies`, `--soundfont`, `--score-seconds`, `--render-cache-gb`, `--transfer-root`.
 

@@ -106,6 +106,13 @@ The choice and the level are kept until you close the page or the app, and apply
 loaded the button switches itself off with a short message and the song goes on. The Android, iOS and TV app have the same buttons next
 to Skip.
 
+**Amateur singer mode.** When the administrator has switched it on (*Admin → Settings*), a song with a vocals track plays the singer's voice
+by itself from the start until the third line of the lyrics begins, where it fades out over a third of a second. It is a guide for a song you
+do not know: you hear the tune and the words of the first two lines before you sing. The **Vocals** button shows *on* while it plays. Press
+it to switch the voice off at once; it then stays off for the rest of that song, and the next song starts with the guide again. If you had
+switched the vocals on yourself, they simply stay on. A song without a vocals track, a MIDI song, and a song with fewer than three lines of
+lyrics are not affected. The change of the setting applies from the next song.
+
 If the admin has added background videos, they play behind the lyrics, one after another and round again, without a gap, also
 while nothing is playing and while the score shows; a paused song pauses them. They are **pictures only: no sound ever comes
 from them.** The lyrics are on a dark layer over the picture so that they stay easy to read. Each device has a *Background

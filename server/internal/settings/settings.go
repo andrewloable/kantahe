@@ -18,6 +18,9 @@ const (
 	// Background videos (docs/PLAN.md section 4.2): whether the players show them, and whether they play in a shuffled order.
 	KeyBackgroundEnabled = "background_enabled"
 	KeyBackgroundShuffle = "background_shuffle"
+
+	// Amateur singer mode (docs/PLAN.md, "Amateur singer mode"): a song with a vocals track plays the singer's voice during its first two lyric lines.
+	KeyAmateurMode = "amateur_mode"
 )
 
 // Defaults and the ranges an admin may choose from.
@@ -55,6 +58,8 @@ type Settings struct {
 
 	BackgroundEnabled bool
 	BackgroundShuffle bool
+
+	AmateurMode bool
 }
 
 // Patch is a partial update: the settings whose pointer is set are written.
@@ -65,6 +70,8 @@ type Patch struct {
 
 	BackgroundEnabled *bool
 	BackgroundShuffle *bool
+
+	AmateurMode *bool
 }
 
 func get(ctx context.Context, q Querier, key string) (string, bool, error) {
@@ -120,6 +127,11 @@ func BackgroundEnabled(ctx context.Context, q Querier) (bool, error) {
 	return flag(ctx, q, KeyBackgroundEnabled, true)
 }
 
+// AmateurMode says whether the guide vocals play by themselves during the first two lyric lines; the default is no.
+func AmateurMode(ctx context.Context, q Querier) (bool, error) {
+	return flag(ctx, q, KeyAmateurMode, false)
+}
+
 // BackgroundShuffle says whether the players shuffle the videos on every pass; the default is no.
 func BackgroundShuffle(ctx context.Context, q Querier) (bool, error) {
 	return flag(ctx, q, KeyBackgroundShuffle, false)
@@ -157,7 +169,11 @@ func Load(ctx context.Context, q Querier, defaultScoreSeconds int) (Settings, er
 		return Settings{}, err
 	}
 	shuffle, err := BackgroundShuffle(ctx, q)
-	return Settings{MaxUploadBytes: up, ScoreSeconds: sc, MaxVideoBytes: vb, BackgroundEnabled: on, BackgroundShuffle: shuffle}, err
+	if err != nil {
+		return Settings{}, err
+	}
+	amateur, err := AmateurMode(ctx, q)
+	return Settings{MaxUploadBytes: up, ScoreSeconds: sc, MaxVideoBytes: vb, BackgroundEnabled: on, BackgroundShuffle: shuffle, AmateurMode: amateur}, err
 }
 
 // Update stores the settings whose pointer is set, after checking their ranges.
@@ -186,7 +202,7 @@ func Update(ctx context.Context, x Execer, p Patch) error {
 			return err
 		}
 	}
-	for key, v := range map[string]*bool{KeyBackgroundEnabled: p.BackgroundEnabled, KeyBackgroundShuffle: p.BackgroundShuffle} {
+	for key, v := range map[string]*bool{KeyBackgroundEnabled: p.BackgroundEnabled, KeyBackgroundShuffle: p.BackgroundShuffle, KeyAmateurMode: p.AmateurMode} {
 		if v == nil {
 			continue
 		}

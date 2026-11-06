@@ -37,7 +37,7 @@ import { CacheKind, SongCache } from './cache/song-cache';
 import { MicMeter } from './mic';
 
 export function playbackOf(
-  over: Partial<{ kind: PlaybackKind; ready: boolean; retryAfterMs: number; mode: MidiMode; lyrics: Lyrics; audioUrl: string; song: Song; gainDb: number; vocalsUrl: string; audioVersion: string; vocalsVersion: string }> = {},
+  over: Partial<{ kind: PlaybackKind; ready: boolean; retryAfterMs: number; mode: MidiMode; lyrics: Lyrics; audioUrl: string; song: Song; gainDb: number; vocalsUrl: string; audioVersion: string; vocalsVersion: string; guideVocalsUntilMs: bigint }> = {},
 ): Playback {
   return create(PlaybackSchema, {
     kind: over.kind ?? PlaybackKind.MIDI_SYNTH,
@@ -53,6 +53,7 @@ export function playbackOf(
     vocalsUrl: over.vocalsUrl,
     audioVersion: over.audioVersion,
     vocalsVersion: over.vocalsVersion,
+    guideVocalsUntilMs: over.guideVocalsUntilMs,
   });
 }
 

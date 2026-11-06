@@ -4,8 +4,8 @@ import { TRANSPORT } from '../../core/api';
 import { fakeAdminSongs } from '../testing';
 import { ServerSettingsPage } from './server-settings.page';
 
-async function setup() {
-  const server = fakeAdminSongs({ maxUploadBytes: 50 * 1024 * 1024, scoreSeconds: 6 });
+async function setup(amateurMode = false) {
+  const server = fakeAdminSongs({ maxUploadBytes: 50 * 1024 * 1024, scoreSeconds: 6, amateurMode });
   TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: server.transport }] });
   const fixture = TestBed.createComponent(ServerSettingsPage);
   const el = fixture.nativeElement as HTMLElement;
@@ -28,6 +28,40 @@ async function setup() {
 }
 
 describe('ServerSettingsPage', () => {
+  it('shows the amateur switch from the server', async () => {
+    for (const on of [true, false]) {
+      TestBed.resetTestingModule();
+      const { el } = await setup(on);
+      expect(el.querySelector<HTMLInputElement>('#amateur-mode')!.checked, String(on)).toBe(on);
+    }
+  });
+
+  it('saves the amateur switch, alone when only it changed, and does not resend it when it did not', async () => {
+    const { el, save, server, type } = await setup();
+    const box = el.querySelector<HTMLInputElement>('#amateur-mode')!;
+    box.checked = true;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    await save();
+    expect(server.calls.settings).toHaveLength(1);
+    expect(server.calls.settings[0].amateurMode).toBe(true);
+    expect(server.calls.settings[0].maxUploadBytes).toBeUndefined();
+    expect(server.calls.settings[0].scoreSeconds).toBeUndefined();
+    expect(el.querySelector<HTMLInputElement>('#amateur-mode')!.checked).toBe(true);
+    type('score-seconds', '10');
+    await save();
+    expect(server.calls.settings).toHaveLength(2);
+    expect(server.calls.settings[1].amateurMode).toBeUndefined();
+    expect(server.calls.settings[1].scoreSeconds).toBe(10);
+  });
+
+  it('gives the amateur switch a name and a hint that it can be read from', async () => {
+    const { el } = await setup();
+    const box = el.querySelector<HTMLInputElement>('#amateur-mode')!;
+    expect(el.querySelector('label[for="amateur-mode"]')?.textContent).toBe('Amateur singer mode');
+    const hint = el.querySelector('#' + box.getAttribute('aria-describedby'));
+    expect(hint?.textContent).toContain('first two lines');
+  });
+
   it('shows the upload limit in megabytes and the score time in seconds', async () => {
     const { el } = await setup();
     expect(el.querySelector<HTMLInputElement>('#max-upload')!.value).toBe('50');

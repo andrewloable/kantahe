@@ -312,6 +312,13 @@ const Playback$json = {
     {'1': 'vocals_url', '3': 11, '4': 1, '5': 9, '10': 'vocalsUrl'},
     {'1': 'audio_version', '3': 12, '4': 1, '5': 9, '10': 'audioVersion'},
     {'1': 'vocals_version', '3': 13, '4': 1, '5': 9, '10': 'vocalsVersion'},
+    {
+      '1': 'guide_vocals_until_ms',
+      '3': 14,
+      '4': 1,
+      '5': 3,
+      '10': 'guideVocalsUntilMs'
+    },
   ],
   '8': [
     {'1': '_gain_db'},
@@ -328,8 +335,9 @@ final $typed_data.Uint8List playbackDescriptor = $convert.base64Decode(
     'R5EiQKDnJldHJ5X2FmdGVyX21zGAggASgFUgxyZXRyeUFmdGVyTXMSKgoGbHlyaWNzGAkgASgL'
     'MhIua2FudGFoZS52MS5MeXJpY3NSBmx5cmljcxIcCgdnYWluX2RiGAogASgCSABSBmdhaW5EYo'
     'gBARIdCgp2b2NhbHNfdXJsGAsgASgJUgl2b2NhbHNVcmwSIwoNYXVkaW9fdmVyc2lvbhgMIAEo'
-    'CVIMYXVkaW9WZXJzaW9uEiUKDnZvY2Fsc192ZXJzaW9uGA0gASgJUg12b2NhbHNWZXJzaW9uQg'
-    'oKCF9nYWluX2Ri');
+    'CVIMYXVkaW9WZXJzaW9uEiUKDnZvY2Fsc192ZXJzaW9uGA0gASgJUg12b2NhbHNWZXJzaW9uEj'
+    'EKFWd1aWRlX3ZvY2Fsc191bnRpbF9tcxgOIAEoA1ISZ3VpZGVWb2NhbHNVbnRpbE1zQgoKCF9n'
+    'YWluX2Ri');
 
 @$core.Deprecated('Use getPlaybackResponseDescriptor instead')
 const GetPlaybackResponse$json = {

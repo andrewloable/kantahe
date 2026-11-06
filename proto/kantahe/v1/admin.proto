@@ -242,13 +242,16 @@ message GetServerSettingsResponse {
 }
 
 // Server-wide limits and switches: upload size per song, how long the score screen shows, the size limit of one background video and
-// whether the players show the background videos (in the order set, or shuffled on every pass).
+// whether the players show the background videos (in the order set, or shuffled on every pass), and the amateur singer mode.
 message ServerSettings {
   int64 max_upload_bytes = 1;
   int32 score_seconds = 2;
   int64 max_video_bytes = 3;
   bool background_enabled = 4;
   bool background_shuffle = 5;
+  // Amateur singer mode: a song with a guide vocals track plays the singer's voice by itself during its first two lyric lines (until the start
+  // of the third), as a guide for a song the singer does not know. Off by default; it applies from the next song a player loads.
+  bool amateur_mode = 6;
 }
 
 // Partial update of the server settings.
@@ -258,6 +261,7 @@ message UpdateServerSettingsRequest {
   optional int64 max_video_bytes = 3;
   optional bool background_enabled = 4;
   optional bool background_shuffle = 5;
+  optional bool amateur_mode = 6;
 }
 
 // The settings after the update.

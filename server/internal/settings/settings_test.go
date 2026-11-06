@@ -188,3 +188,43 @@ func TestUpdateBackgroundSwitches(t *testing.T) {
 		t.Fatalf("%+v", s)
 	}
 }
+
+func TestAmateurModeDefaultOffAndUpdate(t *testing.T) {
+	db, err := store.Open(context.Background(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if on, err := AmateurMode(ctx, db); err != nil || on {
+		t.Fatalf("an empty table must mean off: %v %v", on, err)
+	}
+	if s, _ := Load(ctx, db, 9); s.AmateurMode {
+		t.Fatalf("Load: %+v", s)
+	}
+	yes := true
+	if err := Update(ctx, db, Patch{AmateurMode: &yes}); err != nil {
+		t.Fatal(err)
+	}
+	if on, _ := AmateurMode(ctx, db); !on {
+		t.Fatal("the stored switch must read back as on")
+	}
+	if s, _ := Load(ctx, db, 9); !s.AmateurMode {
+		t.Fatalf("Load after update: %+v", s)
+	}
+	// a patch that does not mention it leaves it alone
+	sec := 12
+	if err := Update(ctx, db, Patch{ScoreSeconds: &sec}); err != nil {
+		t.Fatal(err)
+	}
+	if on, _ := AmateurMode(ctx, db); !on {
+		t.Fatal("an update of another setting changed the amateur switch")
+	}
+	no := false
+	if err := Update(ctx, db, Patch{AmateurMode: &no}); err != nil {
+		t.Fatal(err)
+	}
+	if on, _ := AmateurMode(ctx, db); on {
+		t.Fatal("off must read back as off")
+	}
+}

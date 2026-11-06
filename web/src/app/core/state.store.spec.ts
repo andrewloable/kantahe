@@ -32,19 +32,23 @@ const fail: Attempt = async function* () {
   throw new ConnectError('down', Code.Unavailable);
 };
 
-let holdAborts = 0; // streams kept open by hold() that the client closed
+// Streams kept open by hold() that the client closed. Every test gets a counter object of its own and a stream counts into the one that was current
+// when its hold() was made: an abort that reaches a stream late (after the next test has begun) must not be counted in that next test.
+let counts = { holdAborts: 0 };
 
 // yields the states, then keeps the stream open until the client goes away
 const hold =
-  (...states: State[]): Attempt =>
-  async function* (ctx) {
-    for (const s of states) yield { state: s };
-    await new Promise<void>((resolve) =>
-      ctx.signal.addEventListener('abort', () => {
-        holdAborts++;
-        resolve();
-      }),
-    );
+  (...states: State[]): Attempt => {
+    const mine = counts;
+    return async function* (ctx) {
+      for (const s of states) yield { state: s };
+      await new Promise<void>((resolve) =>
+        ctx.signal.addEventListener('abort', () => {
+          mine.holdAborts++;
+          resolve();
+        }),
+      );
+    };
   };
 
 // yields the states, then fails
@@ -86,7 +90,7 @@ function setup(script: Attempt[]): Harness {
     }),
   );
   TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: transport }] });
-  return { store: TestBed.inject(StateStore), attempts, polls, aborted: () => holdAborts, setPolled: (s) => (polled = s),
+  return { store: TestBed.inject(StateStore), attempts, polls, aborted: () => counts.holdAborts, setPolled: (s) => (polled = s),
     holdPolls: () => {
       let release!: () => void;
       gate = new Promise<void>((r) => (release = r));
@@ -98,7 +102,7 @@ function setup(script: Attempt[]): Harness {
 describe('StateStore', () => {
   beforeEach(() => {
     localStorage.clear();
-    holdAborts = 0;
+    counts = { holdAborts: 0 };
     vi.useFakeTimers();
   });
   afterEach(() => {

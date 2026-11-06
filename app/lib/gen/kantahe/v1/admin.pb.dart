@@ -1973,7 +1973,7 @@ class GetServerSettingsResponse extends $pb.GeneratedMessage {
 }
 
 /// Server-wide limits and switches: upload size per song, how long the score screen shows, the size limit of one background video and
-/// whether the players show the background videos (in the order set, or shuffled on every pass).
+/// whether the players show the background videos (in the order set, or shuffled on every pass), and the amateur singer mode.
 class ServerSettings extends $pb.GeneratedMessage {
   factory ServerSettings({
     $fixnum.Int64? maxUploadBytes,
@@ -1981,6 +1981,7 @@ class ServerSettings extends $pb.GeneratedMessage {
     $fixnum.Int64? maxVideoBytes,
     $core.bool? backgroundEnabled,
     $core.bool? backgroundShuffle,
+    $core.bool? amateurMode,
   }) {
     final result = ServerSettings._();
     if (maxUploadBytes != null) result.maxUploadBytes = maxUploadBytes;
@@ -1988,6 +1989,7 @@ class ServerSettings extends $pb.GeneratedMessage {
     if (maxVideoBytes != null) result.maxVideoBytes = maxVideoBytes;
     if (backgroundEnabled != null) result.backgroundEnabled = backgroundEnabled;
     if (backgroundShuffle != null) result.backgroundShuffle = backgroundShuffle;
+    if (amateurMode != null) result.amateurMode = amateurMode;
     return result;
   }
 
@@ -2009,6 +2011,7 @@ class ServerSettings extends $pb.GeneratedMessage {
     ..aInt64(3, _omitFieldNames ? '' : 'maxVideoBytes')
     ..aOB(4, _omitFieldNames ? '' : 'backgroundEnabled')
     ..aOB(5, _omitFieldNames ? '' : 'backgroundShuffle')
+    ..aOB(6, _omitFieldNames ? '' : 'amateurMode')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2077,6 +2080,17 @@ class ServerSettings extends $pb.GeneratedMessage {
   $core.bool hasBackgroundShuffle() => $_has(4);
   @$pb.TagNumber(5)
   void clearBackgroundShuffle() => $_clearField(5);
+
+  /// Amateur singer mode: a song with a guide vocals track plays the singer's voice by itself during its first two lyric lines (until the start
+  /// of the third), as a guide for a song the singer does not know. Off by default; it applies from the next song a player loads.
+  @$pb.TagNumber(6)
+  $core.bool get amateurMode => $_getBF(5);
+  @$pb.TagNumber(6)
+  set amateurMode($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAmateurMode() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAmateurMode() => $_clearField(6);
 }
 
 /// Partial update of the server settings.
@@ -2087,6 +2101,7 @@ class UpdateServerSettingsRequest extends $pb.GeneratedMessage {
     $fixnum.Int64? maxVideoBytes,
     $core.bool? backgroundEnabled,
     $core.bool? backgroundShuffle,
+    $core.bool? amateurMode,
   }) {
     final result = UpdateServerSettingsRequest._();
     if (maxUploadBytes != null) result.maxUploadBytes = maxUploadBytes;
@@ -2094,6 +2109,7 @@ class UpdateServerSettingsRequest extends $pb.GeneratedMessage {
     if (maxVideoBytes != null) result.maxVideoBytes = maxVideoBytes;
     if (backgroundEnabled != null) result.backgroundEnabled = backgroundEnabled;
     if (backgroundShuffle != null) result.backgroundShuffle = backgroundShuffle;
+    if (amateurMode != null) result.amateurMode = amateurMode;
     return result;
   }
 
@@ -2115,6 +2131,7 @@ class UpdateServerSettingsRequest extends $pb.GeneratedMessage {
     ..aInt64(3, _omitFieldNames ? '' : 'maxVideoBytes')
     ..aOB(4, _omitFieldNames ? '' : 'backgroundEnabled')
     ..aOB(5, _omitFieldNames ? '' : 'backgroundShuffle')
+    ..aOB(6, _omitFieldNames ? '' : 'amateurMode')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2189,6 +2206,15 @@ class UpdateServerSettingsRequest extends $pb.GeneratedMessage {
   $core.bool hasBackgroundShuffle() => $_has(4);
   @$pb.TagNumber(5)
   void clearBackgroundShuffle() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get amateurMode => $_getBF(5);
+  @$pb.TagNumber(6)
+  set amateurMode($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAmateurMode() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAmateurMode() => $_clearField(6);
 }
 
 /// The settings after the update.

@@ -38,6 +38,11 @@ import { SHORTCUTS } from '../core/shortcuts';
         touch the screen or press a key to bring them back. Volume down and up change the volume of this device.
       </p>
       <p>Some songs have a separate vocals track. A <strong>Vocals</strong> button then plays the singer's voice as a guide. It starts off.</p>
+      <p>
+        If the administrator has switched on <strong>amateur singer mode</strong>, the voice plays by itself during the first two lines of the lyrics of
+        such a song and fades out when the third line starts, to help you with a song you do not know. The button shows it as on. You can switch it
+        off whenever you like; it starts again with the next song.
+      </p>
     </section>
 
     <section>

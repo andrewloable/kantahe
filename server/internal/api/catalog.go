@@ -273,7 +273,26 @@ func (s *CatalogServer) GetPlayback(ctx context.Context, req *connect.Request[ka
 	default:
 		return nil, fromCatalog(s.d.Logger, "GetPlayback", err)
 	}
+	// Amateur singer mode: the guide window of a song that has a vocals track (never a MIDI song: it has none)
+	if pb.VocalsUrl != "" {
+		amateur, err := settings.AmateurMode(ctx, s.d.DB)
+		if err != nil {
+			return nil, internalErr(s.d.Logger, "GetPlayback", err)
+		}
+		if amateur {
+			pb.GuideVocalsUntilMs = guideVocalsUntil(pb.Lyrics)
+		}
+	}
 	return connect.NewResponse(&kantahev1.GetPlaybackResponse{Playback: pb}), nil
+}
+
+// guideVocalsUntil is the song time, in ms, at which the guide vocals of amateur singer mode stop: the start of the third lyric line. A song
+// with fewer than three lines (or none) gets no guide, which is 0 (owner's decision, docs/PLAN.md, "Amateur singer mode").
+func guideVocalsUntil(l *kantahev1.Lyrics) int64 {
+	if l == nil || len(l.Lines) < 3 {
+		return 0
+	}
+	return l.Lines[2].StartMs
 }
 
 // GetBackground returns the enabled background videos in loop order with signed URLs. The URLs of one video and user stay the same for

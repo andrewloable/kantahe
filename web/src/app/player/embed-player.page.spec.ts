@@ -287,6 +287,21 @@ describe('EmbedPlayerPage', () => {
       expect(messages(post)).toEqual(['KantaheVocals:loading:60', 'KantaheVocals:failed:60', 'KantaheVocals:off:60']);
     });
 
+    it('amateur_guide_is_reported_like_a_press: the app sees the voice on while the guide plays and off after the window, with no call from the app', async () => {
+      const post = vi.fn();
+      (window as unknown as Record<string, unknown>)['Kantahe'] = { postMessage: post };
+      const t = setup();
+      t.server.handlers.playback = () =>
+        playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21628?sig=a', vocalsUrl: '/media/vocals/21628?sig=v', song: MP3_SONG, guideVocalsUntilMs: 5000n });
+      bridge()!.setToken('t', 'dev-1');
+      t.server.push(state());
+      await settle(t.fixture);
+      expect(messages(post)).toEqual(['KantaheVocals:on:60']); // the fake voice loads at once: no 'loading' in between
+      t.fake.created[0].engine.time = 5100;
+      await settle(t.fixture);
+      expect(messages(post)).toEqual(['KantaheVocals:on:60', 'KantaheVocals:off:60']);
+    });
+
     it('a level change is reported too', async () => {
       const post = vi.fn();
       (window as unknown as Record<string, unknown>)['Kantahe'] = { postMessage: post };

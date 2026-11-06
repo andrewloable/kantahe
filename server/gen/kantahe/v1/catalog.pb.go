@@ -718,8 +718,12 @@ type Playback struct {
 	AudioVersion string `protobuf:"bytes,12,opt,name=audio_version,json=audioVersion,proto3" json:"audio_version,omitempty"`
 	// The same for the file behind vocals_url; empty when there is no vocals track.
 	VocalsVersion string `protobuf:"bytes,13,opt,name=vocals_version,json=vocalsVersion,proto3" json:"vocals_version,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Amateur singer mode (ServerSettings.amateur_mode): the song time in ms at which the guide vocals stop, i.e. the start of the third lyric line.
+	// From 0 ms up to this time the player plays the vocals track by itself (the singer can still switch it off). 0 means no automatic guide: the
+	// mode is off, the song has no vocals track (or is a MIDI song), or its lyrics have fewer than three lines.
+	GuideVocalsUntilMs int64 `protobuf:"varint,14,opt,name=guide_vocals_until_ms,json=guideVocalsUntilMs,proto3" json:"guide_vocals_until_ms,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Playback) Reset() {
@@ -841,6 +845,13 @@ func (x *Playback) GetVocalsVersion() string {
 		return x.VocalsVersion
 	}
 	return ""
+}
+
+func (x *Playback) GetGuideVocalsUntilMs() int64 {
+	if x != nil {
+		return x.GuideVocalsUntilMs
+	}
+	return 0
 }
 
 // The playback description.
@@ -1031,7 +1042,7 @@ const file_kantahe_v1_catalog_proto_rawDesc = "" +
 	"\x11GetLyricsResponse\x12*\n" +
 	"\x06lyrics\x18\x01 \x01(\v2\x12.kantahe.v1.LyricsR\x06lyrics\",\n" +
 	"\x12GetPlaybackRequest\x12\x16\n" +
-	"\x06number\x18\x01 \x01(\tR\x06number\"\xfe\x03\n" +
+	"\x06number\x18\x01 \x01(\tR\x06number\"\xb1\x04\n" +
 	"\bPlayback\x12$\n" +
 	"\x04song\x18\x01 \x01(\v2\x10.kantahe.v1.SongR\x04song\x12,\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x18.kantahe.v1.PlaybackKindR\x04kind\x12\x1b\n" +
@@ -1047,7 +1058,8 @@ const file_kantahe_v1_catalog_proto_rawDesc = "" +
 	"\n" +
 	"vocals_url\x18\v \x01(\tR\tvocalsUrl\x12#\n" +
 	"\raudio_version\x18\f \x01(\tR\faudioVersion\x12%\n" +
-	"\x0evocals_version\x18\r \x01(\tR\rvocalsVersionB\n" +
+	"\x0evocals_version\x18\r \x01(\tR\rvocalsVersion\x121\n" +
+	"\x15guide_vocals_until_ms\x18\x0e \x01(\x03R\x12guideVocalsUntilMsB\n" +
 	"\n" +
 	"\b_gain_db\"G\n" +
 	"\x13GetPlaybackResponse\x120\n" +

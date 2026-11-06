@@ -239,7 +239,7 @@ func (s *AdminServer) loadSettings(ctx context.Context) (*kantahev1.ServerSettin
 		return nil, err
 	}
 	return &kantahev1.ServerSettings{MaxUploadBytes: cur.MaxUploadBytes, ScoreSeconds: int32(cur.ScoreSeconds), MaxVideoBytes: cur.MaxVideoBytes,
-		BackgroundEnabled: cur.BackgroundEnabled, BackgroundShuffle: cur.BackgroundShuffle}, nil
+		BackgroundEnabled: cur.BackgroundEnabled, BackgroundShuffle: cur.BackgroundShuffle, AmateurMode: cur.AmateurMode}, nil
 }
 
 // GetServerSettings returns the current settings.
@@ -267,7 +267,7 @@ func (s *AdminServer) UpdateServerSettings(ctx context.Context, req *connect.Req
 	}
 	err := s.d.DB.WriteTx(ctx, func(tx *sql.Tx) error {
 		return settings.Update(ctx, tx, settings.Patch{MaxUploadBytes: m.MaxUploadBytes, ScoreSeconds: seconds, MaxVideoBytes: m.MaxVideoBytes,
-			BackgroundEnabled: m.BackgroundEnabled, BackgroundShuffle: m.BackgroundShuffle})
+			BackgroundEnabled: m.BackgroundEnabled, BackgroundShuffle: m.BackgroundShuffle, AmateurMode: m.AmateurMode})
 	})
 	if errors.Is(err, settings.ErrInvalid) {
 		return nil, invalidArgument(err.Error())

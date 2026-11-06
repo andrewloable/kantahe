@@ -33,6 +33,16 @@ const MB = 1024n * 1024n;
           <p class="error" role="alert">{{ scoreError() }}</p>
         }
       </div>
+      <div class="field">
+        <div class="switch">
+          <input id="amateur-mode" type="checkbox" aria-describedby="amateur-hint" [checked]="amateurMode()" (change)="amateurMode.set(checked($event))" />
+          <label for="amateur-mode">Amateur singer mode</label>
+        </div>
+        <p id="amateur-hint" class="hint">
+          Songs with guide vocals play the singer's voice during the first two lines of the lyrics, as a guide for a song nobody knows. A singer can still
+          switch the vocals off. It applies from the next song.
+        </p>
+      </div>
       @if (failure()) {
         <p class="error" role="alert">{{ failure() }}</p>
       }
@@ -42,12 +52,26 @@ const MB = 1024n * 1024n;
       }
     </form>
   `,
+  styles: `
+    .switch {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .switch label {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.75rem;
+      margin: 0;
+    }
+  `,
 })
 export class ServerSettingsPage {
   private readonly admins = injectClient(AdminService);
 
   protected readonly maxUpload = signal('');
   protected readonly scoreSeconds = signal('');
+  protected readonly amateurMode = signal(false);
   protected readonly maxVideo = signal('');
   protected readonly videoError = signal('');
   protected readonly maxError = signal('');
@@ -67,6 +91,11 @@ export class ServerSettingsPage {
     this.maxUpload.set(String(s.maxUploadBytes / MB));
     this.scoreSeconds.set(String(s.scoreSeconds));
     this.maxVideo.set(String(s.maxVideoBytes / MB));
+    this.amateurMode.set(s.amateurMode);
+  }
+
+  protected checked(e: Event): boolean {
+    return (e.target as HTMLInputElement).checked;
   }
 
   private async load(): Promise<void> {
@@ -103,8 +132,9 @@ export class ServerSettingsPage {
       maxUploadBytes: maxUploadBytes !== this.current.maxUploadBytes ? maxUploadBytes : undefined,
       scoreSeconds: score !== this.current.scoreSeconds ? score : undefined,
       maxVideoBytes: maxVideoBytes !== this.current.maxVideoBytes ? maxVideoBytes : undefined,
+      amateurMode: this.amateurMode() !== this.current.amateurMode ? this.amateurMode() : undefined,
     };
-    if (changes.maxUploadBytes === undefined && changes.scoreSeconds === undefined && changes.maxVideoBytes === undefined) return;
+    if (Object.values(changes).every((v) => v === undefined)) return;
     this.busy.set(true);
     try {
       const res = await this.admins.updateServerSettings(changes);

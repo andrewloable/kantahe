@@ -13,6 +13,7 @@
 import 'dart:async' as $async;
 import 'dart:core' as $core;
 
+import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
 
 import 'catalog.pbenum.dart';
@@ -776,6 +777,7 @@ class Playback extends $pb.GeneratedMessage {
     $core.String? vocalsUrl,
     $core.String? audioVersion,
     $core.String? vocalsVersion,
+    $fixnum.Int64? guideVocalsUntilMs,
   }) {
     final result = Playback._();
     if (song != null) result.song = song;
@@ -791,6 +793,8 @@ class Playback extends $pb.GeneratedMessage {
     if (vocalsUrl != null) result.vocalsUrl = vocalsUrl;
     if (audioVersion != null) result.audioVersion = audioVersion;
     if (vocalsVersion != null) result.vocalsVersion = vocalsVersion;
+    if (guideVocalsUntilMs != null)
+      result.guideVocalsUntilMs = guideVocalsUntilMs;
     return result;
   }
 
@@ -824,6 +828,7 @@ class Playback extends $pb.GeneratedMessage {
     ..aOS(11, _omitFieldNames ? '' : 'vocalsUrl')
     ..aOS(12, _omitFieldNames ? '' : 'audioVersion')
     ..aOS(13, _omitFieldNames ? '' : 'vocalsVersion')
+    ..aInt64(14, _omitFieldNames ? '' : 'guideVocalsUntilMs')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -973,6 +978,18 @@ class Playback extends $pb.GeneratedMessage {
   $core.bool hasVocalsVersion() => $_has(12);
   @$pb.TagNumber(13)
   void clearVocalsVersion() => $_clearField(13);
+
+  /// Amateur singer mode (ServerSettings.amateur_mode): the song time in ms at which the guide vocals stop, i.e. the start of the third lyric line.
+  /// From 0 ms up to this time the player plays the vocals track by itself (the singer can still switch it off). 0 means no automatic guide: the
+  /// mode is off, the song has no vocals track (or is a MIDI song), or its lyrics have fewer than three lines.
+  @$pb.TagNumber(14)
+  $fixnum.Int64 get guideVocalsUntilMs => $_getI64(13);
+  @$pb.TagNumber(14)
+  set guideVocalsUntilMs($fixnum.Int64 value) => $_setInt64(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasGuideVocalsUntilMs() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearGuideVocalsUntilMs() => $_clearField(14);
 }
 
 /// The playback description.

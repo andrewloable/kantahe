@@ -26,6 +26,14 @@ describe('HelpComponent', () => {
     ]);
   });
 
+  it('says that the vocals may start by themselves in amateur singer mode, and that the singer can switch them off', () => {
+    const section = Array.from(render().querySelectorAll('section')).find((s) => s.querySelector('h3')?.textContent?.includes('vocals'))!;
+    const text = section.textContent ?? '';
+    expect(text).toContain('amateur singer mode');
+    expect(text).toContain('first two lines');
+    expect(text).toContain('switch');
+  });
+
   it('lists the keyboard shortcuts and says that they can be turned off', () => {
     const section = Array.from(render().querySelectorAll('section')).pop()!;
     expect(Array.from(section.querySelectorAll('table kbd')).map((k) => k.textContent)).toEqual(['Space or K', 'N', 'F', '+ and −', 'V', '/', '?']);

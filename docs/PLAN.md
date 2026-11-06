@@ -92,6 +92,18 @@ else what the lyrics show (a line with more than one word means word timing); a 
 sets it for new and changed songs, and a low-priority pass reads it once for songs imported before. Clients show a small **W** (word by word) or **L** (line by
 line) badge beside the MP3 or MIDI badge, and a **V** badge when the song has a separate vocals track (`Song.has_vocals`), in song lists and in the player.
 
+**Amateur singer mode** (D13; owner's request 2026-11-06). *Admin → Settings* has a switch, **Amateur singer mode**, off by default, stored in the
+settings table (`amateur_mode`, `ServerSettings.amateur_mode`, no migration; it moves with a server transfer). With it on, a song whose playback has a vocals
+track plays that voice by itself as a guide: from 0 ms to the start of the **third lyric line**, then it fades out over 300 ms and the voice is let go of. The
+server works out the window (D1: clients only compare times): `Playback.guide_vocals_until_ms` is `lines[2].start_ms` of the lyrics the server sends, and 0
+(no guide) when the mode is off, the song has no vocals track (or is a MIDI song), or its lyrics have fewer than three lines. On the player device the voice
+plays when the singer's own choice is on, or when the song's time is inside the window; the guide never changes the singer's own choice (`VocalsPrefs.on`,
+`VocalsPrefs.pct`). The window is looked at once, when the song has loaded, so a takeover or reload after the window starts no guide, and a press of **Off**
+by the singer during the window stops the voice for the rest of that song (the next song is looked at afresh); a call that asks for what already plays (the app
+resends the state with its volume buttons) is not a press. The Vocals button, the key V and the app's native switch show what plays, so they read *on* during the
+guide with no code of the app's own: the page reports it like any change (`KantaheVocals:on:…`, then `off`). A change of the setting applies from the next song a
+player loads (the playback is fetched per song).
+
 **Lyric timing** (computed on the server, D1; clients only compare times):
 * A word's colour wipe runs from its start to the next word's start (at least 50 ms).
 * The last word of a line wipes for the line's median gap between words, clamped to 0.3–1.2 s and
@@ -161,6 +173,7 @@ before anything is stored ("the file contains no music"), and a watched-folder f
 | D10 | **HTTP only; HTTPS by reverse proxy.** Documented Caddy and nginx examples (no response buffering and long timeouts for `WatchState`, large upload size). On plain HTTP from a LAN address the browser gives the page neither an AudioWorklet nor the microphone (secure contexts only; measured in an Android WebView, spike S3 and review of 6y6.9): the player then switches that device to server-rendered audio for MIDI songs (kantahe-4oc) and Microphone scoring is not offered. | Users already run proxies; no certificate code in the server. | Built-in Let's Encrypt. |
 | D11 | **LAN discovery.** The server advertises `_kantahe._tcp` over mDNS/DNS-SD (`libp2p/zeroconf`, pure Go; instance = the server name, SRV port = the port of `--listen`, TXT `version`). The Flutter apps browse it (`bonsoir`); the Samsung and LG packages, which are web apps and cannot do mDNS, sweep their own /24 with `GetServerInfo` on ports 8080 and 80. | A client app finds its server by itself on first start; nothing to type on a TV. | UDP broadcast (iOS needs a restricted multicast entitlement to send it); typed address only. |
 | D12 | **Background videos.** The admin uploads H.264 MP4 videos that the player loops behind the lyrics (section 4.2). The server only reads container metadata and accepts only what every player target decodes; it never transcodes. A video goes up in **chunks of unary calls** (resumable, admin only), is served as **plain HTTP with Range behind a signed URL**, and each device has a **Background video** choice Auto / On / Off. | The server is one static pure-Go binary and cannot transcode; TVs decode H.264 in hardware; D3 forbids streaming uploads and the message cap is 64 MiB. | WebM, HEVC or AV1 (not decodable everywhere); transcoding with ffmpeg (breaks the single static binary); one big unary upload (the 64 MiB message cap). |
+| D13 | **Amateur singer mode.** One server-wide switch on Admin › Settings (default off): a song with a vocals track plays the singer's voice by itself until the third lyric line starts, then fades out over 300 ms. The server sends the end of the window (`Playback.guide_vocals_until_ms`); the player compares times. A singer's press of Off wins for the rest of the song; songs with fewer than three lines get no guide. | The server already parses lyrics (D1) and the vocals track is already a second audio engine that the player starts at the instrumental's position; the guide only decides when to start and stop it. | A per-user setting (the owner chose the admin switch); a fixed number of seconds instead of the third line (lines differ in length); stopping with a hard cut. |
 
 ### 4.1 MIDI on weak devices (cheap Android TV boxes, TVs, old phones)
 
@@ -497,6 +510,7 @@ service CatalogService {
   rpc SearchSongs / ListArtists / GetSong / GetLyrics;
   rpc GetPlayback(GetPlaybackRequest) returns (Playback);          // signed URLs per the device's MIDI mode, lyrics
                                                                    // Playback.vocals_url: the vocals track of an MP3 song that has one (Song.has_vocals)
+                                                                   // Playback.guide_vocals_until_ms: amateur singer mode, the start of the third lyric line (0: no guide)
   rpc GetBackground(GetBackgroundRequest) returns (GetBackgroundResponse);  // the enabled background videos in loop order, signed URLs (4.2)
 }
 service SessionService {      // always the caller's own user

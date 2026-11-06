@@ -12,6 +12,8 @@ export interface KarMp3Options {
   vocals?: boolean;
   /** How the .nfo says the lyrics are timed (Kantahe Maker 1.2.6); the default is word. */
   timing?: 'word' | 'line';
+  /** The .lrc text; the default is one line at 00:01. */
+  lrc?: string;
 }
 
 /** A small .karmp3 (a ZIP of a silent MP3, an .lrc and an .nfo) with the given title, for a test that needs a file of its own. */
@@ -22,7 +24,7 @@ export function karmp3(title: string, frames = 300, opts: KarMp3Options = {}): B
     : '';
   const entries: Record<string, Uint8Array> = {
     [`${base}.mp3`]: mp3(frames),
-    [`${base}.lrc`]: strToU8('[00:01.00]<00:01.00>Sing <00:01.50>along'),
+    [`${base}.lrc`]: strToU8(opts.lrc ?? '[00:01.00]<00:01.00>Sing <00:01.50>along'),
     [`${base}.nfo`]: strToU8(`Title : ${title}\nArtist : Band\n${vocals}Timing by : ${opts.timing ?? 'word'}\n`),
   };
   if (opts.vocals) entries[`${base}.vocals.mp3`] = mp3(Math.max(frames - 20, 1));

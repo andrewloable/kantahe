@@ -131,6 +131,10 @@ message Playback {
   string audio_version = 12;
   // The same for the file behind vocals_url; empty when there is no vocals track.
   string vocals_version = 13;
+  // Amateur singer mode (ServerSettings.amateur_mode): the song time in ms at which the guide vocals stop, i.e. the start of the third lyric line.
+  // From 0 ms up to this time the player plays the vocals track by itself (the singer can still switch it off). 0 means no automatic guide: the
+  // mode is off, the song has no vocals track (or is a MIDI song), or its lyrics have fewer than three lines.
+  int64 guide_vocals_until_ms = 14;
 }
 
 // The playback description.

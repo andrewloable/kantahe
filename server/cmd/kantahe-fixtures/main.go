@@ -1,12 +1,14 @@
 // Command kantahe-fixtures writes a small synthetic song library and a tiny
 // SoundFont, for the end-to-end tests. Nothing it writes is a real song.
 //
-//	kantahe-fixtures -out DIR -mp3 3 -midi 4 -sf2 DIR/test.sf2 [-first 1]
+//	kantahe-fixtures -out DIR -mp3 3 -midi 4 -sf2 DIR/test.sf2 [-first 1] [-guide 90]
 //
 // Files are named "00001 - Artist 1 - Title 1.karmp3" (or .kar). The first song
 // exists in both formats under the same number; the other MIDI songs follow the
 // MP3 numbers. -first sets the number of that first song, so that two sets can
 // live in one library without being the same songs. Every song lasts 2 to 4 seconds and has two lines of lyrics.
+// -guide N adds one more song, number N: it has a vocals track and four lines of lyrics (the third starts at 3 s) and lasts 9 s, for
+// checking amateur singer mode.
 package main
 
 import (
@@ -25,6 +27,7 @@ func main() {
 	midi := flag.Int("midi", 4, "number of .kar songs (the first is the same song as the first .karmp3)")
 	font := flag.String("sf2", "", "where to write the test SoundFont (not written when empty)")
 	first := flag.Int("first", 1, "the number of the first song")
+	guide := flag.Int("guide", 0, "the number of one more song with a vocals track and four lyric lines (0: none)")
 	flag.Parse()
 	if *out == "" {
 		fmt.Fprintln(os.Stderr, "kantahe-fixtures: -out is required")
@@ -35,9 +38,39 @@ func main() {
 		fmt.Fprintln(os.Stderr, "kantahe-fixtures:", err)
 		os.Exit(1)
 	}
+	if *guide != 0 {
+		f, err := GenerateGuideSong(*out, *guide)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "kantahe-fixtures:", err)
+			os.Exit(1)
+		}
+		files = append(files, f)
+	}
 	for _, f := range files {
 		fmt.Println(f)
 	}
+}
+
+// GenerateGuideSong writes one .karmp3 of 9 s into dir that has a vocals track and four lines of lyrics, at 1, 2, 3 and 4 s, so that the guide of
+// amateur singer mode (until the start of the third line, 3 s) can be seen on a device. It returns the path.
+func GenerateGuideSong(dir string, n int) (string, error) {
+	if n < 1 || n > 99999 {
+		return "", fmt.Errorf("the guide song's number must be from 1 to 99999, not %d", n)
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	title, artist := fmt.Sprintf("Title %d", n), fmt.Sprintf("Artist %d", n)
+	base := fmt.Sprintf("%05d - %s - %s", n, artist, title)
+	lrc := fmt.Sprintf("[ti:%s]\n[ar:%s]\n"+
+		"[00:01.00]<00:01.00>First <00:01.50>line\n"+
+		"[00:02.00]<00:02.00>Second <00:02.50>line\n"+
+		"[00:03.00]<00:03.00>Third <00:03.50>line\n"+
+		"[00:04.00]<00:04.00>Fourth <00:04.50>line\n", title, artist)
+	nfo := fmt.Sprintf("Title : %s\nArtist : %s\nInstrumental : %s.mp3\nVocals : %s.vocals.mp3\nVocals audio : MP3, 44.1 kHz, 64 kbps, mono\nTiming by : word\n", title, artist, base, base)
+	data := testfix.KARMP3WithVocals(base, testfix.MP3Frames(350), testfix.MP3Frames(330), lrc, nfo)
+	path := filepath.Join(dir, fileName(n, "karmp3"))
+	return path, os.WriteFile(path, data, 0o644)
 }
 
 // Generate writes the songs into dir and the SoundFont to fontPath (when not

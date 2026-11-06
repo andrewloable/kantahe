@@ -1553,7 +1553,7 @@ func (x *GetServerSettingsResponse) GetSettings() *ServerSettings {
 }
 
 // Server-wide limits and switches: upload size per song, how long the score screen shows, the size limit of one background video and
-// whether the players show the background videos (in the order set, or shuffled on every pass).
+// whether the players show the background videos (in the order set, or shuffled on every pass), and the amateur singer mode.
 type ServerSettings struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	MaxUploadBytes    int64                  `protobuf:"varint,1,opt,name=max_upload_bytes,json=maxUploadBytes,proto3" json:"max_upload_bytes,omitempty"`
@@ -1561,8 +1561,11 @@ type ServerSettings struct {
 	MaxVideoBytes     int64                  `protobuf:"varint,3,opt,name=max_video_bytes,json=maxVideoBytes,proto3" json:"max_video_bytes,omitempty"`
 	BackgroundEnabled bool                   `protobuf:"varint,4,opt,name=background_enabled,json=backgroundEnabled,proto3" json:"background_enabled,omitempty"`
 	BackgroundShuffle bool                   `protobuf:"varint,5,opt,name=background_shuffle,json=backgroundShuffle,proto3" json:"background_shuffle,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Amateur singer mode: a song with a guide vocals track plays the singer's voice by itself during its first two lyric lines (until the start
+	// of the third), as a guide for a song the singer does not know. Off by default; it applies from the next song a player loads.
+	AmateurMode   bool `protobuf:"varint,6,opt,name=amateur_mode,json=amateurMode,proto3" json:"amateur_mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ServerSettings) Reset() {
@@ -1630,6 +1633,13 @@ func (x *ServerSettings) GetBackgroundShuffle() bool {
 	return false
 }
 
+func (x *ServerSettings) GetAmateurMode() bool {
+	if x != nil {
+		return x.AmateurMode
+	}
+	return false
+}
+
 // Partial update of the server settings.
 type UpdateServerSettingsRequest struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
@@ -1638,6 +1648,7 @@ type UpdateServerSettingsRequest struct {
 	MaxVideoBytes     *int64                 `protobuf:"varint,3,opt,name=max_video_bytes,json=maxVideoBytes,proto3,oneof" json:"max_video_bytes,omitempty"`
 	BackgroundEnabled *bool                  `protobuf:"varint,4,opt,name=background_enabled,json=backgroundEnabled,proto3,oneof" json:"background_enabled,omitempty"`
 	BackgroundShuffle *bool                  `protobuf:"varint,5,opt,name=background_shuffle,json=backgroundShuffle,proto3,oneof" json:"background_shuffle,omitempty"`
+	AmateurMode       *bool                  `protobuf:"varint,6,opt,name=amateur_mode,json=amateurMode,proto3,oneof" json:"amateur_mode,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -1703,6 +1714,13 @@ func (x *UpdateServerSettingsRequest) GetBackgroundEnabled() bool {
 func (x *UpdateServerSettingsRequest) GetBackgroundShuffle() bool {
 	if x != nil && x.BackgroundShuffle != nil {
 		return *x.BackgroundShuffle
+	}
+	return false
+}
+
+func (x *UpdateServerSettingsRequest) GetAmateurMode() bool {
+	if x != nil && x.AmateurMode != nil {
+		return *x.AmateurMode
 	}
 	return false
 }
@@ -2736,24 +2754,27 @@ const file_kantahe_v1_admin_proto_rawDesc = "" +
 	"\x06failed\x18\x04 \x01(\x05R\x06failed\"\x1a\n" +
 	"\x18GetServerSettingsRequest\"S\n" +
 	"\x19GetServerSettingsResponse\x126\n" +
-	"\bsettings\x18\x01 \x01(\v2\x1a.kantahe.v1.ServerSettingsR\bsettings\"\xe5\x01\n" +
+	"\bsettings\x18\x01 \x01(\v2\x1a.kantahe.v1.ServerSettingsR\bsettings\"\x88\x02\n" +
 	"\x0eServerSettings\x12(\n" +
 	"\x10max_upload_bytes\x18\x01 \x01(\x03R\x0emaxUploadBytes\x12#\n" +
 	"\rscore_seconds\x18\x02 \x01(\x05R\fscoreSeconds\x12&\n" +
 	"\x0fmax_video_bytes\x18\x03 \x01(\x03R\rmaxVideoBytes\x12-\n" +
 	"\x12background_enabled\x18\x04 \x01(\bR\x11backgroundEnabled\x12-\n" +
-	"\x12background_shuffle\x18\x05 \x01(\bR\x11backgroundShuffle\"\xf4\x02\n" +
+	"\x12background_shuffle\x18\x05 \x01(\bR\x11backgroundShuffle\x12!\n" +
+	"\famateur_mode\x18\x06 \x01(\bR\vamateurMode\"\xad\x03\n" +
 	"\x1bUpdateServerSettingsRequest\x12-\n" +
 	"\x10max_upload_bytes\x18\x01 \x01(\x03H\x00R\x0emaxUploadBytes\x88\x01\x01\x12(\n" +
 	"\rscore_seconds\x18\x02 \x01(\x05H\x01R\fscoreSeconds\x88\x01\x01\x12+\n" +
 	"\x0fmax_video_bytes\x18\x03 \x01(\x03H\x02R\rmaxVideoBytes\x88\x01\x01\x122\n" +
 	"\x12background_enabled\x18\x04 \x01(\bH\x03R\x11backgroundEnabled\x88\x01\x01\x122\n" +
-	"\x12background_shuffle\x18\x05 \x01(\bH\x04R\x11backgroundShuffle\x88\x01\x01B\x13\n" +
+	"\x12background_shuffle\x18\x05 \x01(\bH\x04R\x11backgroundShuffle\x88\x01\x01\x12&\n" +
+	"\famateur_mode\x18\x06 \x01(\bH\x05R\vamateurMode\x88\x01\x01B\x13\n" +
 	"\x11_max_upload_bytesB\x10\n" +
 	"\x0e_score_secondsB\x12\n" +
 	"\x10_max_video_bytesB\x15\n" +
 	"\x13_background_enabledB\x15\n" +
-	"\x13_background_shuffle\"V\n" +
+	"\x13_background_shuffleB\x0f\n" +
+	"\r_amateur_mode\"V\n" +
 	"\x1cUpdateServerSettingsResponse\x126\n" +
 	"\bsettings\x18\x01 \x01(\v2\x1a.kantahe.v1.ServerSettingsR\bsettings\"\x13\n" +
 	"\x11ListVideosRequest\"?\n" +

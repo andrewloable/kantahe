@@ -34,6 +34,9 @@ const VOLUME_PAUSE_MS = 300;
 const DRIFT_CHECK_MS = 500;
 const DRIFT_LIMIT_MS = 150;
 const RESEEK_PAUSE_MS = 1000;
+/** Amateur singer mode: the guide vocals fade out over this long, ending at the start of the third lyric line; the guide looks at the song's time this often. */
+const GUIDE_FADE_MS = 300;
+const GUIDE_TICK_MS = 50;
 
 type VolumeKind = 'mp3' | 'midi';
 
@@ -106,6 +109,8 @@ export class PlayerController implements OnDestroy {
   private instrumentalPlaying = false;
   private driftTimer?: ReturnType<typeof setInterval>;
   private lastReseek = -Infinity;
+  /** Amateur singer mode: watches the song's time while the guide vocals play by themselves. */
+  private guideTimer?: ReturnType<typeof setInterval>;
   /** Whether the switch is offered: only the player device, only for an MP3 song whose server sent a vocals URL. */
   readonly hasVocals = computed(() => {
     const playback = this.playback();
@@ -391,7 +396,58 @@ export class PlayerController implements OnDestroy {
       this.keepNow(this.cache.store('audio', number, playback.audioVersion, mediaUrl(this.server.base(), playback.audioUrl)));
     }
     // the choice made on an earlier song (or while this one loaded): the vocals start by themselves, and the song is not waiting for them
-    if (this.prefs.on() && this.hasVocals()) void this.startVocals();
+    // amateur singer mode: or the song has a guide window and its time has not run out (a takeover mid-song may be past it): the voice plays by itself
+    if (this.hasVocals() && (this.prefs.on() || this.guideActive())) void this.startVocals();
+    if (this.guideActive()) this.watchGuide();
+  }
+
+  /** The song time, in ms, at which the guide vocals of amateur singer mode end (the server sends the start of the third lyric line); 0: no guide. */
+  private guideUntilMs(): number {
+    return this.hasVocals() ? Number(this.playback()?.guideVocalsUntilMs ?? 0n) : 0;
+  }
+
+  /**
+   * Whether the guide starts now: this song has a window and the instrumental's time is inside it. It is looked at once, when the song has loaded, so
+   * a press of the singer's during the window (which ends the watch in stopVocals) is not undone: the next song is looked at afresh.
+   */
+  private guideActive(): boolean {
+    const until = this.guideUntilMs();
+    return until > 0 && (this.engine?.timeMs() ?? 0) < until;
+  }
+
+  /**
+   * While the guide plays by itself: at the end of the window the voice fades out (its volume goes to 0 over GUIDE_FADE_MS, reaching 0 at the
+   * start of the third line) and is let go of. The singer's own choice (VocalsPrefs.on) is never changed, and the voice stays when it is on.
+   */
+  private watchGuide(): void {
+    clearInterval(this.guideTimer);
+    this.guideTimer = setInterval(() => this.guideTick(), GUIDE_TICK_MS);
+  }
+
+  private guideTick(): void {
+    const until = this.guideUntilMs();
+    const engine = this.engine;
+    if (!engine || until <= 0) {
+      this.endGuideWatch();
+      return;
+    }
+    if (this.prefs.on()) {
+      // the singer wants the voice for the whole song: the guide has nothing to end (a fade already begun is undone)
+      this.endGuideWatch();
+      this.vocals?.setVolume(this.vocalsFactor());
+      return;
+    }
+    const left = until - engine.timeMs();
+    if (left <= 0) {
+      this.stopVocals(); // also ends the watch
+      return;
+    }
+    if (left < GUIDE_FADE_MS) this.vocals?.setVolume(this.vocalsFactor() * (left / GUIDE_FADE_MS));
+  }
+
+  private endGuideWatch(): void {
+    clearInterval(this.guideTimer);
+    this.guideTimer = undefined;
   }
 
   /**
@@ -653,7 +709,7 @@ export class PlayerController implements OnDestroy {
       this.prefs.on.set(on); // no song with vocals now: only the choice is kept, for the next one
       return;
     }
-    if (on === (this.vocalsState() !== 'off')) return;
+    if (on === (this.vocalsState() !== 'off')) return; // also what the app resends with its volume buttons: not a press
     this.prefs.on.set(on);
     if (!on) {
       this.stopVocals();
@@ -778,6 +834,7 @@ export class PlayerController implements OnDestroy {
 
   private stopVocals(): void {
     this.vocalsGeneration++;
+    this.endGuideWatch();
     clearInterval(this.driftTimer);
     this.driftTimer = undefined;
     const vocals = this.vocals;

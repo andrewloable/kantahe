@@ -551,6 +551,7 @@ const ServerSettings$json = {
       '5': 8,
       '10': 'backgroundShuffle'
     },
+    {'1': 'amateur_mode', '3': 6, '4': 1, '5': 8, '10': 'amateurMode'},
   ],
 };
 
@@ -560,7 +561,7 @@ final $typed_data.Uint8List serverSettingsDescriptor = $convert.base64Decode(
     'RlcxIjCg1zY29yZV9zZWNvbmRzGAIgASgFUgxzY29yZVNlY29uZHMSJgoPbWF4X3ZpZGVvX2J5'
     'dGVzGAMgASgDUg1tYXhWaWRlb0J5dGVzEi0KEmJhY2tncm91bmRfZW5hYmxlZBgEIAEoCFIRYm'
     'Fja2dyb3VuZEVuYWJsZWQSLQoSYmFja2dyb3VuZF9zaHVmZmxlGAUgASgIUhFiYWNrZ3JvdW5k'
-    'U2h1ZmZsZQ==');
+    'U2h1ZmZsZRIhCgxhbWF0ZXVyX21vZGUYBiABKAhSC2FtYXRldXJNb2Rl');
 
 @$core.Deprecated('Use updateServerSettingsRequestDescriptor instead')
 const UpdateServerSettingsRequest$json = {
@@ -611,6 +612,15 @@ const UpdateServerSettingsRequest$json = {
       '10': 'backgroundShuffle',
       '17': true
     },
+    {
+      '1': 'amateur_mode',
+      '3': 6,
+      '4': 1,
+      '5': 8,
+      '9': 5,
+      '10': 'amateurMode',
+      '17': true
+    },
   ],
   '8': [
     {'1': '_max_upload_bytes'},
@@ -618,6 +628,7 @@ const UpdateServerSettingsRequest$json = {
     {'1': '_max_video_bytes'},
     {'1': '_background_enabled'},
     {'1': '_background_shuffle'},
+    {'1': '_amateur_mode'},
   ],
 };
 
@@ -627,9 +638,10 @@ final $typed_data.Uint8List updateServerSettingsRequestDescriptor = $convert.bas
     'gAUg5tYXhVcGxvYWRCeXRlc4gBARIoCg1zY29yZV9zZWNvbmRzGAIgASgFSAFSDHNjb3JlU2Vj'
     'b25kc4gBARIrCg9tYXhfdmlkZW9fYnl0ZXMYAyABKANIAlINbWF4VmlkZW9CeXRlc4gBARIyCh'
     'JiYWNrZ3JvdW5kX2VuYWJsZWQYBCABKAhIA1IRYmFja2dyb3VuZEVuYWJsZWSIAQESMgoSYmFj'
-    'a2dyb3VuZF9zaHVmZmxlGAUgASgISARSEWJhY2tncm91bmRTaHVmZmxliAEBQhMKEV9tYXhfdX'
-    'Bsb2FkX2J5dGVzQhAKDl9zY29yZV9zZWNvbmRzQhIKEF9tYXhfdmlkZW9fYnl0ZXNCFQoTX2Jh'
-    'Y2tncm91bmRfZW5hYmxlZEIVChNfYmFja2dyb3VuZF9zaHVmZmxl');
+    'a2dyb3VuZF9zaHVmZmxlGAUgASgISARSEWJhY2tncm91bmRTaHVmZmxliAEBEiYKDGFtYXRldX'
+    'JfbW9kZRgGIAEoCEgFUgthbWF0ZXVyTW9kZYgBAUITChFfbWF4X3VwbG9hZF9ieXRlc0IQCg5f'
+    'c2NvcmVfc2Vjb25kc0ISChBfbWF4X3ZpZGVvX2J5dGVzQhUKE19iYWNrZ3JvdW5kX2VuYWJsZW'
+    'RCFQoTX2JhY2tncm91bmRfc2h1ZmZsZUIPCg1fYW1hdGV1cl9tb2Rl');
 
 @$core.Deprecated('Use updateServerSettingsResponseDescriptor instead')
 const UpdateServerSettingsResponse$json = {

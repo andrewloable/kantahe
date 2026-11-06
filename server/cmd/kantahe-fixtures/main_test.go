@@ -176,3 +176,37 @@ func TestFirstShiftsAllNumbers(t *testing.T) {
 		t.Error("-first 0 is accepted")
 	}
 }
+
+func TestGuideSongHasAVocalsTrackAndFourLines(t *testing.T) {
+	dir := t.TempDir()
+	path, err := GenerateGuideSong(dir, 90)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Base(path) != "00090 - Artist 90 - Title 90.karmp3" {
+		t.Fatalf("name %q", path)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := karmp3.Parse(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.HasVocals {
+		t.Fatal("the song must carry a vocals track")
+	}
+	if len(s.Lines) != 4 {
+		t.Fatalf("lines = %d, want 4", len(s.Lines))
+	}
+	if got := s.Lines[2].StartMs; got != 3000 {
+		t.Fatalf("the third line starts at %d ms, want 3000 (the guide window of amateur singer mode ends there)", got)
+	}
+	if s.DurationMs < 6000 {
+		t.Fatalf("the song lasts %d ms, want at least 6 s so that the window and what follows can be seen", s.DurationMs)
+	}
+	if _, err := GenerateGuideSong(dir, 0); err == nil {
+		t.Fatal("number 0 must be refused")
+	}
+}
