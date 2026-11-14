@@ -16,6 +16,8 @@ interface SequencerLike {
   play(): void;
   pause(): void;
   currentTime: number;
+  /** The speed of the song, 1 is as written; the pitch does not change. */
+  playbackRate: number;
   skipToFirstNoteOn: boolean;
 }
 
@@ -69,6 +71,7 @@ export class MidiEngine implements Engine {
   private seq?: SequencerLike;
   private gain?: GainLike;
   private factor = 1;
+  private rate = 1;
   private ended?: () => void;
   private disposed = false;
   private wantPlay = false;
@@ -105,6 +108,7 @@ export class MidiEngine implements Engine {
       if (!this.options.effects) synth.setSystemParameter('effectsEnabled', false);
       const seq = new lib.Sequencer(synth);
       this.seq = seq;
+      seq.playbackRate = this.rate;
       seq.skipToFirstNoteOn = false; // the quiet start plays in real time, so the count-in is seen
       seq.eventHandler.addEvent('songEnded', 'kantahe-end', () => {
         if (!this.disposed) this.ended?.();
@@ -145,6 +149,11 @@ export class MidiEngine implements Engine {
   setVolume(factor: number): void {
     this.factor = factor;
     if (this.gain) this.gain.gain.value = factor;
+  }
+
+  setRate(rate: number): void {
+    this.rate = rate;
+    if (this.seq) this.seq.playbackRate = rate;
   }
 
   seek(ms: number): void {

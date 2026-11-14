@@ -561,7 +561,7 @@ for (const viewport of ['phone-390x844', 'phone-320x568', 'desktop-1280x800']) {
     });
   });
 
-  test(`/player playing: the volume buttons and the other controls are at least 8 px apart at ${viewport}`, async ({ browser }, info) => {
+  test(`/player playing: the control buttons are at least 8 px apart at ${viewport}`, async ({ browser }, info) => {
     none(await layout(browser, info, '/player:playing', viewport, (r) => r), 'tightTargets', '.controls');
   });
 
@@ -661,9 +661,9 @@ test('/library toast: the toast is fully visible, clear of the tab bar, at phone
 for (const viewport of ['phone-390x844', 'phone-landscape-844x390', 'desktop-1280x800']) {
   test(`/player playing: a toast covers no button of the player at ${viewport}`, async ({ browser }, info) => {
     await layout(browser, info, '/player:playing', viewport, async (_raw, page) => {
-      await page.route('**/kantahe.v1.SessionService/SetVolume', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"internal","message":"no"}' }));
+      await page.route('**/kantahe.v1.SessionService/Control', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"internal","message":"no"}' }));
       await page.mouse.move(10, 10);
-      await page.getByRole('button', { name: 'Volume up' }).click();
+      await page.getByRole('button', { name: 'Skip' }).click(); // a refused command shows a toast
       const toast = page.locator('.toast').first();
       await expect(toast).toBeVisible({ timeout: 5_000 });
       const t = (await toast.boundingBox())!;

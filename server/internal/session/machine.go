@@ -16,6 +16,8 @@ var (
 	ErrNotFound  = errors.New("session: queue item not found")
 	ErrNotPlayer = errors.New("session: only the player device may do that")
 	ErrStale     = errors.New("session: the report is for a different song")
+	ErrNoSong    = errors.New("session: there is no current song")
+	ErrBadTempo  = errors.New("session: the tempo must be 75 to 125 percent in steps of 5")
 )
 
 const (
@@ -72,6 +74,37 @@ type Current struct {
 	Source       Source
 	PositionMs   int64
 	PositionAtMs int64 // server monotonic time of PositionMs
+	// GuideCancelled: the amateur singer guide was switched off for this song. A new Current (the next song) starts false.
+	GuideCancelled bool
+	// TempoPct is the speed of the song in percent; 0 (a Current built without it) means 100. A new Current (the next song) starts at 100.
+	TempoPct int
+}
+
+// Tempo is the speed of the song in percent, 100 being normal.
+func (c *Current) Tempo() int {
+	if c == nil || c.TempoPct == 0 {
+		return 100
+	}
+	return c.TempoPct
+}
+
+const (
+	minTempoPct  = 75
+	maxTempoPct  = 125
+	tempoStepPct = 5
+)
+
+// SetTempo changes the speed of the current song. The clock is frozen at the old speed first, so the position stays continuous.
+func (m *Machine) SetTempo(pct int) error {
+	if pct < minTempoPct || pct > maxTempoPct || pct%tempoStepPct != 0 {
+		return ErrBadTempo
+	}
+	if m.now == nil {
+		return ErrNoSong
+	}
+	m.freezeClock()
+	m.now.TempoPct = pct
+	return nil
 }
 
 // Settings are the user's score settings.
@@ -203,6 +236,15 @@ func (m *Machine) SetOnline(device string, online bool) {
 		m.offlineSince[device] = m.nowMs()
 	}
 	m.online[device] = false
+}
+
+// CancelGuide switches the amateur guide off for the current song; false when no song is current. Nothing to undo: the next song starts clean.
+func (m *Machine) CancelGuide() bool {
+	if m.now == nil {
+		return false
+	}
+	m.now.GuideCancelled = true
+	return true
 }
 
 // UpdateSettings changes the fields that are set.
@@ -401,7 +443,7 @@ func (m *Machine) freezeClock() {
 	}
 	now := m.nowMs()
 	reported := m.now.PositionMs
-	m.now.PositionMs = reported + max(now-m.now.PositionAtMs, 0)
+	m.now.PositionMs = reported + max(now-m.now.PositionAtMs, 0)*int64(m.now.Tempo())/100 // song time passes at the tempo of the song
 	if d := m.now.Song.DurationMs; d > 0 && m.now.PositionMs > d {
 		// the extrapolation stops at the end of the song; what the player itself reported is kept
 		m.now.PositionMs = max(d, reported)

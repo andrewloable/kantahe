@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -31,6 +32,9 @@ type SessionServer struct {
 	d   Deps
 	svc *session.Service
 	cat *catalog.Catalog
+
+	// What each player device last reported about its vocals (memory only, like online): device id -> kantahev1.VocalsState.
+	vocalsLive sync.Map
 }
 
 func newSessionServer(d Deps, svc *session.Service, cat *catalog.Catalog) *SessionServer {
@@ -43,6 +47,10 @@ func (s *SessionServer) fail(op string, err error) error {
 		return newErr(connect.CodePermissionDenied, "only the player device may do that")
 	case errors.Is(err, session.ErrStale):
 		return newErr(connect.CodeFailedPrecondition, "that is not the song being played")
+	case errors.Is(err, session.ErrBadTempo):
+		return invalidArgument("the tempo must be 75 to 125 percent in steps of 5")
+	case errors.Is(err, session.ErrNoSong):
+		return newErr(connect.CodeFailedPrecondition, "there is no current song")
 	case errors.Is(err, session.ErrNotFound), errors.Is(err, library.ErrNotFound):
 		return newErr(connect.CodeNotFound, "not found")
 	case errors.Is(err, catalog.ErrInvalid):
@@ -74,7 +82,7 @@ func (s *SessionServer) current(ctx context.Context, c *session.Current) *kantah
 	}
 	return &kantahev1.NowPlaying{
 		Song: s.songOrStub(ctx, c.Song.Number), Source: kantahev1.SongSource(c.Source),
-		PositionMs: c.PositionMs, PositionAtMs: c.PositionAtMs,
+		PositionMs: c.PositionMs, PositionAtMs: c.PositionAtMs, GuideCancelled: c.GuideCancelled, TempoPct: int32(c.Tempo()),
 	}
 }
 
@@ -92,6 +100,7 @@ func (s *SessionServer) toProto(ctx context.Context, userID, callerDevice string
 	for _, d := range devs {
 		pd := toProtoDevice(d, callerDevice, s.d.Modes)
 		pd.Online = snap.Online[d.ID]
+		pd.VocalsState = s.liveVocals(d.ID, snap.PlayerDeviceID)
 		out.Devices = append(out.Devices, pd)
 	}
 	for _, it := range snap.Queue {
@@ -455,6 +464,14 @@ func (s *SessionServer) ReportDevice(ctx context.Context, req *connect.Request[k
 	if m.Dropouts > 0 {
 		s.d.Modes.StepDowns.Add(id.DeviceID)
 	}
+	// Only the device that plays knows what plays; a report from another device (it can race with Play here) is ignored, not refused.
+	snap, err := s.svc.Do(ctx, id.UserID, nil)
+	if err != nil {
+		return nil, s.fail("ReportDevice", err)
+	}
+	if snap.PlayerDeviceID == id.DeviceID && m.VocalsState != kantahev1.VocalsState_VOCALS_STATE_UNSPECIFIED {
+		s.vocalsLive.Store(id.DeviceID, m.VocalsState)
+	}
 	dev, err := users.DeviceByID(ctx, s.d.DB, id.UserID, id.DeviceID)
 	if err != nil {
 		return nil, s.fail("ReportDevice", err)
@@ -464,6 +481,7 @@ func (s *SessionServer) ReportDevice(ctx context.Context, req *connect.Request[k
 	}
 	pd := toProtoDevice(dev, id.DeviceID, s.d.Modes)
 	pd.Online = s.svc.IsOnline(id.UserID, id.DeviceID)
+	pd.VocalsState = s.liveVocals(id.DeviceID, snap.PlayerDeviceID)
 	return connect.NewResponse(&kantahev1.ReportDeviceResponse{Device: pd}), nil
 }
 
@@ -590,6 +608,87 @@ func (s *SessionServer) SetVolume(ctx context.Context, req *connect.Request[kant
 	pd := toProtoDevice(dev, id.DeviceID, s.d.Modes)
 	pd.Online = s.svc.IsOnline(id.UserID, dev.ID)
 	return connect.NewResponse(&kantahev1.SetVolumeResponse{Device: pd}), nil
+}
+
+const maxVocalsPct = 100 // the vocals track plays at 0 to 100 percent
+
+// liveVocals is what the player device reported about its vocals; only the device that plays has a state (a device that stopped being the player
+// would show an old one).
+func (s *SessionServer) liveVocals(deviceID, playerID string) kantahev1.VocalsState {
+	if deviceID != playerID {
+		return kantahev1.VocalsState_VOCALS_STATE_UNSPECIFIED
+	}
+	if v, ok := s.vocalsLive.Load(deviceID); ok {
+		return v.(kantahev1.VocalsState)
+	}
+	return kantahev1.VocalsState_VOCALS_STATE_UNSPECIFIED
+}
+
+// SetVocals stores the guide-vocals choice of one of the caller's own devices (on or off, and the level 0 to 100). A field that is not given is
+// left as it is; at least one must be given. Switching off the device that plays also stops the amateur guide for the rest of the song.
+func (s *SessionServer) SetVocals(ctx context.Context, req *connect.Request[kantahev1.SetVocalsRequest]) (*connect.Response[kantahev1.SetVocalsResponse], error) {
+	id, err := identity(ctx)
+	if err != nil {
+		return nil, err
+	}
+	m := req.Msg
+	if m.On == nil && m.Pct == nil {
+		return nil, invalidArgument("give on, pct or both")
+	}
+	var pct *int
+	if m.Pct != nil {
+		if *m.Pct < 0 || *m.Pct > maxVocalsPct {
+			return nil, invalidArgument("pct must be 0 to 100")
+		}
+		v := int(*m.Pct)
+		pct = &v
+	}
+	var found bool
+	err = s.d.DB.WriteTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		found, err = users.SetDeviceVocals(ctx, tx, id.UserID, m.DeviceId, m.On, pct)
+		return err
+	})
+	if err != nil {
+		return nil, s.fail("SetVocals", err)
+	}
+	if !found {
+		return nil, newErr(connect.CodeNotFound, "device not found")
+	}
+	snap, err := s.svc.Do(ctx, id.UserID, func(mc *session.Machine) ([]session.Effect, error) {
+		if m.On != nil && !*m.On && mc.Snapshot().PlayerDeviceID == m.DeviceId {
+			mc.CancelGuide()
+		}
+		return nil, nil
+	})
+	if err != nil {
+		return nil, s.fail("SetVocals", err)
+	}
+	dev, err := users.DeviceByID(ctx, s.d.DB, id.UserID, m.DeviceId)
+	if err != nil {
+		return nil, s.fail("SetVocals", err)
+	}
+	if err := s.svc.Notify(ctx, id.UserID); err != nil {
+		return nil, s.fail("SetVocals", err)
+	}
+	pd := toProtoDevice(dev, id.DeviceID, s.d.Modes)
+	pd.Online = s.svc.IsOnline(id.UserID, dev.ID)
+	pd.VocalsState = s.liveVocals(dev.ID, snap.PlayerDeviceID)
+	return connect.NewResponse(&kantahev1.SetVocalsResponse{Device: pd}), nil
+}
+
+// SetTempo sets the speed of the caller's current song, from any of the caller's devices. The state push shows it to the player and the remotes.
+func (s *SessionServer) SetTempo(ctx context.Context, req *connect.Request[kantahev1.SetTempoRequest]) (*connect.Response[kantahev1.SetTempoResponse], error) {
+	id, err := identity(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.svc.Do(ctx, id.UserID, func(m *session.Machine) ([]session.Effect, error) {
+		return nil, m.SetTempo(int(req.Msg.Pct))
+	}); err != nil {
+		return nil, s.fail("SetTempo", err)
+	}
+	return connect.NewResponse(&kantahev1.SetTempoResponse{}), nil
 }
 
 const maxMemoryMB = 1 << 20 // 1 TB: anything larger is a bad report

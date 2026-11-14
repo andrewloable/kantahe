@@ -1,3 +1,4 @@
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantahe/core/clock.dart';
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart';
@@ -33,5 +34,21 @@ void main() {
   test('is 0 with nothing playing', () {
     final s = stateAt(1, status: PlayStatus.PLAY_STATUS_PAUSED, withNow: false);
     expect(positionNow(s, 0, 100), 0);
+  });
+
+  test('progress_at_tempo: 4000 ms at 75 percent is 3000 ms of song, at 125 percent 5000, and 0 (an older server) is normal speed', () {
+    int at(int tempoPct) {
+      final s = State(
+        status: PlayStatus.PLAY_STATUS_PLAYING,
+        serverTimeMs: Int64(1000),
+        now: NowPlaying(positionMs: Int64(1000), positionAtMs: Int64(1000), tempoPct: tempoPct),
+      );
+      return positionNow(s, serverOffset(s, 0), 4000);
+    }
+
+    expect(at(75), 4000);
+    expect(at(125), 6000);
+    expect(at(100), 5000);
+    expect(at(0), 5000);
   });
 }

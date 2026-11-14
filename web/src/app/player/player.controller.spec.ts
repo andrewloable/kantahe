@@ -362,8 +362,7 @@ describe('PlayerController: guide vocals', () => {
     const { server, fake, push, flush, player } = await start();
     player.setVocals(true);
     await flush();
-    player.changeVocalsVolume(-1);
-    player.changeVocalsVolume(-1);
+    TestBed.inject(VocalsPrefs).pct.set(40); // the level the app's bridge sets
     expect(player.vocalsPct()).toBe(40);
     server.handlers.playback = () => vocalsPlayback('21630', NEXT_SONG);
     await push(stateWith(NEXT_SONG));
@@ -383,14 +382,6 @@ describe('PlayerController: guide vocals', () => {
     expect(voc().setVolume).toHaveBeenLastCalledWith(expect.closeTo(0.3, 5)); // 60 percent of 50 percent
     await push(stateWith(MP3_SONG, { devices: [device(ME, 'This browser', { isCaller: true, mp3VolumePct: 100 }), device('tv', 'TV')] }));
     expect(voc().setVolume).toHaveBeenLastCalledWith(expect.closeTo(0.6, 5));
-  });
-
-  it('vocals_volume_steps_stop_at_0_and_100', async () => {
-    const { player } = await start();
-    for (let i = 0; i < 12; i++) player.changeVocalsVolume(-1);
-    expect(player.vocalsPct()).toBe(0);
-    for (let i = 0; i < 12; i++) player.changeVocalsVolume(1);
-    expect(player.vocalsPct()).toBe(100);
   });
 
   it('vocals_switched_off_while_loading_discards_the_load', async () => {

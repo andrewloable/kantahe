@@ -14,5 +14,7 @@ export function positionNow(state: State, offsetMs: number, perfNowMs: number): 
   if (!now) return 0;
   const position = Number(now.positionMs);
   if (state.status !== PlayStatus.PLAYING) return position;
-  return position + Math.max(0, perfNowMs + offsetMs - Number(now.positionAtMs));
+  // song time passes at the tempo of the song (0, an older server, is normal speed)
+  const rate = (now.tempoPct || 100) / 100;
+  return position + Math.max(0, perfNowMs + offsetMs - Number(now.positionAtMs)) * rate;
 }

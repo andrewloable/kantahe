@@ -53,6 +53,10 @@ abstract class SessionServiceBase extends $pb.GeneratedService {
       $pb.ServerContext ctx, $1.SetBackgroundModeRequest request);
   $async.Future<$1.SetVolumeResponse> setVolume(
       $pb.ServerContext ctx, $1.SetVolumeRequest request);
+  $async.Future<$1.SetVocalsResponse> setVocals(
+      $pb.ServerContext ctx, $1.SetVocalsRequest request);
+  $async.Future<$1.SetTempoResponse> setTempo(
+      $pb.ServerContext ctx, $1.SetTempoRequest request);
 
   $pb.GeneratedMessage createRequest($core.String methodName) {
     switch (methodName) {
@@ -88,6 +92,10 @@ abstract class SessionServiceBase extends $pb.GeneratedService {
         return $1.SetBackgroundModeRequest();
       case 'SetVolume':
         return $1.SetVolumeRequest();
+      case 'SetVocals':
+        return $1.SetVocalsRequest();
+      case 'SetTempo':
+        return $1.SetTempoRequest();
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }
@@ -128,6 +136,10 @@ abstract class SessionServiceBase extends $pb.GeneratedService {
         return setBackgroundMode(ctx, request as $1.SetBackgroundModeRequest);
       case 'SetVolume':
         return setVolume(ctx, request as $1.SetVolumeRequest);
+      case 'SetVocals':
+        return setVocals(ctx, request as $1.SetVocalsRequest);
+      case 'SetTempo':
+        return setTempo(ctx, request as $1.SetTempoRequest);
       default:
         throw $core.ArgumentError('Unknown method: $methodName');
     }

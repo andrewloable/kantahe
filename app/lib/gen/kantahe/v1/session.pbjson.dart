@@ -439,13 +439,22 @@ const ReportDeviceRequest$json = {
   '2': [
     {'1': 'memory_mb', '3': 1, '4': 1, '5': 5, '10': 'memoryMb'},
     {'1': 'dropouts', '3': 2, '4': 1, '5': 5, '10': 'dropouts'},
+    {
+      '1': 'vocals_state',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.kantahe.v1.VocalsState',
+      '10': 'vocalsState'
+    },
   ],
 };
 
 /// Descriptor for `ReportDeviceRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List reportDeviceRequestDescriptor = $convert.base64Decode(
     'ChNSZXBvcnREZXZpY2VSZXF1ZXN0EhsKCW1lbW9yeV9tYhgBIAEoBVIIbWVtb3J5TWISGgoIZH'
-    'JvcG91dHMYAiABKAVSCGRyb3BvdXRz');
+    'JvcG91dHMYAiABKAVSCGRyb3BvdXRzEjoKDHZvY2Fsc19zdGF0ZRgDIAEoDjIXLmthbnRhaGUu'
+    'djEuVm9jYWxzU3RhdGVSC3ZvY2Fsc1N0YXRl');
 
 @$core.Deprecated('Use reportDeviceResponseDescriptor instead')
 const ReportDeviceResponse$json = {
@@ -607,6 +616,66 @@ final $typed_data.Uint8List setVolumeResponseDescriptor = $convert.base64Decode(
     'ChFTZXRWb2x1bWVSZXNwb25zZRIqCgZkZXZpY2UYASABKAsyEi5rYW50YWhlLnYxLkRldmljZV'
     'IGZGV2aWNl');
 
+@$core.Deprecated('Use setVocalsRequestDescriptor instead')
+const SetVocalsRequest$json = {
+  '1': 'SetVocalsRequest',
+  '2': [
+    {'1': 'device_id', '3': 1, '4': 1, '5': 9, '10': 'deviceId'},
+    {'1': 'on', '3': 2, '4': 1, '5': 8, '9': 0, '10': 'on', '17': true},
+    {'1': 'pct', '3': 3, '4': 1, '5': 5, '9': 1, '10': 'pct', '17': true},
+  ],
+  '8': [
+    {'1': '_on'},
+    {'1': '_pct'},
+  ],
+};
+
+/// Descriptor for `SetVocalsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setVocalsRequestDescriptor = $convert.base64Decode(
+    'ChBTZXRWb2NhbHNSZXF1ZXN0EhsKCWRldmljZV9pZBgBIAEoCVIIZGV2aWNlSWQSEwoCb24YAi'
+    'ABKAhIAFICb26IAQESFQoDcGN0GAMgASgFSAFSA3BjdIgBAUIFCgNfb25CBgoEX3BjdA==');
+
+@$core.Deprecated('Use setVocalsResponseDescriptor instead')
+const SetVocalsResponse$json = {
+  '1': 'SetVocalsResponse',
+  '2': [
+    {
+      '1': 'device',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.kantahe.v1.Device',
+      '10': 'device'
+    },
+  ],
+};
+
+/// Descriptor for `SetVocalsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setVocalsResponseDescriptor = $convert.base64Decode(
+    'ChFTZXRWb2NhbHNSZXNwb25zZRIqCgZkZXZpY2UYASABKAsyEi5rYW50YWhlLnYxLkRldmljZV'
+    'IGZGV2aWNl');
+
+@$core.Deprecated('Use setTempoRequestDescriptor instead')
+const SetTempoRequest$json = {
+  '1': 'SetTempoRequest',
+  '2': [
+    {'1': 'pct', '3': 1, '4': 1, '5': 5, '10': 'pct'},
+  ],
+};
+
+/// Descriptor for `SetTempoRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setTempoRequestDescriptor =
+    $convert.base64Decode('Cg9TZXRUZW1wb1JlcXVlc3QSEAoDcGN0GAEgASgFUgNwY3Q=');
+
+@$core.Deprecated('Use setTempoResponseDescriptor instead')
+const SetTempoResponse$json = {
+  '1': 'SetTempoResponse',
+};
+
+/// Descriptor for `SetTempoResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setTempoResponseDescriptor =
+    $convert.base64Decode('ChBTZXRUZW1wb1Jlc3BvbnNl');
+
 @$core.Deprecated('Use queueItemDescriptor instead')
 const QueueItem$json = {
   '1': 'QueueItem',
@@ -650,6 +719,8 @@ const NowPlaying$json = {
     },
     {'1': 'position_ms', '3': 3, '4': 1, '5': 3, '10': 'positionMs'},
     {'1': 'position_at_ms', '3': 4, '4': 1, '5': 3, '10': 'positionAtMs'},
+    {'1': 'guide_cancelled', '3': 5, '4': 1, '5': 8, '10': 'guideCancelled'},
+    {'1': 'tempo_pct', '3': 6, '4': 1, '5': 5, '10': 'tempoPct'},
   ],
 };
 
@@ -658,7 +729,8 @@ final $typed_data.Uint8List nowPlayingDescriptor = $convert.base64Decode(
     'CgpOb3dQbGF5aW5nEiQKBHNvbmcYASABKAsyEC5rYW50YWhlLnYxLlNvbmdSBHNvbmcSLgoGc2'
     '91cmNlGAIgASgOMhYua2FudGFoZS52MS5Tb25nU291cmNlUgZzb3VyY2USHwoLcG9zaXRpb25f'
     'bXMYAyABKANSCnBvc2l0aW9uTXMSJAoOcG9zaXRpb25fYXRfbXMYBCABKANSDHBvc2l0aW9uQX'
-    'RNcw==');
+    'RNcxInCg9ndWlkZV9jYW5jZWxsZWQYBSABKAhSDmd1aWRlQ2FuY2VsbGVkEhsKCXRlbXBvX3Bj'
+    'dBgGIAEoBVIIdGVtcG9QY3Q=');
 
 @$core.Deprecated('Use upNextDescriptor instead')
 const UpNext$json = {
@@ -898,6 +970,16 @@ const $core.Map<$core.String, $core.dynamic> SessionServiceBase$json = {
       '2': '.kantahe.v1.SetVolumeRequest',
       '3': '.kantahe.v1.SetVolumeResponse'
     },
+    {
+      '1': 'SetVocals',
+      '2': '.kantahe.v1.SetVocalsRequest',
+      '3': '.kantahe.v1.SetVocalsResponse'
+    },
+    {
+      '1': 'SetTempo',
+      '2': '.kantahe.v1.SetTempoRequest',
+      '3': '.kantahe.v1.SetTempoResponse'
+    },
   ],
 };
 
@@ -944,6 +1026,10 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.kantahe.v1.SetBackgroundModeResponse': SetBackgroundModeResponse$json,
   '.kantahe.v1.SetVolumeRequest': SetVolumeRequest$json,
   '.kantahe.v1.SetVolumeResponse': SetVolumeResponse$json,
+  '.kantahe.v1.SetVocalsRequest': SetVocalsRequest$json,
+  '.kantahe.v1.SetVocalsResponse': SetVocalsResponse$json,
+  '.kantahe.v1.SetTempoRequest': SetTempoRequest$json,
+  '.kantahe.v1.SetTempoResponse': SetTempoResponse$json,
 };
 
 /// Descriptor for `SessionService`. Decode as a `google.protobuf.ServiceDescriptorProto`.
@@ -971,4 +1057,7 @@ final $typed_data.Uint8List sessionServiceDescriptor = $convert.base64Decode(
     'U2V0TWlkaU1vZGVSZXNwb25zZRJgChFTZXRCYWNrZ3JvdW5kTW9kZRIkLmthbnRhaGUudjEuU2'
     'V0QmFja2dyb3VuZE1vZGVSZXF1ZXN0GiUua2FudGFoZS52MS5TZXRCYWNrZ3JvdW5kTW9kZVJl'
     'c3BvbnNlEkgKCVNldFZvbHVtZRIcLmthbnRhaGUudjEuU2V0Vm9sdW1lUmVxdWVzdBodLmthbn'
-    'RhaGUudjEuU2V0Vm9sdW1lUmVzcG9uc2U=');
+    'RhaGUudjEuU2V0Vm9sdW1lUmVzcG9uc2USSAoJU2V0Vm9jYWxzEhwua2FudGFoZS52MS5TZXRW'
+    'b2NhbHNSZXF1ZXN0Gh0ua2FudGFoZS52MS5TZXRWb2NhbHNSZXNwb25zZRJFCghTZXRUZW1wbx'
+    'IbLmthbnRhaGUudjEuU2V0VGVtcG9SZXF1ZXN0Ghwua2FudGFoZS52MS5TZXRUZW1wb1Jlc3Bv'
+    'bnNl');

@@ -299,8 +299,10 @@ func TestStageMigratesAnOlderExport(t *testing.T) {
 		version int
 		sql     []string
 	}{
-		{"made by the version before this one", 13, []string{`ALTER TABLE songs DROP COLUMN lyric_timing`, `DELETE FROM schema_migrations WHERE version = 14`}},
-		{"made two versions before", 12, []string{`ALTER TABLE songs DROP COLUMN lyric_timing`, `ALTER TABLE songs DROP COLUMN has_vocals`, `DELETE FROM schema_migrations WHERE version >= 13`}},
+		{"made by the version before this one", 15, []string{`ALTER TABLE user_state DROP COLUMN tempo_pct`, `DELETE FROM schema_migrations WHERE version = 16`}},
+		{"made two versions before", 14, []string{`ALTER TABLE user_state DROP COLUMN tempo_pct`, `ALTER TABLE devices DROP COLUMN vocals_on`, `ALTER TABLE devices DROP COLUMN vocals_pct`, `ALTER TABLE user_state DROP COLUMN guide_cancelled`, `DELETE FROM schema_migrations WHERE version >= 15`}},
+		{"made three versions before", 13, []string{`ALTER TABLE user_state DROP COLUMN tempo_pct`, `ALTER TABLE devices DROP COLUMN vocals_on`, `ALTER TABLE devices DROP COLUMN vocals_pct`, `ALTER TABLE user_state DROP COLUMN guide_cancelled`, `ALTER TABLE songs DROP COLUMN lyric_timing`, `DELETE FROM schema_migrations WHERE version >= 14`}},
+		{"made four versions before", 12, []string{`ALTER TABLE user_state DROP COLUMN tempo_pct`, `ALTER TABLE devices DROP COLUMN vocals_on`, `ALTER TABLE devices DROP COLUMN vocals_pct`, `ALTER TABLE user_state DROP COLUMN guide_cancelled`, `ALTER TABLE songs DROP COLUMN lyric_timing`, `ALTER TABLE songs DROP COLUMN has_vocals`, `DELETE FROM schema_migrations WHERE version >= 13`}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			_, folder := populated(t)
@@ -309,7 +311,8 @@ func TestStageMigratesAnOlderExport(t *testing.T) {
 			target := newEnv(t)
 			stage(t, target, folder)
 			s := staged(t, target)
-			if s.num(`SELECT COUNT(*) FROM pragma_table_info('songs') WHERE name IN ('has_vocals', 'lyric_timing')`) != 2 || s.num(`SELECT MAX(version) FROM schema_migrations`) != store.LatestVersion() {
+			if s.num(`SELECT COUNT(*) FROM pragma_table_info('songs') WHERE name IN ('has_vocals', 'lyric_timing')`) != 2 ||
+				s.num(`SELECT COUNT(*) FROM pragma_table_info('devices') WHERE name IN ('vocals_on', 'vocals_pct')`) != 2 || s.num(`SELECT COUNT(*) FROM pragma_table_info('user_state') WHERE name IN ('guide_cancelled', 'tempo_pct')`) != 2 || s.num(`SELECT MAX(version) FROM schema_migrations`) != store.LatestVersion() {
 				t.Fatal("the staged database must be migrated")
 			}
 		})

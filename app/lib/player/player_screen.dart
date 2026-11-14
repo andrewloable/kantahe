@@ -176,6 +176,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     }
   }
 
+  /// A server that keeps the vocals choice per device sends vocals_on in this device's row: the volume and the vocals are then adjusted on the queue
+  /// screen of any device and not here, so that nothing moves on the player while someone sings. A 1.4.0 server cannot be reached for the vocals
+  /// from the queue screen, so with it the buttons stay as they were.
+  bool get _adjustOnQueue => _services.state.state?.devices.where((d) => d.id == _services.auth.deviceId).firstOrNull?.hasVocalsOn() ?? false;
+
   /// Whether the song that is current has a vocals track the page can play (a MIDI song never has).
   bool get _hasVocals {
     final s = _services.state.state;
@@ -479,8 +484,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                                                 child: const Text('Skip'),
                                               ),
                                             ),
-                                            // this device's volume: only while this device is the player (the song that plays elsewhere is not affected)
-                                            if (isHere && _volumeIsMp3 != null) ...[
+                                            // this device's volume (on a 1.4.0 server only): only while this device is the player (the song that plays elsewhere is not affected)
+                                            if (isHere && !_adjustOnQueue && _volumeIsMp3 != null) ...[
                                               FocusGrow(
                                                 child: OutlinedButton(onPressed: () => _changeVolume(-1), child: const Text('Volume down')),
                                               ),
@@ -496,7 +501,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                                               ),
                                             ],
                                             // the guide vocals of a song that has them, on the player only: the page plays the voice, these buttons drive it
-                                            if (isHere && _hasVocals) ...[
+                                            if (isHere && !_adjustOnQueue && _hasVocals) ...[
                                               FocusGrow(
                                                 child: OutlinedButton(
                                                   focusNode: _vocalsNode,

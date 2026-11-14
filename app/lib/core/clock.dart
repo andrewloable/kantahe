@@ -11,5 +11,7 @@ int positionNow(State state, int offsetMs, int nowMs) {
   final position = now.positionMs.toInt();
   if (state.status != PlayStatus.PLAY_STATUS_PLAYING) return position;
   final moved = nowMs + offsetMs - now.positionAtMs.toInt();
-  return position + (moved > 0 ? moved : 0);
+  // song time passes at the tempo of the song (0, an older server, is normal speed)
+  final tempo = now.tempoPct == 0 ? 100 : now.tempoPct;
+  return position + (moved > 0 ? moved * tempo ~/ 100 : 0);
 }

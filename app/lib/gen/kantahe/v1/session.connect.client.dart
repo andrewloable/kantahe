@@ -296,4 +296,40 @@ extension type SessionServiceClient (connect.Transport _transport) {
       onTrailer: onTrailer,
     );
   }
+
+  /// Signed-in user. Sets the guide vocals of one of the caller's devices: on or off and how loud (percent, 0 to 100; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field. Switching off on the device that plays also stops the amateur guide for the rest of the current song.
+  Future<kantahev1session.SetVocalsResponse> setVocals(
+    kantahev1session.SetVocalsRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.SessionService.setVocals,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
+
+  /// Signed-in user, any device. Sets the speed of the current song in percent (75 to 125 in steps of 5; 100 is normal), pitch unchanged. INVALID_ARGUMENT for another value, FAILED_PRECONDITION with no current song. The next song starts at 100 again.
+  Future<kantahev1session.SetTempoResponse> setTempo(
+    kantahev1session.SetTempoRequest input, {
+    connect.Headers? headers,
+    connect.AbortSignal? signal,
+    Function(connect.Headers)? onHeader,
+    Function(connect.Headers)? onTrailer,
+  }) {
+    return connect.Client(_transport).unary(
+      specs.SessionService.setTempo,
+      input,
+      signal: signal,
+      headers: headers,
+      onHeader: onHeader,
+      onTrailer: onTrailer,
+    );
+  }
 }

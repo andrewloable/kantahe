@@ -338,6 +338,7 @@ class FakeSeq {
   play = vi.fn();
   pause = vi.fn();
   currentTime = 0;
+  playbackRate = 1;
   skipToFirstNoteOn = true;
   constructor(public synth: unknown) {
     FakeSeq.last = this;
@@ -543,5 +544,47 @@ describe('MidiEngine volume', () => {
     m.engine.setVolume(0);
     await m.engine.load(m.playback);
     expect(m.ctx.gains[0].gain.value).toBe(0);
+  });
+});
+
+describe('tempo of an engine (kantahe-vaz)', () => {
+  it('mp3_engine_sets_rate_and_keeps_pitch: the rate is the speed of the file and the pitch is kept, also after the address is set', async () => {
+    const audio = document.createElement('audio');
+    audio.play = vi.fn().mockResolvedValue(undefined);
+    audio.pause = vi.fn();
+    audio.load = vi.fn();
+    const engine = new Mp3Engine(BASE, audio);
+    const playback = create(PlaybackSchema, { kind: PlaybackKind.AUDIO, audioUrl: '/media/song/1?sig=a', ready: true });
+    engine.setRate(0.75); // before the file loads
+    const loaded = engine.load(playback);
+    audio.dispatchEvent(new Event('canplay'));
+    await loaded;
+    // a new address resets playbackRate to defaultPlaybackRate in a browser: both are set
+    expect(audio.playbackRate).toBe(0.75);
+    expect(audio.defaultPlaybackRate).toBe(0.75);
+    const pitch = audio as HTMLAudioElement & { preservesPitch?: boolean; webkitPreservesPitch?: boolean };
+    expect(pitch.preservesPitch).toBe(true);
+    expect(pitch.webkitPreservesPitch).toBe(true);
+    engine.setRate(1.25); // while it plays
+    expect(audio.playbackRate).toBe(1.25);
+    expect(audio.defaultPlaybackRate).toBe(1.25);
+    expect(pitch.preservesPitch).toBe(true);
+  });
+
+  it('midi_engine_sets_sequencer_rate: before the song loads and while it plays', async () => {
+    const m = midiSetup({ effects: true });
+    m.engine.setRate(0.8);
+    await m.engine.load(m.playback);
+    expect(m.seq.playbackRate).toBe(0.8);
+    m.engine.setRate(1.2);
+    expect(m.seq.playbackRate).toBe(1.2);
+  });
+
+  it('the position of a MIDI song stays in song time: the sequencer time is not scaled again', async () => {
+    const m = midiSetup({ effects: true });
+    await m.engine.load(m.playback);
+    m.engine.setRate(1.25);
+    m.seq.currentTime = 12.5;
+    expect(m.engine.timeMs()).toBe(12500);
   });
 });

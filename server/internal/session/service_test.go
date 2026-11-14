@@ -447,3 +447,21 @@ func TestPrepareForGetsTheUserAndThePlayerDevice(t *testing.T) {
 		t.Fatalf("calls = %v: the last one should be about u2 and its player", g)
 	}
 }
+
+func TestTempoSurvivesARestartAndIsPushed(t *testing.T) {
+	e := newSvcEnv(t, 3)
+	ctx := context.Background()
+	add(t, e.svc, "u1", "00001")
+	control(t, e.svc, "u1", "d1", ActionPlayHere)
+	if _, err := e.svc.Do(ctx, "u1", func(m *Machine) ([]Effect, error) { return nil, m.SetTempo(85) }); err != nil {
+		t.Fatal(err)
+	}
+	var stored int
+	if err := e.db.QueryRow(`SELECT tempo_pct FROM user_state WHERE user_id='u1'`).Scan(&stored); err != nil || stored != 85 {
+		t.Fatalf("stored %d, %v: a change of tempo alone must be saved", stored, err)
+	}
+	s, err := e.newService().Do(ctx, "u1", nil)
+	if err != nil || s.Now == nil || s.Now.Tempo() != 85 {
+		t.Fatalf("restored: %+v %v", s.Now, err)
+	}
+}

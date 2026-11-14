@@ -151,5 +151,31 @@ class LyricTiming extends $pb.ProtobufEnum {
   const LyricTiming._(super.value, super.name);
 }
 
+/// Whether the vocals track plays on the player device: the amateur singer guide plays although the choice is off.
+class VocalsState extends $pb.ProtobufEnum {
+  static const VocalsState VOCALS_STATE_UNSPECIFIED =
+      VocalsState._(0, _omitEnumNames ? '' : 'VOCALS_STATE_UNSPECIFIED');
+  static const VocalsState VOCALS_STATE_OFF =
+      VocalsState._(1, _omitEnumNames ? '' : 'VOCALS_STATE_OFF');
+  static const VocalsState VOCALS_STATE_LOADING =
+      VocalsState._(2, _omitEnumNames ? '' : 'VOCALS_STATE_LOADING');
+  static const VocalsState VOCALS_STATE_ON =
+      VocalsState._(3, _omitEnumNames ? '' : 'VOCALS_STATE_ON');
+
+  static const $core.List<VocalsState> values = <VocalsState>[
+    VOCALS_STATE_UNSPECIFIED,
+    VOCALS_STATE_OFF,
+    VOCALS_STATE_LOADING,
+    VOCALS_STATE_ON,
+  ];
+
+  static final $core.List<VocalsState?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static VocalsState? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const VocalsState._(super.value, super.name);
+}
+
 const $core.bool _omitEnumNames =
     $core.bool.fromEnvironment('protobuf.omit_enum_names');

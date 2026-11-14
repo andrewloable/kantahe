@@ -4,7 +4,7 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { BackgroundMode, Device, MidiMode, Song } from "./common_pb";
+import type { BackgroundMode, Device, MidiMode, Song, VocalsState } from "./common_pb";
 import { file_kantahe_v1_common } from "./common_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file kantahe/v1/session.proto.
  */
 export const file_kantahe_v1_session: GenFile = /*@__PURE__*/
-  fileDesc("ChhrYW50YWhlL3YxL3Nlc3Npb24ucHJvdG8SCmthbnRhaGUudjEiEwoRV2F0Y2hTdGF0ZVJlcXVlc3QiNgoSV2F0Y2hTdGF0ZVJlc3BvbnNlEiAKBXN0YXRlGAEgASgLMhEua2FudGFoZS52MS5TdGF0ZSIRCg9HZXRTdGF0ZVJlcXVlc3QiNAoQR2V0U3RhdGVSZXNwb25zZRIgCgVzdGF0ZRgBIAEoCzIRLmthbnRhaGUudjEuU3RhdGUiIwoRQWRkVG9RdWV1ZVJlcXVlc3QSDgoGbnVtYmVyGAEgASgJIjkKEkFkZFRvUXVldWVSZXNwb25zZRIjCgRpdGVtGAEgASgLMhUua2FudGFoZS52MS5RdWV1ZUl0ZW0iMAoZQWRkUGxheWxpc3RUb1F1ZXVlUmVxdWVzdBITCgtwbGF5bGlzdF9pZBgBIAEoCSIrChpBZGRQbGF5bGlzdFRvUXVldWVSZXNwb25zZRINCgVhZGRlZBgBIAEoBSIpChZSZW1vdmVGcm9tUXVldWVSZXF1ZXN0Eg8KB2l0ZW1faWQYASABKAkiGQoXUmVtb3ZlRnJvbVF1ZXVlUmVzcG9uc2UiIwoQTW92ZVRvVG9wUmVxdWVzdBIPCgdpdGVtX2lkGAEgASgJIhMKEU1vdmVUb1RvcFJlc3BvbnNlIjsKDkNvbnRyb2xSZXF1ZXN0EikKBmFjdGlvbhgBIAEoDjIZLmthbnRhaGUudjEuQ29udHJvbEFjdGlvbiIRCg9Db250cm9sUmVzcG9uc2UinAEKGVVwZGF0ZVVzZXJTZXR0aW5nc1JlcXVlc3QSLgoKc2NvcmVfbW9kZRgBIAEoDjIVLmthbnRhaGUudjEuU2NvcmVNb2RlSACIAQESMAoLc2NvcmVfbGV2ZWwYAiABKA4yFi5rYW50YWhlLnYxLlNjb3JlTGV2ZWxIAYgBAUINCgtfc2NvcmVfbW9kZUIOCgxfc2NvcmVfbGV2ZWwiSAoaVXBkYXRlVXNlclNldHRpbmdzUmVzcG9uc2USKgoIc2V0dGluZ3MYASABKAsyGC5rYW50YWhlLnYxLlVzZXJTZXR0aW5ncyIeCgxSZWFkeVJlcXVlc3QSDgoGbnVtYmVyGAEgASgJIg8KDVJlYWR5UmVzcG9uc2UiPAoVUmVwb3J0UG9zaXRpb25SZXF1ZXN0Eg4KBm51bWJlchgBIAEoCRITCgtwb3NpdGlvbl9tcxgCIAEoAyIYChZSZXBvcnRQb3NpdGlvblJlc3BvbnNlIjUKDEVuZGVkUmVxdWVzdBIOCgZudW1iZXIYASABKAkSFQoNbG91ZF9yZWFkaW5ncxgCIAEoBSIPCg1FbmRlZFJlc3BvbnNlIiUKEFJlcG9ydE1pY1JlcXVlc3QSEQoJYXZhaWxhYmxlGAEgASgIIhMKEVJlcG9ydE1pY1Jlc3BvbnNlIjoKE1JlcG9ydERldmljZVJlcXVlc3QSEQoJbWVtb3J5X21iGAEgASgFEhAKCGRyb3BvdXRzGAIgASgFIjoKFFJlcG9ydERldmljZVJlc3BvbnNlEiIKBmRldmljZRgBIAEoCzISLmthbnRhaGUudjEuRGV2aWNlIksKElNldE1pZGlNb2RlUmVxdWVzdBIRCglkZXZpY2VfaWQYASABKAkSIgoEbW9kZRgCIAEoDjIULmthbnRhaGUudjEuTWlkaU1vZGUiOQoTU2V0TWlkaU1vZGVSZXNwb25zZRIiCgZkZXZpY2UYASABKAsyEi5rYW50YWhlLnYxLkRldmljZSJXChhTZXRCYWNrZ3JvdW5kTW9kZVJlcXVlc3QSEQoJZGV2aWNlX2lkGAEgASgJEigKBG1vZGUYAiABKA4yGi5rYW50YWhlLnYxLkJhY2tncm91bmRNb2RlIj8KGVNldEJhY2tncm91bmRNb2RlUmVzcG9uc2USIgoGZGV2aWNlGAEgASgLMhIua2FudGFoZS52MS5EZXZpY2UiawoQU2V0Vm9sdW1lUmVxdWVzdBIRCglkZXZpY2VfaWQYASABKAkSFAoHbXAzX3BjdBgCIAEoBUgAiAEBEhUKCG1pZGlfcGN0GAMgASgFSAGIAQFCCgoIX21wM19wY3RCCwoJX21pZGlfcGN0IjcKEVNldFZvbHVtZVJlc3BvbnNlEiIKBmRldmljZRgBIAEoCzISLmthbnRhaGUudjEuRGV2aWNlIjcKCVF1ZXVlSXRlbRIKCgJpZBgBIAEoCRIeCgRzb25nGAIgASgLMhAua2FudGFoZS52MS5Tb25nIoEBCgpOb3dQbGF5aW5nEh4KBHNvbmcYASABKAsyEC5rYW50YWhlLnYxLlNvbmcSJgoGc291cmNlGAIgASgOMhYua2FudGFoZS52MS5Tb25nU291cmNlEhMKC3Bvc2l0aW9uX21zGAMgASgDEhYKDnBvc2l0aW9uX2F0X21zGAQgASgDIlAKBlVwTmV4dBIeCgRzb25nGAEgASgLMhAua2FudGFoZS52MS5Tb25nEiYKBnNvdXJjZRgCIAEoDjIWLmthbnRhaGUudjEuU29uZ1NvdXJjZSJmCgxVc2VyU2V0dGluZ3MSKQoKc2NvcmVfbW9kZRgBIAEoDjIVLmthbnRhaGUudjEuU2NvcmVNb2RlEisKC3Njb3JlX2xldmVsGAIgASgOMhYua2FudGFoZS52MS5TY29yZUxldmVsIn0KBVNjb3JlEg4KBm51bWJlchgBIAEoCRIRCgloYXNfdmFsdWUYAiABKAgSDQoFdmFsdWUYAyABKAUSDwoHY29tbWVudBgEIAEoCRIPCgdmYW5mYXJlGAUgASgFEg4KBnJlYXNvbhgGIAEoCRIQCgh1bnRpbF9tcxgHIAEoAyLEAgoFU3RhdGUSJgoGc3RhdHVzGAEgASgOMhYua2FudGFoZS52MS5QbGF5U3RhdHVzEhgKEHBsYXllcl9kZXZpY2VfaWQYAiABKAkSIwoHZGV2aWNlcxgDIAMoCzISLmthbnRhaGUudjEuRGV2aWNlEiMKA25vdxgEIAEoCzIWLmthbnRhaGUudjEuTm93UGxheWluZxIkCgVxdWV1ZRgFIAMoCzIVLmthbnRhaGUudjEuUXVldWVJdGVtEiMKB3VwX25leHQYBiABKAsyEi5rYW50YWhlLnYxLlVwTmV4dBIqCghzZXR0aW5ncxgHIAEoCzIYLmthbnRhaGUudjEuVXNlclNldHRpbmdzEiAKBXNjb3JlGAggASgLMhEua2FudGFoZS52MS5TY29yZRIWCg5zZXJ2ZXJfdGltZV9tcxgJIAEoAypaCgpQbGF5U3RhdHVzEhsKF1BMQVlfU1RBVFVTX1VOU1BFQ0lGSUVEEAASFgoSUExBWV9TVEFUVVNfUEFVU0VEEAESFwoTUExBWV9TVEFUVVNfUExBWUlORxACKlgKClNvbmdTb3VyY2USGwoXU09OR19TT1VSQ0VfVU5TUEVDSUZJRUQQABIVChFTT05HX1NPVVJDRV9RVUVVRRABEhYKElNPTkdfU09VUkNFX1JBTkRPTRACKm0KCVNjb3JlTW9kZRIaChZTQ09SRV9NT0RFX1VOU1BFQ0lGSUVEEAASEgoOU0NPUkVfTU9ERV9PRkYQARIVChFTQ09SRV9NT0RFX1JBTkRPTRACEhkKFVNDT1JFX01PREVfTUlDUk9QSE9ORRADKmwKClNjb3JlTGV2ZWwSGwoXU0NPUkVfTEVWRUxfVU5TUEVDSUZJRUQQABITCg9TQ09SRV9MRVZFTF9MT1cQARIWChJTQ09SRV9MRVZFTF9NSURETEUQAhIUChBTQ09SRV9MRVZFTF9ISUdIEAMqmQEKDUNvbnRyb2xBY3Rpb24SHgoaQ09OVFJPTF9BQ1RJT05fVU5TUEVDSUZJRUQQABIXChNDT05UUk9MX0FDVElPTl9QTEFZEAESHAoYQ09OVFJPTF9BQ1RJT05fUExBWV9IRVJFEAISGAoUQ09OVFJPTF9BQ1RJT05fUEFVU0UQAxIXChNDT05UUk9MX0FDVElPTl9TS0lQEAQylQoKDlNlc3Npb25TZXJ2aWNlEk0KCldhdGNoU3RhdGUSHS5rYW50YWhlLnYxLldhdGNoU3RhdGVSZXF1ZXN0Gh4ua2FudGFoZS52MS5XYXRjaFN0YXRlUmVzcG9uc2UwARJFCghHZXRTdGF0ZRIbLmthbnRhaGUudjEuR2V0U3RhdGVSZXF1ZXN0Ghwua2FudGFoZS52MS5HZXRTdGF0ZVJlc3BvbnNlEksKCkFkZFRvUXVldWUSHS5rYW50YWhlLnYxLkFkZFRvUXVldWVSZXF1ZXN0Gh4ua2FudGFoZS52MS5BZGRUb1F1ZXVlUmVzcG9uc2USYwoSQWRkUGxheWxpc3RUb1F1ZXVlEiUua2FudGFoZS52MS5BZGRQbGF5bGlzdFRvUXVldWVSZXF1ZXN0GiYua2FudGFoZS52MS5BZGRQbGF5bGlzdFRvUXVldWVSZXNwb25zZRJaCg9SZW1vdmVGcm9tUXVldWUSIi5rYW50YWhlLnYxLlJlbW92ZUZyb21RdWV1ZVJlcXVlc3QaIy5rYW50YWhlLnYxLlJlbW92ZUZyb21RdWV1ZVJlc3BvbnNlEkgKCU1vdmVUb1RvcBIcLmthbnRhaGUudjEuTW92ZVRvVG9wUmVxdWVzdBodLmthbnRhaGUudjEuTW92ZVRvVG9wUmVzcG9uc2USQgoHQ29udHJvbBIaLmthbnRhaGUudjEuQ29udHJvbFJlcXVlc3QaGy5rYW50YWhlLnYxLkNvbnRyb2xSZXNwb25zZRJjChJVcGRhdGVVc2VyU2V0dGluZ3MSJS5rYW50YWhlLnYxLlVwZGF0ZVVzZXJTZXR0aW5nc1JlcXVlc3QaJi5rYW50YWhlLnYxLlVwZGF0ZVVzZXJTZXR0aW5nc1Jlc3BvbnNlEjwKBVJlYWR5Ehgua2FudGFoZS52MS5SZWFkeVJlcXVlc3QaGS5rYW50YWhlLnYxLlJlYWR5UmVzcG9uc2USVwoOUmVwb3J0UG9zaXRpb24SIS5rYW50YWhlLnYxLlJlcG9ydFBvc2l0aW9uUmVxdWVzdBoiLmthbnRhaGUudjEuUmVwb3J0UG9zaXRpb25SZXNwb25zZRI8CgVFbmRlZBIYLmthbnRhaGUudjEuRW5kZWRSZXF1ZXN0Ghkua2FudGFoZS52MS5FbmRlZFJlc3BvbnNlEkgKCVJlcG9ydE1pYxIcLmthbnRhaGUudjEuUmVwb3J0TWljUmVxdWVzdBodLmthbnRhaGUudjEuUmVwb3J0TWljUmVzcG9uc2USUQoMUmVwb3J0RGV2aWNlEh8ua2FudGFoZS52MS5SZXBvcnREZXZpY2VSZXF1ZXN0GiAua2FudGFoZS52MS5SZXBvcnREZXZpY2VSZXNwb25zZRJOCgtTZXRNaWRpTW9kZRIeLmthbnRhaGUudjEuU2V0TWlkaU1vZGVSZXF1ZXN0Gh8ua2FudGFoZS52MS5TZXRNaWRpTW9kZVJlc3BvbnNlEmAKEVNldEJhY2tncm91bmRNb2RlEiQua2FudGFoZS52MS5TZXRCYWNrZ3JvdW5kTW9kZVJlcXVlc3QaJS5rYW50YWhlLnYxLlNldEJhY2tncm91bmRNb2RlUmVzcG9uc2USSAoJU2V0Vm9sdW1lEhwua2FudGFoZS52MS5TZXRWb2x1bWVSZXF1ZXN0Gh0ua2FudGFoZS52MS5TZXRWb2x1bWVSZXNwb25zZUKoAQoOY29tLmthbnRhaGUudjFCDFNlc3Npb25Qcm90b1ABWj9naXRodWIuY29tL2FuZHJld2xvYWJsZS9rYW50YWhlL3NlcnZlci9nZW4va2FudGFoZS92MTtrYW50YWhldjGiAgNLWFiqAgpLYW50YWhlLlYxygIKS2FudGFoZVxWMeICFkthbnRhaGVcVjFcR1BCTWV0YWRhdGHqAgtLYW50YWhlOjpWMWIGcHJvdG8z", [file_kantahe_v1_common]);
+  fileDesc("ChhrYW50YWhlL3YxL3Nlc3Npb24ucHJvdG8SCmthbnRhaGUudjEiEwoRV2F0Y2hTdGF0ZVJlcXVlc3QiNgoSV2F0Y2hTdGF0ZVJlc3BvbnNlEiAKBXN0YXRlGAEgASgLMhEua2FudGFoZS52MS5TdGF0ZSIRCg9HZXRTdGF0ZVJlcXVlc3QiNAoQR2V0U3RhdGVSZXNwb25zZRIgCgVzdGF0ZRgBIAEoCzIRLmthbnRhaGUudjEuU3RhdGUiIwoRQWRkVG9RdWV1ZVJlcXVlc3QSDgoGbnVtYmVyGAEgASgJIjkKEkFkZFRvUXVldWVSZXNwb25zZRIjCgRpdGVtGAEgASgLMhUua2FudGFoZS52MS5RdWV1ZUl0ZW0iMAoZQWRkUGxheWxpc3RUb1F1ZXVlUmVxdWVzdBITCgtwbGF5bGlzdF9pZBgBIAEoCSIrChpBZGRQbGF5bGlzdFRvUXVldWVSZXNwb25zZRINCgVhZGRlZBgBIAEoBSIpChZSZW1vdmVGcm9tUXVldWVSZXF1ZXN0Eg8KB2l0ZW1faWQYASABKAkiGQoXUmVtb3ZlRnJvbVF1ZXVlUmVzcG9uc2UiIwoQTW92ZVRvVG9wUmVxdWVzdBIPCgdpdGVtX2lkGAEgASgJIhMKEU1vdmVUb1RvcFJlc3BvbnNlIjsKDkNvbnRyb2xSZXF1ZXN0EikKBmFjdGlvbhgBIAEoDjIZLmthbnRhaGUudjEuQ29udHJvbEFjdGlvbiIRCg9Db250cm9sUmVzcG9uc2UinAEKGVVwZGF0ZVVzZXJTZXR0aW5nc1JlcXVlc3QSLgoKc2NvcmVfbW9kZRgBIAEoDjIVLmthbnRhaGUudjEuU2NvcmVNb2RlSACIAQESMAoLc2NvcmVfbGV2ZWwYAiABKA4yFi5rYW50YWhlLnYxLlNjb3JlTGV2ZWxIAYgBAUINCgtfc2NvcmVfbW9kZUIOCgxfc2NvcmVfbGV2ZWwiSAoaVXBkYXRlVXNlclNldHRpbmdzUmVzcG9uc2USKgoIc2V0dGluZ3MYASABKAsyGC5rYW50YWhlLnYxLlVzZXJTZXR0aW5ncyIeCgxSZWFkeVJlcXVlc3QSDgoGbnVtYmVyGAEgASgJIg8KDVJlYWR5UmVzcG9uc2UiPAoVUmVwb3J0UG9zaXRpb25SZXF1ZXN0Eg4KBm51bWJlchgBIAEoCRITCgtwb3NpdGlvbl9tcxgCIAEoAyIYChZSZXBvcnRQb3NpdGlvblJlc3BvbnNlIjUKDEVuZGVkUmVxdWVzdBIOCgZudW1iZXIYASABKAkSFQoNbG91ZF9yZWFkaW5ncxgCIAEoBSIPCg1FbmRlZFJlc3BvbnNlIiUKEFJlcG9ydE1pY1JlcXVlc3QSEQoJYXZhaWxhYmxlGAEgASgIIhMKEVJlcG9ydE1pY1Jlc3BvbnNlImkKE1JlcG9ydERldmljZVJlcXVlc3QSEQoJbWVtb3J5X21iGAEgASgFEhAKCGRyb3BvdXRzGAIgASgFEi0KDHZvY2Fsc19zdGF0ZRgDIAEoDjIXLmthbnRhaGUudjEuVm9jYWxzU3RhdGUiOgoUUmVwb3J0RGV2aWNlUmVzcG9uc2USIgoGZGV2aWNlGAEgASgLMhIua2FudGFoZS52MS5EZXZpY2UiSwoSU2V0TWlkaU1vZGVSZXF1ZXN0EhEKCWRldmljZV9pZBgBIAEoCRIiCgRtb2RlGAIgASgOMhQua2FudGFoZS52MS5NaWRpTW9kZSI5ChNTZXRNaWRpTW9kZVJlc3BvbnNlEiIKBmRldmljZRgBIAEoCzISLmthbnRhaGUudjEuRGV2aWNlIlcKGFNldEJhY2tncm91bmRNb2RlUmVxdWVzdBIRCglkZXZpY2VfaWQYASABKAkSKAoEbW9kZRgCIAEoDjIaLmthbnRhaGUudjEuQmFja2dyb3VuZE1vZGUiPwoZU2V0QmFja2dyb3VuZE1vZGVSZXNwb25zZRIiCgZkZXZpY2UYASABKAsyEi5rYW50YWhlLnYxLkRldmljZSJrChBTZXRWb2x1bWVSZXF1ZXN0EhEKCWRldmljZV9pZBgBIAEoCRIUCgdtcDNfcGN0GAIgASgFSACIAQESFQoIbWlkaV9wY3QYAyABKAVIAYgBAUIKCghfbXAzX3BjdEILCglfbWlkaV9wY3QiNwoRU2V0Vm9sdW1lUmVzcG9uc2USIgoGZGV2aWNlGAEgASgLMhIua2FudGFoZS52MS5EZXZpY2UiVwoQU2V0Vm9jYWxzUmVxdWVzdBIRCglkZXZpY2VfaWQYASABKAkSDwoCb24YAiABKAhIAIgBARIQCgNwY3QYAyABKAVIAYgBAUIFCgNfb25CBgoEX3BjdCI3ChFTZXRWb2NhbHNSZXNwb25zZRIiCgZkZXZpY2UYASABKAsyEi5rYW50YWhlLnYxLkRldmljZSIeCg9TZXRUZW1wb1JlcXVlc3QSCwoDcGN0GAEgASgFIhIKEFNldFRlbXBvUmVzcG9uc2UiNwoJUXVldWVJdGVtEgoKAmlkGAEgASgJEh4KBHNvbmcYAiABKAsyEC5rYW50YWhlLnYxLlNvbmcirQEKCk5vd1BsYXlpbmcSHgoEc29uZxgBIAEoCzIQLmthbnRhaGUudjEuU29uZxImCgZzb3VyY2UYAiABKA4yFi5rYW50YWhlLnYxLlNvbmdTb3VyY2USEwoLcG9zaXRpb25fbXMYAyABKAMSFgoOcG9zaXRpb25fYXRfbXMYBCABKAMSFwoPZ3VpZGVfY2FuY2VsbGVkGAUgASgIEhEKCXRlbXBvX3BjdBgGIAEoBSJQCgZVcE5leHQSHgoEc29uZxgBIAEoCzIQLmthbnRhaGUudjEuU29uZxImCgZzb3VyY2UYAiABKA4yFi5rYW50YWhlLnYxLlNvbmdTb3VyY2UiZgoMVXNlclNldHRpbmdzEikKCnNjb3JlX21vZGUYASABKA4yFS5rYW50YWhlLnYxLlNjb3JlTW9kZRIrCgtzY29yZV9sZXZlbBgCIAEoDjIWLmthbnRhaGUudjEuU2NvcmVMZXZlbCJ9CgVTY29yZRIOCgZudW1iZXIYASABKAkSEQoJaGFzX3ZhbHVlGAIgASgIEg0KBXZhbHVlGAMgASgFEg8KB2NvbW1lbnQYBCABKAkSDwoHZmFuZmFyZRgFIAEoBRIOCgZyZWFzb24YBiABKAkSEAoIdW50aWxfbXMYByABKAMixAIKBVN0YXRlEiYKBnN0YXR1cxgBIAEoDjIWLmthbnRhaGUudjEuUGxheVN0YXR1cxIYChBwbGF5ZXJfZGV2aWNlX2lkGAIgASgJEiMKB2RldmljZXMYAyADKAsyEi5rYW50YWhlLnYxLkRldmljZRIjCgNub3cYBCABKAsyFi5rYW50YWhlLnYxLk5vd1BsYXlpbmcSJAoFcXVldWUYBSADKAsyFS5rYW50YWhlLnYxLlF1ZXVlSXRlbRIjCgd1cF9uZXh0GAYgASgLMhIua2FudGFoZS52MS5VcE5leHQSKgoIc2V0dGluZ3MYByABKAsyGC5rYW50YWhlLnYxLlVzZXJTZXR0aW5ncxIgCgVzY29yZRgIIAEoCzIRLmthbnRhaGUudjEuU2NvcmUSFgoOc2VydmVyX3RpbWVfbXMYCSABKAMqWgoKUGxheVN0YXR1cxIbChdQTEFZX1NUQVRVU19VTlNQRUNJRklFRBAAEhYKElBMQVlfU1RBVFVTX1BBVVNFRBABEhcKE1BMQVlfU1RBVFVTX1BMQVlJTkcQAipYCgpTb25nU291cmNlEhsKF1NPTkdfU09VUkNFX1VOU1BFQ0lGSUVEEAASFQoRU09OR19TT1VSQ0VfUVVFVUUQARIWChJTT05HX1NPVVJDRV9SQU5ET00QAiptCglTY29yZU1vZGUSGgoWU0NPUkVfTU9ERV9VTlNQRUNJRklFRBAAEhIKDlNDT1JFX01PREVfT0ZGEAESFQoRU0NPUkVfTU9ERV9SQU5ET00QAhIZChVTQ09SRV9NT0RFX01JQ1JPUEhPTkUQAypsCgpTY29yZUxldmVsEhsKF1NDT1JFX0xFVkVMX1VOU1BFQ0lGSUVEEAASEwoPU0NPUkVfTEVWRUxfTE9XEAESFgoSU0NPUkVfTEVWRUxfTUlERExFEAISFAoQU0NPUkVfTEVWRUxfSElHSBADKpkBCg1Db250cm9sQWN0aW9uEh4KGkNPTlRST0xfQUNUSU9OX1VOU1BFQ0lGSUVEEAASFwoTQ09OVFJPTF9BQ1RJT05fUExBWRABEhwKGENPTlRST0xfQUNUSU9OX1BMQVlfSEVSRRACEhgKFENPTlRST0xfQUNUSU9OX1BBVVNFEAMSFwoTQ09OVFJPTF9BQ1RJT05fU0tJUBAEMqYLCg5TZXNzaW9uU2VydmljZRJNCgpXYXRjaFN0YXRlEh0ua2FudGFoZS52MS5XYXRjaFN0YXRlUmVxdWVzdBoeLmthbnRhaGUudjEuV2F0Y2hTdGF0ZVJlc3BvbnNlMAESRQoIR2V0U3RhdGUSGy5rYW50YWhlLnYxLkdldFN0YXRlUmVxdWVzdBocLmthbnRhaGUudjEuR2V0U3RhdGVSZXNwb25zZRJLCgpBZGRUb1F1ZXVlEh0ua2FudGFoZS52MS5BZGRUb1F1ZXVlUmVxdWVzdBoeLmthbnRhaGUudjEuQWRkVG9RdWV1ZVJlc3BvbnNlEmMKEkFkZFBsYXlsaXN0VG9RdWV1ZRIlLmthbnRhaGUudjEuQWRkUGxheWxpc3RUb1F1ZXVlUmVxdWVzdBomLmthbnRhaGUudjEuQWRkUGxheWxpc3RUb1F1ZXVlUmVzcG9uc2USWgoPUmVtb3ZlRnJvbVF1ZXVlEiIua2FudGFoZS52MS5SZW1vdmVGcm9tUXVldWVSZXF1ZXN0GiMua2FudGFoZS52MS5SZW1vdmVGcm9tUXVldWVSZXNwb25zZRJICglNb3ZlVG9Ub3ASHC5rYW50YWhlLnYxLk1vdmVUb1RvcFJlcXVlc3QaHS5rYW50YWhlLnYxLk1vdmVUb1RvcFJlc3BvbnNlEkIKB0NvbnRyb2wSGi5rYW50YWhlLnYxLkNvbnRyb2xSZXF1ZXN0Ghsua2FudGFoZS52MS5Db250cm9sUmVzcG9uc2USYwoSVXBkYXRlVXNlclNldHRpbmdzEiUua2FudGFoZS52MS5VcGRhdGVVc2VyU2V0dGluZ3NSZXF1ZXN0GiYua2FudGFoZS52MS5VcGRhdGVVc2VyU2V0dGluZ3NSZXNwb25zZRI8CgVSZWFkeRIYLmthbnRhaGUudjEuUmVhZHlSZXF1ZXN0Ghkua2FudGFoZS52MS5SZWFkeVJlc3BvbnNlElcKDlJlcG9ydFBvc2l0aW9uEiEua2FudGFoZS52MS5SZXBvcnRQb3NpdGlvblJlcXVlc3QaIi5rYW50YWhlLnYxLlJlcG9ydFBvc2l0aW9uUmVzcG9uc2USPAoFRW5kZWQSGC5rYW50YWhlLnYxLkVuZGVkUmVxdWVzdBoZLmthbnRhaGUudjEuRW5kZWRSZXNwb25zZRJICglSZXBvcnRNaWMSHC5rYW50YWhlLnYxLlJlcG9ydE1pY1JlcXVlc3QaHS5rYW50YWhlLnYxLlJlcG9ydE1pY1Jlc3BvbnNlElEKDFJlcG9ydERldmljZRIfLmthbnRhaGUudjEuUmVwb3J0RGV2aWNlUmVxdWVzdBogLmthbnRhaGUudjEuUmVwb3J0RGV2aWNlUmVzcG9uc2USTgoLU2V0TWlkaU1vZGUSHi5rYW50YWhlLnYxLlNldE1pZGlNb2RlUmVxdWVzdBofLmthbnRhaGUudjEuU2V0TWlkaU1vZGVSZXNwb25zZRJgChFTZXRCYWNrZ3JvdW5kTW9kZRIkLmthbnRhaGUudjEuU2V0QmFja2dyb3VuZE1vZGVSZXF1ZXN0GiUua2FudGFoZS52MS5TZXRCYWNrZ3JvdW5kTW9kZVJlc3BvbnNlEkgKCVNldFZvbHVtZRIcLmthbnRhaGUudjEuU2V0Vm9sdW1lUmVxdWVzdBodLmthbnRhaGUudjEuU2V0Vm9sdW1lUmVzcG9uc2USSAoJU2V0Vm9jYWxzEhwua2FudGFoZS52MS5TZXRWb2NhbHNSZXF1ZXN0Gh0ua2FudGFoZS52MS5TZXRWb2NhbHNSZXNwb25zZRJFCghTZXRUZW1wbxIbLmthbnRhaGUudjEuU2V0VGVtcG9SZXF1ZXN0Ghwua2FudGFoZS52MS5TZXRUZW1wb1Jlc3BvbnNlQqgBCg5jb20ua2FudGFoZS52MUIMU2Vzc2lvblByb3RvUAFaP2dpdGh1Yi5jb20vYW5kcmV3bG9hYmxlL2thbnRhaGUvc2VydmVyL2dlbi9rYW50YWhlL3YxO2thbnRhaGV2MaICA0tYWKoCCkthbnRhaGUuVjHKAgpLYW50YWhlXFYx4gIWS2FudGFoZVxWMVxHUEJNZXRhZGF0YeoCC0thbnRhaGU6OlYxYgZwcm90bzM", [file_kantahe_v1_common]);
 
 /**
  * Asks nothing; the stream belongs to the calling device.
@@ -464,6 +464,13 @@ export type ReportDeviceRequest = Message<"kantahe.v1.ReportDeviceRequest"> & {
    * @generated from field: int32 dropouts = 2;
    */
   dropouts: number;
+
+  /**
+   * What the calling device plays now. Taken only from the device that plays; ignored from any other.
+   *
+   * @generated from field: kantahe.v1.VocalsState vocals_state = 3;
+   */
+  vocalsState: VocalsState;
 };
 
 /**
@@ -627,6 +634,88 @@ export const SetVolumeResponseSchema: GenMessage<SetVolumeResponse> = /*@__PURE_
   messageDesc(file_kantahe_v1_session, 31);
 
 /**
+ * The device and the guide vocals to set; a field that is not given is left as it is.
+ *
+ * @generated from message kantahe.v1.SetVocalsRequest
+ */
+export type SetVocalsRequest = Message<"kantahe.v1.SetVocalsRequest"> & {
+  /**
+   * @generated from field: string device_id = 1;
+   */
+  deviceId: string;
+
+  /**
+   * @generated from field: optional bool on = 2;
+   */
+  on?: boolean | undefined;
+
+  /**
+   * @generated from field: optional int32 pct = 3;
+   */
+  pct?: number | undefined;
+};
+
+/**
+ * Describes the message kantahe.v1.SetVocalsRequest.
+ * Use `create(SetVocalsRequestSchema)` to create a new message.
+ */
+export const SetVocalsRequestSchema: GenMessage<SetVocalsRequest> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_session, 32);
+
+/**
+ * The device after the change.
+ *
+ * @generated from message kantahe.v1.SetVocalsResponse
+ */
+export type SetVocalsResponse = Message<"kantahe.v1.SetVocalsResponse"> & {
+  /**
+   * @generated from field: kantahe.v1.Device device = 1;
+   */
+  device?: Device | undefined;
+};
+
+/**
+ * Describes the message kantahe.v1.SetVocalsResponse.
+ * Use `create(SetVocalsResponseSchema)` to create a new message.
+ */
+export const SetVocalsResponseSchema: GenMessage<SetVocalsResponse> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_session, 33);
+
+/**
+ * The speed to set.
+ *
+ * @generated from message kantahe.v1.SetTempoRequest
+ */
+export type SetTempoRequest = Message<"kantahe.v1.SetTempoRequest"> & {
+  /**
+   * @generated from field: int32 pct = 1;
+   */
+  pct: number;
+};
+
+/**
+ * Describes the message kantahe.v1.SetTempoRequest.
+ * Use `create(SetTempoRequestSchema)` to create a new message.
+ */
+export const SetTempoRequestSchema: GenMessage<SetTempoRequest> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_session, 34);
+
+/**
+ * Empty.
+ *
+ * @generated from message kantahe.v1.SetTempoResponse
+ */
+export type SetTempoResponse = Message<"kantahe.v1.SetTempoResponse"> & {
+};
+
+/**
+ * Describes the message kantahe.v1.SetTempoResponse.
+ * Use `create(SetTempoResponseSchema)` to create a new message.
+ */
+export const SetTempoResponseSchema: GenMessage<SetTempoResponse> = /*@__PURE__*/
+  messageDesc(file_kantahe_v1_session, 35);
+
+/**
  * One entry of the caller's queue.
  *
  * @generated from message kantahe.v1.QueueItem
@@ -648,7 +737,7 @@ export type QueueItem = Message<"kantahe.v1.QueueItem"> & {
  * Use `create(QueueItemSchema)` to create a new message.
  */
 export const QueueItemSchema: GenMessage<QueueItem> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_session, 32);
+  messageDesc(file_kantahe_v1_session, 36);
 
 /**
  * The current song; remotes extrapolate position from position_at_ms (server clock).
@@ -675,6 +764,21 @@ export type NowPlaying = Message<"kantahe.v1.NowPlaying"> & {
    * @generated from field: int64 position_at_ms = 4;
    */
   positionAtMs: bigint;
+
+  /**
+   * The amateur singer guide was switched off for this song (from any device); false again when the song changes.
+   *
+   * @generated from field: bool guide_cancelled = 5;
+   */
+  guideCancelled: boolean;
+
+  /**
+   * The speed of this song in percent, 100 = normal. 0 (an older server) means 100. Song time passes at this speed: position_ms moves
+   * (now - position_at_ms) * tempo_pct / 100 after position_at_ms.
+   *
+   * @generated from field: int32 tempo_pct = 6;
+   */
+  tempoPct: number;
 };
 
 /**
@@ -682,7 +786,7 @@ export type NowPlaying = Message<"kantahe.v1.NowPlaying"> & {
  * Use `create(NowPlayingSchema)` to create a new message.
  */
 export const NowPlayingSchema: GenMessage<NowPlaying> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_session, 33);
+  messageDesc(file_kantahe_v1_session, 37);
 
 /**
  * The song that follows the current one, pre-picked when the current one starts.
@@ -706,7 +810,7 @@ export type UpNext = Message<"kantahe.v1.UpNext"> & {
  * Use `create(UpNextSchema)` to create a new message.
  */
 export const UpNextSchema: GenMessage<UpNext> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_session, 34);
+  messageDesc(file_kantahe_v1_session, 38);
 
 /**
  * The caller's score settings.
@@ -730,7 +834,7 @@ export type UserSettings = Message<"kantahe.v1.UserSettings"> & {
  * Use `create(UserSettingsSchema)` to create a new message.
  */
 export const UserSettingsSchema: GenMessage<UserSettings> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_session, 35);
+  messageDesc(file_kantahe_v1_session, 39);
 
 /**
  * The score shown after a song until until_ms; fanfare is 0 for none or 1 to 3.
@@ -779,7 +883,7 @@ export type Score = Message<"kantahe.v1.Score"> & {
  * Use `create(ScoreSchema)` to create a new message.
  */
 export const ScoreSchema: GenMessage<Score> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_session, 36);
+  messageDesc(file_kantahe_v1_session, 40);
 
 /**
  * Everything one user's devices need to show; score is unset when no score is showing.
@@ -838,7 +942,7 @@ export type State = Message<"kantahe.v1.State"> & {
  * Use `create(StateSchema)` to create a new message.
  */
 export const StateSchema: GenMessage<State> = /*@__PURE__*/
-  messageDesc(file_kantahe_v1_session, 37);
+  messageDesc(file_kantahe_v1_session, 41);
 
 /**
  * Whether the current song is playing or paused.
@@ -1165,6 +1269,26 @@ export const SessionService: GenService<{
     methodKind: "unary";
     input: typeof SetVolumeRequestSchema;
     output: typeof SetVolumeResponseSchema;
+  },
+  /**
+   * Signed-in user. Sets the guide vocals of one of the caller's devices: on or off and how loud (percent, 0 to 100; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field. Switching off on the device that plays also stops the amateur guide for the rest of the current song.
+   *
+   * @generated from rpc kantahe.v1.SessionService.SetVocals
+   */
+  setVocals: {
+    methodKind: "unary";
+    input: typeof SetVocalsRequestSchema;
+    output: typeof SetVocalsResponseSchema;
+  },
+  /**
+   * Signed-in user, any device. Sets the speed of the current song in percent (75 to 125 in steps of 5; 100 is normal), pitch unchanged. INVALID_ARGUMENT for another value, FAILED_PRECONDITION with no current song. The next song starts at 100 again.
+   *
+   * @generated from rpc kantahe.v1.SessionService.SetTempo
+   */
+  setTempo: {
+    methodKind: "unary";
+    input: typeof SetTempoRequestSchema;
+    output: typeof SetTempoResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_kantahe_v1_session, 0);

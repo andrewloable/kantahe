@@ -91,21 +91,6 @@ const IDLE_MS = 3000;
                 <button type="button" (click)="c.control(Action.PLAY)">Play</button>
               }
               <button type="button" (click)="c.control(Action.SKIP)">Skip</button>
-              @if (c.volume(); as v) {
-                <button type="button" (click)="c.changeVolume(-1)">Volume down</button>
-                <span class="level" role="status" aria-live="polite">{{ v.kind === 'midi' ? 'MIDI' : 'MP3' }} volume {{ v.pct }}%</span>
-                <button type="button" (click)="c.changeVolume(1)">Volume up</button>
-              }
-              @if (c.hasVocals()) {
-                <button type="button" class="vocals" [attr.aria-pressed]="c.vocalsState() !== 'off'" (click)="c.setVocals(c.vocalsState() === 'off')">
-                  {{ vocalsLabel() }}
-                </button>
-                @if (c.vocalsState() !== 'off') {
-                  <button type="button" (click)="c.changeVocalsVolume(-1)">Vocals quieter</button>
-                  <span class="level" role="status" aria-live="polite">Vocals volume {{ c.vocalsPct() }}%</span>
-                  <button type="button" (click)="c.changeVocalsVolume(1)">Vocals louder</button>
-                }
-              }
             </div>
           }
         </div>
@@ -259,12 +244,6 @@ const IDLE_MS = 3000;
       color: var(--on-accent);
       font-size: 1rem;
     }
-    .level {
-      align-self: center;
-      min-width: 9rem;
-      font-size: 1rem;
-      text-align: center;
-    }
     .elsewhere {
       font-size: 1.5rem;
     }
@@ -292,15 +271,9 @@ export class PlayerViewComponent {
   /** Inside the app's WebView: the same player without anything around it. */
   readonly embedded = input(false);
 
-  /** The text of the vocals switch: the state is told in words, never by colour alone. */
-  protected vocalsLabel(): string {
-    const state = this.c.vocalsState();
-    return state === 'on' ? 'Vocals: on' : state === 'loading' ? 'Vocals: loading…' : 'Vocals: off';
-  }
-
-  /** The app (through the embedded page) turns the vocals on or off. */
-  setVocals(on: boolean): void {
-    this.c.setVocals(on);
+  /** The app (through the embedded page) turns the vocals on or off and sets their level (percent). */
+  setVocals(on: boolean, pct?: number): void {
+    this.c.setVocals(on, pct);
   }
 
   protected readonly Action = ControlAction;
@@ -311,7 +284,10 @@ export class PlayerViewComponent {
   private readonly router = inject(Router);
   private readonly shortcuts = inject(KeyboardShortcuts);
 
-  /** Space or K play or pause, N skip, F full screen, + and - the volume, V the guide vocals (only for the device that plays; not in the app's WebView). */
+  /**
+   * Space or K play or pause, N skip, F full screen, + and - the volume, V the guide vocals (only for the device that plays; not in the app's WebView).
+   * The volume and the vocals have no buttons here: they are adjusted on the Queue page, so nothing on the player changes when they do.
+   */
   protected onShortcut(e: KeyboardEvent): void {
     const key = e.key.toLowerCase();
     const volume = key === '+' || key === '=' || key === '-' || key === '_';

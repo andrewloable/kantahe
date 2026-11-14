@@ -1,7 +1,7 @@
 import { computed, effect, inject, Injectable, OnDestroy, signal, untracked } from '@angular/core';
 import { clone, create } from '@bufbuild/protobuf';
 import { CatalogService, Playback, PlaybackKind, PlaybackSchema } from '../../gen/kantahe/v1/catalog_pb';
-import { Format, MidiMode } from '../../gen/kantahe/v1/common_pb';
+import { Format, MidiMode, VocalsState } from '../../gen/kantahe/v1/common_pb';
 import { ControlAction, PlayStatus, ScoreMode, SessionService } from '../../gen/kantahe/v1/session_pb';
 import { injectClient } from '../core/api';
 import { AuthStore } from '../core/auth.store';
@@ -15,7 +15,7 @@ import { DropoutMonitor } from './dropouts';
 import { AUDIO_CONTEXT, CAN_PLAY_FLAC, CAN_SYNTHESIZE, Engine, ENGINES, MidiOptions, mediaUrl } from './engines/engine';
 import { AudioContextLike } from './engines/mp3-engine';
 import { MIC_METER } from './mic';
-import { VOCALS_MAX, VOCALS_STEP, VocalsPrefs } from './vocals-prefs';
+import { VocalsPrefs } from './vocals-prefs';
 
 const REPORT_POSITION_MS = 1000;
 const MIN_RETRY_MS = 500;
@@ -118,6 +118,16 @@ export class PlayerController implements OnDestroy {
   });
   readonly vocalsState = signal<'off' | 'loading' | 'on'>('off');
   readonly vocalsPct = computed(() => this.prefs.pct());
+  /** The speed of the song as a factor: the server's tempo for the current song, 1 when it sends none. */
+  private readonly tempoRate = computed(() => (this.state()?.now?.tempoPct || 100) / 100);
+  /** This device's own row of the state. */
+  private readonly mine = computed(() => this.state()?.devices.find((d) => d.id === this.auth.deviceId()));
+  /** A server that keeps the vocals choice per device (it sends vocals_on); an older one (1.4.0) does not, and the choice then lives in VocalsPrefs only. */
+  private readonly serverVocals = computed(() => this.mine()?.vocalsOn !== undefined);
+  /** The amateur guide of this song was switched off (from any device). */
+  private readonly guideCancelled = computed(() => this.state()?.now?.guideCancelled === true);
+  /** The last value of the vocals choice that was acted on. */
+  private lastChoice = this.prefs.on();
 
   /** The song that is next, whose files this device is keeping ahead of time (pinned in the cache with the current song). */
   private aheadNumber?: string;
@@ -169,6 +179,28 @@ export class PlayerController implements OnDestroy {
       untracked(() => this.prefs.state.set(state));
     });
     effect(() => {
+      // a server that keeps the choice: its value for this device is the truth (it may have been changed from another device)
+      const m = this.mine();
+      const on = m?.vocalsOn;
+      const pct = m?.vocalsPct;
+      untracked(() => {
+        if (on !== undefined) this.prefs.on.set(on);
+        if (pct !== undefined) this.prefs.pct.set(pct);
+      });
+    });
+    effect(() => {
+      const on = this.prefs.on();
+      untracked(() => this.choiceChanged(on));
+    });
+    effect(() => {
+      // what the player really plays goes to the server (the first report of a player is made with its device facts, below)
+      const player = this.isPlayer();
+      this.vocalsState();
+      untracked(() => {
+        if (player && this.deviceReported) this.reportDevice(0);
+      });
+    });
+    effect(() => {
       // the song has loaded (the phase is only 'ready' on the player device): the song that is next is kept ahead of time
       const ready = this.phase() === 'ready';
       const next = this.state()?.upNext?.song;
@@ -181,6 +213,14 @@ export class PlayerController implements OnDestroy {
       untracked(() => {
         this.engine?.setVolume(factor);
         this.vocals?.setVolume((vocalsPct / 100) * factor);
+      });
+    });
+    effect(() => {
+      // the tempo of the song changed (from any device): the instrumental and the voice follow at once, and nothing is shown
+      const rate = this.tempoRate();
+      untracked(() => {
+        this.engine?.setRate(rate);
+        this.vocals?.setRate(rate);
       });
     });
     effect(() => {
@@ -412,7 +452,7 @@ export class PlayerController implements OnDestroy {
    */
   private guideActive(): boolean {
     const until = this.guideUntilMs();
-    return until > 0 && (this.engine?.timeMs() ?? 0) < until;
+    return until > 0 && !this.guideCancelled() && (this.engine?.timeMs() ?? 0) < until;
   }
 
   /**
@@ -429,6 +469,11 @@ export class PlayerController implements OnDestroy {
     const engine = this.engine;
     if (!engine || until <= 0) {
       this.endGuideWatch();
+      return;
+    }
+    if (this.guideCancelled() && !this.prefs.on()) {
+      // switched off from another device (or here): the voice stops at once, for the rest of the song
+      this.stopVocals();
       return;
     }
     if (this.prefs.on()) {
@@ -544,6 +589,7 @@ export class PlayerController implements OnDestroy {
   /** Makes the engine for the song and sets it up (volume, and the kept file's object URL to let go of); from here on stop() can dispose it. */
   private startEngine(playback: Playback, kept: string | undefined): Engine {
     const engine = this.makeEngine(playback);
+    engine.setRate(this.tempoRate());
     engine.setVolume(this.volumeFactor(playback)); // before the song loads: an MP3 then asks for its media with CORS when it needs a gain node
     this.engine = engine;
     this.audioBlob = kept;
@@ -703,8 +749,17 @@ export class PlayerController implements OnDestroy {
     this.audioBlob = undefined;
   }
 
-  /** The vocals switch: on starts the voice at the instrumental's position, off lets it go. The choice is remembered for the next song. */
-  setVocals(on: boolean): void {
+  /**
+   * The vocals switch (the V key and the app's bridge): on starts the voice at the instrumental's position, off lets it go. With a server that keeps the
+   * choice (decision R-a) the press is sent to it and the voice follows the state that comes back; an older server keeps it in memory here.
+   * pct (the app's bridge) is the level, 0 to 100.
+   */
+  setVocals(on: boolean, pct?: number): void {
+    if (this.serverVocals()) {
+      void this.sendVocals(on, pct);
+      return;
+    }
+    if (pct !== undefined) this.prefs.pct.set(pct);
     if (!this.hasVocals()) {
       this.prefs.on.set(on); // no song with vocals now: only the choice is kept, for the next one
       return;
@@ -719,11 +774,32 @@ export class PlayerController implements OnDestroy {
     void this.startVocals();
   }
 
-  /** The vocals volume buttons: one step of VOCALS_STEP percent, 0 to VOCALS_MAX; the song's own volume still applies on top. */
-  changeVocalsVolume(direction: 1 | -1): void {
-    const pct = Math.min(VOCALS_MAX, Math.max(0, this.prefs.pct() + direction * VOCALS_STEP));
-    this.prefs.pct.set(pct);
-    this.vocals?.setVolume(this.vocalsFactor());
+  /** What is asked for and already so is not sent again (the app resends both values with every press). */
+  private async sendVocals(on: boolean, pct?: number): Promise<void> {
+    const body = { on: on !== (this.vocalsState() !== 'off') ? on : undefined, pct: pct !== undefined && pct !== this.prefs.pct() ? pct : undefined };
+    if (body.on === undefined && body.pct === undefined) return;
+    try {
+      await this.postVocals(body);
+    } catch (e) {
+      this.toast.show(problem(e, {}), 'error');
+    }
+  }
+
+  private async postVocals(body: { on?: boolean; pct?: number }): Promise<void> {
+    const deviceId = this.auth.deviceId();
+    if (deviceId) await this.session.setVocals({ deviceId, ...body });
+  }
+
+  /** The choice changed (from the server's state): the voice starts or stops, as a press here would have done. */
+  private choiceChanged(on: boolean): void {
+    if (on === this.lastChoice) return;
+    this.lastChoice = on;
+    if (!this.hasVocals() || !this.loaded()) return; // a song still loading reads the choice when it is ready
+    if (!on) this.stopVocals();
+    else if (!this.vocals && this.vocalsState() === 'off') {
+      this.vocalsState.set('loading');
+      void this.startVocals();
+    }
   }
 
   /** The vocals' volume as a factor: their own percent of the song's volume. */
@@ -783,6 +859,7 @@ export class PlayerController implements OnDestroy {
     this.vocals = vocals;
     this.vocalsBlob = kept;
     vocals.setVolume(this.vocalsFactor());
+    vocals.setRate(this.tempoRate());
     return vocals;
   }
 
@@ -852,6 +929,7 @@ export class PlayerController implements OnDestroy {
     this.prefs.on.set(false);
     this.prefs.failures.update((n) => n + 1);
     this.stopVocals();
+    if (this.serverVocals()) void this.postVocals({ on: false }).catch(() => undefined); // the server's choice says off too
     this.toast.show('The vocals could not be loaded. The song plays without them.', 'error');
   }
 
@@ -894,7 +972,8 @@ export class PlayerController implements OnDestroy {
   }
 
   private reportDevice(dropouts: number): void {
-    void this.session.reportDevice({ memoryMb: deviceMemoryMb(), dropouts }).catch(() => undefined);
+    const vocalsState = { off: VocalsState.OFF, loading: VocalsState.LOADING, on: VocalsState.ON }[this.vocalsState()];
+    void this.session.reportDevice({ memoryMb: deviceMemoryMb(), dropouts, vocalsState }).catch(() => undefined);
   }
 
   private reportMic(available: boolean): void {

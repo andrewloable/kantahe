@@ -1,5 +1,6 @@
 import { Browser, BrowserContext, expect, Page, test } from '@playwright/test';
 import { karmp3 } from './fixtures/karmp3';
+import { SERVER_URL } from './ports';
 
 // Amateur singer mode (docs/PLAN.md, "Amateur singer mode"): the administrator switches it on in Admin > Settings; a song with a vocals track then plays
 // the singer's voice by itself from 0:00 to the start of its third lyric line, and the Vocals button shows it. The whole product in a real browser.
@@ -47,7 +48,7 @@ async function setMode(page: Page, on: boolean): Promise<void> {
   await expect(page.getByRole('checkbox', { name: 'Amateur singer mode' })).toBeChecked({ checked: on });
 }
 
-test('amateur singer mode: the voice plays by itself until the third line, then stops; with the mode off it never does', async ({ browser }) => {
+test('amateur singer mode: the voice plays by itself until the third line, then stops; with the mode off it never does', async ({ browser, request }) => {
   const admin = await device(browser, 'Admin laptop');
   const a = await admin.newPage();
   await signInAdmin(a);
@@ -76,13 +77,28 @@ test('amateur singer mode: the voice plays by itself until the third line, then 
       await expect(p.getByText(`Added ${title}`).first()).toBeVisible();
     }
     const stage = p.locator('.stage');
-    const vocals = stage.locator('button.vocals');
+    // the player has no Vocals button (kantahe-der): what it plays is read from what it reports to the server, as the Queue page does
+    const call = async <T>(method: string, data: object): Promise<T> => {
+      const token = await p.evaluate(() => localStorage.getItem('kantahe.token'));
+      const res = await request.post(`${SERVER_URL}/kantahe.v1.${method}`, { data, headers: { authorization: `Bearer ${token}` } });
+      expect(res.ok(), `${method}: ${await res.text()}`).toBe(true);
+      return (await res.json()) as T;
+    };
+    const playing = async (): Promise<string | undefined> => {
+      const id = await p.evaluate(() => localStorage.getItem('kantahe.deviceId'));
+      const { state } = await call<{ state: { devices: { id: string; vocalsState?: string }[] } }>('SessionService/GetState', {});
+      return state.devices.find((d) => d.id === id)?.vocalsState;
+    };
+    const vocals = {
+      on: (timeout?: number) => expect.poll(playing, { timeout }).toBe('VOCALS_STATE_ON'),
+      off: (timeout?: number) => expect.poll(playing, { timeout }).toBe('VOCALS_STATE_OFF'),
+    };
     const requests: string[] = [];
     p.on('request', (r) => {
       if (r.url().includes('/media/vocals/')) requests.push(new URL(r.url()).pathname);
     });
 
-    await test.step('the first song: the Vocals button is on without a press, then off after the third line, and the singer can still switch it on', async () => {
+    await test.step('the first song: the voice is on without a press, then off after the third line', async () => {
       await p.goto('/player');
       await p.getByRole('button', { name: 'Play here' }).click();
       await expect(stage.locator('header.song h1')).toHaveText(/\S/);
@@ -91,9 +107,9 @@ test('amateur singer mode: the voice plays by itself until the third line, then 
         await stage.getByRole('button', { name: 'Skip' }).click();
       }
       await expect(stage.locator('header.song h1')).toHaveText('Amateurone');
-      await expect(vocals).toHaveAttribute('aria-pressed', 'true');
+      await vocals.on();
       expect(requests.length, 'the vocals were fetched by themselves').toBeGreaterThan(0);
-      await expect(vocals).toHaveAttribute('aria-pressed', 'false', { timeout: 10_000 }); // the third line starts at 3 s
+      await vocals.off(10_000); // the third line starts at 3 s
       await expect(stage.locator('header.song h1')).toHaveText('Amateurone'); // the song itself went on
     });
 
@@ -102,7 +118,7 @@ test('amateur singer mode: the voice plays by itself until the third line, then 
       // the second song starts after the first one and its score screen
       await expect(stage.locator('header.song h1')).toHaveText('Amateurtwo', { timeout: 60_000 });
       await p.waitForTimeout(2500);
-      await expect(vocals).toHaveAttribute('aria-pressed', 'false');
+      await vocals.off();
     });
     expect(pageErrors).toEqual([]);
   } finally {

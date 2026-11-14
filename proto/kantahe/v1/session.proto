@@ -38,6 +38,10 @@ service SessionService {
   rpc SetBackgroundMode(SetBackgroundModeRequest) returns (SetBackgroundModeResponse);
   // Signed-in user. Sets how loud one of the caller's devices plays MP3 songs and MIDI songs (percent, 0 to 200; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field.
   rpc SetVolume(SetVolumeRequest) returns (SetVolumeResponse);
+  // Signed-in user. Sets the guide vocals of one of the caller's devices: on or off and how loud (percent, 0 to 100; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field. Switching off on the device that plays also stops the amateur guide for the rest of the current song.
+  rpc SetVocals(SetVocalsRequest) returns (SetVocalsResponse);
+  // Signed-in user, any device. Sets the speed of the current song in percent (75 to 125 in steps of 5; 100 is normal), pitch unchanged. INVALID_ARGUMENT for another value, FAILED_PRECONDITION with no current song. The next song starts at 100 again.
+  rpc SetTempo(SetTempoRequest) returns (SetTempoResponse);
 }
 
 // Whether the current song is playing or paused.
@@ -188,6 +192,8 @@ message ReportMicResponse {}
 message ReportDeviceRequest {
   int32 memory_mb = 1;
   int32 dropouts = 2;
+  // What the calling device plays now. Taken only from the device that plays; ignored from any other.
+  VocalsState vocals_state = 3;
 }
 
 // The calling device.
@@ -229,6 +235,26 @@ message SetVolumeResponse {
   Device device = 1;
 }
 
+// The device and the guide vocals to set; a field that is not given is left as it is.
+message SetVocalsRequest {
+  string device_id = 1;
+  optional bool on = 2;
+  optional int32 pct = 3;
+}
+
+// The device after the change.
+message SetVocalsResponse {
+  Device device = 1;
+}
+
+// The speed to set.
+message SetTempoRequest {
+  int32 pct = 1;
+}
+
+// Empty.
+message SetTempoResponse {}
+
 // One entry of the caller's queue.
 message QueueItem {
   string id = 1;
@@ -241,6 +267,11 @@ message NowPlaying {
   SongSource source = 2;
   int64 position_ms = 3;
   int64 position_at_ms = 4;
+  // The amateur singer guide was switched off for this song (from any device); false again when the song changes.
+  bool guide_cancelled = 5;
+  // The speed of this song in percent, 100 = normal. 0 (an older server) means 100. Song time passes at this speed: position_ms moves
+  // (now - position_at_ms) * tempo_pct / 100 after position_at_ms.
+  int32 tempo_pct = 6;
 }
 
 // The song that follows the current one, pre-picked when the current one starts.

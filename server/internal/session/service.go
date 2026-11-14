@@ -168,7 +168,7 @@ func (f clockFunc) NowMs() int64 { return f() }
 func fingerprint(st State) string {
 	b := fmt.Sprintf("%d|%s|", st.Status, st.PlayerDeviceID)
 	if st.Now != nil {
-		b += fmt.Sprintf("now=%s/%d|", st.Now.Song.Number, st.Now.Source)
+		b += fmt.Sprintf("now=%s/%d/%t/%d|", st.Now.Song.Number, st.Now.Source, st.Now.GuideCancelled, st.Now.Tempo())
 	}
 	for _, it := range st.Queue {
 		b += it.ID + ","
@@ -318,9 +318,11 @@ func (s *Service) load(ctx context.Context, userID string) (Restored, error) {
 	r := Restored{Status: StatusPaused, Settings: Settings{ScoreMode: score.ModeRandom, ScoreLevel: score.LevelLow}}
 	var nowNumber string
 	var nowSource, position int64
+	var guideCancelled bool
+	var tempo int
 	var status, mode, level int
-	err := s.cfg.DB.QueryRowContext(ctx, `SELECT status, player_device_id, now_number, now_source, position_ms, score_mode, score_level FROM user_state WHERE user_id = ?`, userID).
-		Scan(&status, &r.Player, &nowNumber, &nowSource, &position, &mode, &level)
+	err := s.cfg.DB.QueryRowContext(ctx, `SELECT status, player_device_id, now_number, now_source, position_ms, score_mode, score_level, guide_cancelled <> 0, tempo_pct FROM user_state WHERE user_id = ?`, userID).
+		Scan(&status, &r.Player, &nowNumber, &nowSource, &position, &mode, &level, &guideCancelled, &tempo)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 	case err != nil:
@@ -330,7 +332,7 @@ func (s *Service) load(ctx context.Context, userID string) (Restored, error) {
 	}
 	if nowNumber != "" {
 		if info, err := s.cfg.Songs.Get(ctx, nowNumber); err == nil {
-			r.Now = &Current{Song: toSong(info), Source: Source(nowSource), PositionMs: position}
+			r.Now = &Current{Song: toSong(info), Source: Source(nowSource), PositionMs: position, GuideCancelled: guideCancelled, TempoPct: tempo}
 		} else if !errors.Is(err, library.ErrNotFound) {
 			return r, err
 		}
@@ -399,14 +401,16 @@ func b2i(b bool) int {
 func (s *Service) save(ctx context.Context, userID string, st State, effects []Effect, wall time.Time) error {
 	return s.cfg.DB.WriteTx(ctx, func(tx *sql.Tx) error {
 		nowNumber, nowSource, pos := "", 0, int64(0)
+		guideCancelled, tempo := false, 100
 		if st.Now != nil {
-			nowNumber, nowSource, pos = st.Now.Song.Number, int(st.Now.Source), st.Now.PositionMs
+			nowNumber, nowSource, pos, guideCancelled, tempo = st.Now.Song.Number, int(st.Now.Source), st.Now.PositionMs, st.Now.GuideCancelled, st.Now.Tempo()
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO user_state(user_id, status, player_device_id, now_number, now_source, position_ms, score_mode, score_level)
-			VALUES (?,?,?,?,?,?,?,?)
+		if _, err := tx.ExecContext(ctx, `INSERT INTO user_state(user_id, status, player_device_id, now_number, now_source, position_ms, score_mode, score_level, guide_cancelled, tempo_pct)
+			VALUES (?,?,?,?,?,?,?,?,?,?)
 			ON CONFLICT(user_id) DO UPDATE SET status = excluded.status, player_device_id = excluded.player_device_id, now_number = excluded.now_number,
-				now_source = excluded.now_source, position_ms = excluded.position_ms, score_mode = excluded.score_mode, score_level = excluded.score_level`,
-			userID, int(st.Status), st.PlayerDeviceID, nowNumber, nowSource, pos, int(st.Settings.ScoreMode), int(st.Settings.ScoreLevel)); err != nil {
+				now_source = excluded.now_source, position_ms = excluded.position_ms, score_mode = excluded.score_mode, score_level = excluded.score_level,
+				guide_cancelled = excluded.guide_cancelled, tempo_pct = excluded.tempo_pct`,
+			userID, int(st.Status), st.PlayerDeviceID, nowNumber, nowSource, pos, int(st.Settings.ScoreMode), int(st.Settings.ScoreLevel), b2i(guideCancelled), tempo); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM queue_items WHERE user_id = ?`, userID); err != nil {

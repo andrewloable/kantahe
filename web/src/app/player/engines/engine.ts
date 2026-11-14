@@ -13,6 +13,8 @@ export interface Engine {
   seek(ms: number): void;
   /** How loud the song plays, as a factor of its own level (1 is as it is, 0 silence, up to 2). Can be set before load and while it plays. */
   setVolume(factor: number): void;
+  /** How fast the song plays, as a factor of its own speed (1 is as it is) with the pitch kept; the position stays in song time. Can be set before load and while it plays. */
+  setRate(rate: number): void;
   timeMs(): number;
   onEnded(cb: () => void): void;
   /** Seconds of audio produced so far; only engines that can tell (the synth) have it. */

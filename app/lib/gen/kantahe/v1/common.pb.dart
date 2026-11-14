@@ -579,6 +579,9 @@ class Device extends $pb.GeneratedMessage {
     $core.bool? effectiveBackground,
     $core.int? mp3VolumePct,
     $core.int? midiVolumePct,
+    $core.bool? vocalsOn,
+    $core.int? vocalsPct,
+    VocalsState? vocalsState,
   }) {
     final result = Device._();
     if (id != null) result.id = id;
@@ -596,6 +599,9 @@ class Device extends $pb.GeneratedMessage {
       result.effectiveBackground = effectiveBackground;
     if (mp3VolumePct != null) result.mp3VolumePct = mp3VolumePct;
     if (midiVolumePct != null) result.midiVolumePct = midiVolumePct;
+    if (vocalsOn != null) result.vocalsOn = vocalsOn;
+    if (vocalsPct != null) result.vocalsPct = vocalsPct;
+    if (vocalsState != null) result.vocalsState = vocalsState;
     return result;
   }
 
@@ -630,6 +636,10 @@ class Device extends $pb.GeneratedMessage {
     ..aOB(12, _omitFieldNames ? '' : 'effectiveBackground')
     ..aI(13, _omitFieldNames ? '' : 'mp3VolumePct')
     ..aI(14, _omitFieldNames ? '' : 'midiVolumePct')
+    ..aOB(15, _omitFieldNames ? '' : 'vocalsOn')
+    ..aI(16, _omitFieldNames ? '' : 'vocalsPct')
+    ..aE<VocalsState>(17, _omitFieldNames ? '' : 'vocalsState',
+        enumValues: VocalsState.values)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -781,6 +791,36 @@ class Device extends $pb.GeneratedMessage {
   $core.bool hasMidiVolumePct() => $_has(13);
   @$pb.TagNumber(14)
   void clearMidiVolumePct() => $_clearField(14);
+
+  /// The guide-vocals choice of this device (the vocals track of an MP3 song), saved on the server: on or off, and how loud, 0 to 100 percent
+  /// (60 by default). optional: a client talking to an older server sees no value.
+  @$pb.TagNumber(15)
+  $core.bool get vocalsOn => $_getBF(14);
+  @$pb.TagNumber(15)
+  set vocalsOn($core.bool value) => $_setBool(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasVocalsOn() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearVocalsOn() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $core.int get vocalsPct => $_getIZ(15);
+  @$pb.TagNumber(16)
+  set vocalsPct($core.int value) => $_setSignedInt32(15, value);
+  @$pb.TagNumber(16)
+  $core.bool hasVocalsPct() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearVocalsPct() => $_clearField(16);
+
+  /// What the player really plays, reported by the player device itself; UNSPECIFIED for a device that is not the player.
+  @$pb.TagNumber(17)
+  VocalsState get vocalsState => $_getN(16);
+  @$pb.TagNumber(17)
+  set vocalsState(VocalsState value) => $_setField(17, value);
+  @$pb.TagNumber(17)
+  $core.bool hasVocalsState() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearVocalsState() => $_clearField(17);
 }
 
 /// A background video uploaded by the admin (plan 4.2). url is a signed URL (ListVideos: 1 hour, for the admin preview; GetBackground: 6 hours).

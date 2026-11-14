@@ -77,6 +77,11 @@ const (
 	// SessionServiceSetVolumeProcedure is the fully-qualified name of the SessionService's SetVolume
 	// RPC.
 	SessionServiceSetVolumeProcedure = "/kantahe.v1.SessionService/SetVolume"
+	// SessionServiceSetVocalsProcedure is the fully-qualified name of the SessionService's SetVocals
+	// RPC.
+	SessionServiceSetVocalsProcedure = "/kantahe.v1.SessionService/SetVocals"
+	// SessionServiceSetTempoProcedure is the fully-qualified name of the SessionService's SetTempo RPC.
+	SessionServiceSetTempoProcedure = "/kantahe.v1.SessionService/SetTempo"
 )
 
 // SessionServiceClient is a client for the kantahe.v1.SessionService service.
@@ -113,6 +118,10 @@ type SessionServiceClient interface {
 	SetBackgroundMode(context.Context, *connect.Request[v1.SetBackgroundModeRequest]) (*connect.Response[v1.SetBackgroundModeResponse], error)
 	// Signed-in user. Sets how loud one of the caller's devices plays MP3 songs and MIDI songs (percent, 0 to 200; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field.
 	SetVolume(context.Context, *connect.Request[v1.SetVolumeRequest]) (*connect.Response[v1.SetVolumeResponse], error)
+	// Signed-in user. Sets the guide vocals of one of the caller's devices: on or off and how loud (percent, 0 to 100; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field. Switching off on the device that plays also stops the amateur guide for the rest of the current song.
+	SetVocals(context.Context, *connect.Request[v1.SetVocalsRequest]) (*connect.Response[v1.SetVocalsResponse], error)
+	// Signed-in user, any device. Sets the speed of the current song in percent (75 to 125 in steps of 5; 100 is normal), pitch unchanged. INVALID_ARGUMENT for another value, FAILED_PRECONDITION with no current song. The next song starts at 100 again.
+	SetTempo(context.Context, *connect.Request[v1.SetTempoRequest]) (*connect.Response[v1.SetTempoResponse], error)
 }
 
 // NewSessionServiceClient constructs a client for the kantahe.v1.SessionService service. By
@@ -222,6 +231,18 @@ func NewSessionServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sessionServiceMethods.ByName("SetVolume")),
 			connect.WithClientOptions(opts...),
 		),
+		setVocals: connect.NewClient[v1.SetVocalsRequest, v1.SetVocalsResponse](
+			httpClient,
+			baseURL+SessionServiceSetVocalsProcedure,
+			connect.WithSchema(sessionServiceMethods.ByName("SetVocals")),
+			connect.WithClientOptions(opts...),
+		),
+		setTempo: connect.NewClient[v1.SetTempoRequest, v1.SetTempoResponse](
+			httpClient,
+			baseURL+SessionServiceSetTempoProcedure,
+			connect.WithSchema(sessionServiceMethods.ByName("SetTempo")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -243,6 +264,8 @@ type sessionServiceClient struct {
 	setMidiMode        *connect.Client[v1.SetMidiModeRequest, v1.SetMidiModeResponse]
 	setBackgroundMode  *connect.Client[v1.SetBackgroundModeRequest, v1.SetBackgroundModeResponse]
 	setVolume          *connect.Client[v1.SetVolumeRequest, v1.SetVolumeResponse]
+	setVocals          *connect.Client[v1.SetVocalsRequest, v1.SetVocalsResponse]
+	setTempo           *connect.Client[v1.SetTempoRequest, v1.SetTempoResponse]
 }
 
 // WatchState calls kantahe.v1.SessionService.WatchState.
@@ -325,6 +348,16 @@ func (c *sessionServiceClient) SetVolume(ctx context.Context, req *connect.Reque
 	return c.setVolume.CallUnary(ctx, req)
 }
 
+// SetVocals calls kantahe.v1.SessionService.SetVocals.
+func (c *sessionServiceClient) SetVocals(ctx context.Context, req *connect.Request[v1.SetVocalsRequest]) (*connect.Response[v1.SetVocalsResponse], error) {
+	return c.setVocals.CallUnary(ctx, req)
+}
+
+// SetTempo calls kantahe.v1.SessionService.SetTempo.
+func (c *sessionServiceClient) SetTempo(ctx context.Context, req *connect.Request[v1.SetTempoRequest]) (*connect.Response[v1.SetTempoResponse], error) {
+	return c.setTempo.CallUnary(ctx, req)
+}
+
 // SessionServiceHandler is an implementation of the kantahe.v1.SessionService service.
 type SessionServiceHandler interface {
 	// Signed-in user. Streams the caller's full State at once and after every change (positions never push).
@@ -359,6 +392,10 @@ type SessionServiceHandler interface {
 	SetBackgroundMode(context.Context, *connect.Request[v1.SetBackgroundModeRequest]) (*connect.Response[v1.SetBackgroundModeResponse], error)
 	// Signed-in user. Sets how loud one of the caller's devices plays MP3 songs and MIDI songs (percent, 0 to 200; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field.
 	SetVolume(context.Context, *connect.Request[v1.SetVolumeRequest]) (*connect.Response[v1.SetVolumeResponse], error)
+	// Signed-in user. Sets the guide vocals of one of the caller's devices: on or off and how loud (percent, 0 to 100; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field. Switching off on the device that plays also stops the amateur guide for the rest of the current song.
+	SetVocals(context.Context, *connect.Request[v1.SetVocalsRequest]) (*connect.Response[v1.SetVocalsResponse], error)
+	// Signed-in user, any device. Sets the speed of the current song in percent (75 to 125 in steps of 5; 100 is normal), pitch unchanged. INVALID_ARGUMENT for another value, FAILED_PRECONDITION with no current song. The next song starts at 100 again.
+	SetTempo(context.Context, *connect.Request[v1.SetTempoRequest]) (*connect.Response[v1.SetTempoResponse], error)
 }
 
 // NewSessionServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -464,6 +501,18 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sessionServiceMethods.ByName("SetVolume")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sessionServiceSetVocalsHandler := connect.NewUnaryHandler(
+		SessionServiceSetVocalsProcedure,
+		svc.SetVocals,
+		connect.WithSchema(sessionServiceMethods.ByName("SetVocals")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sessionServiceSetTempoHandler := connect.NewUnaryHandler(
+		SessionServiceSetTempoProcedure,
+		svc.SetTempo,
+		connect.WithSchema(sessionServiceMethods.ByName("SetTempo")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/kantahe.v1.SessionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SessionServiceWatchStateProcedure:
@@ -498,6 +547,10 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 			sessionServiceSetBackgroundModeHandler.ServeHTTP(w, r)
 		case SessionServiceSetVolumeProcedure:
 			sessionServiceSetVolumeHandler.ServeHTTP(w, r)
+		case SessionServiceSetVocalsProcedure:
+			sessionServiceSetVocalsHandler.ServeHTTP(w, r)
+		case SessionServiceSetTempoProcedure:
+			sessionServiceSetTempoHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -569,4 +622,12 @@ func (UnimplementedSessionServiceHandler) SetBackgroundMode(context.Context, *co
 
 func (UnimplementedSessionServiceHandler) SetVolume(context.Context, *connect.Request[v1.SetVolumeRequest]) (*connect.Response[v1.SetVolumeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.SessionService.SetVolume is not implemented"))
+}
+
+func (UnimplementedSessionServiceHandler) SetVocals(context.Context, *connect.Request[v1.SetVocalsRequest]) (*connect.Response[v1.SetVocalsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.SessionService.SetVocals is not implemented"))
+}
+
+func (UnimplementedSessionServiceHandler) SetTempo(context.Context, *connect.Request[v1.SetTempoRequest]) (*connect.Response[v1.SetTempoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kantahe.v1.SessionService.SetTempo is not implemented"))
 }

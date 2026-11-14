@@ -33,6 +33,7 @@ export class Mp3Engine implements Engine {
   private ended?: () => void;
   private disposed = false;
   private factor = 1;
+  private rate = 1;
   private ctx?: AudioContextLike;
   private gain?: GainLike;
   /** The element was asked for its media with CORS before it loaded, so a context may read it whatever the origin. */
@@ -69,12 +70,29 @@ export class Mp3Engine implements Engine {
       }
       this.audio.src = mediaUrl(this.baseUrl, playback.audioUrl);
       this.apply();
+      this.applyRate(); // a new address puts playbackRate back to defaultPlaybackRate
     });
   }
 
   setVolume(factor: number): void {
     this.factor = factor;
     this.apply();
+  }
+
+  /** The speed of the file, the pitch kept (a browser time-stretches); the element's time stays the song's time. */
+  setRate(rate: number): void {
+    this.rate = rate;
+    this.applyRate();
+  }
+
+  private applyRate(): void {
+    if (this.disposed) return;
+    const audio = this.audio as HTMLAudioElement & { preservesPitch?: boolean; webkitPreservesPitch?: boolean; mozPreservesPitch?: boolean };
+    audio.preservesPitch = true;
+    audio.webkitPreservesPitch = true;
+    audio.mozPreservesPitch = true;
+    audio.defaultPlaybackRate = this.rate;
+    audio.playbackRate = this.rate;
   }
 
   /** Puts the volume where it can act: the gain node when there is one, else a new one when it is safe, else the element's own volume. */

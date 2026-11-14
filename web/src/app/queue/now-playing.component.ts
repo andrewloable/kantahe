@@ -6,6 +6,7 @@ import { problem } from '../core/errors';
 import { StateStore } from '../core/state.store';
 import { ToastService } from '../core/toast';
 import { FormatBadgeComponent } from '../library/format-badge.component';
+import { AdjustControlsComponent } from './adjust-controls.component';
 
 export function clock(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -27,7 +28,7 @@ export function whereText(state: State | undefined, deviceId: string | undefined
 
 @Component({
   selector: 'app-now-playing',
-  imports: [FormatBadgeComponent],
+  imports: [FormatBadgeComponent, AdjustControlsComponent],
   template: `
     <section class="card now" aria-label="Now playing">
       @if (now(); as n) {
@@ -59,6 +60,7 @@ export function whereText(state: State | undefined, deviceId: string | undefined
           <button class="primary" type="button" (click)="send(Action.PLAY_HERE)">Play here</button>
         }
       </div>
+      <app-adjust-controls />
       @if (upNext(); as u) {
         <p class="up-next" [attr.title]="u.song?.title + ' — ' + u.song?.artist">Up next: {{ u.song?.title }} — {{ u.song?.artist }}</p>
       }

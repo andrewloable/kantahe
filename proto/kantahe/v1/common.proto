@@ -117,6 +117,20 @@ message Device {
   // optional: a client talking to an older server sees no value and plays at 100.
   optional int32 mp3_volume_pct = 13;
   optional int32 midi_volume_pct = 14;
+  // The guide-vocals choice of this device (the vocals track of an MP3 song), saved on the server: on or off, and how loud, 0 to 100 percent
+  // (60 by default). optional: a client talking to an older server sees no value.
+  optional bool vocals_on = 15;
+  optional int32 vocals_pct = 16;
+  // What the player really plays, reported by the player device itself; UNSPECIFIED for a device that is not the player.
+  VocalsState vocals_state = 17;
+}
+
+// Whether the vocals track plays on the player device: the amateur singer guide plays although the choice is off.
+enum VocalsState {
+  VOCALS_STATE_UNSPECIFIED = 0;
+  VOCALS_STATE_OFF = 1;
+  VOCALS_STATE_LOADING = 2;
+  VOCALS_STATE_ON = 3;
 }
 
 // A background video uploaded by the admin (plan 4.2). url is a signed URL (ListVideos: 1 hour, for the admin preview; GetBackground: 6 hours).

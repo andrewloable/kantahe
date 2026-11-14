@@ -28,6 +28,8 @@ import {
   SessionService,
   SetMidiModeRequest,
   SetMidiModeResponseSchema,
+  SetVocalsRequest,
+  SetVocalsResponseSchema,
   SetVolumeRequest,
   SetVolumeResponseSchema,
   State,
@@ -69,6 +71,7 @@ export function fakePlayerServer() {
     control: [] as ControlRequest[],
     mode: [] as SetMidiModeRequest[],
     volume: [] as SetVolumeRequest[],
+    vocals: [] as SetVocalsRequest[],
     background: 0,
   };
   const pending: State[] = [];
@@ -134,6 +137,10 @@ export function fakePlayerServer() {
         handlers.setMidiMode(req);
         return create(SetMidiModeResponseSchema, {});
       },
+      setVocals(req) {
+        calls.vocals.push(req);
+        return create(SetVocalsResponseSchema, {});
+      },
       setVolume(req) {
         calls.volume.push(req);
         handlers.setVolume(req);
@@ -163,6 +170,7 @@ export class FakeEngine implements Engine {
   seek = vi.fn();
   dispose = vi.fn();
   setVolume = vi.fn();
+  setRate = vi.fn();
   timeMs() {
     return this.time;
   }

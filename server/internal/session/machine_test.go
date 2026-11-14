@@ -1025,3 +1025,90 @@ func TestPausePositionNeverPassesTheEndOfTheSong(t *testing.T) {
 		t.Fatalf("paused at %d, want the end of the song (10000)", s.Now.PositionMs)
 	}
 }
+
+// ---- tempo (kantahe-vaz): the speed of the current song, in percent ----
+
+func TestTempoDefaultsTo100AndResetsOnNewSong(t *testing.T) {
+	r := newRig(t, "R1")
+	r.m.Add(song("A"))
+	r.m.Add(song("B"))
+	r.m.Control("d1", ActionPlay)
+	if got := r.m.Snapshot().Now.Tempo(); got != 100 {
+		t.Fatalf("a new song: %d", got)
+	}
+	if err := r.m.SetTempo(125); err != nil {
+		t.Fatal(err)
+	}
+	if got := r.m.Snapshot().Now.Tempo(); got != 125 {
+		t.Fatalf("after SetTempo: %d", got)
+	}
+	r.m.Control("d1", ActionSkip)
+	if s := r.m.Snapshot(); s.Now.Song.Number != "B" || s.Now.Tempo() != 100 {
+		t.Fatalf("the next song must start at its own speed: %+v", s.Now)
+	}
+}
+
+func TestSetTempoValidates(t *testing.T) {
+	r := newRig(t, "R1")
+	if err := r.m.SetTempo(100); !errors.Is(err, ErrNoSong) {
+		t.Fatalf("no song: %v", err)
+	}
+	r.m.Add(song("A"))
+	r.m.Control("d1", ActionPlay)
+	for _, p := range []int{70, 130, 77, 0, -5, 80 + 1} {
+		if err := r.m.SetTempo(p); !errors.Is(err, ErrBadTempo) {
+			t.Errorf("%d: %v", p, err)
+		}
+	}
+	for _, p := range []int{75, 100, 125} {
+		if err := r.m.SetTempo(p); err != nil {
+			t.Errorf("%d: %v", p, err)
+		}
+	}
+	if got := r.m.Snapshot().Now.Tempo(); got != 125 {
+		t.Fatalf("a refused value changed the tempo: %d", got)
+	}
+}
+
+func TestRegression_FreezeClockAtTempo(t *testing.T) {
+	r := newRig(t, "R1")
+	r.m.Add(song("A"))
+	r.m.Control("d1", ActionPlay)
+	_, _ = r.m.ReportPosition("d1", "A", 0)
+	_ = r.m.SetTempo(75)
+	r.clock.ms += 4000
+	r.m.Control("d1", ActionPause)
+	if s := r.m.Snapshot(); s.Now.PositionMs != 3000 {
+		t.Fatalf("4000 ms of wall time at 75%% is 3000 ms of song, got %d", s.Now.PositionMs)
+	}
+}
+
+func TestTempoChangeKeepsPositionContinuous(t *testing.T) {
+	r := newRig(t, "R1")
+	r.m.Add(song("A"))
+	r.m.Control("d1", ActionPlay)
+	_, _ = r.m.ReportPosition("d1", "A", 0)
+	r.clock.ms += 2000
+	_ = r.m.SetTempo(125)
+	if s := r.m.Snapshot(); s.Now.PositionMs != 2000 || s.Now.PositionAtMs != r.clock.ms {
+		t.Fatalf("the pair at the change: %d at %d (clock %d)", s.Now.PositionMs, s.Now.PositionAtMs, r.clock.ms)
+	}
+	r.clock.ms += 4000
+	r.m.Control("d1", ActionPause)
+	if s := r.m.Snapshot(); s.Now.PositionMs != 7000 {
+		t.Fatalf("2000 at 100%% then 4000 ms at 125%% is 7000, got %d", s.Now.PositionMs)
+	}
+}
+
+func TestTempoWhilePausedDoesNotMoveThePosition(t *testing.T) {
+	r := newRig(t, "R1")
+	r.m.Add(song("A"))
+	r.m.Control("d1", ActionPlay)
+	_, _ = r.m.ReportPosition("d1", "A", 5000)
+	r.m.Control("d1", ActionPause)
+	r.clock.ms += 10_000
+	_ = r.m.SetTempo(75)
+	if s := r.m.Snapshot(); s.Now.PositionMs != 5000 {
+		t.Fatalf("paused: %d", s.Now.PositionMs)
+	}
+}

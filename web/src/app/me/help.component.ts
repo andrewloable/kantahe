@@ -34,13 +34,18 @@ import { SHORTCUTS } from '../core/shortcuts';
     <section>
       <h3>The player buttons and the vocals</h3>
       <p>
-        <a data-inline-link routerLink="/player">Player</a> shows the lyrics, with Play or Pause, Skip and the volume. While a song plays the buttons fade;
-        touch the screen or press a key to bring them back. Volume down and up change the volume of this device.
+        <a data-inline-link routerLink="/player">Player</a> shows the lyrics, with Play or Pause and Skip. While a song plays the buttons fade; touch the
+        screen or press a key to bring them back. The player has no volume or vocals buttons, so that nothing moves on the screen while you sing: change
+        the volume and the vocals on the <a data-inline-link routerLink="/queue">Queue</a> page of any device, even the one that plays.
       </p>
-      <p>Some songs have a separate vocals track. A <strong>Vocals</strong> button then plays the singer's voice as a guide. It starts off.</p>
+      <p>
+        Some songs have a separate vocals track. On the Queue page, <strong>Vocals</strong> then plays the singer's voice as a guide, with
+        <strong>Vocals quieter</strong> and <strong>Vocals louder</strong> beside it. It starts off. <strong>Slower</strong> and <strong>Faster</strong> there
+        change the speed of the song without changing the pitch, and <strong>Normal speed</strong> puts it back; the next song starts at normal speed.
+      </p>
       <p>
         If the administrator has switched on <strong>amateur singer mode</strong>, the voice plays by itself during the first two lines of the lyrics of
-        such a song and fades out when the third line starts, to help you with a song you do not know. The button shows it as on. You can switch it
+        such a song and fades out when the third line starts, to help you with a song you do not know. The Queue page shows it as on. You can switch it
         off whenever you like; it starts again with the next song.
       </p>
     </section>

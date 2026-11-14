@@ -1,5 +1,6 @@
-// Amateur singer mode on a device (docs/PLAN.md, "Amateur singer mode"): the web player inside the app plays the guide vocals by itself, and the app's
-// own Vocals button follows it with no code of its own: "Vocals: on" while the first two lyric lines play, "Vocals: off" after the third line has started.
+// Amateur singer mode on a device (docs/PLAN.md, "Amateur singer mode"): the web player inside the app plays the guide vocals by itself and tells the
+// server what it plays (Device.vocals_state, which the queue screen of any device shows as the Vocals button): on while the first two lyric lines play,
+// off after the third line has started. The player screen has no Vocals button of its own (kantahe-der).
 // The server must have the mode switched on and a song with a vocals track and four lyric lines (kantahe-fixtures -guide 90); scripts/legacy-webview-check.sh
 // --amateur does all of it:
 //
@@ -32,10 +33,14 @@ Future<void> until(WidgetTester tester, bool Function() done, String what, {int 
 
 bool shows(String text) => find.text(text).evaluate().isNotEmpty;
 
+/// What this device's player says it plays: the page reports it to the server, the state brings it back.
+VocalsState vocalsOf(AppServices services) =>
+    services.state.state!.devices.where((d) => d.isCaller).firstOrNull?.vocalsState ?? VocalsState.VOCALS_STATE_UNSPECIFIED;
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('the guide vocals play by themselves in the first two lines and the Vocals button follows', (tester) async {
+  testWidgets('the guide vocals play by themselves in the first two lines and the player reports it', (tester) async {
     final services = await AppServices.create();
     await services.auth.signOut();
     await services.serverUrl.set(serverUrl);
@@ -57,11 +62,16 @@ void main() {
     await services.api.session.control(ControlRequest(action: ControlAction.CONTROL_ACTION_PLAY));
 
     // nobody pressed Vocals: the page starts the voice by itself and tells the app
-    await until(tester, () => shows('Vocals: on') || shows('Vocals: loading…'), 'the vocals to start by themselves');
+    await until(
+      tester,
+      () => vocalsOf(services) != VocalsState.VOCALS_STATE_OFF && vocalsOf(services) != VocalsState.VOCALS_STATE_UNSPECIFIED,
+      'the vocals to start by themselves',
+    );
     debugPrint('S4I guide: vocals started by themselves');
-    await until(tester, () => shows('Vocals: on'), 'Vocals: on');
+    expect(find.textContaining('Vocals'), findsNothing, reason: 'the player screen shows nothing about the vocals');
+    await until(tester, () => vocalsOf(services) == VocalsState.VOCALS_STATE_ON, 'the player to report the vocals on');
     // after the third line has started (3 s) the voice is gone, while the song goes on
-    await until(tester, () => shows('Vocals: off'), 'the vocals to stop at the third line', seconds: 20);
+    await until(tester, () => vocalsOf(services) == VocalsState.VOCALS_STATE_OFF, 'the vocals to stop at the third line', seconds: 20);
     expect(services.state.state!.status, PlayStatus.PLAY_STATUS_PLAYING, reason: 'the song itself went on');
     debugPrint('S4I guide: vocals stopped at the third line');
 

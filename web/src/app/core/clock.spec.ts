@@ -36,6 +36,25 @@ describe('clock', () => {
     expect(positionNow(s, serverOffset(s, 0), 0)).toBe(500);
   });
 
+  it('positionNow_at_tempo: a song at 75 percent moves 3000 ms of song in 4000 ms, at 125 percent 5000 ms, and 0 or unset means 100', () => {
+    const at = (tempoPct?: number) => {
+      const s = state(PlayStatus.PLAYING, 1000, 1000, 1000);
+      if (tempoPct !== undefined) s.now!.tempoPct = tempoPct;
+      return positionNow(s, serverOffset(s, 0), 4000); // 4000 ms after position_at_ms
+    };
+    expect(at(75)).toBe(4000);
+    expect(at(125)).toBe(6000);
+    expect(at(100)).toBe(5000);
+    expect(at(0)).toBe(5000);
+    expect(at()).toBe(5000);
+  });
+
+  it('a paused song at any tempo stays where it is', () => {
+    const s = state(PlayStatus.PAUSED, 1000);
+    s.now!.tempoPct = 75;
+    expect(positionNow(s, serverOffset(s, 0), 9000)).toBe(41200);
+  });
+
   it('is 0 with nothing playing', () => {
     const s = create(StateSchema, { status: PlayStatus.PAUSED, serverTimeMs: 1n });
     expect(positionNow(s, 0, 100)).toBe(0);

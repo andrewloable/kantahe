@@ -5,6 +5,7 @@ import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart' hide State;
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart' as pb show State;
 import 'package:kantahe/library/format_badge.dart';
+import 'package:kantahe/queue/adjust_controls.dart';
 import 'package:kantahe/queue/queue_actions.dart';
 
 /// m:ss of a time in milliseconds.
@@ -140,6 +141,7 @@ class _NowPlayingCardState extends State<NowPlayingCard> with SingleTickerProvid
                         OutlinedButton(onPressed: widget.onPlayHere, child: const Text('Open player')),
                     ],
                   ),
+                  AdjustControls(actions: widget.actions),
                   if (state != null && state.hasUpNext()) ...[
                     const SizedBox(height: 8),
                     Text('Up next: ${state.upNext.song.title} — ${state.upNext.song.artist}', style: TextStyle(color: muted)),

@@ -138,4 +138,20 @@ abstract final class SessionService {
     kantahev1session.SetVolumeRequest.new,
     kantahev1session.SetVolumeResponse.new,
   );
+
+  /// Signed-in user. Sets the guide vocals of one of the caller's devices: on or off and how loud (percent, 0 to 100; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field. Switching off on the device that plays also stops the amateur guide for the rest of the current song.
+  static const setVocals = connect.Spec(
+    '/$name/SetVocals',
+    connect.StreamType.unary,
+    kantahev1session.SetVocalsRequest.new,
+    kantahev1session.SetVocalsResponse.new,
+  );
+
+  /// Signed-in user, any device. Sets the speed of the current song in percent (75 to 125 in steps of 5; 100 is normal), pitch unchanged. INVALID_ARGUMENT for another value, FAILED_PRECONDITION with no current song. The next song starts at 100 again.
+  static const setTempo = connect.Spec(
+    '/$name/SetTempo',
+    connect.StreamType.unary,
+    kantahev1session.SetTempoRequest.new,
+    kantahev1session.SetTempoResponse.new,
+  );
 }

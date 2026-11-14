@@ -35,7 +35,21 @@ Device device(
   bool isCaller = false,
   int? mp3VolumePct,
   int? midiVolumePct,
-}) => Device(id: id, name: name, type: type, online: online, isCaller: isCaller, mp3VolumePct: mp3VolumePct, midiVolumePct: midiVolumePct);
+  bool? vocalsOn,
+  int? vocalsPct,
+  VocalsState vocalsState = VocalsState.VOCALS_STATE_UNSPECIFIED,
+}) => Device(
+  id: id,
+  name: name,
+  type: type,
+  online: online,
+  isCaller: isCaller,
+  mp3VolumePct: mp3VolumePct,
+  midiVolumePct: midiVolumePct,
+  vocalsOn: vocalsOn,
+  vocalsPct: vocalsPct,
+  vocalsState: vocalsState,
+);
 
 State stateOf({
   PlayStatus status = PlayStatus.PLAY_STATUS_PAUSED,
@@ -57,8 +71,8 @@ State stateOf({
   serverTimeMs: Int64(serverTimeMs),
 );
 
-NowPlaying nowPlaying(Song s, {SongSource source = SongSource.SONG_SOURCE_QUEUE, int positionMs = 0, int positionAtMs = 0}) =>
-    NowPlaying(song: s, source: source, positionMs: Int64(positionMs), positionAtMs: Int64(positionAtMs));
+NowPlaying nowPlaying(Song s, {SongSource source = SongSource.SONG_SOURCE_QUEUE, int positionMs = 0, int positionAtMs = 0, int tempoPct = 100}) =>
+    NowPlaying(song: s, source: source, positionMs: Int64(positionMs), positionAtMs: Int64(positionAtMs), tempoPct: tempoPct);
 
 /// An in-memory session server for the queue screens; every command is recorded.
 class FakeQueueServer {
@@ -67,12 +81,16 @@ class FakeQueueServer {
   final moves = <String>[];
   final adds = <String>[];
   final volumes = <SetVolumeRequest>[];
+  final vocals = <SetVocalsRequest>[];
+  final tempos = <int>[];
 
   FutureOr<void> Function(ControlAction action)? onControl;
   FutureOr<void> Function(String id)? onRemove;
   FutureOr<void> Function(String id)? onMove;
   FutureOr<void> Function(String number)? onAdd;
   FutureOr<void> Function(SetVolumeRequest req)? onVolume;
+  FutureOr<void> Function(SetVocalsRequest req)? onVocals;
+  FutureOr<void> Function(int pct)? onTempo;
 
   Transport build() => FakeTransportBuilder()
       .unary(SessionService.control, (req, ctx) async {
@@ -99,6 +117,16 @@ class FakeQueueServer {
         volumes.add(req);
         await onVolume?.call(req);
         return SetVolumeResponse();
+      })
+      .unary(SessionService.setTempo, (req, ctx) async {
+        tempos.add(req.pct);
+        await onTempo?.call(req.pct);
+        return SetTempoResponse();
+      })
+      .unary(SessionService.setVocals, (req, ctx) async {
+        vocals.add(req);
+        await onVocals?.call(req);
+        return SetVocalsResponse();
       })
       .build();
 }

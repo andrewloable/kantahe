@@ -32,7 +32,7 @@ Song formats: `.kar` (Standard MIDI file with lyrics as text events) and `.karmp
 * No PostgreSQL: SQLite only.
 * Server-side audio rendering only as a per-device fallback for weak devices: MIDI is synthesized by
   the client by default (section 4, D2).
-* Volume: each device has a MIDI-songs volume and an MP3-songs volume (0 to 200 percent, default 100), set on *Me → Devices* and by the Volume down / Volume up buttons of the player; the server also measures the loudness of each MP3, and of each MIDI song it renders to audio for a device in server mode, and the player applies a per-song gain (at most +9 dB and -12 dB, target -16 LUFS). Not in the MVP: key change, tempo.
+* Volume: each device has a MIDI-songs volume and an MP3-songs volume (0 to 200 percent, default 100), set on *Me → Devices* and by the Volume down / Volume up buttons of the Queue page (D14); the server also measures the loudness of each MP3, and of each MIDI song it renders to audio for a device in server mode, and the player applies a per-song gain (at most +9 dB and -12 dB, target -16 LUFS). Tempo (D15) is the speed of the current song, 75 to 125 percent, pitch kept. Not in the MVP: key change.
 * Background videos (section 4.2) are admin-uploaded H.264 MP4 only: no transcoding on the server, no video sound,
   no per-song or per-singer videos.
 
@@ -100,9 +100,29 @@ server works out the window (D1: clients only compare times): `Playback.guide_vo
 plays when the singer's own choice is on, or when the song's time is inside the window; the guide never changes the singer's own choice (`VocalsPrefs.on`,
 `VocalsPrefs.pct`). The window is looked at once, when the song has loaded, so a takeover or reload after the window starts no guide, and a press of **Off**
 by the singer during the window stops the voice for the rest of that song (the next song is looked at afresh); a call that asks for what already plays (the app
-resends the state with its volume buttons) is not a press. The Vocals button, the key V and the app's native switch show what plays, so they read *on* during the
+resends the state with its volume buttons) is not a press. The Vocals button of the Queue page, the key V and (on a 1.4.0 server) the app's native switch show what plays, so they read *on* during the
 guide with no code of the app's own: the page reports it like any change (`KantaheVocals:on:…`, then `off`). A change of the setting applies from the next song a
 player loads (the playback is fetched per song).
+
+**Adjustments on the Queue page, not the player** (D14; owner's request 2026-11-14: "that way it prevents distraction on the main player when adjustments are being done"). The
+player screens (web, the TV packages, the app's player screen) show only Play or Pause, Skip, Play here and Close. The **Queue page of any device**, also the one that plays,
+adjusts the **device that plays**: *Volume down / Volume up* (the MP3 or the MIDI volume, by the song's format; steps of 5, 0 to 200), and for an MP3 song with a vocals track
+*Vocals: on / off / loading…* and *Vocals quieter / louder* (steps of 10, 0 to 100, shown while the vocals are not off), and *Slower / Faster / Normal speed* with *Tempo N%* (D15).
+The vocals choice is server state per device (`Device.vocals_on`, `Device.vocals_pct`, set with `SessionService.SetVocals`, migration 0015), no longer memory only; the player
+device tells the server what it really plays (`Device.vocals_state`, sent with `ReportDevice`, taken only from the device that is the player, shown only for it), so that the
+Queue page shows the truth, also during the amateur guide. A switch **Off** sent to the player device cancels the guide for the rest of that song on the server
+(`NowPlaying.guide_cancelled`, saved with the user's state, false again with the next song). A change from another device shows nothing on the player: no message, the
+fading buttons are not woken, the sound just changes. The keyboard shortcuts of the web player (**+**, **−**, **V**) keep working, silently. Servers before 1.5.0 send no
+`vocals_on` and no `tempo_pct`: the web player then keeps its in-memory choice, the app keeps its native Volume and Vocals buttons and its bridge, and the Queue page shows no
+vocals and no tempo controls.
+
+**Tempo** (D15). `NowPlaying.tempo_pct` is the speed of the current song, 100 = normal, 75 to 125 in steps of 5, set by any of the user's devices with `SessionService.SetTempo`
+(`INVALID_ARGUMENT` for another value, `FAILED_PRECONDITION` with no current song). It belongs to the song: it is 100 again when the next song loads, and it is saved with the
+user's state (migration 0016). The pitch is kept: an MP3 (and a MIDI song the server rendered) plays with `HTMLMediaElement.playbackRate` and `preservesPitch`, a MIDI song through
+the synthesizer's `Sequencer.playbackRate`; the guide vocals follow the same rate. Lyrics, the guide window and position reports stay in **song time**; what scales is the
+position clock of the other devices: every extrapolation from `(position_ms, position_at_ms)` adds the elapsed time times `tempo_pct / 100` (the server's `freezeClock`, the web's
+`positionNow`, the app's `positionNow`), and the server freezes the clock at the old speed before it changes the tempo. Nothing on the server ends a song by its length, so a
+slower song is not cut. The pitch of an MP3 cannot be changed natively and is not offered.
 
 **Lyric timing** (computed on the server, D1; clients only compare times):
 * A word's colour wipe runs from its start to the next word's start (at least 50 ms).
@@ -174,6 +194,8 @@ before anything is stored ("the file contains no music"), and a watched-folder f
 | D11 | **LAN discovery.** The server advertises `_kantahe._tcp` over mDNS/DNS-SD (`libp2p/zeroconf`, pure Go; instance = the server name, SRV port = the port of `--listen`, TXT `version`). The Flutter apps browse it (`bonsoir`); the Samsung and LG packages, which are web apps and cannot do mDNS, sweep their own /24 with `GetServerInfo` on ports 8080 and 80. | A client app finds its server by itself on first start; nothing to type on a TV. | UDP broadcast (iOS needs a restricted multicast entitlement to send it); typed address only. |
 | D12 | **Background videos.** The admin uploads H.264 MP4 videos that the player loops behind the lyrics (section 4.2). The server only reads container metadata and accepts only what every player target decodes; it never transcodes. A video goes up in **chunks of unary calls** (resumable, admin only), is served as **plain HTTP with Range behind a signed URL**, and each device has a **Background video** choice Auto / On / Off. | The server is one static pure-Go binary and cannot transcode; TVs decode H.264 in hardware; D3 forbids streaming uploads and the message cap is 64 MiB. | WebM, HEVC or AV1 (not decodable everywhere); transcoding with ffmpeg (breaks the single static binary); one big unary upload (the 64 MiB message cap). |
 | D13 | **Amateur singer mode.** One server-wide switch on Admin › Settings (default off): a song with a vocals track plays the singer's voice by itself until the third lyric line starts, then fades out over 300 ms. The server sends the end of the window (`Playback.guide_vocals_until_ms`); the player compares times. A singer's press of Off wins for the rest of the song; songs with fewer than three lines get no guide. | The server already parses lyrics (D1) and the vocals track is already a second audio engine that the player starts at the instrumental's position; the guide only decides when to start and stop it. | A per-user setting (the owner chose the admin switch); a fixed number of seconds instead of the third line (lines differ in length); stopping with a hard cut. |
+| D14 | **Adjustments on the Queue page, not the player.** The volume, the guide vocals (on or off, level) and the tempo of what plays are adjusted from the Queue page of any device and never on the player screens. The vocals choice moves from memory to the server (`Device.vocals_on/pct`, `SetVocals`); the player reports what it plays (`Device.vocals_state`); a remote Off cancels the amateur guide for the song (`NowPlaying.guide_cancelled`). | The owner wants nothing to move on the screen the singer reads while someone adjusts; the volume was already server state per device and the Queue page already controls Play, Skip and Play here. | Keeping the buttons on the player as well (they distract); storing the vocals choice only in the browser or app (a remote could not change it). |
+| D15 | **Song tempo.** `NowPlaying.tempo_pct` (75 to 125, steps of 5, 100 by default, reset with each song), `SetTempo` from any device, pitch kept with the browser's own time-stretching and the synthesizer's playback rate; every position clock scales elapsed time by the tempo. Controls on the Queue page only (D14). | No new library: `playbackRate` with `preservesPitch` is in every engine the player already uses, and song time (lyrics, guide, reports) is untouched. | A pitch shifter for MP3 (not native, too heavy for TV boxes); a tempo per song that is remembered (the owner did not ask for it). |
 
 ### 4.1 MIDI on weak devices (cheap Android TV boxes, TVs, old phones)
 

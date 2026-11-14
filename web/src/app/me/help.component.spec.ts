@@ -34,6 +34,13 @@ describe('HelpComponent', () => {
     expect(text).toContain('switch');
   });
 
+  it('says that the volume and the vocals are changed on the Queue page, not on the player', () => {
+    const section = Array.from(render().querySelectorAll('section')).find((s) => s.querySelector('h3')?.textContent?.includes('vocals'))!;
+    expect(section.textContent).toContain('no volume or vocals buttons');
+    expect(section.textContent).toContain('Slower');
+    expect(section.querySelector('a[href="/queue"]')).not.toBeNull();
+  });
+
   it('lists the keyboard shortcuts and says that they can be turned off', () => {
     const section = Array.from(render().querySelectorAll('section')).pop()!;
     expect(Array.from(section.querySelectorAll('table kbd')).map((k) => k.textContent)).toEqual(['Space or K', 'N', 'F', '+ and −', 'V', '/', '?']);

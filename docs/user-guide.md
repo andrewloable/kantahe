@@ -31,7 +31,7 @@ The *Library* page has three ways in:
   narrow the list to one format.
 * **Number**: tap the digits of a song number, as in a karaoke bar, and the song appears.
 
-Every entry has a number, and a badge that says **MP3** or **MIDI**. A small **W** beside it says the lyrics are timed word by word (the words light up one at a time), an **L** says line by line; songs made with Kantahe Maker 1.2.6 or later say it themselves, older ones are read from their lyrics. A **V** says the song has a separate vocals track that the *Vocals* button of the player can play. The same song can be in the library twice, once
+Every entry has a number, and a badge that says **MP3** or **MIDI**. A small **W** beside it says the lyrics are timed word by word (the words light up one at a time), an **L** says line by line; songs made with Kantahe Maker 1.2.6 or later say it themselves, older ones are read from their lyrics. A **V** says the song has a separate vocals track that *Vocals* on the Queue page can play. The same song can be in the library twice, once
 in each format. A song marked as unplayable cannot be queued. The star makes a song a **favourite**. The **⋯** button (*More actions*)
 opens a short menu: **Play next** puts the song right after the one that is playing, ahead of the rest of the queue (the
 message that confirms it has **Undo**), and **Add to a playlist** puts it on one of your playlists (in the Library,
@@ -92,24 +92,35 @@ touch the screen or press a key and they come back. **Full screen** (where the b
 screen. **Back to Kantahe** returns to the library (and **Admin** to the admin pages, for administrators); leaving the
 player pauses the song if this device was playing it.
 
-**Volume down** and **Volume up** change how loud this device plays the song that is on: the *MIDI songs* volume for a MIDI
-song, the *MP3 songs* volume for an MP3 song, in steps of 5 percent from 0 to 200 (100 is the song's own level). The words
-beside the buttons say which one it is. The Android, iOS and TV app have the same two buttons next to Skip (on a TV the remote reaches them like the
-others). It is the same setting as *Me → Devices*, so it is kept for this device.
+**Volume and vocals are not on the player.** The player shows only Play or Pause and Skip, so that nothing on the screen changes while
+you sing. You change the volume and the vocals on the **Queue** page of any device, also the one that plays (on a TV the remote reaches the
+Queue next to the Player; in the apps it is the same Queue screen). The player keeps its keyboard shortcuts: **+** and **−** for the volume and
+**V** for the vocals work silently.
 
-**Vocals.** A song that has a vocals track (a `.karmp3` made with Kantahe Maker 1.1 or later with the singer's voice included) shows a
-**Vocals** button next to the volume buttons, on the device that is playing; songs without one show nothing. It starts **off**, as
-every song always has. Switch it on and the singer's voice plays together with the music as a guide, starting where the music is now;
-the button says *Vocals: loading…* until the voice is ready, and the music keeps playing meanwhile. **Vocals quieter** and **Vocals
-louder** change how loud the voice is (steps of 10 percent from 0 to 100; it starts at 60, and it follows the song's volume above).
-The choice and the level are kept until you close the page or the app, and apply to the next song that has vocals. If the voice cannot be
-loaded the button switches itself off with a short message and the song goes on. The Android, iOS and TV app have the same buttons next
-to Skip.
+On the Queue page, under the song that is on and the name of the device that plays it:
+
+**Volume down** and **Volume up** change how loud that device plays the song that is on: the *MIDI songs* volume for a MIDI song, the *MP3
+songs* volume for an MP3 song, in steps of 5 percent from 0 to 200 (100 is the song's own level). The words beside the buttons say which one
+it is. It is the same setting as *Me → Devices*, so it is kept for that device.
+
+**Vocals.** A song that has a vocals track (a `.karmp3` made with Kantahe Maker 1.1 or later with the singer's voice included) shows
+**Vocals** next to the volume buttons; songs without one show nothing. It starts **off**, as every song always has. Switch it on and the
+singer's voice plays together with the music as a guide, starting where the music is now; the Queue page says *loading* until the voice is
+ready, and the music keeps playing meanwhile. **Vocals quieter** and **Vocals louder** change how loud the voice is (steps of 10 percent
+from 0 to 100; it starts at 60, and it follows the song's volume above). The choice and the level are kept on the server for that device,
+so they stay when you close the page or the app, and apply to the next song that has vocals. If the voice cannot be loaded the vocals
+switch themselves off, and the song goes on.
+
+**Tempo.** *Slower* and *Faster* on the Queue page change the speed of the song that is on, in steps of 5 percent from 75 to 125, without
+changing the pitch (the singer's voice does not turn into a chipmunk); *Tempo 85%* says where it is, and *Normal speed* puts it back to 100.
+The tempo belongs to the song: the next song starts at normal speed again. The lyrics, the guide vocals and the clock of the Queue page follow
+the new speed, and the song is not cut short when it is slower. Like the volume and the vocals, the tempo is adjusted only on the Queue page,
+never on the player. It needs a server of version 1.5 or later.
 
 **Amateur singer mode.** When the administrator has switched it on (*Admin → Settings*), a song with a vocals track plays the singer's voice
 by itself from the start until the third line of the lyrics begins, where it fades out over a third of a second. It is a guide for a song you
-do not know: you hear the tune and the words of the first two lines before you sing. The **Vocals** button shows *on* while it plays. Press
-it to switch the voice off at once; it then stays off for the rest of that song, and the next song starts with the guide again. If you had
+do not know: you hear the tune and the words of the first two lines before you sing. The Queue page shows the vocals *on* while it plays. Press
+**Vocals** there to switch the voice off at once; it then stays off for the rest of that song, and the next song starts with the guide again. If you had
 switched the vocals on yourself, they simply stay on. A song without a vocals track, a MIDI song, and a song with fewer than three lines of
 lyrics are not affected. The change of the setting applies from the next song.
 

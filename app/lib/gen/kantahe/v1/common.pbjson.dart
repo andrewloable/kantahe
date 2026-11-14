@@ -101,6 +101,23 @@ final $typed_data.Uint8List lyricTimingDescriptor = $convert.base64Decode(
     'CgtMeXJpY1RpbWluZxIcChhMWVJJQ19USU1JTkdfVU5TUEVDSUZJRUQQABIVChFMWVJJQ19USU'
     '1JTkdfTElORRABEhUKEUxZUklDX1RJTUlOR19XT1JEEAI=');
 
+@$core.Deprecated('Use vocalsStateDescriptor instead')
+const VocalsState$json = {
+  '1': 'VocalsState',
+  '2': [
+    {'1': 'VOCALS_STATE_UNSPECIFIED', '2': 0},
+    {'1': 'VOCALS_STATE_OFF', '2': 1},
+    {'1': 'VOCALS_STATE_LOADING', '2': 2},
+    {'1': 'VOCALS_STATE_ON', '2': 3},
+  ],
+};
+
+/// Descriptor for `VocalsState`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List vocalsStateDescriptor = $convert.base64Decode(
+    'CgtWb2NhbHNTdGF0ZRIcChhWT0NBTFNfU1RBVEVfVU5TUEVDSUZJRUQQABIUChBWT0NBTFNfU1'
+    'RBVEVfT0ZGEAESGAoUVk9DQUxTX1NUQVRFX0xPQURJTkcQAhITCg9WT0NBTFNfU1RBVEVfT04Q'
+    'Aw==');
+
 @$core.Deprecated('Use songDescriptor instead')
 const Song$json = {
   '1': 'Song',
@@ -298,10 +315,38 @@ const Device$json = {
       '10': 'midiVolumePct',
       '17': true
     },
+    {
+      '1': 'vocals_on',
+      '3': 15,
+      '4': 1,
+      '5': 8,
+      '9': 2,
+      '10': 'vocalsOn',
+      '17': true
+    },
+    {
+      '1': 'vocals_pct',
+      '3': 16,
+      '4': 1,
+      '5': 5,
+      '9': 3,
+      '10': 'vocalsPct',
+      '17': true
+    },
+    {
+      '1': 'vocals_state',
+      '3': 17,
+      '4': 1,
+      '5': 14,
+      '6': '.kantahe.v1.VocalsState',
+      '10': 'vocalsState'
+    },
   ],
   '8': [
     {'1': '_mp3_volume_pct'},
     {'1': '_midi_volume_pct'},
+    {'1': '_vocals_on'},
+    {'1': '_vocals_pct'},
   ],
 };
 
@@ -317,8 +362,10 @@ final $typed_data.Uint8List deviceDescriptor = $convert.base64Decode(
     'EoDjIaLmthbnRhaGUudjEuQmFja2dyb3VuZE1vZGVSDmJhY2tncm91bmRNb2RlEjEKFGVmZmVj'
     'dGl2ZV9iYWNrZ3JvdW5kGAwgASgIUhNlZmZlY3RpdmVCYWNrZ3JvdW5kEikKDm1wM192b2x1bW'
     'VfcGN0GA0gASgFSABSDG1wM1ZvbHVtZVBjdIgBARIrCg9taWRpX3ZvbHVtZV9wY3QYDiABKAVI'
-    'AVINbWlkaVZvbHVtZVBjdIgBAUIRCg9fbXAzX3ZvbHVtZV9wY3RCEgoQX21pZGlfdm9sdW1lX3'
-    'BjdA==');
+    'AVINbWlkaVZvbHVtZVBjdIgBARIgCgl2b2NhbHNfb24YDyABKAhIAlIIdm9jYWxzT26IAQESIg'
+    'oKdm9jYWxzX3BjdBgQIAEoBUgDUgl2b2NhbHNQY3SIAQESOgoMdm9jYWxzX3N0YXRlGBEgASgO'
+    'Mhcua2FudGFoZS52MS5Wb2NhbHNTdGF0ZVILdm9jYWxzU3RhdGVCEQoPX21wM192b2x1bWVfcG'
+    'N0QhIKEF9taWRpX3ZvbHVtZV9wY3RCDAoKX3ZvY2Fsc19vbkINCgtfdm9jYWxzX3BjdA==');
 
 @$core.Deprecated('Use videoDescriptor instead')
 const Video$json = {

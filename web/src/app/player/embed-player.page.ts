@@ -74,10 +74,14 @@ export class EmbedPlayerPage {
   /** Anything that is not a boolean and a finite number is ignored. */
   private setVocals(on: unknown, pct: unknown): void {
     if (typeof on !== 'boolean' || typeof pct !== 'number' || !Number.isFinite(pct)) return;
-    this.prefs.pct.set(Math.min(VOCALS_MAX, Math.max(0, Math.round(pct / VOCALS_STEP) * VOCALS_STEP)));
+    const level = Math.min(VOCALS_MAX, Math.max(0, Math.round(pct / VOCALS_STEP) * VOCALS_STEP));
     const view = this.view();
-    if (view) view.setVocals(on);
-    else this.prefs.on.set(on); // no player yet: the choice waits for the first song with vocals
+    if (view) view.setVocals(on, level);
+    else {
+      // no player yet: the choice waits for the first song with vocals
+      this.prefs.pct.set(level);
+      this.prefs.on.set(on);
+    }
   }
 
   /** Anything that is not a finite number is ignored; the rest is rounded and kept between 0 and MAX_CONTROLS_HEIGHT. */

@@ -159,17 +159,27 @@ describe('PlayerViewComponent', () => {
       }
     });
 
-    it('V turns the guide vocals on and off for a song that has them, and does nothing for one that has not', async () => {
-      const { push, server, settle, button } = setup();
+    it('V asks the server to turn the guide vocals of this device on and off, for a song that has them, and does nothing for one that has not; nothing new is shown', async () => {
+      const { el, push, server, settle } = setup();
       const MP3_SONG = song('21628', 'Hello', 'Adele', Format.MP3, false, { lyricTiming: LyricTiming.LINE, hasVocals: true });
       server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21628?sig=a', vocalsUrl: '/media/vocals/21628?sig=v', song: MP3_SONG });
-      await push({ ...PLAYING, now: { song: MP3_SONG, positionMs: 0, positionAtMs: 1000 } });
+      const mine = (on: boolean) => [device(ME, 'This browser', { isCaller: true, vocalsOn: on, vocalsPct: 60 }), device('tv', 'Living room TV')];
+      await push({ ...PLAYING, devices: mine(false), now: { song: MP3_SONG, positionMs: 0, positionAtMs: 1000 } });
+      const shown = el.textContent;
       press('v');
       await settle();
-      expect(button('Vocals: off')).toBeUndefined();
+      expect(server.calls.vocals.map((r) => [r.deviceId, r.on])).toEqual([[ME, true]]);
+      await push({ ...PLAYING, devices: mine(true), now: { song: MP3_SONG, positionMs: 0, positionAtMs: 1000 } });
       press('v');
       await settle();
-      expect(button('Vocals: off')).toBeDefined();
+      expect(server.calls.vocals.map((r) => r.on)).toEqual([true, false]);
+      expect(el.textContent).toBe(shown);
+      // a song without vocals: the key does nothing
+      server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21629?sig=a', song: song('21629', 'Plain', 'Adele', Format.MP3) });
+      await push({ ...PLAYING, devices: mine(false), now: { song: song('21629', 'Plain', 'Adele', Format.MP3), positionMs: 0, positionAtMs: 1000 } });
+      press('v');
+      await settle();
+      expect(server.calls.vocals).toHaveLength(2);
     });
 
     it('REGRESSION: typing in a field sends nothing, and neither do Ctrl, Alt or Meta with a key', async () => {
@@ -268,174 +278,84 @@ describe('PlayerViewComponent', () => {
     });
   });
 
-  describe('guide vocals', () => {
+  describe('no adjustments on the player (kantahe-der: they are made on the Queue page)', () => {
     const MP3_SONG = song('21628', 'Hello', 'Adele', Format.MP3, false, { lyricTiming: LyricTiming.LINE, hasVocals: true });
-    const MP3_STATE: StateInit = { ...PLAYING, now: { song: MP3_SONG, positionMs: 0, positionAtMs: 1000 } };
     const withVocals = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21628?sig=a', vocalsUrl: '/media/vocals/21628?sig=v', song: MP3_SONG });
-    const labels = (el: HTMLElement) => Array.from(el.querySelectorAll('.controls button')).map((b) => b.textContent?.trim());
+    const labels = (el: HTMLElement) => Array.from(el.querySelectorAll('button')).map((b) => b.textContent?.trim());
+    const withState = (on: boolean): StateInit => ({
+      ...PLAYING,
+      devices: [device(ME, 'This browser', { isCaller: true, vocalsOn: on, vocalsPct: 60, mp3VolumePct: 80 }), device('tv', 'Living room TV')],
+      now: { song: MP3_SONG, positionMs: 0, positionAtMs: 1000 },
+    });
 
-    it('player_switch_hidden_without_vocals: nothing about vocals, not even a disabled button, for an MP3 song without, a MIDI song and a device that is not the player', async () => {
+    it('player_has_no_volume_or_vocals_buttons: a vocals song, vocals off and on, a MIDI song: Pause, Skip and the top bar only, and no level text', async () => {
       const { el, server, push } = setup();
-      server.handlers.playback = () => playbackOf({ kind: PlaybackKind.AUDIO, audioUrl: '/media/song/21628?sig=a', song: MP3_SONG });
-      await push(MP3_STATE);
-      expect(el.querySelector('.vocals')).toBeNull();
-      expect(el.textContent).not.toContain('Vocals');
-      await push(PLAYING); // the MIDI song
-      expect(el.querySelector('.vocals')).toBeNull();
-      expect(el.textContent).not.toContain('Vocals');
       server.handlers.playback = withVocals;
-      await push({ ...MP3_STATE, player: 'tv' });
-      expect(el.textContent).not.toContain('Vocals');
+      for (const init of [withState(false), withState(true), PLAYING]) {
+        await push(init);
+        expect(labels(el).filter((l) => /volume|vocals|louder|quieter|tempo|slower|faster/i.test(l ?? ''))).toEqual([]);
+        expect(Array.from(el.querySelectorAll('.controls button')).map((b) => b.textContent?.trim())).toEqual(['Pause', 'Skip']);
+        expect(el.querySelector('.vocals, .level')).toBeNull();
+        expect(el.querySelector('.controls [role="status"]')).toBeNull();
+        expect(el.querySelector('.controls')?.textContent).not.toMatch(/volume|vocals|tempo|%/i);
+      }
     });
 
-    it('player_switch_shown_with_vocals: one button, off, with no volume buttons yet', async () => {
-      const { el, server, push, button } = setup();
+    it('a device that is not the player shows Play here and nothing else', async () => {
+      const { el, server, push } = setup();
       server.handlers.playback = withVocals;
-      await push(MP3_STATE);
-      expect(el.querySelectorAll('.vocals')).toHaveLength(1);
-      expect(el.querySelector('.vocals-badge')?.textContent).toBe('V'); // the song also says so beside its format
-      expect(el.querySelector('.timing-badge')?.textContent).toBe('L');
-      expect(button('Vocals: off')?.getAttribute('aria-pressed')).toBe('false');
-      expect(button('Vocals quieter')).toBeUndefined();
-      expect(button('Vocals louder')).toBeUndefined();
+      await push({ ...withState(false), player: 'tv' });
+      expect(labels(el)).not.toContain('Skip');
+      expect(el.textContent).not.toMatch(/volume|vocals/i);
     });
 
-    it('the switch is a real button, reachable with the keyboard', async () => {
-      const { server, push, button } = setup();
-      server.handlers.playback = withVocals;
-      await push(MP3_STATE);
-      const b = button('Vocals: off')!;
-      expect(b.tagName).toBe('BUTTON');
-      expect(b.type).toBe('button');
-      expect(b.disabled).toBe(false);
-      expect(b.tabIndex).toBe(0);
-      expect(b.closest('.controls')).not.toBeNull();
-    });
-
-    it('a click turns it on: loading first, then on, with the volume buttons and the read-out; a second click while loading cancels', async () => {
-      const { el, server, fake, push, settle, button } = setup();
-      server.handlers.playback = withVocals;
-      let release: () => void = () => undefined;
-      let made = 0;
-      fake.hooks.configure = (engine) => {
-        if (++made === 2) engine.load.mockImplementation(() => new Promise<void>((resolve) => (release = resolve)));
-      };
-      await push(MP3_STATE);
-      button('Vocals: off')!.click();
-      await settle();
-      expect(button('Vocals: loading…')).toBeDefined();
-      expect(button('Vocals: loading…')!.getAttribute('aria-pressed')).toBe('true');
-      button('Vocals: loading…')!.click(); // cancel
-      await settle();
-      expect(button('Vocals: off')).toBeDefined();
-      release();
-      await settle();
-      expect(button('Vocals: off')).toBeDefined();
-      button('Vocals: off')!.click();
-      await settle();
-      expect(button('Vocals: on')).toBeDefined();
-      expect(button('Vocals: on')!.getAttribute('aria-pressed')).toBe('true');
-      expect(button('Vocals quieter')).toBeDefined();
-      expect(button('Vocals louder')).toBeDefined();
-      expect(Array.from(el.querySelectorAll('.controls [role="status"]')).some((e) => e.textContent?.includes('Vocals volume 60%'))).toBe(true);
-    });
-
-    it('volume_buttons_change_the_read_out', async () => {
-      const { el, server, push, settle, button } = setup();
-      server.handlers.playback = withVocals;
-      await push(MP3_STATE);
-      button('Vocals: off')!.click();
-      await settle();
-      const readout = () => Array.from(el.querySelectorAll('.controls [role="status"]')).map((e) => e.textContent?.replace(/\s+/g, ' ').trim()).find((t) => t?.startsWith('Vocals volume'));
-      expect(readout()).toBe('Vocals volume 60%');
-      button('Vocals quieter')!.click();
-      button('Vocals quieter')!.click();
-      await settle();
-      expect(readout()).toBe('Vocals volume 40%');
-      button('Vocals louder')!.click();
-      await settle();
-      expect(readout()).toBe('Vocals volume 50%');
-    });
-
-    it('load_error_puts_the_switch_back_to_off, and the song keeps its own buttons', async () => {
-      const { server, fake, push, settle, button } = setup();
-      server.handlers.playback = withVocals;
-      await push(MP3_STATE);
-      fake.hooks.configure = (engine) => engine.load.mockRejectedValue(new Error('no'));
-      button('Vocals: off')!.click();
-      await settle();
-      expect(button('Vocals: off')).toBeDefined();
-      expect(button('Vocals quieter')).toBeUndefined();
-      expect(button('Pause')).toBeDefined();
-      expect(button('Skip')).toBeDefined();
-    });
-
-    it('embedded_mode_has_no_page_buttons: the app has its own', async () => {
+    it('embedded: nothing either, the app has its own buttons', async () => {
       const { fixture, el, server, push } = setup();
       fixture.componentRef.setInput('embedded', true);
       server.handlers.playback = withVocals;
-      await push(MP3_STATE);
-      expect(el.querySelector('.vocals')).toBeNull();
-      expect(el.textContent).not.toContain('Vocals');
+      await push(withState(true));
+      expect(el.querySelector('.vocals, .level, .controls')).toBeNull();
+      expect(el.textContent).not.toMatch(/volume|vocals/i);
     });
 
-    it('the labels are text: Vocals: off, Vocals: loading…, Vocals: on', async () => {
-      const { el, server, push, settle, button } = setup();
+    it('REGRESSION tempo_change_is_silent_on_the_player: no tempo button, no key, no text, no message, and faded controls stay faded', async () => {
+      const { el, server, push, settle } = setup();
       server.handlers.playback = withVocals;
-      await push(MP3_STATE);
-      expect(labels(el)).toContain('Vocals: off');
-      button('Vocals: off')!.click();
+      const at = (tempoPct: number): StateInit => ({ ...withState(false), now: { song: MP3_SONG, positionMs: 0, positionAtMs: 1000, tempoPct } });
+      await push(at(100));
+      await vi.advanceTimersByTimeAsync(3500);
       await settle();
-      expect(labels(el)).toContain('Vocals: on');
-    });
-  });
-
-  describe('volume buttons', () => {
-    it('on the player: Volume down, Volume up and a read-out of the kind and level; a press shows the new level at once', async () => {
-      const { el, push, button, fixture } = setup();
-      await push(PLAYING);
-      expect(button('Volume down')).toBeDefined();
-      expect(button('Volume up')).toBeDefined();
-      const readout = () => el.querySelector('.controls [role="status"]')?.textContent?.replace(/\s+/g, ' ').trim();
-      expect(readout()).toBe('MIDI volume 100%');
-      button('Volume up')!.click();
-      fixture.detectChanges();
-      expect(readout()).toBe('MIDI volume 105%');
-      button('Volume down')!.click();
-      button('Volume down')!.click();
-      fixture.detectChanges();
-      expect(readout()).toBe('MIDI volume 95%');
+      const stage = () => el.querySelector('main.stage') as HTMLElement;
+      expect(stage().classList.contains('idle')).toBe(true);
+      const toasts = TestBed.inject(ToastService).toasts().length;
+      const before = el.textContent;
+      await push(at(80));
+      await push(at(125));
+      expect(stage().classList.contains('idle')).toBe(true);
+      expect(TestBed.inject(ToastService).toasts().length).toBe(toasts);
+      expect(el.textContent).toBe(before);
+      expect(el.textContent).not.toMatch(/tempo|slower|faster|speed/i);
+      // no key changes the tempo either
+      for (const key of ['[', ']', 't', '<', '>']) document.body.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+      await settle();
+      expect(server.calls.control).toEqual([]);
     });
 
-    it('an MP3 song says MP3 volume and the level of the MP3 setting', async () => {
-      const { el, push } = setup();
-      await push({
-        ...PLAYING,
-        devices: [device(ME, 'This browser', { isCaller: true, mp3VolumePct: 60 }), device('tv', 'Living room TV')],
-        now: { song: song('21629', 'Skyfall', 'Adele', Format.MP3), positionMs: 0, positionAtMs: 1000 },
-      });
-      expect(el.querySelector('.controls [role="status"]')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('MP3 volume 60%');
-    });
-
-    it('the buttons are among the controls that fade with the others', async () => {
-      const { push, button } = setup();
-      await push(PLAYING);
-      expect(button('Volume up')!.closest('.controls')).not.toBeNull();
-    });
-
-    it('REGRESSION: inside the app (embedded) there are no volume buttons: the app has its own', async () => {
-      const { fixture, el, push, button } = setup();
-      fixture.componentRef.setInput('embedded', true);
-      await push(PLAYING);
-      expect(el.textContent).toContain('Hello');
-      expect(button('Volume up')).toBeUndefined();
-      expect(button('Volume down')).toBeUndefined();
-    });
-
-    it('with no song current there are no volume buttons', async () => {
-      const { push, button } = setup();
-      await push({ ...PLAYING, now: undefined });
-      expect(button('Volume up')).toBeUndefined();
+    it('REGRESSION remote_change_is_silent: while the buttons are faded, a change of volume or vocals from another device shows and wakes nothing', async () => {
+      const { el, server, push, settle } = setup();
+      server.handlers.playback = withVocals;
+      await push(withState(false));
+      await vi.advanceTimersByTimeAsync(3500);
+      await settle();
+      const stage = () => el.querySelector('main.stage') as HTMLElement;
+      expect(stage().classList.contains('idle')).toBe(true);
+      const toasts = TestBed.inject(ToastService).toasts().length;
+      const before = el.textContent;
+      await push(withState(true));
+      await push({ ...withState(true), devices: [device(ME, 'This browser', { isCaller: true, vocalsOn: true, vocalsPct: 30, mp3VolumePct: 120 }), device('tv', 'Living room TV')] });
+      expect(stage().classList.contains('idle')).toBe(true);
+      expect(TestBed.inject(ToastService).toasts().length).toBe(toasts);
+      expect(el.textContent).toBe(before);
     });
   });
 

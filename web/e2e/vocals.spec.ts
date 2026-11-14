@@ -1,9 +1,11 @@
 import { Browser, BrowserContext, expect, Page, test } from '@playwright/test';
 import { strToU8, zipSync } from 'fflate';
+import { SERVER_URL } from './ports';
 
 // Guide vocals (docs/PLAN.md section 3): a .karmp3 made with Kantahe Maker 1.1 carries the singer's voice as a second MP3. The whole product in a
 // real browser: the administrator uploads such files, a player device shows the Vocals switch only for them, the voice is fetched from
-// /media/vocals and kept for the next song, and the buttons fit a phone screen. The MP3 files are silent frames built here, not songs.
+// /media/vocals and kept for the next song, and the buttons fit a phone screen. The adjustments are not on the player (kantahe-der): the test makes them
+// the way another device does, with SetVocals, and reads what the player reports back (Device.vocals_state). The MP3 files are silent frames built here, not songs.
 
 const ADMIN = { email: 'admin@example.com', name: 'Admin', password: 'admin-password-1' };
 
@@ -57,7 +59,7 @@ const stage = (page: Page) => page.locator('.stage');
 let shake = 0;
 const wake = (page: Page) => page.mouse.move(100 + (shake++ % 2) * 10, 100);
 
-test('guide vocals: uploaded, offered only for songs that have them, played, remembered for the next song, and the buttons fit a phone', async ({ browser }) => {
+test('guide vocals: uploaded, played when another device asks, remembered for the next song, no vocals buttons on the player, and the buttons fit a phone', async ({ browser, request }) => {
   const admin = await device(browser, 'Admin laptop');
   const a = await admin.newPage();
   await signInAdmin(a);
@@ -103,7 +105,22 @@ test('guide vocals: uploaded, offered only for songs that have them, played, rem
     }
   });
 
-  await test.step('on the player the first song shows the Vocals switch, off', async () => {
+  // what another device (the Queue page) does: the same calls, made from the test with the player's own account
+  const call = async <T>(method: string, data: object): Promise<T> => {
+    const token = await p.evaluate(() => localStorage.getItem('kantahe.token'));
+    const res = await request.post(`${SERVER_URL}/kantahe.v1.${method}`, { data, headers: { authorization: `Bearer ${token}` } });
+    expect(res.ok(), `${method}: ${await res.text()}`).toBe(true);
+    return (await res.json()) as T;
+  };
+  interface Dev { id: string; vocalsOn?: boolean; vocalsPct?: number; vocalsState?: string }
+  const myDevice = async (): Promise<Dev> => {
+    const id = await p.evaluate(() => localStorage.getItem('kantahe.deviceId'));
+    const { state } = await call<{ state: { devices: Dev[] } }>('SessionService/GetState', {});
+    return state.devices.find((d) => d.id === id)!;
+  };
+  const playerSays = (state: string) => expect.poll(async () => (await myDevice()).vocalsState, { message: `the player reports ${state}`, timeout: 20_000 }).toBe(state);
+
+  await test.step('on the player the first song has no Vocals or volume buttons at all, and plays no voice', async () => {
     await p.goto('/player');
     await p.getByRole('button', { name: 'Play here' }).click();
     // an earlier test (videos.spec) may have left a song playing for the account; Play here takes it over, and the queue is next
@@ -113,29 +130,100 @@ test('guide vocals: uploaded, offered only for songs that have them, played, rem
       await stage(p).getByRole('button', { name: 'Skip' }).click();
     }
     await expect(stage(p).locator('header.song h1')).toHaveText('Vocalsong');
-    await expect(p.getByRole('button', { name: 'Vocals: off' })).toBeVisible();
-    await expect(p.getByRole('button', { name: 'Vocals: off' })).toHaveAttribute('aria-pressed', 'false');
+    await wake(p);
+    await expect(stage(p).locator('.controls button')).toHaveText(['Pause', 'Skip']);
+    await expect(stage(p).getByText(/volume|vocals:/i)).toHaveCount(0);
     // the player shows the same badges beside MP3
     await expect(stage(p).locator('.timing-badge')).toHaveText('W');
     await expect(stage(p).locator('.vocals-badge')).toHaveText('V');
-    expect(vocalsResponses, 'nothing is fetched before the switch is used').toEqual([]);
+    await playerSays('VOCALS_STATE_OFF');
+    expect(vocalsResponses, 'nothing is fetched before the vocals are switched on').toEqual([]);
   });
 
-  await test.step('switching it on fetches the voice from /media/vocals and shows the level', async () => {
-    await wake(p);
-    await p.getByRole('button', { name: 'Vocals: off' }).click();
-    await expect(p.getByRole('button', { name: 'Vocals: on' })).toBeVisible();
+  await test.step('another device (the laptop, on its Queue page) switches them on: the voice is fetched, the player reports it, and shows nothing new', async () => {
+    const before = await stage(p).innerText();
+    await a.goto('/queue');
+    const adjust = a.locator('app-adjust-controls');
+    await expect(adjust.getByRole('button', { name: 'Vocals: off' })).toBeVisible();
+    await expect(adjust.getByText('MP3 volume 100%')).toBeVisible();
+    await adjust.getByRole('button', { name: 'Vocals: off' }).click();
+    await expect(adjust.getByRole('button', { name: 'Vocals: on' })).toBeVisible();
+    await playerSays('VOCALS_STATE_ON');
     await expect.poll(() => vocalsResponses.length, { message: 'the vocals were fetched' }).toBeGreaterThan(0);
-    await expect(stage(p).getByText('Vocals volume 60%')).toBeVisible();
-    await wake(p);
-    await p.getByRole('button', { name: 'Vocals quieter' }).click();
-    await wake(p);
-    await p.getByRole('button', { name: 'Vocals quieter' }).click();
-    await expect(stage(p).getByText('Vocals volume 40%')).toBeVisible();
+    await expect(adjust.getByText('Vocals volume 60%')).toBeVisible();
+    await adjust.getByRole('button', { name: 'Vocals quieter' }).click();
+    await adjust.getByRole('button', { name: 'Vocals quieter' }).click();
+    await expect(adjust.getByText('Vocals volume 40%')).toBeVisible();
+    await expect.poll(async () => (await myDevice()).vocalsPct, { message: 'the level reached the server' }).toBe(40);
     await expect(stage(p).locator('app-lyrics-view')).toBeVisible(); // the lyrics are untouched
+    await expect(stage(p).locator('.controls button')).toHaveText(['Pause', 'Skip']);
+    expect((await stage(p).innerText()).replace(/\d+:\d+/g, ''), 'nothing on the player changed').toBe(before.replace(/\d+:\d+/g, ''));
   });
 
-  await test.step('on a phone the buttons wrap: nothing overlaps and the page does not scroll sideways', async () => {
+  await test.step('the volume of the player is changed from the Queue page too', async () => {
+    const adjust = a.locator('app-adjust-controls');
+    await adjust.getByRole('button', { name: 'Volume up' }).click();
+    await adjust.getByRole('button', { name: 'Volume up' }).click();
+    await expect(adjust.getByText('MP3 volume 110%')).toBeVisible();
+    await expect.poll(async () => ((await myDevice()) as Dev & { mp3VolumePct?: number }).mp3VolumePct).toBe(110);
+    await adjust.getByRole('button', { name: 'Volume down' }).click();
+    await adjust.getByRole('button', { name: 'Volume down' }).click();
+    await expect.poll(async () => ((await myDevice()) as Dev & { mp3VolumePct?: number }).mp3VolumePct).toBe(100);
+  });
+
+  await test.step('the tempo is changed from the Queue page: the song is told, and the player shows nothing', async () => {
+    const adjust = a.locator('app-adjust-controls');
+    const before = await stage(p).innerText();
+    const tempo = async () => {
+      const { state } = await call<{ state: { now: { tempoPct?: number } } }>('SessionService/GetState', {});
+      return state.now.tempoPct;
+    };
+    await expect(adjust.getByText('Tempo 100%')).toBeVisible();
+    await expect(adjust.getByRole('button', { name: 'Normal speed' })).toHaveCount(0);
+    await adjust.getByRole('button', { name: 'Slower' }).click();
+    await adjust.getByRole('button', { name: 'Slower' }).click();
+    await expect(adjust.getByText('Tempo 90%')).toBeVisible();
+    await expect.poll(tempo).toBe(90);
+    await expect(stage(p).locator('.controls button')).toHaveText(['Pause', 'Skip']);
+    expect((await stage(p).innerText()).replace(/\d+:\d+/g, ''), 'nothing on the player changed').toBe(before.replace(/\d+:\d+/g, ''));
+    await adjust.getByRole('button', { name: 'Normal speed' }).click();
+    await expect.poll(tempo).toBe(100);
+  });
+
+  await test.step('on a phone the Queue page controls wrap: nothing overlaps, every button is 44 px high and the page does not scroll sideways', async () => {
+    for (const [width, height] of [[320, 568], [390, 844], [1280, 800]]) {
+      await a.setViewportSize({ width, height });
+      await a.waitForTimeout(200);
+      const report = await a.evaluate(() => {
+        const rects = Array.from(document.querySelectorAll('app-adjust-controls button, app-adjust-controls .level')).map((e) => {
+          const r = e.getBoundingClientRect();
+          return { text: e.textContent?.trim() ?? '', left: r.left, right: r.right, top: r.top, bottom: r.bottom, height: r.height, button: e.tagName === 'BUTTON' };
+        });
+        const overlaps: string[] = [];
+        for (let i = 0; i < rects.length; i++)
+          for (let j = i + 1; j < rects.length; j++) {
+            const x = rects[i], y = rects[j];
+            if (x.left < y.right - 0.5 && y.left < x.right - 0.5 && x.top < y.bottom - 0.5 && y.top < x.bottom - 0.5) overlaps.push(`${x.text} / ${y.text}`);
+          }
+        return {
+          overlaps,
+          outside: rects.filter((r) => r.left < -0.5 || r.right > window.innerWidth + 0.5).map((r) => r.text),
+          small: rects.filter((r) => r.button && r.height < 43.5).map((r) => `${r.text} ${r.height}`),
+          scrollWidth: document.documentElement.scrollWidth,
+          innerWidth: window.innerWidth,
+          count: rects.length,
+        };
+      });
+      expect(report.count, `the controls are there at ${width} px`).toBe(10); // Volume down, level, Volume up, Slower, level, Faster, Vocals, Vocals quieter, level, Vocals louder
+      expect(report.overlaps, `no overlap at ${width} px`).toEqual([]);
+      expect(report.outside, `nothing outside the screen at ${width} px`).toEqual([]);
+      expect(report.small, `44 px targets at ${width} px`).toEqual([]);
+      expect(report.scrollWidth, `no sideways scroll at ${width} px`).toBeLessThanOrEqual(report.innerWidth);
+    }
+    await a.setViewportSize({ width: 1280, height: 720 });
+  });
+
+  await test.step('on a phone the buttons of the player wrap: nothing overlaps and the page does not scroll sideways', async () => {
     for (const [width, height] of [[320, 568], [744, 1133]]) {
       await p.setViewportSize({ width, height });
       await p.waitForTimeout(200);
@@ -152,7 +240,7 @@ test('guide vocals: uploaded, offered only for songs that have them, played, rem
           }
         return { overlaps, outside: rects.filter((r) => r.left < -0.5 || r.right > window.innerWidth + 0.5).map((r) => r.text), scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth, count: rects.length };
       });
-      expect(report.count, `the controls are there at ${width} px`).toBeGreaterThanOrEqual(9);
+      expect(report.count, `the controls are there at ${width} px`).toBeGreaterThanOrEqual(2);
       expect(report.overlaps, `no overlap at ${width} px`).toEqual([]);
       expect(report.outside, `nothing outside the screen at ${width} px`).toEqual([]);
       expect(report.scrollWidth, `no sideways scroll at ${width} px`).toBeLessThanOrEqual(report.innerWidth);
@@ -160,12 +248,12 @@ test('guide vocals: uploaded, offered only for songs that have them, played, rem
     await p.setViewportSize({ width: 1280, height: 800 });
   });
 
-  await test.step('the next song has no vocals: no switch at all, whatever was chosen', async () => {
+  await test.step('the next song has no vocals: nothing is played, whatever was chosen', async () => {
     await wake(p);
     await stage(p).getByRole('button', { name: 'Skip' }).click();
     await expect(stage(p).locator('header.song h1')).toHaveText('Plainsong');
-    await expect(p.getByRole('button', { name: /^Vocals/ })).toHaveCount(0);
-    await expect(stage(p).getByText('Vocals volume')).toHaveCount(0);
+    await playerSays('VOCALS_STATE_OFF');
+    expect((await myDevice()).vocalsOn, 'the choice is kept on the server').toBe(true);
   });
 
   await test.step('the song after it has vocals again: they start by themselves, at the level chosen', async () => {
@@ -173,18 +261,19 @@ test('guide vocals: uploaded, offered only for songs that have them, played, rem
     await wake(p);
     await stage(p).getByRole('button', { name: 'Skip' }).click();
     await expect(stage(p).locator('header.song h1')).toHaveText('Vocalsongtwo');
-    await expect(p.getByRole('button', { name: 'Vocals: on' })).toBeVisible({ timeout: 20_000 });
-    await expect(stage(p).getByText('Vocals volume 40%')).toBeVisible();
+    await playerSays('VOCALS_STATE_ON');
+    expect((await myDevice()).vocalsPct).toBe(40);
     await expect.poll(() => vocalsResponses.length, { message: 'the second voice was fetched' }).toBeGreaterThan(before);
     expect(new Set(vocalsResponses.map((u) => u.split('/').pop())).size, 'two different songs had their vocals fetched').toBe(2);
   });
 
-  await test.step('switching it off stops the voice and the choice is kept', async () => {
+  await test.step('switching them off from the Queue page stops the voice, the choice is kept, and the song goes on', async () => {
+    await a.goto('/queue');
+    await a.locator('app-adjust-controls').getByRole('button', { name: 'Vocals: on' }).click();
+    await playerSays('VOCALS_STATE_OFF');
+    expect((await myDevice()).vocalsOn).toBe(false);
     await wake(p);
-    await p.getByRole('button', { name: 'Vocals: on' }).click();
-    await expect(p.getByRole('button', { name: 'Vocals: off' })).toBeVisible();
-    await expect(stage(p).getByText('Vocals volume')).toHaveCount(0);
-    await expect(stage(p).getByRole('button', { name: 'Pause' })).toBeVisible(); // the song goes on
+    await expect(stage(p).getByRole('button', { name: 'Pause' })).toBeVisible();
   });
 
   // the server only takes reports for the song that is current, so a position report of the song that was just skipped is answered 400 (a harmless

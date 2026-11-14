@@ -17,6 +17,12 @@ import {
   RemoveFromQueueResponseSchema,
   ScoreSchema,
   SessionService,
+  SetTempoRequest,
+  SetTempoResponseSchema,
+  SetVocalsRequest,
+  SetVocalsResponseSchema,
+  SetVolumeRequest,
+  SetVolumeResponseSchema,
   SongSource,
   State,
   StateSchema,
@@ -34,7 +40,7 @@ export interface StateInit {
   status?: PlayStatus;
   player?: string;
   devices?: Device[];
-  now?: { song: Song; source?: SongSource; positionMs: number; positionAtMs: number };
+  now?: { song: Song; source?: SongSource; positionMs: number; positionAtMs: number; guideCancelled?: boolean; tempoPct?: number };
   queue?: { id: string; song: Song }[];
   upNext?: { song: Song; source?: SongSource };
   /** The score screen, which the server shows with the finished song still as `now`. */
@@ -47,7 +53,7 @@ export function stateOf(i: StateInit = {}): State {
     status: i.status ?? PlayStatus.PAUSED,
     playerDeviceId: i.player ?? '',
     devices: i.devices ?? [],
-    now: i.now && create(NowPlayingSchema, { song: i.now.song, source: i.now.source ?? SongSource.QUEUE, positionMs: BigInt(i.now.positionMs), positionAtMs: BigInt(i.now.positionAtMs) }),
+    now: i.now && create(NowPlayingSchema, { song: i.now.song, source: i.now.source ?? SongSource.QUEUE, positionMs: BigInt(i.now.positionMs), positionAtMs: BigInt(i.now.positionAtMs), guideCancelled: i.now.guideCancelled ?? false, tempoPct: i.now.tempoPct ?? 100 }),
     queue: (i.queue ?? []).map((q) => create(QueueItemSchema, q)),
     upNext: i.upNext && create(UpNextSchema, { song: i.upNext.song, source: i.upNext.source ?? SongSource.QUEUE }),
     score: i.score && create(ScoreSchema, { number: i.score.number, hasValue: true, value: i.score.value, untilMs: 9000n }),
@@ -62,10 +68,14 @@ export function fakeSession() {
     remove: [] as RemoveFromQueueRequest[],
     top: [] as MoveToTopRequest[],
     add: [] as AddToQueueRequest[],
+    volume: [] as SetVolumeRequest[],
+    vocals: [] as SetVocalsRequest[],
+    tempo: [] as SetTempoRequest[],
   };
   const pending: State[] = [];
   let wake: (() => void) | undefined;
   let fail: ((req: unknown) => Error | undefined) | undefined;
+  let failAdjust: ((req: unknown) => Error | undefined) | undefined;
   let hold: Promise<void> | undefined;
   const transport = createRouterTransport(({ service }) =>
     service(SessionService, {
@@ -92,6 +102,24 @@ export function fakeSession() {
         calls.top.push(req);
         return create(MoveToTopResponseSchema, {});
       },
+      setVolume(req) {
+        calls.volume.push(req);
+        const e = failAdjust?.(req);
+        if (e) throw e;
+        return create(SetVolumeResponseSchema, {});
+      },
+      setTempo(req) {
+        calls.tempo.push(req);
+        const e = failAdjust?.(req);
+        if (e) throw e;
+        return create(SetTempoResponseSchema, {});
+      },
+      setVocals(req) {
+        calls.vocals.push(req);
+        const e = failAdjust?.(req);
+        if (e) throw e;
+        return create(SetVocalsResponseSchema, {});
+      },
       addToQueue(req) {
         calls.add.push(req);
         return create(AddToQueueResponseSchema, {});
@@ -107,6 +135,10 @@ export function fakeSession() {
     },
     failControl(e: (req: unknown) => Error | undefined) {
       fail = e;
+    },
+    /** Makes SetVolume, SetVocals and SetTempo fail. */
+    failAdjust(e: (req: unknown) => Error | undefined) {
+      failAdjust = e;
     },
     /** Control commands do not answer until this promise settles. */
     holdControl(p: Promise<void>) {

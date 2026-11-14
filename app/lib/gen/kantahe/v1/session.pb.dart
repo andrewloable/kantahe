@@ -1353,10 +1353,12 @@ class ReportDeviceRequest extends $pb.GeneratedMessage {
   factory ReportDeviceRequest({
     $core.int? memoryMb,
     $core.int? dropouts,
+    $0.VocalsState? vocalsState,
   }) {
     final result = ReportDeviceRequest._();
     if (memoryMb != null) result.memoryMb = memoryMb;
     if (dropouts != null) result.dropouts = dropouts;
+    if (vocalsState != null) result.vocalsState = vocalsState;
     return result;
   }
 
@@ -1375,6 +1377,8 @@ class ReportDeviceRequest extends $pb.GeneratedMessage {
       createEmptyInstance: ReportDeviceRequest.$_createMessage)
     ..aI(1, _omitFieldNames ? '' : 'memoryMb')
     ..aI(2, _omitFieldNames ? '' : 'dropouts')
+    ..aE<$0.VocalsState>(3, _omitFieldNames ? '' : 'vocalsState',
+        enumValues: $0.VocalsState.values)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1417,6 +1421,16 @@ class ReportDeviceRequest extends $pb.GeneratedMessage {
   $core.bool hasDropouts() => $_has(1);
   @$pb.TagNumber(2)
   void clearDropouts() => $_clearField(2);
+
+  /// What the calling device plays now. Taken only from the device that plays; ignored from any other.
+  @$pb.TagNumber(3)
+  $0.VocalsState get vocalsState => $_getN(2);
+  @$pb.TagNumber(3)
+  set vocalsState($0.VocalsState value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasVocalsState() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearVocalsState() => $_clearField(3);
 }
 
 /// The calling device.
@@ -1896,6 +1910,249 @@ class SetVolumeResponse extends $pb.GeneratedMessage {
   $0.Device ensureDevice() => $_ensure(0);
 }
 
+/// The device and the guide vocals to set; a field that is not given is left as it is.
+class SetVocalsRequest extends $pb.GeneratedMessage {
+  factory SetVocalsRequest({
+    $core.String? deviceId,
+    $core.bool? on,
+    $core.int? pct,
+  }) {
+    final result = SetVocalsRequest._();
+    if (deviceId != null) result.deviceId = deviceId;
+    if (on != null) result.on = on;
+    if (pct != null) result.pct = pct;
+    return result;
+  }
+
+  SetVocalsRequest._();
+
+  factory SetVocalsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetVocalsRequest()..mergeFromBuffer(data, registry);
+  factory SetVocalsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetVocalsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetVocalsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: SetVocalsRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'deviceId')
+    ..aOB(2, _omitFieldNames ? '' : 'on')
+    ..aI(3, _omitFieldNames ? '' : 'pct')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetVocalsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetVocalsRequest copyWith(void Function(SetVocalsRequest) updates) =>
+      super.copyWith((message) => updates(message as SetVocalsRequest))
+          as SetVocalsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SetVocalsRequest() / SetVocalsRequest.new instead')
+  static SetVocalsRequest create() => SetVocalsRequest._();
+  static $pb.GeneratedMessage $_createMessage() => SetVocalsRequest._();
+  @$core.override
+  SetVocalsRequest createEmptyInstance() => SetVocalsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static SetVocalsRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SetVocalsRequest>(
+          SetVocalsRequest.$_createMessage);
+  static SetVocalsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get deviceId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set deviceId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDeviceId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDeviceId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.bool get on => $_getBF(1);
+  @$pb.TagNumber(2)
+  set on($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasOn() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearOn() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get pct => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set pct($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPct() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPct() => $_clearField(3);
+}
+
+/// The device after the change.
+class SetVocalsResponse extends $pb.GeneratedMessage {
+  factory SetVocalsResponse({
+    $0.Device? device,
+  }) {
+    final result = SetVocalsResponse._();
+    if (device != null) result.device = device;
+    return result;
+  }
+
+  SetVocalsResponse._();
+
+  factory SetVocalsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetVocalsResponse()..mergeFromBuffer(data, registry);
+  factory SetVocalsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetVocalsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetVocalsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: SetVocalsResponse.$_createMessage)
+    ..aOM<$0.Device>(1, _omitFieldNames ? '' : 'device',
+        subBuilder: $0.Device.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetVocalsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetVocalsResponse copyWith(void Function(SetVocalsResponse) updates) =>
+      super.copyWith((message) => updates(message as SetVocalsResponse))
+          as SetVocalsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SetVocalsResponse() / SetVocalsResponse.new instead')
+  static SetVocalsResponse create() => SetVocalsResponse._();
+  static $pb.GeneratedMessage $_createMessage() => SetVocalsResponse._();
+  @$core.override
+  SetVocalsResponse createEmptyInstance() => SetVocalsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static SetVocalsResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SetVocalsResponse>(
+          SetVocalsResponse.$_createMessage);
+  static SetVocalsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.Device get device => $_getN(0);
+  @$pb.TagNumber(1)
+  set device($0.Device value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDevice() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDevice() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.Device ensureDevice() => $_ensure(0);
+}
+
+/// The speed to set.
+class SetTempoRequest extends $pb.GeneratedMessage {
+  factory SetTempoRequest({
+    $core.int? pct,
+  }) {
+    final result = SetTempoRequest._();
+    if (pct != null) result.pct = pct;
+    return result;
+  }
+
+  SetTempoRequest._();
+
+  factory SetTempoRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetTempoRequest()..mergeFromBuffer(data, registry);
+  factory SetTempoRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetTempoRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetTempoRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: SetTempoRequest.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'pct')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetTempoRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetTempoRequest copyWith(void Function(SetTempoRequest) updates) =>
+      super.copyWith((message) => updates(message as SetTempoRequest))
+          as SetTempoRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SetTempoRequest() / SetTempoRequest.new instead')
+  static SetTempoRequest create() => SetTempoRequest._();
+  static $pb.GeneratedMessage $_createMessage() => SetTempoRequest._();
+  @$core.override
+  SetTempoRequest createEmptyInstance() => SetTempoRequest._();
+  @$core.pragma('dart2js:noInline')
+  static SetTempoRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SetTempoRequest>(
+          SetTempoRequest.$_createMessage);
+  static SetTempoRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get pct => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set pct($core.int value) => $_setSignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPct() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPct() => $_clearField(1);
+}
+
+/// Empty.
+class SetTempoResponse extends $pb.GeneratedMessage {
+  factory SetTempoResponse() => SetTempoResponse._();
+
+  SetTempoResponse._();
+
+  factory SetTempoResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetTempoResponse()..mergeFromBuffer(data, registry);
+  factory SetTempoResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetTempoResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetTempoResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'kantahe.v1'),
+      createEmptyInstance: SetTempoResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetTempoResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetTempoResponse copyWith(void Function(SetTempoResponse) updates) =>
+      super.copyWith((message) => updates(message as SetTempoResponse))
+          as SetTempoResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SetTempoResponse() / SetTempoResponse.new instead')
+  static SetTempoResponse create() => SetTempoResponse._();
+  static $pb.GeneratedMessage $_createMessage() => SetTempoResponse._();
+  @$core.override
+  SetTempoResponse createEmptyInstance() => SetTempoResponse._();
+  @$core.pragma('dart2js:noInline')
+  static SetTempoResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SetTempoResponse>(
+          SetTempoResponse.$_createMessage);
+  static SetTempoResponse? _defaultInstance;
+}
+
 /// One entry of the caller's queue.
 class QueueItem extends $pb.GeneratedMessage {
   factory QueueItem({
@@ -1974,12 +2231,16 @@ class NowPlaying extends $pb.GeneratedMessage {
     SongSource? source,
     $fixnum.Int64? positionMs,
     $fixnum.Int64? positionAtMs,
+    $core.bool? guideCancelled,
+    $core.int? tempoPct,
   }) {
     final result = NowPlaying._();
     if (song != null) result.song = song;
     if (source != null) result.source = source;
     if (positionMs != null) result.positionMs = positionMs;
     if (positionAtMs != null) result.positionAtMs = positionAtMs;
+    if (guideCancelled != null) result.guideCancelled = guideCancelled;
+    if (tempoPct != null) result.tempoPct = tempoPct;
     return result;
   }
 
@@ -2002,6 +2263,8 @@ class NowPlaying extends $pb.GeneratedMessage {
         enumValues: SongSource.values)
     ..aInt64(3, _omitFieldNames ? '' : 'positionMs')
     ..aInt64(4, _omitFieldNames ? '' : 'positionAtMs')
+    ..aOB(5, _omitFieldNames ? '' : 'guideCancelled')
+    ..aI(6, _omitFieldNames ? '' : 'tempoPct')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2061,6 +2324,27 @@ class NowPlaying extends $pb.GeneratedMessage {
   $core.bool hasPositionAtMs() => $_has(3);
   @$pb.TagNumber(4)
   void clearPositionAtMs() => $_clearField(4);
+
+  /// The amateur singer guide was switched off for this song (from any device); false again when the song changes.
+  @$pb.TagNumber(5)
+  $core.bool get guideCancelled => $_getBF(4);
+  @$pb.TagNumber(5)
+  set guideCancelled($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasGuideCancelled() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearGuideCancelled() => $_clearField(5);
+
+  /// The speed of this song in percent, 100 = normal. 0 (an older server) means 100. Song time passes at this speed: position_ms moves
+  /// (now - position_at_ms) * tempo_pct / 100 after position_at_ms.
+  @$pb.TagNumber(6)
+  $core.int get tempoPct => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set tempoPct($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTempoPct() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTempoPct() => $_clearField(6);
 }
 
 /// The song that follows the current one, pre-picked when the current one starts.
@@ -2591,6 +2875,18 @@ class SessionServiceApi {
           $pb.ClientContext? ctx, SetVolumeRequest request) =>
       _client.invoke<SetVolumeResponse>(
           ctx, 'SessionService', 'SetVolume', request, SetVolumeResponse());
+
+  /// Signed-in user. Sets the guide vocals of one of the caller's devices: on or off and how loud (percent, 0 to 100; set only the fields given); NOT_FOUND for another user's device, INVALID_ARGUMENT outside the range or with no field. Switching off on the device that plays also stops the amateur guide for the rest of the current song.
+  $async.Future<SetVocalsResponse> setVocals(
+          $pb.ClientContext? ctx, SetVocalsRequest request) =>
+      _client.invoke<SetVocalsResponse>(
+          ctx, 'SessionService', 'SetVocals', request, SetVocalsResponse());
+
+  /// Signed-in user, any device. Sets the speed of the current song in percent (75 to 125 in steps of 5; 100 is normal), pitch unchanged. INVALID_ARGUMENT for another value, FAILED_PRECONDITION with no current song. The next song starts at 100 again.
+  $async.Future<SetTempoResponse> setTempo(
+          $pb.ClientContext? ctx, SetTempoRequest request) =>
+      _client.invoke<SetTempoResponse>(
+          ctx, 'SessionService', 'SetTempo', request, SetTempoResponse());
 }
 
 const $core.bool _omitFieldNames =

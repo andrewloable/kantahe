@@ -796,6 +796,58 @@ void main() {
       expect(find.textContaining('Vocals'), findsNothing);
     });
 
+    testWidgets('player_screen_has_no_volume_or_vocals_buttons_on_a_new_server: only Pause, Skip and Close; nothing about volume or vocals is shown', (
+      tester,
+    ) async {
+      final newServer = stateOf(
+        status: PlayStatus.PLAY_STATUS_PLAYING,
+        player: me,
+        devices: [device(me, 'This device', isCaller: true, mp3VolumePct: 100, vocalsOn: false, vocalsPct: 60), device('tv', 'TV')],
+        now: nowPlaying(song('1', 'A', 'B', hasVocals: true)),
+      );
+      final r = await openWith(tester, newServer);
+      expect(find.widgetWithText(OutlinedButton, 'Pause'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Skip'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Close'), findsOneWidget);
+      expect(find.textContaining('Vocals'), findsNothing);
+      expect(find.textContaining('olume'), findsNothing);
+      await report(tester, r, 'KantaheVocals:on:60'); // the page says what it plays: still nothing here
+      expect(find.textContaining('Vocals'), findsNothing);
+    });
+
+    testWidgets('player_screen_has_no_tempo_controls: no button and no text, and a tempo change arriving shows nothing', (tester) async {
+      State at(int tempo) => stateOf(
+        status: PlayStatus.PLAY_STATUS_PLAYING,
+        player: me,
+        devices: [device(me, 'This device', isCaller: true, mp3VolumePct: 100, vocalsOn: false, vocalsPct: 60), device('tv', 'TV')],
+        now: nowPlaying(song('1', 'A', 'B', hasVocals: true), tempoPct: tempo),
+      );
+      final r = await openWith(tester, at(100));
+      expect(find.textContaining('empo'), findsNothing);
+      expect(find.text('Slower'), findsNothing);
+      r.q.setState(at(80));
+      await tester.pump();
+      await tester.pump();
+      expect(find.textContaining('empo'), findsNothing);
+      expect(find.text('Faster'), findsNothing);
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets('keeps_them_and_the_bridge_on_an_old_server: a state without vocals_on has today\'s buttons, and a press goes to the page', (tester) async {
+      final oldServer = stateOf(
+        status: PlayStatus.PLAY_STATUS_PLAYING,
+        player: me,
+        devices: [device(me, 'This device', isCaller: true, mp3VolumePct: 100), device('tv', 'TV')],
+        now: nowPlaying(song('1', 'A', 'B', hasVocals: true)),
+      );
+      final r = await openWith(tester, oldServer);
+      expect(find.text('Volume up'), findsOneWidget);
+      expect(find.text('Vocals: off'), findsOneWidget);
+      await tester.tap(find.text('Vocals: off'));
+      await tester.pump();
+      expect(argsOf(r.host.scripts.single), [true, 60]);
+    });
+
     testWidgets('player_switch_shown_with_vocals: off, with no volume buttons yet', (tester) async {
       await openWith(tester, withSong());
       expect(find.text('Vocals: off'), findsOneWidget);
