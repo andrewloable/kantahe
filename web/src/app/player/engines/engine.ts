@@ -1,7 +1,7 @@
 import { inject, InjectionToken } from '@angular/core';
 import { Playback } from '../../../gen/kantahe/v1/catalog_pb';
 import { ServerUrl } from '../../core/server-url';
-import { AudioContextLike, Mp3Engine } from './mp3-engine';
+import { AudioContextLike, Mp3Engine, playerContextOptions } from './mp3-engine';
 import { MidiEngine } from './midi-engine';
 
 /** What the player needs from something that makes sound: an MP3 file or a MIDI synthesizer. */
@@ -54,7 +54,7 @@ export const ENGINES = new InjectionToken<Engines>('kantahe engines', {
 /** Makes the audio context that the instrumental and the vocals of a song share; undefined where the page has none. Tests replace it. */
 export const AUDIO_CONTEXT = new InjectionToken<() => AudioContextLike | undefined>('kantahe audio context', {
   providedIn: 'root',
-  factory: () => () => (typeof AudioContext === 'undefined' ? undefined : (new AudioContext() as unknown as AudioContextLike)),
+  factory: () => () => (typeof AudioContext === 'undefined' ? undefined : (new AudioContext(playerContextOptions()) as unknown as AudioContextLike)),
 });
 
 /** Whether this browser plays FLAC in an audio element (the server's rendered MIDI songs are FLAC); tests replace it. */

@@ -1,5 +1,6 @@
 import { Playback } from '../../../gen/kantahe/v1/catalog_pb';
 import { Engine, mediaUrl, MidiOptions } from './engine';
+import { playerContextOptions } from './mp3-engine';
 
 // The small part of spessasynth_lib this engine uses, so that tests can stand in for it.
 interface SynthLike {
@@ -52,8 +53,8 @@ const SONG_READY_TIMEOUT_MS = 20_000;
 /** A context that has not started this soon is waiting for a tap (resume() then never answers). */
 const RESUME_WAIT_MS = 1500;
 
-const realDeps: MidiDeps = {
-  createContext: (sampleRate) => new AudioContext(sampleRate ? { sampleRate } : undefined) as unknown as ContextLike,
+export const realDeps: MidiDeps = {
+  createContext: (sampleRate) => new AudioContext(playerContextOptions(sampleRate)) as unknown as ContextLike,
   // loaded on demand: the synthesizer is large and MP3 songs never need it
   loadLib: async () => (await import('spessasynth_lib')) as unknown as SynthLib,
   fetchBuffer: async (url) => {

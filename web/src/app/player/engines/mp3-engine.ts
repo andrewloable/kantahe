@@ -19,7 +19,18 @@ export interface AudioContextLike {
 /** A context that has not started this soon is waiting for a tap (resume() then never answers). */
 const RESUME_WAIT_MS = 1500;
 
-const realContext = (): AudioContextLike | undefined => (typeof AudioContext === 'undefined' ? undefined : (new AudioContext() as unknown as AudioContextLike));
+/**
+ * The options of every audio context the player makes: the large output buffer meant for music. With the default ('interactive') buffer a
+ * Mi Box 4 (WebView 142) received about 6% of the audio too late and played silence in its place, heard as stutter; with this one, none
+ * (measured on the box: 1920 frames and 6% underrun before, 4100 frames and 0% after). The sound comes a little later: the box's own buffer
+ * grew by about 45 ms; Chrome's part of the delay was not measured.
+ */
+export function playerContextOptions(sampleRate?: number): AudioContextOptions {
+  return sampleRate ? { latencyHint: 'playback', sampleRate } : { latencyHint: 'playback' };
+}
+
+const realContext = (): AudioContextLike | undefined =>
+  typeof AudioContext === 'undefined' ? undefined : (new AudioContext(playerContextOptions()) as unknown as AudioContextLike);
 
 /**
  * Plays an audio file (an MP3, or MIDI the server rendered) through an audio element. At 100 percent the element plays on its own; at any

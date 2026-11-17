@@ -1,8 +1,9 @@
 import { create } from '@bufbuild/protobuf';
 import { PlaybackKind, PlaybackSchema } from '../../../gen/kantahe/v1/catalog_pb';
-import { Engine, mediaUrl } from './engine';
-import { Mp3Engine } from './mp3-engine';
-import { MidiDeps, MidiEngine } from './midi-engine';
+import { TestBed } from '@angular/core/testing';
+import { AUDIO_CONTEXT, Engine, mediaUrl } from './engine';
+import { Mp3Engine, playerContextOptions } from './mp3-engine';
+import { MidiDeps, MidiEngine, realDeps } from './midi-engine';
 
 const BASE = 'https://k.example';
 
@@ -586,5 +587,53 @@ describe('tempo of an engine (kantahe-vaz)', () => {
     m.engine.setRate(1.25);
     m.seq.currentTime = 12.5;
     expect(m.engine.timeMs()).toBe(12500);
+  });
+});
+
+describe('the audio contexts of the player ask for the large playback buffer (stutter on a Mi Box 4)', () => {
+  const made: (AudioContextOptions | undefined)[] = [];
+  class RecordingContext {
+    state = 'running';
+    destination = {};
+    constructor(options?: AudioContextOptions) {
+      made.push(options);
+    }
+    createGain = () => ({ gain: { value: 1 }, connect: () => undefined });
+    createMediaElementSource = () => ({ connect: () => undefined });
+    resume = () => Promise.resolve();
+    close = () => Promise.resolve();
+  }
+  beforeEach(() => {
+    made.length = 0;
+    vi.stubGlobal('AudioContext', RecordingContext);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('the options: playback latency, and the sample rate only when one is given', () => {
+    expect(playerContextOptions()).toEqual({ latencyHint: 'playback' });
+    expect(playerContextOptions(22050)).toEqual({ latencyHint: 'playback', sampleRate: 22050 });
+  });
+
+  it('REGRESSION: the context that a song with vocals shares (every MP3 song with a V badge plays through it)', () => {
+    TestBed.inject(AUDIO_CONTEXT)();
+    expect(made).toEqual([{ latencyHint: 'playback' }]);
+  });
+
+  it('REGRESSION: the context of the MIDI synthesizer, with its sample rate', () => {
+    realDeps.createContext(22050);
+    expect(made).toEqual([{ latencyHint: 'playback', sampleRate: 22050 }]);
+  });
+
+  it('REGRESSION: the context an MP3 song makes for itself at a volume other than 100 percent', async () => {
+    const audio = document.createElement('audio');
+    audio.play = vi.fn().mockResolvedValue(undefined);
+    audio.pause = vi.fn();
+    audio.load = vi.fn();
+    const engine = new Mp3Engine(BASE, audio);
+    engine.setVolume(0.5);
+    const loaded = engine.load(create(PlaybackSchema, { kind: PlaybackKind.AUDIO, audioUrl: '/media/song/1052?exp=9&sig=zz', ready: true }));
+    audio.dispatchEvent(new Event('canplay'));
+    await loaded;
+    expect(made).toEqual([{ latencyHint: 'playback' }]);
   });
 });
