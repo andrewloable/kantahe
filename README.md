@@ -8,6 +8,8 @@ Kantahe is open source (MIT). It ships **no songs**: you bring your own.
 
 The domain of the project is **kantahe.party**.
 
+**Read the overview on loable.tech:** [Kantahe — free self-hosted karaoke server, and Kantahe Maker](https://loable.tech/kantahe-self-hosted-karaoke-server/).
+
 ## What it does
 
 * **Songs**: `.kar` (a MIDI file with lyrics) and `.karmp3` (an MP3 with timed lyrics) files, uploaded in the browser or
