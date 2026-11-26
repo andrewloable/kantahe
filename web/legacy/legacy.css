@@ -8,7 +8,8 @@
 html.legacy .layer,
 html.legacy .v,
 html.legacy .scrim,
-html.legacy .overlay {
+html.legacy .overlay,
+html.legacy .title-card {
   top: 0;
   right: 0;
   bottom: 0;
@@ -93,4 +94,21 @@ html.legacy progress {
 
 html.legacy .toast {
   max-width: 28rem;
+}
+
+/* the title card (kantahe-2d3): the middle value of each clamp() */
+html.legacy .title-card .ready {
+  font-size: 4vmin;
+}
+
+html.legacy .title-card .card-title {
+  font-size: 9vmin;
+}
+
+html.legacy .title-card .card-artist {
+  font-size: 4vmin;
+}
+
+html.legacy .title-card .count {
+  font-size: 16vmin;
 }
