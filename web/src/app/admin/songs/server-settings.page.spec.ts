@@ -108,6 +108,30 @@ describe('ServerSettingsPage', () => {
     expect(server.calls.settings[0].maxVideoBytes).toBe(8192n * 1024n * 1024n);
   });
 
+  // kantahe-2d3: the title card before each new song
+  it('REGRESSION: shows the title card seconds and saves only them when only they changed', async () => {
+    const { type, save, server, el } = await setup();
+    expect(el.querySelector<HTMLInputElement>('#intro-seconds')?.value).toBe('3');
+    expect(el.querySelector('label[for="intro-seconds"]')?.textContent).toContain('title card');
+    type('intro-seconds', '5');
+    await save();
+    expect(server.calls.settings[0].introSeconds).toBe(5);
+    expect(server.calls.settings[0].scoreSeconds).toBeUndefined();
+  });
+
+  it('allows 0 to 10 seconds for the title card and says so otherwise, sending nothing', async () => {
+    const { type, save, server, el } = await setup();
+    for (const bad of ['-1', '11', '2.5', '']) {
+      type('intro-seconds', bad);
+      await save();
+      expect(el.querySelector('[role="alert"]')?.textContent, bad).toContain('0 to 10');
+    }
+    expect(server.calls.settings).toHaveLength(0);
+    type('intro-seconds', '0');
+    await save();
+    expect(server.calls.settings[0].introSeconds).toBe(0);
+  });
+
   it('saves only the score time when only that changed', async () => {
     const { type, save, server } = await setup();
     type('score-seconds', '10');

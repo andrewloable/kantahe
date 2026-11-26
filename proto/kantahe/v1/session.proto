@@ -272,6 +272,10 @@ message NowPlaying {
   // The speed of this song in percent, 100 = normal. 0 (an older server) means 100. Song time passes at this speed: position_ms moves
   // (now - position_at_ms) * tempo_pct / 100 after position_at_ms.
   int32 tempo_pct = 6;
+  // The title card (kantahe-2d3): a song that became current while playing starts at this time (server clock, the same as position_at_ms),
+  // after the Admin > Settings "title card seconds". Until then position_at_ms is this time with position 0, so clocks show 0:00; the player
+  // shows the song's title and a countdown and starts the sound at this time, other devices show "Starting in N". 0: no title card.
+  int64 starts_at_ms = 7;
 }
 
 // The song that follows the current one, pre-picked when the current one starts.

@@ -1976,7 +1976,11 @@ type NowPlaying struct {
 	GuideCancelled bool `protobuf:"varint,5,opt,name=guide_cancelled,json=guideCancelled,proto3" json:"guide_cancelled,omitempty"`
 	// The speed of this song in percent, 100 = normal. 0 (an older server) means 100. Song time passes at this speed: position_ms moves
 	// (now - position_at_ms) * tempo_pct / 100 after position_at_ms.
-	TempoPct      int32 `protobuf:"varint,6,opt,name=tempo_pct,json=tempoPct,proto3" json:"tempo_pct,omitempty"`
+	TempoPct int32 `protobuf:"varint,6,opt,name=tempo_pct,json=tempoPct,proto3" json:"tempo_pct,omitempty"`
+	// The title card (kantahe-2d3): a song that became current while playing starts at this time (server clock, the same as position_at_ms),
+	// after the Admin > Settings "title card seconds". Until then position_at_ms is this time with position 0, so clocks show 0:00; the player
+	// shows the song's title and a countdown and starts the sound at this time, other devices show "Starting in N". 0: no title card.
+	StartsAtMs    int64 `protobuf:"varint,7,opt,name=starts_at_ms,json=startsAtMs,proto3" json:"starts_at_ms,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2049,6 +2053,13 @@ func (x *NowPlaying) GetGuideCancelled() bool {
 func (x *NowPlaying) GetTempoPct() int32 {
 	if x != nil {
 		return x.TempoPct
+	}
+	return 0
+}
+
+func (x *NowPlaying) GetStartsAtMs() int64 {
+	if x != nil {
+		return x.StartsAtMs
 	}
 	return 0
 }
@@ -2453,7 +2464,7 @@ const file_kantahe_v1_session_proto_rawDesc = "" +
 	"\x10SetTempoResponse\"A\n" +
 	"\tQueueItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12$\n" +
-	"\x04song\x18\x02 \x01(\v2\x10.kantahe.v1.SongR\x04song\"\xef\x01\n" +
+	"\x04song\x18\x02 \x01(\v2\x10.kantahe.v1.SongR\x04song\"\x91\x02\n" +
 	"\n" +
 	"NowPlaying\x12$\n" +
 	"\x04song\x18\x01 \x01(\v2\x10.kantahe.v1.SongR\x04song\x12.\n" +
@@ -2462,7 +2473,9 @@ const file_kantahe_v1_session_proto_rawDesc = "" +
 	"positionMs\x12$\n" +
 	"\x0eposition_at_ms\x18\x04 \x01(\x03R\fpositionAtMs\x12'\n" +
 	"\x0fguide_cancelled\x18\x05 \x01(\bR\x0eguideCancelled\x12\x1b\n" +
-	"\ttempo_pct\x18\x06 \x01(\x05R\btempoPct\"^\n" +
+	"\ttempo_pct\x18\x06 \x01(\x05R\btempoPct\x12 \n" +
+	"\fstarts_at_ms\x18\a \x01(\x03R\n" +
+	"startsAtMs\"^\n" +
 	"\x06UpNext\x12$\n" +
 	"\x04song\x18\x01 \x01(\v2\x10.kantahe.v1.SongR\x04song\x12.\n" +
 	"\x06source\x18\x02 \x01(\x0e2\x16.kantahe.v1.SongSourceR\x06source\"}\n" +

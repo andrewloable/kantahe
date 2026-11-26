@@ -113,6 +113,15 @@ func (s *Service) NowMs() int64 {
 	return time.Since(s.start).Milliseconds()
 }
 
+// introSeconds is the title-card seconds of the intro_seconds setting (kantahe-2d3); a read error gives the default.
+func (s *Service) introSeconds() int {
+	n, err := settings.IntroSeconds(context.Background(), s.cfg.DB)
+	if err != nil {
+		return settings.DefaultIntroSeconds
+	}
+	return n
+}
+
 func (s *Service) scoreSeconds() int {
 	n, err := settings.ScoreSeconds(context.Background(), s.cfg.DB, s.cfg.DefaultScoreSeconds)
 	if err != nil {
@@ -150,7 +159,7 @@ func (s *Service) ensureLoaded(ctx context.Context, a *actor) error {
 	if a.loaded {
 		return nil
 	}
-	m := New(Deps{Clock: clockFunc(s.NowMs), Picker: s.cfg.Picker, Rand: s.cfg.Rand, ScoreSeconds: s.scoreSeconds})
+	m := New(Deps{Clock: clockFunc(s.NowMs), Picker: s.cfg.Picker, Rand: s.cfg.Rand, ScoreSeconds: s.scoreSeconds, IntroSeconds: s.introSeconds})
 	restored, err := s.load(ctx, a.userID)
 	if err != nil {
 		return err

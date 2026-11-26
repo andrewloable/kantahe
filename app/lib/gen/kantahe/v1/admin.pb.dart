@@ -1982,6 +1982,7 @@ class ServerSettings extends $pb.GeneratedMessage {
     $core.bool? backgroundEnabled,
     $core.bool? backgroundShuffle,
     $core.bool? amateurMode,
+    $core.int? introSeconds,
   }) {
     final result = ServerSettings._();
     if (maxUploadBytes != null) result.maxUploadBytes = maxUploadBytes;
@@ -1990,6 +1991,7 @@ class ServerSettings extends $pb.GeneratedMessage {
     if (backgroundEnabled != null) result.backgroundEnabled = backgroundEnabled;
     if (backgroundShuffle != null) result.backgroundShuffle = backgroundShuffle;
     if (amateurMode != null) result.amateurMode = amateurMode;
+    if (introSeconds != null) result.introSeconds = introSeconds;
     return result;
   }
 
@@ -2012,6 +2014,7 @@ class ServerSettings extends $pb.GeneratedMessage {
     ..aOB(4, _omitFieldNames ? '' : 'backgroundEnabled')
     ..aOB(5, _omitFieldNames ? '' : 'backgroundShuffle')
     ..aOB(6, _omitFieldNames ? '' : 'amateurMode')
+    ..aI(7, _omitFieldNames ? '' : 'introSeconds')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2091,6 +2094,17 @@ class ServerSettings extends $pb.GeneratedMessage {
   $core.bool hasAmateurMode() => $_has(5);
   @$pb.TagNumber(6)
   void clearAmateurMode() => $_clearField(6);
+
+  /// Seconds a new song's title card shows before it starts, so that the next singer is ready (kantahe-2d3); 0 to 10, 0 turns it off,
+  /// 3 by default.
+  @$pb.TagNumber(7)
+  $core.int get introSeconds => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set introSeconds($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasIntroSeconds() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearIntroSeconds() => $_clearField(7);
 }
 
 /// Partial update of the server settings.
@@ -2102,6 +2116,7 @@ class UpdateServerSettingsRequest extends $pb.GeneratedMessage {
     $core.bool? backgroundEnabled,
     $core.bool? backgroundShuffle,
     $core.bool? amateurMode,
+    $core.int? introSeconds,
   }) {
     final result = UpdateServerSettingsRequest._();
     if (maxUploadBytes != null) result.maxUploadBytes = maxUploadBytes;
@@ -2110,6 +2125,7 @@ class UpdateServerSettingsRequest extends $pb.GeneratedMessage {
     if (backgroundEnabled != null) result.backgroundEnabled = backgroundEnabled;
     if (backgroundShuffle != null) result.backgroundShuffle = backgroundShuffle;
     if (amateurMode != null) result.amateurMode = amateurMode;
+    if (introSeconds != null) result.introSeconds = introSeconds;
     return result;
   }
 
@@ -2132,6 +2148,7 @@ class UpdateServerSettingsRequest extends $pb.GeneratedMessage {
     ..aOB(4, _omitFieldNames ? '' : 'backgroundEnabled')
     ..aOB(5, _omitFieldNames ? '' : 'backgroundShuffle')
     ..aOB(6, _omitFieldNames ? '' : 'amateurMode')
+    ..aI(7, _omitFieldNames ? '' : 'introSeconds')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2215,6 +2232,15 @@ class UpdateServerSettingsRequest extends $pb.GeneratedMessage {
   $core.bool hasAmateurMode() => $_has(5);
   @$pb.TagNumber(6)
   void clearAmateurMode() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get introSeconds => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set introSeconds($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasIntroSeconds() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearIntroSeconds() => $_clearField(7);
 }
 
 /// The settings after the update.

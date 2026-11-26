@@ -78,6 +78,9 @@ type Current struct {
 	GuideCancelled bool
 	// TempoPct is the speed of the song in percent; 0 (a Current built without it) means 100. A new Current (the next song) starts at 100.
 	TempoPct int
+	// StartsAtMs (server monotonic time) is when a song that became current while playing starts, after its title card (kantahe-2d3);
+	// until then PositionAtMs is this time with PositionMs 0, so every device's clock stands at 0:00. 0: no title card. Not persisted.
+	StartsAtMs int64
 }
 
 // Tempo is the speed of the song in percent, 100 being normal.
@@ -102,7 +105,9 @@ func (m *Machine) SetTempo(pct int) error {
 	if m.now == nil {
 		return ErrNoSong
 	}
-	m.freezeClock()
+	if !m.inIntro() { // during the title card nothing has played yet: the card and its start time stay
+		m.freezeClock()
+	}
 	m.now.TempoPct = pct
 	return nil
 }
@@ -170,6 +175,8 @@ type Deps struct {
 	Picker       Picker
 	Rand         Rand
 	ScoreSeconds func() int
+	// IntroSeconds is how long a new song's title card shows before it starts (the intro_seconds setting); nil or 0: none.
+	IntroSeconds func() int
 }
 
 // Machine is one user's queue and playback state. It is not safe for concurrent use.
@@ -338,6 +345,9 @@ func (m *Machine) loadNext() []Effect {
 		return nil
 	}
 	cur.PositionAtMs = m.nowMs()
+	if m.status == StatusPlaying {
+		m.startIntro(cur)
+	}
 	m.now = cur
 	m.pushRecent(cur.Song.Number)
 	effects := []Effect{PrepareSong{cur.Song.Number}}
@@ -397,20 +407,26 @@ func (m *Machine) Control(device string, a Action) []Effect {
 		if m.player == "" || !m.online[m.player] {
 			m.player = device
 		}
+		wasPlaying := m.status == StatusPlaying
 		m.resumeClock()
 		m.status = StatusPlaying
 		if m.now == nil {
 			effects = m.loadNext()
+		} else if !wasPlaying && m.now.PositionMs == 0 {
+			m.startIntro(m.now) // a song that never started gets its title card too
 		}
 	case ActionPlayHere:
 		if m.player != "" && m.player != device {
 			effects = append(effects, StopPlayer{m.player})
 		}
 		m.player = device
+		wasPlaying := m.status == StatusPlaying
 		m.resumeClock()
 		m.status = StatusPlaying
 		if m.now == nil {
 			effects = append(effects, m.loadNext()...)
+		} else if !wasPlaying && m.now.PositionMs == 0 {
+			m.startIntro(m.now)
 		}
 	case ActionPause:
 		m.freezeClock()
@@ -442,6 +458,12 @@ func (m *Machine) freezeClock() {
 		return
 	}
 	now := m.nowMs()
+	if m.now.StartsAtMs > now { // paused during the title card: it is dropped, and Play shows it again (the song never started)
+		m.now.StartsAtMs = 0
+		m.now.PositionMs = 0
+		m.now.PositionAtMs = now
+		return
+	}
 	reported := m.now.PositionMs
 	m.now.PositionMs = reported + max(now-m.now.PositionAtMs, 0)*int64(m.now.Tempo())/100 // song time passes at the tempo of the song
 	if d := m.now.Song.DurationMs; d > 0 && m.now.PositionMs > d {
@@ -481,7 +503,7 @@ func (m *Machine) Ready(device, number string) error {
 	if err := m.fromPlayer(device, number); err != nil {
 		return err
 	}
-	if m.now.PositionMs == 0 { // the song starts now; later positions come with their own time
+	if m.now.PositionMs == 0 && !m.inIntro() { // the song starts now; later positions come with their own time
 		m.now.PositionAtMs = m.nowMs()
 	}
 	return nil
@@ -493,10 +515,35 @@ func (m *Machine) ReportPosition(device, number string, positionMs int64) (chang
 	if err := m.fromPlayer(device, number); err != nil {
 		return false, err
 	}
+	if m.inIntro() {
+		if positionMs <= 0 {
+			return false, nil // during the title card the clock stays at the start time
+		}
+		m.now.StartsAtMs = 0 // a real position: the song started (a player that does not wait for the card)
+	}
 	m.now.PositionMs = max(positionMs, 0)
 	m.now.PositionAtMs = m.nowMs()
 	return false, nil
 }
+
+// startIntro gives a song that becomes current while playing its title card (kantahe-2d3): it starts IntroSeconds from now, and until then
+// its clock stands at 0 from that time.
+func (m *Machine) startIntro(c *Current) {
+	seconds := 0
+	if m.d.IntroSeconds != nil {
+		seconds = m.d.IntroSeconds()
+	}
+	if seconds <= 0 {
+		c.StartsAtMs = 0
+		return
+	}
+	c.StartsAtMs = m.nowMs() + int64(seconds)*1000
+	c.PositionMs = 0
+	c.PositionAtMs = c.StartsAtMs
+}
+
+// inIntro: the current song shows its title card and has not started.
+func (m *Machine) inIntro() bool { return m.now != nil && m.now.StartsAtMs > m.nowMs() }
 
 // Ended handles a song that ended on its own: it records the history entry and
 // shows the score screen, or moves on at once when scoring is off.

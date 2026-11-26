@@ -1105,6 +1105,59 @@ describe('PlayerController', () => {
     });
   });
 
+  // kantahe-2d3: the title card. The server gives a new song a start time; the player loads it, then waits until that time.
+  describe('the title card', () => {
+    const WITH_CARD: StateInit = { ...PLAYING, now: { song: SONG, positionMs: 0, positionAtMs: 4000, startsAtMs: 4000 } };
+
+    it('REGRESSION: a song with a start time 3 s ahead is loaded but plays only at that time', async () => {
+      const { fake, push } = setup();
+      await push(WITH_CARD);
+      expect(fake.last().load).toHaveBeenCalled();
+      expect(fake.last().play).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(2500);
+      expect(fake.last().play).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(600);
+      expect(fake.last().play).toHaveBeenCalledTimes(1);
+    });
+
+    it('counts down while it waits, and is 0 once the song plays', async () => {
+      const { push, player } = setup();
+      await push(WITH_CARD);
+      expect(player.startsInMs()).toBeGreaterThan(2500);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(player.startsInMs()).toBeGreaterThan(1500);
+      expect(player.startsInMs()).toBeLessThanOrEqual(2000);
+      await vi.advanceTimersByTimeAsync(2200);
+      expect(player.startsInMs()).toBe(0);
+    });
+
+    it('a song without a start time, or with one already past, plays at once as before', async () => {
+      const { fake, push, player } = setup();
+      await push({ ...PLAYING, now: { song: SONG, positionMs: 0, positionAtMs: 1000, startsAtMs: 500 } });
+      expect(fake.last().play).toHaveBeenCalledTimes(1);
+      expect(player.startsInMs()).toBe(0);
+    });
+
+    it('Pause during the card: the song does not start at the time', async () => {
+      const { fake, push } = setup();
+      await push(WITH_CARD);
+      await vi.advanceTimersByTimeAsync(1000);
+      await push({ ...WITH_CARD, status: PlayStatus.PAUSED, now: { song: SONG, positionMs: 0, positionAtMs: 2000 } });
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(fake.last().play).not.toHaveBeenCalled();
+    });
+
+    it('a new state that moves the start later is followed', async () => {
+      const { fake, push } = setup();
+      await push(WITH_CARD);
+      await push({ ...WITH_CARD, now: { song: SONG, positionMs: 0, positionAtMs: 7000, startsAtMs: 7000 } });
+      await vi.advanceTimersByTimeAsync(4000);
+      expect(fake.last().play).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(fake.last().play).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('the end of a song', () => {
     it('tells the server with the loud readings of the microphone, and lets go of the engine', async () => {
       const { server, fake, mic, push } = setup();

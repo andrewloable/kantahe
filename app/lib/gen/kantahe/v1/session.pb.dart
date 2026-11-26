@@ -2233,6 +2233,7 @@ class NowPlaying extends $pb.GeneratedMessage {
     $fixnum.Int64? positionAtMs,
     $core.bool? guideCancelled,
     $core.int? tempoPct,
+    $fixnum.Int64? startsAtMs,
   }) {
     final result = NowPlaying._();
     if (song != null) result.song = song;
@@ -2241,6 +2242,7 @@ class NowPlaying extends $pb.GeneratedMessage {
     if (positionAtMs != null) result.positionAtMs = positionAtMs;
     if (guideCancelled != null) result.guideCancelled = guideCancelled;
     if (tempoPct != null) result.tempoPct = tempoPct;
+    if (startsAtMs != null) result.startsAtMs = startsAtMs;
     return result;
   }
 
@@ -2265,6 +2267,7 @@ class NowPlaying extends $pb.GeneratedMessage {
     ..aInt64(4, _omitFieldNames ? '' : 'positionAtMs')
     ..aOB(5, _omitFieldNames ? '' : 'guideCancelled')
     ..aI(6, _omitFieldNames ? '' : 'tempoPct')
+    ..aInt64(7, _omitFieldNames ? '' : 'startsAtMs')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2345,6 +2348,18 @@ class NowPlaying extends $pb.GeneratedMessage {
   $core.bool hasTempoPct() => $_has(5);
   @$pb.TagNumber(6)
   void clearTempoPct() => $_clearField(6);
+
+  /// The title card (kantahe-2d3): a song that became current while playing starts at this time (server clock, the same as position_at_ms),
+  /// after the Admin > Settings "title card seconds". Until then position_at_ms is this time with position 0, so clocks show 0:00; the player
+  /// shows the song's title and a countdown and starts the sound at this time, other devices show "Starting in N". 0: no title card.
+  @$pb.TagNumber(7)
+  $fixnum.Int64 get startsAtMs => $_getI64(6);
+  @$pb.TagNumber(7)
+  set startsAtMs($fixnum.Int64 value) => $_setInt64(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasStartsAtMs() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearStartsAtMs() => $_clearField(7);
 }
 
 /// The song that follows the current one, pre-picked when the current one starts.

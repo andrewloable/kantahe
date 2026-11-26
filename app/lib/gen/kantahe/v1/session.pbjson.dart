@@ -721,6 +721,7 @@ const NowPlaying$json = {
     {'1': 'position_at_ms', '3': 4, '4': 1, '5': 3, '10': 'positionAtMs'},
     {'1': 'guide_cancelled', '3': 5, '4': 1, '5': 8, '10': 'guideCancelled'},
     {'1': 'tempo_pct', '3': 6, '4': 1, '5': 5, '10': 'tempoPct'},
+    {'1': 'starts_at_ms', '3': 7, '4': 1, '5': 3, '10': 'startsAtMs'},
   ],
 };
 
@@ -730,7 +731,7 @@ final $typed_data.Uint8List nowPlayingDescriptor = $convert.base64Decode(
     '91cmNlGAIgASgOMhYua2FudGFoZS52MS5Tb25nU291cmNlUgZzb3VyY2USHwoLcG9zaXRpb25f'
     'bXMYAyABKANSCnBvc2l0aW9uTXMSJAoOcG9zaXRpb25fYXRfbXMYBCABKANSDHBvc2l0aW9uQX'
     'RNcxInCg9ndWlkZV9jYW5jZWxsZWQYBSABKAhSDmd1aWRlQ2FuY2VsbGVkEhsKCXRlbXBvX3Bj'
-    'dBgGIAEoBVIIdGVtcG9QY3Q=');
+    'dBgGIAEoBVIIdGVtcG9QY3QSIAoMc3RhcnRzX2F0X21zGAcgASgDUgpzdGFydHNBdE1z');
 
 @$core.Deprecated('Use upNextDescriptor instead')
 const UpNext$json = {

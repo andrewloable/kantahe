@@ -83,6 +83,7 @@ func (s *SessionServer) current(ctx context.Context, c *session.Current) *kantah
 	return &kantahev1.NowPlaying{
 		Song: s.songOrStub(ctx, c.Song.Number), Source: kantahev1.SongSource(c.Source),
 		PositionMs: c.PositionMs, PositionAtMs: c.PositionAtMs, GuideCancelled: c.GuideCancelled, TempoPct: int32(c.Tempo()),
+		StartsAtMs: c.StartsAtMs,
 	}
 }
 

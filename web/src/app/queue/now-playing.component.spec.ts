@@ -66,6 +66,24 @@ describe('NowPlayingComponent', () => {
     expect(el.querySelector('.time')?.textContent).toContain('0:43');
   });
 
+  // kantahe-2d3: while the next song shows its title card on the player, the other devices say when it starts
+  it('REGRESSION: a song that starts in 3 s shows Starting in 3, then 2, 1, then the clock', async () => {
+    const { el, settle } = await setup({ ...PLAYING_AT_41S, now: { ...PLAYING_AT_41S.now!, positionMs: 0, positionAtMs: 4000, startsAtMs: 4000 } });
+    expect(el.querySelector('.time')?.textContent?.trim()).toBe('Starting in 3');
+    await settle(1000);
+    expect(el.querySelector('.time')?.textContent?.trim()).toBe('Starting in 2');
+    await settle(1000);
+    expect(el.querySelector('.time')?.textContent?.trim()).toBe('Starting in 1');
+    await settle(1500);
+    expect(el.querySelector('.time')?.textContent).toContain('0:00');
+    expect(el.querySelector('.time')?.textContent).not.toContain('Starting');
+  });
+
+  it('a song without a start time shows the clock as before', async () => {
+    const { el } = await setup();
+    expect(el.querySelector('.time')?.textContent).not.toContain('Starting');
+  });
+
   it('shows the length of the song when it is known', async () => {
     const withLength = song('1', 'Hello', 'Adele');
     withLength.durationMs = 185000n;

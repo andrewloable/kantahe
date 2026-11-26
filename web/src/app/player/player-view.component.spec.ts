@@ -492,6 +492,57 @@ describe('PlayerViewComponent', () => {
     });
   });
 
+  // kantahe-2d3: before a new song starts, its title card counts down so the next singer is ready
+  describe('the title card', () => {
+    const WITH_CARD: StateInit = { ...PLAYING, now: { song: SONG, positionMs: 0, positionAtMs: 4000, startsAtMs: 4000 }, serverTimeMs: 1000 };
+    const card = (el: HTMLElement) => el.querySelector<HTMLElement>('.title-card');
+
+    it('REGRESSION: shows Get ready, the title, the artist and the badges, counting 3, 2, 1, and goes away when the song starts', async () => {
+      const { el, push, settle } = setup();
+      await push(WITH_CARD);
+      const c = card(el);
+      expect(c).not.toBeNull();
+      expect(c!.textContent).toContain('Get ready');
+      expect(c!.querySelector('.card-title')?.textContent?.trim()).toBe('Hello');
+      expect(c!.textContent).toContain('Adele');
+      expect(c!.querySelector('app-format-badge')).not.toBeNull();
+      expect(c!.querySelector('.count')?.textContent?.trim()).toBe('3');
+      await settle(500);
+      expect(card(el)!.querySelector('.count')?.textContent?.trim()).toBe('2');
+      await settle(500);
+      expect(card(el)!.querySelector('.count')?.textContent?.trim()).toBe('1');
+      await settle(1000);
+      expect(card(el)).toBeNull();
+    });
+
+    it('takes no focus and tells screen readers once what comes', async () => {
+      const { el, push } = setup();
+      await push(WITH_CARD);
+      const c = card(el)!;
+      expect(c.querySelector('button, [tabindex]')).toBeNull();
+      expect(c.querySelector('[role="status"]')?.textContent).toContain('Next: Hello');
+    });
+
+    it('REGRESSION (review): the buttons stay above the card, so Skip and Pause work while it shows', async () => {
+      const { push } = setup();
+      await push(WITH_CARD);
+      const css = Array.from(document.querySelectorAll('style')).map((st) => st.textContent ?? '').join('\n');
+      const z = (selector: RegExp) => Number(css.match(selector)?.[1] ?? NaN);
+      const card = z(/\.title-card[^{]*\{[^}]*z-index:\s*(\d+)/);
+      const controls = z(/\.controls[^{]*\{[^}]*z-index:\s*(\d+)/);
+      expect(css).toMatch(/\.controls[^{]*\{[^}]*position:\s*relative/);
+      expect(controls).toBeGreaterThan(card);
+      // the top bar keeps its own absolute position (a shared rule once made it relative, which moved it into the flow under a toast)
+      expect(css).not.toMatch(/\.topbar[^{]*\{[^}]*position:\s*relative/);
+    });
+
+    it('a song without a start time shows no card', async () => {
+      const { el, push } = setup();
+      await push(PLAYING);
+      expect(card(el)).toBeNull();
+    });
+  });
+
   describe('the progress bar', () => {
     it('regression: is centered under the time, not left in the flex column (it has a fixed width, so it sat at the left edge)', async () => {
       const { push } = setup();

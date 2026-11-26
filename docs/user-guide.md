@@ -151,6 +151,11 @@ After a song that ends **on its own** (not one you skipped) a score screen shows
 
 New accounts start with Random and Low.
 
+**The title card.** Before each new song starts (after the score screen, after Skip, or when you press Play), the player shows its
+title, the artist and *Get ready* with a 3-2-1 countdown, so that the next singer can take the microphone. Meanwhile the other devices show
+*Starting in 3, 2, 1* where the clock usually is. Skip and Pause work during the card. An administrator sets how long it shows, or
+switches it off.
+
 ## Favourites, history and playlists
 
 *Me* holds your own lists: **Favourites** (the stars; taking a star off says so with **Undo**, and in Favourites the

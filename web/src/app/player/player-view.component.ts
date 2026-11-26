@@ -55,6 +55,21 @@ const IDLE_MS = 3000;
           } @else if (c.phase() === 'error') {
             <p role="alert">{{ c.error() }}</p>
           }
+          <!-- the title card of a new song (kantahe-2d3): the next singer sees what comes, then the song starts -->
+          @if (c.startsInMs() > 0 && song(); as s) {
+            <div class="title-card">
+              <p role="status" class="sr-only">Next: {{ s.title }}. Get ready.</p>
+              <div class="card-body" aria-hidden="true">
+                <p class="ready">Get ready</p>
+                <p class="card-title">{{ s.title }}</p>
+                <p class="card-artist">
+                  {{ s.artist }}
+                  <app-format-badge [format]="s.format" [timing]="s.lyricTiming" [vocals]="s.hasVocals" />
+                </p>
+                <p class="count">{{ countdown() }}</p>
+              </div>
+            </div>
+          }
           @if (song(); as s) {
             <header class="song">
               <h1 [attr.title]="s.title">{{ s.title }}</h1>
@@ -139,6 +154,46 @@ const IDLE_MS = 3000;
       overflow-y: auto;
       overscroll-behavior-y: contain; /* a swipe at the end of its own scroll neither scrolls the page nor reloads it */
     }
+    /* the title card covers the stage while the next song waits for its start (kantahe-2d3) */
+    .title-card {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: rgba(10, 14, 34, 0.94);
+      /* never taller than the stage: a card that overflowed made the stage scroll and moved the top bar under a toast */
+      overflow: hidden;
+    }
+    .title-card .ready {
+      margin: 0;
+      color: var(--sung);
+      font-size: clamp(1.25rem, 4vmin, 2.5rem);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .title-card .card-title {
+      margin: 0.5rem 0;
+      font-size: clamp(2rem, 9vmin, 6rem);
+      font-weight: 700;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+    .title-card .card-artist {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(1.1rem, 4vmin, 2.25rem);
+    }
+    .title-card .count {
+      margin: 1rem 0 0;
+      font-size: clamp(3rem, 16vmin, 10rem);
+      font-weight: 700;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
     .player-content {
       flex: 1;
       min-height: 0;
@@ -180,6 +235,11 @@ const IDLE_MS = 3000;
     .topbar,
     .controls {
       transition: opacity 0.4s;
+    }
+    /* above the title card (kantahe-2d3): Skip and Pause work while it shows (the top bar is above it already) */
+    .controls {
+      position: relative;
+      z-index: 3;
     }
     /* while a song plays and nobody touches anything, the buttons and the pointer get out of the way */
     .stage.idle {
@@ -392,6 +452,8 @@ export class PlayerViewComponent {
     return !s?.now || !!s.score || s.status === PlayStatus.PLAYING;
   });
   protected readonly song = computed(() => this.c.state()?.now?.song);
+  /** The countdown of the title card in whole seconds (3, 2, 1). */
+  protected readonly countdown = computed(() => Math.ceil(this.c.startsInMs() / 1000));
   protected readonly duration = computed(() => Number(this.song()?.durationMs ?? 0n));
   protected readonly shown = computed(() =>
     this.duration() > 0 ? Math.min(this.c.timeMs(), this.duration()) : this.c.timeMs(),

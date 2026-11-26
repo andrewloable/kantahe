@@ -40,7 +40,12 @@ export function whereText(state: State | undefined, deviceId: string | undefined
           }
           <span class="source">{{ n.source === SongSource.RANDOM ? 'Picked at random' : 'From the queue' }}</span>
         </p>
-        <p class="time">{{ clock(position()) }}@if (duration() > 0) { / {{ clock(duration()) }} }</p>
+        @if (startsIn() > 0) {
+          <!-- the player shows the song's title card; it starts in a moment (kantahe-2d3) -->
+          <p class="time">Starting in {{ startsIn() }}</p>
+        } @else {
+          <p class="time">{{ clock(position()) }}@if (duration() > 0) { / {{ clock(duration()) }} }</p>
+        }
         @if (duration() > 0) {
           <progress aria-label="Song progress" [max]="duration() / 1000" [value]="position() / 1000"></progress>
         }
@@ -121,6 +126,8 @@ export class NowPlayingComponent {
   protected readonly playing = computed(() => this.state()?.status === PlayStatus.PLAYING);
   protected readonly duration = computed(() => Number(this.now()?.song?.durationMs ?? 0n));
   protected readonly position = signal(0);
+  /** Whole seconds until the song starts after its title card on the player (kantahe-2d3); 0 when it plays or has no card. */
+  protected readonly startsIn = signal(0);
 
   private readonly playerId = computed(() => this.state()?.playerDeviceId ?? '');
   protected readonly isHere = computed(() => this.playerId() !== '' && this.playerId() === this.auth.deviceId());
@@ -141,13 +148,20 @@ export class NowPlayingComponent {
       const length = this.duration();
       return length > 0 ? Math.min(ms, length) : ms;
     };
+    const startsIn = () => {
+      const at = Number(this.state()?.now?.startsAtMs ?? 0n);
+      const left = at > 0 ? at - (performance.now() + this.store.offsetMs()) : 0;
+      return left > 0 ? Math.ceil(left / 1000) : 0;
+    };
     effect((onCleanup) => {
       const s = this.state();
       this.position.set(shown());
+      this.startsIn.set(startsIn());
       if (!s?.now || s.status !== PlayStatus.PLAYING || !this.visible()) return;
       let frame = 0;
       const tick = () => {
         this.position.set(shown());
+        this.startsIn.set(startsIn());
         frame = requestAnimationFrame(tick);
       };
       frame = requestAnimationFrame(tick);

@@ -252,6 +252,9 @@ message ServerSettings {
   // Amateur singer mode: a song with a guide vocals track plays the singer's voice by itself during its first two lyric lines (until the start
   // of the third), as a guide for a song the singer does not know. Off by default; it applies from the next song a player loads.
   bool amateur_mode = 6;
+  // Seconds a new song's title card shows before it starts, so that the next singer is ready (kantahe-2d3); 0 to 10, 0 turns it off,
+  // 3 by default.
+  int32 intro_seconds = 7;
 }
 
 // Partial update of the server settings.
@@ -262,6 +265,7 @@ message UpdateServerSettingsRequest {
   optional bool background_enabled = 4;
   optional bool background_shuffle = 5;
   optional bool amateur_mode = 6;
+  optional int32 intro_seconds = 7;
 }
 
 // The settings after the update.

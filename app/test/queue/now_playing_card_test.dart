@@ -90,6 +90,34 @@ void main() {
     expect(shows('Picked at random'), isTrue);
   });
 
+  // kantahe-2d3: while the player shows the next song's title card, the card here says when it starts
+  testWidgets('REGRESSION: a song that starts in 3 s shows Starting in 3, then 2, 1, then the clock', (tester) async {
+    final r = await open(
+      tester,
+      stateOf(
+        status: PlayStatus.PLAY_STATUS_PLAYING,
+        player: 'me',
+        serverTimeMs: 1000,
+        now: nowPlaying(song('00001', 'Yesterday', 'The Band'), positionAtMs: 4000, startsAtMs: 4000),
+      ),
+    );
+    expect(shows('Starting in 3'), isTrue);
+    for (final (ms, text) in [(1000, 'Starting in 2'), (2000, 'Starting in 1')]) {
+      r.rig.clockMs = ms;
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(shows(text), isTrue, reason: text);
+    }
+    r.rig.clockMs = 3500;
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.textContaining('Starting'), findsNothing);
+    expect(shows('0:00'), isTrue);
+  });
+
+  testWidgets('a song without a start time shows the clock as before', (tester) async {
+    await open(tester, playing());
+    expect(find.textContaining('Starting'), findsNothing);
+  });
+
   testWidgets('a position of 41.2 s plus 2 s shows 0:43, moving with the clock', (tester) async {
     final r = await open(tester, playing());
     expect(shows('0:41'), isTrue);

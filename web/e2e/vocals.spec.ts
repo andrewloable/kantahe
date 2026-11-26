@@ -134,8 +134,8 @@ test('guide vocals: uploaded, played when another device asks, remembered for th
     await expect(stage(p).locator('.controls button')).toHaveText(['Pause', 'Skip']);
     await expect(stage(p).getByText(/volume|vocals:/i)).toHaveCount(0);
     // the player shows the same badges beside MP3
-    await expect(stage(p).locator('.timing-badge')).toHaveText('W');
-    await expect(stage(p).locator('.vocals-badge')).toHaveText('V');
+    await expect(stage(p).locator('header.song .timing-badge')).toHaveText('W'); // the song's own header (the title card has badges too)
+    await expect(stage(p).locator('header.song .vocals-badge')).toHaveText('V');
     await playerSays('VOCALS_STATE_OFF');
     expect(vocalsResponses, 'nothing is fetched before the vocals are switched on').toEqual([]);
   });
@@ -173,6 +173,7 @@ test('guide vocals: uploaded, played when another device asks, remembered for th
 
   await test.step('the tempo is changed from the Queue page: the song is told, and the player shows nothing', async () => {
     const adjust = a.locator('app-adjust-controls');
+    await expect(stage(p).locator('.title-card')).toHaveCount(0, { timeout: 15_000 }); // the title card counts down: compare the playing song
     const before = await stage(p).innerText();
     const tempo = async () => {
       const { state } = await call<{ state: { now: { tempoPct?: number } } }>('SessionService/GetState', {});

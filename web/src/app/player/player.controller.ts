@@ -86,6 +86,8 @@ export class PlayerController implements OnDestroy {
   readonly timeMs = signal(0);
 
   readonly lyrics = computed(() => this.playback()?.lyrics);
+  /** Milliseconds until the current song starts after its title card (kantahe-2d3); 0 while it plays or when it has no card. */
+  readonly startsInMs = signal(0);
   readonly isPlayer = computed(() => {
     const id = this.auth.deviceId();
     return !!id && this.state()?.playerDeviceId === id;
@@ -157,6 +159,10 @@ export class PlayerController implements OnDestroy {
   private generation = 0;
   private readonly loaded = signal(false);
   private wantPlay = false;
+  /** Starts the song at its start time, after the title card (kantahe-2d3). */
+  private introTimer?: ReturnType<typeof setTimeout>;
+  /** Counts the title card down. */
+  private introTick?: ReturnType<typeof setInterval>;
   private finishedNow?: unknown;
   /** The song that just ended, while the server shows its score screen with that song still as the current one. */
   private finishedNumber?: string;
@@ -262,6 +268,12 @@ export class PlayerController implements OnDestroy {
       untracked(() => this.applyStatus(playing));
     });
     effect(() => {
+      // the title card of a new song: the countdown, and a start that waits follows a moved start time (kantahe-2d3)
+      this.state();
+      this.isPlayer();
+      untracked(() => this.followIntro());
+    });
+    effect(() => {
       const player = this.isPlayer();
       const mode = this.state()?.settings?.scoreMode;
       untracked(() => this.reportDeviceFacts(player, mode));
@@ -269,6 +281,7 @@ export class PlayerController implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    clearInterval(this.introTick);
     document.removeEventListener('visibilitychange', this.onVisibility);
     for (const t of this.volumeTimers.values()) clearTimeout(t);
     this.endedPending = undefined; // no more reports of an end from a page that is gone
@@ -678,6 +691,8 @@ export class PlayerController implements OnDestroy {
     if (playing) {
       void this.play();
     } else {
+      clearTimeout(this.introTimer); // paused during the title card: the song does not start
+      this.introTimer = undefined;
       engine.pause();
       this.instrumentalPlaying = false;
       this.vocals?.pause();
@@ -689,6 +704,16 @@ export class PlayerController implements OnDestroy {
   private async play(): Promise<void> {
     const engine = this.engine;
     if (!engine) return;
+    // a new song shows its title card first and starts at the time the server gave it (kantahe-2d3)
+    const wait = this.msUntilStart();
+    if (wait > 0) {
+      clearTimeout(this.introTimer);
+      this.introTimer = setTimeout(() => {
+        this.introTimer = undefined;
+        if (engine === this.engine && this.wantPlay) void this.play();
+      }, wait);
+      return;
+    }
     try {
       await engine.play();
     } catch (e) {
@@ -704,6 +729,36 @@ export class PlayerController implements OnDestroy {
     this.instrumentalPlaying = true;
     this.startTimers(engine);
     this.playVocals();
+  }
+
+  /** How long until the current song may start (its start time on the server clock); 0 when it may start now. */
+  private msUntilStart(): number {
+    const now = this.state()?.now;
+    if (!now?.startsAtMs || now.song?.number !== this.number) return 0;
+    return Math.max(0, Number(now.startsAtMs) - (performance.now() + this.store.offsetMs()));
+  }
+
+  private followIntro(): void {
+    clearInterval(this.introTick);
+    this.introTick = undefined;
+    const left = this.isPlayer() ? this.msUntilStart() : 0;
+    this.startsInMs.set(left);
+    if (left > 0) {
+      this.introTick = setInterval(() => {
+        const l = this.msUntilStart();
+        this.startsInMs.set(l);
+        if (l <= 0) {
+          clearInterval(this.introTick);
+          this.introTick = undefined;
+        }
+      }, 250);
+    }
+    // a start that waits is scheduled again from the new state (the start time may have moved)
+    if (this.introTimer) {
+      clearTimeout(this.introTimer);
+      this.introTimer = undefined;
+      if (this.wantPlay) void this.play();
+    }
   }
 
   private startTimers(engine: Engine): void {
@@ -793,6 +848,8 @@ export class PlayerController implements OnDestroy {
 
   /** Lets go of everything about the current song. */
   private stop(): void {
+    clearTimeout(this.introTimer);
+    this.introTimer = undefined;
     this.generation++;
     this.cancelWait?.();
     clearTimeout(this.skipTimer);

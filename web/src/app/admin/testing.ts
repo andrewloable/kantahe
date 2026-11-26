@@ -165,7 +165,7 @@ export function fakeAdminSongs(seed: { songs?: Song[]; broken?: { song: Song; re
     settings: [] as UpdateServerSettingsRequest[],
     getSettings: 0,
   };
-  let settings = { maxUploadBytes: BigInt(seed.maxUploadBytes ?? 50 * 1024 * 1024), scoreSeconds: seed.scoreSeconds ?? 6, maxVideoBytes: BigInt(500 * 1024 * 1024), amateurMode: seed.amateurMode ?? false };
+  let settings = { maxUploadBytes: BigInt(seed.maxUploadBytes ?? 50 * 1024 * 1024), scoreSeconds: seed.scoreSeconds ?? 6, maxVideoBytes: BigInt(500 * 1024 * 1024), amateurMode: seed.amateurMode ?? false, introSeconds: 3 };
   const concurrency = { now: 0, max: 0, startedAfterFinished: [] as boolean[] };
   const fail: { next?: ConnectError } = {};
   const maybeFail = () => {
@@ -324,7 +324,7 @@ export function fakeAdminSongs(seed: { songs?: Song[]; broken?: { song: Song; re
       updateServerSettings(req) {
         calls.settings.push(req);
         maybeFail();
-        settings = { maxUploadBytes: req.maxUploadBytes ?? settings.maxUploadBytes, scoreSeconds: req.scoreSeconds ?? settings.scoreSeconds, maxVideoBytes: req.maxVideoBytes ?? settings.maxVideoBytes, amateurMode: req.amateurMode ?? settings.amateurMode };
+        settings = { maxUploadBytes: req.maxUploadBytes ?? settings.maxUploadBytes, scoreSeconds: req.scoreSeconds ?? settings.scoreSeconds, maxVideoBytes: req.maxVideoBytes ?? settings.maxVideoBytes, amateurMode: req.amateurMode ?? settings.amateurMode, introSeconds: req.introSeconds ?? settings.introSeconds };
         return create(UpdateServerSettingsResponseSchema, { settings: create(ServerSettingsSchema, settings) });
       },
     });

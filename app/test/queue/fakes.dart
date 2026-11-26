@@ -71,8 +71,14 @@ State stateOf({
   serverTimeMs: Int64(serverTimeMs),
 );
 
-NowPlaying nowPlaying(Song s, {SongSource source = SongSource.SONG_SOURCE_QUEUE, int positionMs = 0, int positionAtMs = 0, int tempoPct = 100}) =>
-    NowPlaying(song: s, source: source, positionMs: Int64(positionMs), positionAtMs: Int64(positionAtMs), tempoPct: tempoPct);
+NowPlaying nowPlaying(
+  Song s, {
+  SongSource source = SongSource.SONG_SOURCE_QUEUE,
+  int positionMs = 0,
+  int positionAtMs = 0,
+  int tempoPct = 100,
+  int startsAtMs = 0,
+}) => NowPlaying(song: s, source: source, positionMs: Int64(positionMs), positionAtMs: Int64(positionAtMs), tempoPct: tempoPct, startsAtMs: Int64(startsAtMs));
 
 /// An in-memory session server for the queue screens; every command is recorded.
 class FakeQueueServer {

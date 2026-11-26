@@ -21,6 +21,9 @@ const (
 
 	// Amateur singer mode (docs/PLAN.md, "Amateur singer mode"): a song with a vocals track plays the singer's voice during its first two lyric lines.
 	KeyAmateurMode = "amateur_mode"
+
+	// The title card (kantahe-2d3): how long a new song's title shows before it starts.
+	KeyIntroSeconds = "intro_seconds"
 )
 
 // Defaults and the ranges an admin may choose from.
@@ -30,6 +33,9 @@ const (
 	MaxMaxUploadBytes     int64 = 1 << 30
 	MinScoreSeconds             = 0
 	MaxScoreSeconds             = 60
+	DefaultIntroSeconds         = 3
+	MinIntroSeconds             = 0
+	MaxIntroSeconds             = 10
 
 	// One background video (docs/PLAN.md section 4.2).
 	DefaultMaxVideoBytes int64 = 500 << 20
@@ -60,6 +66,8 @@ type Settings struct {
 	BackgroundShuffle bool
 
 	AmateurMode bool
+
+	IntroSeconds int
 }
 
 // Patch is a partial update: the settings whose pointer is set are written.
@@ -72,6 +80,8 @@ type Patch struct {
 	BackgroundShuffle *bool
 
 	AmateurMode *bool
+
+	IntroSeconds *int
 }
 
 func get(ctx context.Context, q Querier, key string) (string, bool, error) {
@@ -150,6 +160,18 @@ func ScoreSeconds(ctx context.Context, q Querier, def int) (int, error) {
 	return def, nil
 }
 
+// IntroSeconds is how long a new song's title card shows before it starts; nothing usable stored gives the default (3).
+func IntroSeconds(ctx context.Context, q Querier) (int, error) {
+	v, ok, err := get(ctx, q, KeyIntroSeconds)
+	if err != nil || !ok {
+		return DefaultIntroSeconds, err
+	}
+	if n, perr := strconv.Atoi(v); perr == nil && n >= MinIntroSeconds && n <= MaxIntroSeconds {
+		return n, nil
+	}
+	return DefaultIntroSeconds, nil
+}
+
 // Load reads all settings.
 func Load(ctx context.Context, q Querier, defaultScoreSeconds int) (Settings, error) {
 	up, err := MaxUploadBytes(ctx, q)
@@ -173,7 +195,12 @@ func Load(ctx context.Context, q Querier, defaultScoreSeconds int) (Settings, er
 		return Settings{}, err
 	}
 	amateur, err := AmateurMode(ctx, q)
-	return Settings{MaxUploadBytes: up, ScoreSeconds: sc, MaxVideoBytes: vb, BackgroundEnabled: on, BackgroundShuffle: shuffle, AmateurMode: amateur}, err
+	if err != nil {
+		return Settings{}, err
+	}
+	intro, err := IntroSeconds(ctx, q)
+	return Settings{MaxUploadBytes: up, ScoreSeconds: sc, MaxVideoBytes: vb, BackgroundEnabled: on, BackgroundShuffle: shuffle, AmateurMode: amateur,
+		IntroSeconds: intro}, err
 }
 
 // Update stores the settings whose pointer is set, after checking their ranges.
@@ -187,6 +214,9 @@ func Update(ctx context.Context, x Execer, p Patch) error {
 	}
 	if p.MaxVideoBytes != nil && (*p.MaxVideoBytes < MinMaxVideoBytes || *p.MaxVideoBytes > MaxMaxVideoBytes) {
 		return fmt.Errorf("%w: max_video_bytes must be %d to %d", ErrInvalid, MinMaxVideoBytes, MaxMaxVideoBytes)
+	}
+	if p.IntroSeconds != nil && (*p.IntroSeconds < MinIntroSeconds || *p.IntroSeconds > MaxIntroSeconds) {
+		return fmt.Errorf("%w: intro_seconds must be %d to %d", ErrInvalid, MinIntroSeconds, MaxIntroSeconds)
 	}
 	put := func(key, value string) error {
 		_, err := x.ExecContext(ctx, `INSERT INTO settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, value)
@@ -211,6 +241,11 @@ func Update(ctx context.Context, x Execer, p Patch) error {
 			stored = "1"
 		}
 		if err := put(key, stored); err != nil {
+			return err
+		}
+	}
+	if p.IntroSeconds != nil {
+		if err := put(KeyIntroSeconds, strconv.Itoa(*p.IntroSeconds)); err != nil {
 			return err
 		}
 	}

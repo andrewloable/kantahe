@@ -169,7 +169,8 @@ mode, **On** always shows them, **Off** never does. A browser that asks for less
 
 ## Settings
 
-*Admin → Settings*: the largest upload (above), the largest background video, how long the score is shown (seconds), and **Amateur
+*Admin → Settings*: the largest upload (above), the largest background video, how long the score is shown (seconds), how long the
+**title card** of the next song shows before it starts (0 to 10 seconds, 3 by default; 0 starts every song at once), and **Amateur
 singer mode** (off by default). With it on, every song that has a vocals track plays the singer's voice by itself from the start until the
 third line of its lyrics begins (it fades out over about 0.3 seconds), as a guide for singers who do not know the song; a singer can still
 switch the voice off, and the next song is guided again. Songs without a vocals track, MIDI songs and songs with fewer than three lines of

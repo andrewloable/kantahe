@@ -34,6 +34,22 @@ const MB = 1024n * 1024n;
         }
       </div>
       <div class="field">
+        <label for="intro-seconds">Show the title card for (seconds)</label>
+        <input
+          id="intro-seconds"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          aria-describedby="intro-hint"
+          [value]="introSeconds()"
+          (input)="introSeconds.set(value($event))"
+        />
+        <p id="intro-hint" class="hint">Before each new song its title shows for this long, so that the next singer is ready. 0 turns it off.</p>
+        @if (introError()) {
+          <p class="error" role="alert">{{ introError() }}</p>
+        }
+      </div>
+      <div class="field">
         <div class="switch">
           <input id="amateur-mode" type="checkbox" aria-describedby="amateur-hint" [checked]="amateurMode()" (change)="amateurMode.set(checked($event))" />
           <label for="amateur-mode">Amateur singer mode</label>
@@ -71,6 +87,8 @@ export class ServerSettingsPage {
 
   protected readonly maxUpload = signal('');
   protected readonly scoreSeconds = signal('');
+  protected readonly introSeconds = signal('');
+  protected readonly introError = signal('');
   protected readonly amateurMode = signal(false);
   protected readonly maxVideo = signal('');
   protected readonly videoError = signal('');
@@ -90,6 +108,7 @@ export class ServerSettingsPage {
     this.current = s;
     this.maxUpload.set(String(s.maxUploadBytes / MB));
     this.scoreSeconds.set(String(s.scoreSeconds));
+    this.introSeconds.set(String(s.introSeconds));
     this.maxVideo.set(String(s.maxVideoBytes / MB));
     this.amateurMode.set(s.amateurMode);
   }
@@ -115,6 +134,7 @@ export class ServerSettingsPage {
     this.maxError.set('');
     this.scoreError.set('');
     this.videoError.set('');
+    this.introError.set('');
     const maxText = this.maxUpload().trim();
     const scoreText = this.scoreSeconds().trim();
     const maxOk = /^\d+$/.test(maxText) && BigInt(maxText) >= 1n;
@@ -124,7 +144,10 @@ export class ServerSettingsPage {
     const videoText = this.maxVideo().trim();
     const videoOk = /^\d+$/.test(videoText) && BigInt(videoText) >= 1n && BigInt(videoText) <= 8192n;
     if (!videoOk) this.videoError.set('The video limit must be a whole number of megabytes, 1 to 8192.');
-    if (!maxOk || !scoreOk || !videoOk) return;
+    const introText = this.introSeconds().trim();
+    const introOk = /^\d+$/.test(introText) && Number(introText) <= 10;
+    if (!introOk) this.introError.set('The title card time is a whole number of seconds, 0 to 10.');
+    if (!maxOk || !scoreOk || !videoOk || !introOk) return;
     const maxUploadBytes = BigInt(maxText) * MB;
     const maxVideoBytes = BigInt(videoText) * MB;
     const score = Number(scoreText);
@@ -133,6 +156,7 @@ export class ServerSettingsPage {
       scoreSeconds: score !== this.current.scoreSeconds ? score : undefined,
       maxVideoBytes: maxVideoBytes !== this.current.maxVideoBytes ? maxVideoBytes : undefined,
       amateurMode: this.amateurMode() !== this.current.amateurMode ? this.amateurMode() : undefined,
+      introSeconds: Number(introText) !== this.current.introSeconds ? Number(introText) : undefined,
     };
     if (Object.values(changes).every((v) => v === undefined)) return;
     this.busy.set(true);

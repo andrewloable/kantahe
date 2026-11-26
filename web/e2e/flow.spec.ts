@@ -172,6 +172,7 @@ test('the whole flow: setup, accounts, upload, search, queue, play, score, rando
 
   await test.step('a second device takes over in the middle of the song: Playing on swaps, and the song goes on from where it was', async () => {
     await expect(stage(b).locator('.time')).toContainText('0:01');
+    await b.mouse.move(100, 100); // the buttons fade while a song plays (the title card came first): a movement brings them back
     await stage(b).getByRole('button', { name: 'Pause' }).click();
     await signIn(c, USER.email, USER.password);
     await expect(c).toHaveURL(/\/library$/);

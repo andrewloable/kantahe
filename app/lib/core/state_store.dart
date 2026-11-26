@@ -74,6 +74,14 @@ class StateStore extends ChangeNotifier {
   /// Server time minus the local clock when the latest state arrived.
   int get offsetMs => _offsetMs;
 
+  /// Milliseconds until the current song starts after its title card on the player (kantahe-2d3); 0 when it plays or has no card.
+  int msUntilStart([int? nowMs]) {
+    final s = _state;
+    if (s == null || !s.hasNow() || s.now.startsAtMs == 0) return 0;
+    final left = s.now.startsAtMs.toInt() - ((nowMs ?? _monotonicMs()) + _offsetMs);
+    return left > 0 ? left : 0;
+  }
+
   /// Position of the current song now, in ms (0 when nothing plays).
   int positionMs([int? nowMs]) {
     final s = _state;

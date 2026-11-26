@@ -228,3 +228,41 @@ func TestAmateurModeDefaultOffAndUpdate(t *testing.T) {
 		t.Fatal("off must read back as off")
 	}
 }
+
+// kantahe-2d3: the title card seconds, 0 to 10, 3 by default.
+func TestIntroSecondsDefaultRangeAndUpdate(t *testing.T) {
+	db, err := store.Open(context.Background(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if n, err := IntroSeconds(ctx, db); err != nil || n != 3 {
+		t.Fatalf("an empty table must mean 3: %v %v", n, err)
+	}
+	if s, _ := Load(ctx, db, 9); s.IntroSeconds != 3 {
+		t.Fatalf("Load: %+v", s)
+	}
+	for _, v := range []int{0, 10} {
+		if err := Update(ctx, db, Patch{IntroSeconds: &v}); err != nil {
+			t.Fatalf("%d: %v", v, err)
+		}
+		if n, _ := IntroSeconds(ctx, db); n != v {
+			t.Fatalf("read back %d, want %d", n, v)
+		}
+	}
+	for _, v := range []int{-1, 11} {
+		if err := Update(ctx, db, Patch{IntroSeconds: &v}); !errors.Is(err, ErrInvalid) {
+			t.Fatalf("%d must be refused: %v", v, err)
+		}
+	}
+	if n, _ := IntroSeconds(ctx, db); n != 10 {
+		t.Fatalf("a refused value must not be stored: %d", n)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE settings SET value = 'x' WHERE key = ?`, KeyIntroSeconds); err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := IntroSeconds(ctx, db); n != DefaultIntroSeconds {
+		t.Fatalf("an unusable stored value gives the default: %d", n)
+	}
+}

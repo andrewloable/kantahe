@@ -1112,3 +1112,161 @@ func TestTempoWhilePausedDoesNotMoveThePosition(t *testing.T) {
 		t.Fatalf("paused: %d", s.Now.PositionMs)
 	}
 }
+
+// kantahe-2d3: the title card. A song that becomes current while playing starts after the title-card seconds; until then its clock
+// stands at 0 from the start time, so every device shows 0:00 and the player starts the sound at that time.
+func introRig(t *testing.T, seconds int, library ...string) *rig {
+	t.Helper()
+	r := newRig(t, library...)
+	r.m.d.IntroSeconds = func() int { return seconds }
+	r.secs = 0 // no score screen: the next song follows Ended at once
+	return r
+}
+
+func startsAt(t *testing.T, r *rig, wantStart int64) {
+	t.Helper()
+	now := r.m.Snapshot().Now
+	if now == nil {
+		t.Fatal("no current song")
+	}
+	if now.StartsAtMs != wantStart || now.PositionMs != 0 {
+		t.Fatalf("StartsAtMs %d PositionMs %d, want %d and 0", now.StartsAtMs, now.PositionMs, wantStart)
+	}
+	if wantStart > 0 && now.PositionAtMs != wantStart {
+		t.Fatalf("PositionAtMs %d, want the start time %d (clocks stand at 0:00 until then)", now.PositionAtMs, wantStart)
+	}
+}
+
+func TestIntroRegressionTheSongAfterAnEndStartsAfterTheTitleCard(t *testing.T) {
+	r := introRig(t, 3)
+	r.m.Add(song("A"))
+	r.m.Add(song("B"))
+	r.m.Control("d1", ActionPlay)
+	r.clock.ms = 200_000
+	if _, err := r.m.Ended("d1", "A", 0); err != nil {
+		t.Fatal(err)
+	}
+	if nowNumber(r.m.Snapshot()) != "B" {
+		t.Fatalf("now %s", nowNumber(r.m.Snapshot()))
+	}
+	startsAt(t, r, 203_000)
+}
+
+func TestIntroSkipRandomFillAndTheFirstSongAfterPlayGetTheCard(t *testing.T) {
+	r := introRig(t, 3, "R1")
+	r.m.Add(song("A"))
+	r.m.Control("d1", ActionPlay) // the first song after Play
+	startsAt(t, r, 4000)
+	r.clock.ms = 10_000
+	r.m.Add(song("B"))
+	r.m.Control("d1", ActionSkip) // Skip while playing
+	startsAt(t, r, 13_000)
+	r.clock.ms = 20_000
+	r.m.Control("d1", ActionSkip) // the queue is empty: a random pick
+	if nowNumber(r.m.Snapshot()) != "R1" {
+		t.Fatalf("now %s", nowNumber(r.m.Snapshot()))
+	}
+	startsAt(t, r, 23_000)
+}
+
+func TestIntroPlayOnAPausedSongThatNeverStartedGetsTheCardOneThatPlayedDoesNot(t *testing.T) {
+	r := introRig(t, 3)
+	r.m.Add(song("A"))
+	r.m.Add(song("B"))
+	r.m.Control("d1", ActionSkip) // paused: a song becomes current without playing
+	cur := nowNumber(r.m.Snapshot())
+	if cur == "<nil>" {
+		t.Fatal("no current song")
+	}
+	startsAt(t, r, 0) // nothing plays: no card yet
+	r.clock.ms = 5000
+	r.m.Control("d1", ActionPlay)
+	startsAt(t, r, 8000)
+	// the song plays, is paused at 30 s and played again: no card
+	r.clock.ms = 9000
+	if _, err := r.m.ReportPosition("d1", cur, 30_000); err != nil {
+		t.Fatal(err)
+	}
+	r.m.Control("d1", ActionPause)
+	r.clock.ms = 50_000
+	r.m.Control("d1", ActionPlay)
+	if now := r.m.Snapshot().Now; now.StartsAtMs > r.clock.ms || now.PositionMs != 30_000 {
+		t.Fatalf("resumed song: StartsAtMs %d PositionMs %d", now.StartsAtMs, now.PositionMs)
+	}
+}
+
+func TestIntroReadyAndZeroReportsDuringTheCardKeepTheStartTime(t *testing.T) {
+	r := introRig(t, 3)
+	r.m.Add(song("A"))
+	r.m.Control("d1", ActionPlay)
+	r.clock.ms = 2000
+	if err := r.m.Ready("d1", "A"); err != nil {
+		t.Fatal(err)
+	}
+	startsAt(t, r, 4000)
+	r.clock.ms = 3000
+	if _, err := r.m.ReportPosition("d1", "A", 0); err != nil {
+		t.Fatal(err)
+	}
+	startsAt(t, r, 4000)
+	// after the start the reports move the clock as before
+	r.clock.ms = 6000
+	if _, err := r.m.ReportPosition("d1", "A", 2000); err != nil {
+		t.Fatal(err)
+	}
+	if now := r.m.Snapshot().Now; now.PositionMs != 2000 || now.PositionAtMs != 6000 {
+		t.Fatalf("after the start: PositionMs %d PositionAtMs %d", now.PositionMs, now.PositionAtMs)
+	}
+}
+
+func TestIntroPauseDuringTheCardDropsIt(t *testing.T) {
+	r := introRig(t, 3)
+	r.m.Add(song("A"))
+	r.m.Control("d1", ActionPlay)
+	r.clock.ms = 2000
+	r.m.Control("d1", ActionPause)
+	if now := r.m.Snapshot().Now; now.StartsAtMs != 0 || now.PositionMs != 0 {
+		t.Fatalf("paused during the card: StartsAtMs %d PositionMs %d", now.StartsAtMs, now.PositionMs)
+	}
+	r.clock.ms = 7000
+	r.m.Control("d1", ActionPlay) // played again: it never started, so the card comes again
+	startsAt(t, r, 10_000)
+}
+
+func TestIntroZeroSecondsIsAsBefore(t *testing.T) {
+	r := introRig(t, 0)
+	r.m.Add(song("A"))
+	r.m.Control("d1", ActionPlay)
+	if now := r.m.Snapshot().Now; now.StartsAtMs != 0 || now.PositionAtMs != 1000 {
+		t.Fatalf("StartsAtMs %d PositionAtMs %d", now.StartsAtMs, now.PositionAtMs)
+	}
+}
+
+func TestIntroAPositionReportDuringTheCardEndsIt(t *testing.T) {
+	// a player that does not wait (an older app) starts at once and reports real positions: the song has started
+	r := introRig(t, 3)
+	r.m.Add(song("A"))
+	r.m.Control("d1", ActionPlay)
+	r.clock.ms = 2000
+	if _, err := r.m.ReportPosition("d1", "A", 42_000); err != nil {
+		t.Fatal(err)
+	}
+	r.m.Control("d1", ActionPause)
+	if now := r.m.Snapshot().Now; now.PositionMs != 42_000 || now.StartsAtMs != 0 {
+		t.Fatalf("PositionMs %d StartsAtMs %d, want the reported 42000 and no card", now.PositionMs, now.StartsAtMs)
+	}
+}
+
+func TestIntroReviewATempoChangeDuringTheCardKeepsIt(t *testing.T) {
+	r := introRig(t, 3)
+	r.m.Add(song("A"))
+	r.m.Control("d1", ActionPlay)
+	r.clock.ms = 2000
+	if err := r.m.SetTempo(90); err != nil {
+		t.Fatal(err)
+	}
+	startsAt(t, r, 4000)
+	if r.m.Snapshot().Now.TempoPct != 90 {
+		t.Fatal("the tempo was not set")
+	}
+}

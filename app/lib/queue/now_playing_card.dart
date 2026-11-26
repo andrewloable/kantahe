@@ -28,8 +28,16 @@ class NowPlayingCard extends StatefulWidget {
 }
 
 class _NowPlayingCardState extends State<NowPlayingCard> with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = createTicker((_) => _position.value = _shown());
+  late final Ticker _ticker = createTicker((_) => _redraw());
   final ValueNotifier<int> _position = ValueNotifier(0);
+  // whole seconds until the song starts after its title card on the player (kantahe-2d3); 0 when it plays
+  final ValueNotifier<int> _startsIn = ValueNotifier(0);
+
+  void _redraw() {
+    _position.value = _shown();
+    _startsIn.value = (_store.msUntilStart() / 1000).ceil();
+  }
+
   late final _store = AppScope.of(context).state;
   bool _bound = false;
 
@@ -47,6 +55,7 @@ class _NowPlayingCardState extends State<NowPlayingCard> with SingleTickerProvid
     if (_bound) _store.removeListener(_onState);
     _ticker.dispose();
     _position.dispose();
+    _startsIn.dispose();
     super.dispose();
   }
 
@@ -62,7 +71,7 @@ class _NowPlayingCardState extends State<NowPlayingCard> with SingleTickerProvid
   // The position is redrawn on every frame, but only while it moves (a song is playing); a ticker is muted by
   // Flutter while the screen is covered by another page.
   void _onState() {
-    _position.value = _shown();
+    _redraw();
     final s = _store.state;
     final moving = s != null && s.hasNow() && s.status == PlayStatus.PLAY_STATUS_PLAYING;
     if (moving && !_ticker.isActive) {
@@ -117,7 +126,11 @@ class _NowPlayingCardState extends State<NowPlayingCard> with SingleTickerProvid
                       builder: (context, position, _) => Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(length > 0 ? '${clock(position)} / ${clock(length)}' : clock(position)),
+                          ValueListenableBuilder<int>(
+                            valueListenable: _startsIn,
+                            builder: (context, startsIn, _) =>
+                                Text(startsIn > 0 ? 'Starting in $startsIn' : (length > 0 ? '${clock(position)} / ${clock(length)}' : clock(position))),
+                          ),
                           if (length > 0) LinearProgressIndicator(value: (position / length).clamp(0.0, 1.0), semanticsLabel: 'Song progress'),
                         ],
                       ),
