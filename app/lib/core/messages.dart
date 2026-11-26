@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Shows a message at the bottom of the screen and returns its controller (null without a messenger); [error] marks a failure, [actionLabel] and [onAction] add a button.
 ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? showMessage(

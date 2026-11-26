@@ -11,7 +11,7 @@
 // space the app told it (window.kantahe.setFreeDisk), whether it can keep files, what the song cache holds, and what every audio element
 // was given as its source: the first play must come from the server (http), the second from the device (blob:). Without SERVER_URL the
 // test is skipped. It signs in through the API first.
-import 'package:flutter/material.dart' hide State;
+import 'package:material_ui/material_ui.dart' hide State;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:kantahe/core/app_scope.dart';

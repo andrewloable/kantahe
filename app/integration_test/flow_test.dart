@@ -7,7 +7,7 @@
 //     --dart-define=SERVER_URL=http://10.0.2.2:8080 --dart-define=USER_EMAIL=... --dart-define=USER_PASSWORD=...
 //
 // Without SERVER_URL the test is skipped.
-import 'package:flutter/material.dart' hide State;
+import 'package:material_ui/material_ui.dart' hide State;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:kantahe/core/api.dart';

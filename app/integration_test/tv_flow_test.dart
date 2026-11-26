@@ -7,7 +7,7 @@
 //
 // The server's library holds the synthetic songs of kantahe-fixtures. The test plays the person with a phone: it
 // reads the code the TV shows and approves it through the API. Without SERVER_URL the test is skipped.
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';

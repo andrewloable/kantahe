@@ -1,5 +1,5 @@
 import 'package:connectrpc/connect.dart';
-import 'package:flutter/material.dart' hide State;
+import 'package:material_ui/material_ui.dart' hide State;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -23,12 +23,23 @@ class FakeAwake implements ScreenAwake {
   Future<void> disable() async => log.add(false);
 }
 
+class FakeBackground implements BackgroundPlayback {
+  final log = <String>[];
+
+  @override
+  Future<void> start() async => log.add('start');
+
+  @override
+  Future<void> stop() async => log.add('stop');
+}
+
 class Rig {
   Rig(this.q);
 
   final QueueRig q;
   final host = FakeHost();
   final awake = FakeAwake();
+  final background = FakeBackground();
   EmbedConfig? config;
   int builds = 0;
   int osAsked = 0;
@@ -52,7 +63,15 @@ State playingHere({ScoreMode? mode, String player = 'me', PlayStatus status = Pl
   now: nowPlaying(song('1', 'A', 'B')),
 );
 
-Future<Rig> open(WidgetTester tester, {State? state, String? server = 'http://srv:1', Widget base = const Text('base screen'), bool tv = false}) async {
+/// [keepPlaying]: the Android rule of kantahe-go8 (a song that plays here goes on in the background); off, the app pauses as on iOS.
+Future<Rig> open(
+  WidgetTester tester, {
+  State? state,
+  String? server = 'http://srv:1',
+  Widget base = const Text('base screen'),
+  bool tv = false,
+  bool keepPlaying = false,
+}) async {
   if (tv) {
     // a TV screen: the buttons share one row
     tester.view.physicalSize = const Size(1920, 1080);
@@ -74,6 +93,8 @@ Future<Rig> open(WidgetTester tester, {State? state, String? server = 'http://sr
           builder: (_) => PlayerScreen(
             embedBuilder: r.embed,
             screenAwake: r.awake,
+            background: r.background,
+            keepsPlayingInBackground: keepPlaying,
             readFreeDisk: () async => r.freeDisk,
             osMicrophone: () async {
               r.osAsked++;
@@ -91,6 +112,23 @@ List<String> scriptsWith(Rig r, String name) => [
   for (final s in r.host.scripts)
     if (s.contains(name)) s,
 ];
+
+/// Another app covers this one (the BYD camera view, Home on a TV): inactive, hidden, paused.
+Future<void> goToBackground(WidgetTester tester) async {
+  for (final s in [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused]) {
+    tester.binding.handleAppLifecycleStateChanged(s);
+    await tester.pump();
+  }
+  await settle(tester);
+}
+
+Future<void> comeBack(WidgetTester tester) async {
+  for (final s in [AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+    tester.binding.handleAppLifecycleStateChanged(s);
+    await tester.pump();
+  }
+  await settle(tester);
+}
 
 void main() {
   testWidgets('loads the player page of the server, with no token in the address', (tester) async {
@@ -464,8 +502,8 @@ void main() {
       expect(focusLabel(), 'on top of the player');
     });
 
-    testWidgets('review: the arrows reach Close, Pause, Skip and Play here, and Select presses the one that has the focus', (tester) async {
-      final r = await open(tester, state: playingHere(player: 'tv')); // another device plays: Close, Pause, Skip, Play here
+    testWidgets('review: the arrows reach Close, Pause, Skip, Play here and Connect a phone, and Select presses the one that has the focus', (tester) async {
+      final r = await open(tester, state: playingHere(player: 'tv')); // another device plays: Close, Pause, Skip, Play here, Connect a phone
       await tester.pump();
       expect(buttonHasFocus('Pause'), isTrue);
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
@@ -474,18 +512,23 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
       expect(buttonHasFocus('Play here'), isTrue, reason: 'the focus is on "${focusLabel()}"');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(focusLabel(), 'player: Connect a phone');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       await tester.pump();
       expect(buttonHasFocus('Pause'), isTrue);
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      // the row of five is wide: Close is above it, not to its left
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.pump();
       expect(buttonHasFocus('Close'), isTrue, reason: 'the focus is on "${focusLabel()}"');
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
-      expect(buttonHasFocus('Play here'), isTrue);
+      expect(buttonHasFocus('Play here'), isTrue, reason: 'the focus is on "${focusLabel()}"');
       await tester.sendKeyEvent(LogicalKeyboardKey.select);
       await settle(tester);
       expect(r.q.server.controls, [ControlAction.CONTROL_ACTION_PLAY_HERE]);
@@ -501,22 +544,6 @@ void main() {
   });
 
   group('foreground only', () {
-    Future<void> goToBackground(WidgetTester tester) async {
-      for (final s in [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused]) {
-        tester.binding.handleAppLifecycleStateChanged(s);
-        await tester.pump();
-      }
-      await settle(tester);
-    }
-
-    Future<void> comeBack(WidgetTester tester) async {
-      for (final s in [AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
-        tester.binding.handleAppLifecycleStateChanged(s);
-        await tester.pump();
-      }
-      await settle(tester);
-    }
-
     testWidgets('REGRESSION: going to the background pauses the song that plays here and unloads the page', (tester) async {
       final r = await open(tester);
       await goToBackground(tester);
@@ -634,6 +661,94 @@ void main() {
       expect(allow(Uri.parse('http://srv:1/embed/player')), isTrue);
       expect(allow(Uri.parse('http://evil.example/')), isFalse);
       expect(allow(Uri.parse('about:srcdoc')), isFalse);
+    });
+  });
+
+  // kantahe-go8: on Android a song that plays here goes on while another app covers this one (the BYD camera view, Home on a TV)
+  group('background playback', () {
+    testWidgets('REGRESSION: a song that plays here goes on in the background: no Pause, the page stays, the stream stays open', (tester) async {
+      final r = await open(tester, keepPlaying: true);
+      await goToBackground(tester);
+      expect(r.q.server.controls, isEmpty);
+      expect(r.host.unloads, 0);
+      expect(r.q.store.paused, isFalse);
+      expect(r.background.log, ['start']);
+    });
+
+    testWidgets('coming back after playing in the background reloads nothing and presses nothing', (tester) async {
+      final r = await open(tester, keepPlaying: true);
+      await goToBackground(tester);
+      await comeBack(tester);
+      expect(r.host.loads, 0);
+      expect(r.host.unloads, 0);
+      expect(r.q.server.controls, isEmpty);
+    });
+
+    testWidgets('the service runs exactly while a song plays here, and the app says so to the rest of it', (tester) async {
+      final r = await open(tester, keepPlaying: true, state: playingHere(status: PlayStatus.PLAY_STATUS_PAUSED));
+      expect(r.background.log, isEmpty);
+      expect(r.q.services.playingHere.value, isFalse);
+      r.q.setState(playingHere());
+      await settle(tester);
+      expect(r.background.log, ['start']);
+      expect(r.q.services.playingHere.value, isTrue);
+      r.q.setState(playingHere()); // the next state of the same song starts nothing more
+      await settle(tester);
+      expect(r.background.log, ['start']);
+      r.q.setState(playingHere(status: PlayStatus.PLAY_STATUS_PAUSED));
+      await settle(tester);
+      expect(r.background.log, ['start', 'stop']);
+      expect(r.q.services.playingHere.value, isFalse);
+    });
+
+    testWidgets('paused from another device while in the background: the service stops, the page is unloaded, the stream paused', (tester) async {
+      final r = await open(tester, keepPlaying: true);
+      await goToBackground(tester);
+      r.q.setState(playingHere(status: PlayStatus.PLAY_STATUS_PAUSED));
+      await settle(tester);
+      expect(r.background.log, ['start', 'stop']);
+      expect(r.host.unloads, 1);
+      expect(r.q.store.paused, isTrue);
+      expect(r.q.server.controls, isEmpty); // nothing played here any more: there was nothing to pause
+      await comeBack(tester);
+      expect(r.host.loads, 1); // the page comes back as after any background stay
+    });
+
+    testWidgets('another device takes over while in the background: the same', (tester) async {
+      final r = await open(tester, keepPlaying: true);
+      await goToBackground(tester);
+      r.q.setState(playingHere(player: 'tv'));
+      await settle(tester);
+      expect(r.background.log, ['start', 'stop']);
+      expect(r.host.unloads, 1);
+      expect(r.q.store.paused, isTrue);
+    });
+
+    testWidgets('nothing plays here: the background behaves as before and no service starts', (tester) async {
+      for (final state in [playingHere(status: PlayStatus.PLAY_STATUS_PAUSED), playingHere(player: 'tv')]) {
+        final r = await open(tester, keepPlaying: true, state: state);
+        await goToBackground(tester);
+        expect(r.host.unloads, 1);
+        expect(r.q.server.controls, isEmpty);
+        expect(r.background.log, isEmpty);
+        await tester.pumpWidget(const SizedBox());
+      }
+    });
+
+    testWidgets('closing the player stops the service and still pauses the song that played here', (tester) async {
+      final r = await open(tester, keepPlaying: true);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      expect(r.background.log, ['start', 'stop']);
+      expect(r.q.services.playingHere.value, isFalse);
+      expect(r.q.server.controls, [ControlAction.CONTROL_ACTION_PAUSE]);
+    });
+
+    testWidgets('without the rule (iOS) no service is ever started', (tester) async {
+      final r = await open(tester);
+      await goToBackground(tester);
+      expect(r.background.log, isEmpty);
+      expect(r.q.services.playingHere.value, isFalse);
     });
   });
 
@@ -987,10 +1102,54 @@ void main() {
       expect(find.text('Connect a phone'), findsOneWidget);
     });
 
-    testWidgets('it is not there on a phone or tablet', (tester) async {
+    // kantahe-86t: on every player, not only TVs (a car head unit cannot be told apart from a tablet; a phone can invite friends too)
+    testWidgets('REGRESSION: a phone, tablet or car head unit player has a Connect a phone button too', (tester) async {
       await open(tester, server: address);
-      expect(find.text('Connect a phone'), findsNothing);
+      expect(find.text('Connect a phone'), findsOneWidget);
     });
+
+    Future<void> tapConnect(WidgetTester tester) async {
+      await tester.tap(find.text('Connect a phone'));
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('a tap on the button shows the QR of the server address, and only the address', (tester) async {
+      await open(tester, server: address);
+      await tapConnect(tester);
+      expect(find.byKey(const ValueKey('qr:$address')), findsOneWidget);
+      expect(find.text(address), findsOneWidget);
+    });
+
+    testWidgets('a tap outside the card closes it on a touch screen', (tester) async {
+      await open(tester, server: address);
+      await tapConnect(tester);
+      expect(find.byType(QrImageView), findsOneWidget);
+      final card = tester.getRect(find.byKey(const Key('connect-card')));
+      expect(card.top, greaterThan(10));
+      await tester.tapAt(Offset(card.center.dx, card.top / 2)); // above the card
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(QrImageView), findsNothing);
+      expect(find.byType(PlayerScreen), findsOneWidget); // only the card closed
+    });
+
+    for (final size in const [Size(360, 640), Size(640, 360), Size(1280, 720)]) {
+      testWidgets('the open card fits a ${size.width.toInt()} x ${size.height.toInt()} screen without overflowing', (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await open(tester, server: address);
+        await tapConnect(tester);
+        expect(find.byType(QrImageView), findsOneWidget);
+        expect(tester.takeException(), isNull); // an overflow would be reported here
+        final card = tester.getRect(find.byKey(const Key('connect-card')));
+        final screen = Offset.zero & size;
+        expect(
+          screen.contains(card.topLeft) && screen.contains(card.bottomRight - const Offset(1, 1)),
+          isTrue,
+          reason: 'the whole card is on the screen: $card',
+        );
+      });
+    }
 
     testWidgets('OK shows the QR of the server address and the address, and nothing else is in the QR', (tester) async {
       await openCard(tester);

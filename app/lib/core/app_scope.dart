@@ -57,6 +57,10 @@ class AppServices {
   /// Looks for Kantahe servers on the network; tests and the integration runs find none.
   final FindServers findServers;
 
+  /// A song plays on this device and the app keeps going in the background (Android, kantahe-go8): the player screen sets it, and the
+  /// root then leaves the state stream open when another app covers this one. When the song stops there, the player pauses the stream.
+  final ValueNotifier<bool> playingHere = ValueNotifier(false);
+
   /// The real services: tokens in the keystore, the address in shared preferences, one HTTP transport that
   /// follows the stored address. Loads what was stored before returning.
   static Future<AppServices> create() async {
@@ -106,7 +110,7 @@ class AppScope extends InheritedWidget {
   bool updateShouldNotify(AppScope oldWidget) => services != oldWidget.services;
 }
 
-/// The root of the app: provides the services and pauses the state stream while the app is in the background.
+/// The root of the app: provides the services and pauses the state stream while the app is in the background (unless a song plays here).
 class AppRoot extends StatefulWidget {
   const AppRoot({super.key, required this.services, required this.child});
 
@@ -133,13 +137,14 @@ class _AppRootState extends State<AppRoot> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  // "inactive" is a short interruption (a system sheet, the iOS app switcher peek): the stream stays open.
+  // "inactive" is a short interruption (a system sheet, the iOS app switcher peek): the stream stays open. So does it while a song plays
+  // on this device (playingHere): the player needs the state to see that song stop.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
-        widget.services.state.pause();
+        if (!widget.services.playingHere.value) widget.services.state.pause();
       case AppLifecycleState.resumed:
         widget.services.state.resume();
       case AppLifecycleState.inactive:

@@ -116,6 +116,9 @@ const IDLE_MS = 3000;
       --text: #ffffff;
       --muted: #aeb4d8;
       --sung: #ffd23f;
+      /* the progress bar: drawn by the page itself (an old WebView ignores color-scheme and draws a white bar, kantahe-ie6) */
+      --track: #2a3592;
+      --fill: #4fd1ff;
       position: relative;
       /* the background video (position: fixed, z-index -1) sits behind everything in here, over this background */
       isolation: isolate;
@@ -226,6 +229,24 @@ const IDLE_MS = 3000;
     progress {
       align-self: center;
       width: min(40rem, 90%);
+      -webkit-appearance: none;
+      appearance: none;
+      flex-shrink: 0; /* without its native look it has no height of its own: a full screen of lyrics would squeeze it away */
+      height: 0.5rem;
+      border: 0;
+      border-radius: 0.25rem;
+      overflow: hidden;
+      background: var(--track);
+      color: var(--fill);
+    }
+    progress::-webkit-progress-bar {
+      background: var(--track);
+    }
+    progress::-webkit-progress-value {
+      background: var(--fill);
+    }
+    progress::-moz-progress-bar {
+      background: var(--fill);
     }
     .controls {
       display: flex;

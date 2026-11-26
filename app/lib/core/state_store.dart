@@ -103,6 +103,9 @@ class StateStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The app is in the background and the stream is closed (pause() was called, resume() not yet).
+  bool get paused => _paused;
+
   /// The app went to the background: close the stream and the timers, keep the last state.
   void pause() {
     _paused = true;

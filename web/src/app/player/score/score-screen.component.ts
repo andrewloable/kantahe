@@ -1,7 +1,7 @@
 import { Component, computed, DestroyRef, effect, inject, InjectionToken, input, signal, untracked } from '@angular/core';
 import { Score } from '../../../gen/kantahe/v1/session_pb';
-import { ServerUrl } from '../../core/server-url';
 import { StateStore } from '../../core/state.store';
+import { Fanfares } from './fanfares';
 
 const ROLL_EVERY_MS = 55;
 const ROLL_FOR_MS = 1400;
@@ -90,7 +90,7 @@ export class ScoreScreenComponent {
   readonly score = input<Score | undefined>();
 
   private readonly makeAudio = inject(FANFARE_AUDIO);
-  private readonly server = inject(ServerUrl);
+  private readonly fanfares = inject(Fanfares);
   private readonly store = inject(StateStore);
 
   /** The number on screen while it rolls and after it has landed. */
@@ -162,7 +162,7 @@ export class ScoreScreenComponent {
     this.tier.set(s.fanfare >= 1 && s.fanfare <= 3 ? `t${s.fanfare}` : '');
     this.announcement.set(`Score ${s.value}. ${s.comment}`);
     if (s.fanfare >= 1 && s.fanfare <= 3) {
-      const audio = this.makeAudio(`${this.server.base()}/media/fanfare/${s.fanfare}.mp3`);
+      const audio = this.makeAudio(this.fanfares.url(s.fanfare)); // kept on the device once the player has it (kantahe-cnf.1)
       this.fanfare = audio;
       // the browser may want a tap first (the score is shown anyway); old browsers return nothing from play()
       void Promise.resolve()

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:connectrpc/connect.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:kantahe/auth/auth_page.dart' show MessageLine;
 import 'package:kantahe/auth/device_info.dart';
 import 'package:kantahe/core/app_scope.dart';

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:connectrpc/connect.dart';
-import 'package:flutter/material.dart' hide State;
+import 'package:material_ui/material_ui.dart' hide State;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantahe/gen/kantahe/v1/session.pb.dart';

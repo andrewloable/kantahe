@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:kantahe/core/app_scope.dart';
 
 /// On a TV a screen that is pushed arrives with the focus on the route itself: nothing shows a ring and the remote seems dead until a key is

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantahe/core/api.dart';
@@ -111,6 +111,29 @@ void main() {
     b.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
     expect(server.opened, 2);
+    services.state.stop();
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('REGRESSION: while a song plays on this device the stream stays open in the background (kantahe-go8)', (tester) async {
+    final server = FakeSessionServer();
+    final services = fakeServices(server);
+    await tester.pumpWidget(AppRoot(services: services, child: const SizedBox()));
+    services.state.start();
+    await tester.pump();
+    services.playingHere.value = true;
+    final b = tester.binding;
+    b.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    b.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    b.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    expect(server.aborted, 0);
+    expect(services.state.paused, isFalse);
+    b.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    b.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    b.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(server.opened, 1); // never closed, so never opened again
     services.state.stop();
     await tester.pumpWidget(const SizedBox());
   });

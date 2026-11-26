@@ -7,7 +7,7 @@
 //
 // The test queues one MP3 and one MIDI song, makes this device the player and waits until both have been played
 // through the page. Without SERVER_URL the test is skipped. It signs in through the API first.
-import 'package:flutter/material.dart' hide State;
+import 'package:material_ui/material_ui.dart' hide State;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:kantahe/core/app_scope.dart';

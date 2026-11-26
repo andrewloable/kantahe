@@ -200,7 +200,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.47.5
+          flutter-version: 3.50.1
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
@@ -221,7 +221,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.47.5
+          flutter-version: 3.50.1
       - run: flutter pub get
       - run: flutter build apk --debug
 
@@ -236,7 +236,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.47.5
+          flutter-version: 3.50.1
       - run: flutter pub get
       - run: flutter build ios --simulator --no-codesign --debug
 

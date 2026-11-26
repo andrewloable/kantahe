@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:kantahe/tv/focus.dart';
 
 /// The buttons the player draws over the page. On a TV they are smaller than the rest of the app: the TV theme enlarges all text for the sofa

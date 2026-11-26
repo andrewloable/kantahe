@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/gen/kantahe/v1/common.pb.dart';
 import 'package:kantahe/library/format_badge.dart';

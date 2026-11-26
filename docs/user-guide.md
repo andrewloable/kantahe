@@ -92,6 +92,15 @@ touch the screen or press a key and they come back. **Full screen** (where the b
 screen. **Back to Kantahe** returns to the library (and **Admin** to the admin pages, for administrators); leaving the
 player pauses the song if this device was playing it.
 
+**In the background (Android).** On an Android phone, tablet, TV or car head unit the song goes on when another app covers Kantahe:
+a car's camera view, the Home button, a quick look at another app. While a song plays there, Android shows a *Playing on this device*
+notification. Pause (on any device), or close the player, to stop it; another device taking over stops it too. In the iPhone and iPad
+app, leaving the app still pauses the song.
+
+**Connect a phone.** In the apps (phone, tablet, TV, car head unit) the player has a *Connect a phone* button. It shows a
+QR code of the server's address for about ten seconds: the people in the room or in the car scan it, sign in and queue songs from
+their own phones. Only the address is in the QR code, never a sign-in. Tap beside the card, or press Back, to close it sooner.
+
 **Volume and vocals are not on the player.** The player shows only Play or Pause and Skip, so that nothing on the screen changes while
 you sing. You change the volume and the vocals on the **Queue** page of any device, also the one that plays (on a TV the remote reaches the
 Queue next to the Player; in the apps it is the same Queue screen). The player keeps its keyboard shortcuts: **+** and **−** for the volume and

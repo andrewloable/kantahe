@@ -1,3 +1,4 @@
+import { Code, ConnectError } from '@connectrpc/connect';
 import { computed, effect, inject, Injectable, OnDestroy, signal, untracked } from '@angular/core';
 import { clone, create } from '@bufbuild/protobuf';
 import { CatalogService, Playback, PlaybackKind, PlaybackSchema } from '../../gen/kantahe/v1/catalog_pb';
@@ -15,11 +16,19 @@ import { DropoutMonitor } from './dropouts';
 import { AUDIO_CONTEXT, CAN_PLAY_FLAC, CAN_SYNTHESIZE, Engine, ENGINES, MidiOptions, mediaUrl } from './engines/engine';
 import { AudioContextLike } from './engines/mp3-engine';
 import { MIC_METER } from './mic';
+import { Fanfares } from './score/fanfares';
 import { VocalsPrefs } from './vocals-prefs';
 
 const REPORT_POSITION_MS = 1000;
 const MIN_RETRY_MS = 500;
 const ERROR_RETRY_MS = 2000;
+/** An end of song the server did not hear is reported again after 1 s, 2 s, 4 s, then every 5 s (kantahe-0v6). */
+const ENDED_FIRST_RETRY_MS = 1000;
+const ENDED_MAX_RETRY_MS = 5000;
+/** The codes of a call that did not reach the server or got no answer (a dropped or absent connection). */
+const CONNECTION_FAILURES = new Set([Code.Unknown, Code.Unavailable, Code.DeadlineExceeded, Code.Canceled]);
+/** How many songs after the current one are kept on the device ahead of time (kantahe-cnf.2). */
+const AHEAD_SONGS = 3;
 const SKIP_AFTER_ERROR_MS = 3000;
 /** After this many songs in a row that will not load, the player stops skipping them. */
 const MAX_AUTO_SKIPS = 3;
@@ -62,6 +71,7 @@ export class PlayerController implements OnDestroy {
   private readonly prefs = inject(VocalsPrefs);
   private readonly cache = inject(SONG_CACHE);
   private readonly server = inject(ServerUrl);
+  private readonly fanfares = inject(Fanfares);
   private readonly makeAudioContext = inject(AUDIO_CONTEXT);
   private readonly catalog = injectClient(CatalogService);
   private readonly session = injectClient(SessionService);
@@ -129,10 +139,14 @@ export class PlayerController implements OnDestroy {
   /** The last value of the vocals choice that was acted on. */
   private lastChoice = this.prefs.on();
 
-  /** The song that is next, whose files this device is keeping ahead of time (pinned in the cache with the current song). */
-  private aheadNumber?: string;
+  /** The songs after the current one whose files this device keeps ahead of time, at most AHEAD_SONGS (pinned with the current song). */
+  private aheadNumbers: string[] = [];
   /** Songs already asked for ahead of time in this page's life: each only once. */
   private readonly askedAhead = new Set<string>();
+  /** The keeping ahead under way: one song after the other, never two downloads at once. */
+  private keepingAhead: Promise<void> = Promise.resolve();
+  /** What the server said about the songs kept ahead (versions, lyrics): a kept song whose turn comes while the server cannot be reached starts from it. */
+  private readonly keptPlayback = new Map<string, Playback>();
   /** The keeping of the current song's files; the next song waits for it, so that the two downloads do not compete. */
   private keepingNow?: Promise<void>;
   private engine?: Engine;
@@ -162,6 +176,10 @@ export class PlayerController implements OnDestroy {
   private reportTimer?: ReturnType<typeof setInterval>;
   private skipTimer?: ReturnType<typeof setTimeout>;
   private cancelWait?: () => void;
+  /** A song whose end the server has not heard yet: it is not begun again, and its end is reported until the server hears it (kantahe-0v6). */
+  private endedPending?: string;
+  /** Ends the wait before the next report of endedPending at once (a state came through: the connection works again). */
+  private wakeEnded?: () => void;
   private dropouts?: DropoutMonitor;
   private frame = 0;
   private clockEngine?: Engine;
@@ -201,10 +219,15 @@ export class PlayerController implements OnDestroy {
       });
     });
     effect(() => {
-      // the song has loaded (the phase is only 'ready' on the player device): the song that is next is kept ahead of time
+      // the device that plays keeps the score fanfares, so that a score sounds without a connection (kantahe-cnf.1)
+      if (this.isPlayer()) untracked(() => this.fanfares.prefetch());
+    });
+    effect(() => {
+      // the song has loaded (the phase is only 'ready' on the player device): the songs that come next are kept ahead of time
       const ready = this.phase() === 'ready';
-      const next = this.state()?.upNext?.song;
-      untracked(() => this.keepAhead(ready ? next : undefined));
+      const s = this.state();
+      const next = [s?.upNext?.song, ...(s?.queue ?? []).map((q) => q.song)];
+      untracked(() => this.keepAhead(ready ? next : []));
     });
     effect(() => {
       // the device's volume changed (from any device): the song that plays gets it at once
@@ -248,6 +271,8 @@ export class PlayerController implements OnDestroy {
   ngOnDestroy(): void {
     document.removeEventListener('visibilitychange', this.onVisibility);
     for (const t of this.volumeTimers.values()) clearTimeout(t);
+    this.endedPending = undefined; // no more reports of an end from a page that is gone
+    this.wakeEnded?.();
     this.stop();
     this.mic.dispose();
   }
@@ -268,6 +293,11 @@ export class PlayerController implements OnDestroy {
 
   private follow(player: boolean, now: { song?: { number: string } } | undefined): void {
     const number = now?.song?.number;
+    // another song is current, or this device no longer plays: the end of the finished song is no longer reported
+    if (this.endedPending && (!player || number !== this.endedPending)) {
+      this.endedPending = undefined;
+      this.wakeEnded?.(); // the waiting report ends at once
+    }
     if (!player || !number) {
       this.stop();
       return;
@@ -275,6 +305,12 @@ export class PlayerController implements OnDestroy {
     // The score screen keeps the finished song as the current one, in a new message each time: it must not be played
     // again (and reported as ended again) until the score is over.
     const scoreShowing = !!this.state()?.score;
+    if (number === this.endedPending) {
+      // a fresh message for the song whose end the server has not heard yet: the connection came back, so the end is reported now; the
+      // song must not be played again
+      this.wakeEnded?.();
+      return;
+    }
     if (this.number === number || now === this.finishedNow || (scoreShowing && number === this.finishedNumber)) return;
     this.begin(number);
   }
@@ -314,6 +350,12 @@ export class PlayerController implements OnDestroy {
         wait = Math.max(res?.retryAfterMs ?? 0, MIN_RETRY_MS);
       } catch {
         if (mine !== this.generation) return;
+        // the server cannot be reached: a song kept ahead starts from what was kept (its files are found by version in the cache)
+        const kept = this.keptPlayback.get(number);
+        if (kept) {
+          playback = kept;
+          break;
+        }
       }
       this.phase.set('preparing');
       if (!(await this.sleep(wait))) return;
@@ -544,23 +586,34 @@ export class PlayerController implements OnDestroy {
 
   /** The files that are never evicted: those of the song that plays and of the one that is next. */
   private pinned(current: string): string[] {
-    const numbers = this.aheadNumber ? [current, this.aheadNumber] : [current];
-    return numbers.flatMap((n) => [`audio/${n}`, `vocals/${n}`]);
+    return [current, ...this.aheadNumbers].flatMap((n) => [`audio/${n}`, `vocals/${n}`]);
   }
 
   /**
-   * Keeps the files of the song that is next while the current one plays, so that it starts from this device. Once per song, never for a MIDI
-   * song, not while the page is hidden or the user asked the browser to save data; every failure is silent.
+   * Keeps the files of the next AHEAD_SONGS songs (the one that is next, then the queue) while the current one plays, so that a spotty
+   * connection does not stop the music and a song starts from this device (kantahe-cnf.2). Each song once, one after the other, never a MIDI
+   * song, never when the user asked the browser to save data; also while the page is hidden (the app plays on in the background). Every failure
+   * is silent.
    */
-  private keepAhead(next: { number: string; format: Format } | undefined): void {
+  private keepAhead(next: readonly ({ number: string; format: Format } | undefined)[]): void {
     const current = this.number;
-    this.aheadNumber = next && next.format !== Format.MIDI && next.number !== current ? next.number : undefined;
-    if (!current || !this.aheadNumber || !this.cache.available() || this.askedAhead.has(this.aheadNumber)) return;
-    if (document.visibilityState === 'hidden' || (navigator as { connection?: { saveData?: boolean } }).connection?.saveData) return;
-    const number = this.aheadNumber;
-    this.askedAhead.add(number);
+    const numbers: string[] = [];
+    for (const song of next) {
+      if (numbers.length === AHEAD_SONGS) break;
+      if (!song || song.format === Format.MIDI || song.number === current || numbers.includes(song.number)) continue;
+      numbers.push(song.number);
+    }
+    this.aheadNumbers = numbers;
+    if (!current || !numbers.length || !this.cache.available()) return;
+    // only now, with a real list: between two songs (nothing ready) the list is empty and what was kept of the later songs must stay
+    for (const number of this.keptPlayback.keys()) if (number !== current && !numbers.includes(number)) this.keptPlayback.delete(number);
+    if ((navigator as { connection?: { saveData?: boolean } }).connection?.saveData) return;
     this.cache.pin(this.pinned(current));
-    void this.fetchAhead(number, current);
+    for (const number of numbers) {
+      if (this.askedAhead.has(number)) continue;
+      this.askedAhead.add(number);
+      this.keepingAhead = this.keepingAhead.then(() => this.fetchAhead(number, current));
+    }
   }
 
   /** Remembers a download of the current song's file (whatever it ends in) for the next song to wait for. */
@@ -575,9 +628,13 @@ export class PlayerController implements OnDestroy {
   private async fetchAhead(number: string, current: string): Promise<void> {
     try {
       await this.keepingNow;
-      if (this.number !== current) return;
+      if (this.number !== current) {
+        this.askedAhead.delete(number); // the song changed first: the next song's turn asks for it again if it is still ahead
+        return;
+      }
       const playback = (await this.catalog.getPlayback({ number })).playback;
       if (!playback?.ready || playback.kind !== PlaybackKind.AUDIO || this.number !== current) return;
+      this.keptPlayback.set(number, playback);
       const base = this.server.base();
       if (playback.audioVersion) await this.cache.store('audio', number, playback.audioVersion, mediaUrl(base, playback.audioUrl));
       if (playback.vocalsUrl && playback.vocalsVersion) await this.cache.store('vocals', number, playback.vocalsVersion, mediaUrl(base, playback.vocalsUrl));
@@ -695,11 +752,31 @@ export class PlayerController implements OnDestroy {
     this.finishedNow = this.state()?.now;
     this.finishedNumber = number;
     this.stop();
-    try {
-      await this.session.ended({ number, loudReadings: loud });
-    } catch {
-      // the state that follows tells what the server made of it
+    // Reported until the server hears it: the queue moves on only through the server, so a lost report would leave it on this song.
+    this.endedPending = number;
+    let wait = ENDED_FIRST_RETRY_MS;
+    for (;;) {
+      try {
+        await this.session.ended({ number, loudReadings: loud });
+        break;
+      } catch (e) {
+        // An answer of the server (not the player any more, already on the score screen) means it heard the end: the state that follows
+        // tells what it made of it. Only a failure of the connection itself is tried again.
+        if (e instanceof ConnectError && !CONNECTION_FAILURES.has(e.code)) break;
+      }
+      if (this.endedPending !== number) return;
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, wait);
+        this.wakeEnded = () => {
+          clearTimeout(timer);
+          resolve();
+        };
+      });
+      this.wakeEnded = undefined;
+      if (this.endedPending !== number) return;
+      wait = Math.min(wait * 2, ENDED_MAX_RETRY_MS);
     }
+    if (this.endedPending === number) this.endedPending = undefined;
   }
 
   private fail(message = 'This song could not be played.'): void {

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:connectrpc/connect.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantahe/auth/sign_in_screen.dart';
 import 'package:kantahe/gen/kantahe/v1/auth.pb.dart';

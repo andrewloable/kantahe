@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:kantahe/core/app_scope.dart';
 import 'package:kantahe/core/errors.dart';
@@ -27,10 +28,19 @@ class PlayerScreen extends StatefulWidget {
     this.screenAwake = const WakelockAwake(),
     this.osMicrophone = askOsMicrophone,
     this.readFreeDisk = readFreeDiskBytes,
+    this.background,
+    this.keepsPlayingInBackground,
   });
 
   final EmbedBuilder embedBuilder;
   final ScreenAwake screenAwake;
+
+  /// The service that keeps the app running while a song plays here; null: the platform's (Android's, or none).
+  final BackgroundPlayback? background;
+
+  /// A song that plays here goes on while another app covers this one (kantahe-go8); null: on Android only. Elsewhere the song is
+  /// paused and the page ended when the app leaves the screen.
+  final bool? keepsPlayingInBackground;
 
   /// Reads the free space of the device in bytes (null: unknown); the page, which keeps songs on the device, is told it.
   final Future<int?> Function() readFreeDisk;
@@ -72,6 +82,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   int _vocalsPct = 60;
   bool _idle = false;
   bool _suspended = false; // the app is in the background: the song is paused and the page ended
+  bool _hidden = false; // another app covers this one (hidden or paused), whether or not the song goes on
+  bool _service = false; // the background playback service was started and not stopped
+  late final bool _keepPlaying = widget.keepsPlayingInBackground ?? defaultTargetPlatform == TargetPlatform.android;
+  late final BackgroundPlayback _background = widget.background ?? (_keepPlaying ? const AndroidBackgroundPlayback() : const NoBackgroundPlayback());
   bool _bound = false;
   ModalRoute<void>? _route;
   bool _awake = false;
@@ -112,6 +126,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
       if (s != null && s.status == PlayStatus.PLAY_STATUS_PLAYING && s.playerDeviceId.isNotEmpty && s.playerDeviceId == _services.auth.deviceId) {
         unawaited(_actions.control(ControlAction.CONTROL_ACTION_PAUSE));
       }
+      _setService(false);
     }
     _hideTimer?.cancel();
     _connectTimer?.cancel();
@@ -271,16 +286,21 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     return wasIdle ? KeyEventResult.handled : KeyEventResult.ignored;
   }
 
-  // The player runs only while it is on screen: when the app goes to the background (Home, another app) the song is paused and the page ended,
-  // so that its synthesizer, timers and video decoders stop and free their memory; coming back loads the page again and the song waits for
-  // Play. "inactive" is a short interruption (a system sheet): nothing changes.
+  // When the app goes to the background (Home, another app, a car's camera view):
+  // - on Android, while a song plays here, nothing changes (kantahe-go8): the page plays on, kept alive by the background playback service,
+  //   and the state stream stays open; once the song stops playing here, the app does what it does below;
+  // - otherwise the song is paused and the page ended, so that its synthesizer, timers and video decoders stop and free their memory; coming
+  //   back loads the page again and the song waits for Play.
+  // "inactive" is a short interruption (a system sheet): nothing changes.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
-        _suspend();
+        _hidden = true;
+        if (!(_keepPlaying && _playingHere)) _suspend();
       case AppLifecycleState.resumed:
+        _hidden = false;
         _resume();
       case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
@@ -300,6 +320,24 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     unawaited(_bridge.host?.unload());
   }
 
+  /// Android: the service runs exactly while a song plays here; started while the app is on screen (a song starts playing here only then,
+  /// or goes on into the background). A song that stops playing here while the app is hidden ends the background stay as on other platforms.
+  void _followBackground() {
+    if (!_keepPlaying) return;
+    _setService(_playingHere);
+    if (_hidden && !_playingHere) {
+      _suspend();
+      _services.state.pause();
+    }
+  }
+
+  void _setService(bool on) {
+    if (on == _service) return;
+    _service = on;
+    unawaited(on ? _background.start() : _background.stop());
+    _services.playingHere.value = on;
+  }
+
   void _resume() {
     if (!_suspended) return;
     _suspended = false;
@@ -313,6 +351,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     for (final mp3 in [true, false]) {
       if (_movedVolume[mp3] != null && _movedVolume[mp3] == _liveVolume(mp3)) _movedVolume.remove(mp3);
     }
+    if (!_suspended) _followBackground();
     if (_suspended) return; // the state is stale while the app is in the background
     final shouldBeAwake = _playingHere;
     if (!shouldBeAwake) {
@@ -536,11 +575,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                                                   child: const Text('Play here'),
                                                 ),
                                               ),
-                                            // for the people in the room: the server's address as a QR, to queue songs from a phone or tablet
-                                            if (AppScope.isTvOf(context))
-                                              FocusGrow(
-                                                child: OutlinedButton(focusNode: _connectNode, onPressed: _showConnect, child: const Text('Connect a phone')),
-                                              ),
+                                            // for the people in the room or in the car: the server's address as a QR, to queue songs from a phone or
+                                            // tablet; on every player (kantahe-86t), a head unit cannot be told apart from a tablet anyway
+                                            FocusGrow(
+                                              child: OutlinedButton(focusNode: _connectNode, onPressed: _showConnect, child: const Text('Connect a phone')),
+                                            ),
                                           ],
                                         );
                                       },
@@ -555,7 +594,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                     ),
                   ),
                 ),
-                // above the controls and above the lyrics; it takes no focus: the focus stays on the button that opened it
+                // above the controls and above the lyrics; it takes no focus: the focus stays on the button that opened it. On a touch screen a
+                // tap beside it closes it (the remote has Back for that).
+                if (_connectOpen)
+                  Positioned.fill(
+                    child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: _closeConnect),
+                  ),
                 if (_connectOpen)
                   Center(
                     child: ExcludeFocus(child: ConnectCard(address: server)),

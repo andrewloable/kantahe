@@ -1167,6 +1167,99 @@ describe('PlayerController', () => {
       expect(fake.created.length).toBe(2);
     });
 
+    // kantahe-0v6: a song that ends while the connection is gone
+    it('REGRESSION: an end that cannot be reported is reported again until the server hears it, waiting 1 s, then 2 s', async () => {
+      const { server, fake, push } = setup();
+      let fails = 2;
+      server.handlers.ended = () => {
+        if (fails-- > 0) throw new ConnectError('offline', Code.Unavailable);
+      };
+      await push(PLAYING);
+      fake.last().finish();
+      await vi.advanceTimersByTimeAsync(20);
+      expect(server.calls.ended).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(server.calls.ended).toHaveLength(2);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(server.calls.ended).toHaveLength(2); // the second wait is 2 s
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(server.calls.ended).toHaveLength(3);
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(server.calls.ended).toHaveLength(3); // heard: no more reports
+      expect(server.calls.ended.every((e) => e.number === '21628')).toBe(true);
+    });
+
+    it('REGRESSION: the finished song is not begun again when a new message for it arrives before its end was heard', async () => {
+      const { server, fake, push } = setup();
+      server.handlers.ended = () => {
+        throw new ConnectError('offline', Code.Unavailable);
+      };
+      await push(PLAYING);
+      fake.last().finish();
+      await vi.advanceTimersByTimeAsync(20);
+      await push(PLAYING); // the connection is back: the server still has the song as current, in a fresh message
+      await push(PLAYING);
+      expect(fake.created.length).toBe(1);
+      expect(server.calls.ready.length).toBe(1);
+    });
+
+    it('a fresh state while the end waits to be reported (the connection is back) reports it at once, without waiting', async () => {
+      const { server, fake, push } = setup();
+      let fails = 1;
+      server.handlers.ended = () => {
+        if (fails-- > 0) throw new ConnectError('offline', Code.Unavailable);
+      };
+      await push(PLAYING);
+      fake.last().finish();
+      await vi.advanceTimersByTimeAsync(20);
+      expect(server.calls.ended).toHaveLength(1);
+      await push(PLAYING); // a state came through: the connection works again (push waits only 20 ms, far less than the 1 s retry)
+      expect(server.calls.ended).toHaveLength(2);
+    });
+
+    it('REGRESSION (review of kantahe-0v6): an answer of the server (it heard the end but refuses it) is not reported again', async () => {
+      for (const code of [Code.FailedPrecondition, Code.PermissionDenied, Code.NotFound]) {
+        TestBed.resetTestingModule();
+        const { server, fake, push } = setup();
+        server.handlers.ended = () => {
+          throw new ConnectError('stale', code);
+        };
+        await push(PLAYING);
+        fake.last().finish();
+        await vi.advanceTimersByTimeAsync(20);
+        await push(PLAYING);
+        await vi.advanceTimersByTimeAsync(10_000);
+        expect(server.calls.ended, `code ${Code[code]}`).toHaveLength(1);
+        TestBed.inject(StateStore).stop();
+      }
+    });
+
+    it('a failure of the connection itself is reported again', async () => {
+      const { server, fake, push } = setup();
+      let fails = 1;
+      server.handlers.ended = () => {
+        if (fails-- > 0) throw new ConnectError('down', Code.Unavailable);
+      };
+      await push(PLAYING);
+      fake.last().finish();
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(server.calls.ended).toHaveLength(2);
+    });
+
+    it('stops reporting the end once another song is current', async () => {
+      const { server, fake, push } = setup();
+      server.handlers.ended = () => {
+        throw new ConnectError('offline', Code.Unavailable);
+      };
+      await push(PLAYING);
+      fake.last().finish();
+      await vi.advanceTimersByTimeAsync(20);
+      await push({ ...PLAYING, now: { ...PLAYING.now!, song: song('21640', 'Another', 'Adele', Format.MP3) } }); // skipped from another device
+      const n = server.calls.ended.length;
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(server.calls.ended.length).toBe(n);
+    });
+
     it('goes on to the next song', async () => {
       const { server, fake, push } = setup();
       await push(PLAYING);

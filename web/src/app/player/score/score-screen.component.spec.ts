@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 import { ScoreSchema } from '../../../gen/kantahe/v1/session_pb';
 import { ServerUrl } from '../../core/server-url';
+import { Fanfares } from './fanfares';
 import { FANFARE_AUDIO, ScoreScreenComponent } from './score-screen.component';
 
 function score(over: Partial<{ number: string; hasValue: boolean; value: number; comment: string; fanfare: number; reason: string; untilMs: bigint }> = {}) {
@@ -114,6 +115,15 @@ describe('ScoreScreenComponent', () => {
       expect(number()?.classList.contains(cls), `fanfare ${fanfare}`).toBe(true);
       expect(played.map((p) => p.url)).toEqual([`${TestBed.inject(ServerUrl).base()}/media/fanfare/${fanfare}.mp3`]);
     }
+  });
+
+  it('REGRESSION (kantahe-cnf.1): a fanfare kept on the device is played from it, so a dropped connection does not silence it', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: Fanfares, useValue: { url: (tier: number) => `blob:kept-${tier}`, prefetch: () => undefined } }] });
+    const { show, pass, played } = setup();
+    await show(score({ fanfare: 3, value: 95 }));
+    await pass(1400);
+    expect(played.map((p) => p.url)).toEqual(['blob:kept-3']);
   });
 
   it('below 70 there is no tier colour and no fanfare', async () => {

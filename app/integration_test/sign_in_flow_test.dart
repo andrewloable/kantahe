@@ -7,7 +7,7 @@
 //
 // USER_* is a normal account, TEMP_* an account whose password the admin marked "must change". Without
 // SERVER_URL the test is skipped. It signs the device out and forgets the server address first.
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:kantahe/core/app_scope.dart';

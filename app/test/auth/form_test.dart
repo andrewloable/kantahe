@@ -41,6 +41,27 @@ void main() {
     });
   });
 
+  // kantahe-0je: Android reports manufacturer "BYD AUTO" and model "BYD AUTO" on a BYD head unit
+  group('androidDeviceName', () {
+    test('REGRESSION: a model that already names the maker is not prefixed with it again', () {
+      expect(androidDeviceName('BYD AUTO', 'BYD AUTO'), 'BYD AUTO');
+      expect(androidDeviceName('Xiaomi', 'Xiaomi MIBOX4'), 'Xiaomi MIBOX4');
+      expect(androidDeviceName('xiaomi', 'Xiaomi MIBOX4'), 'Xiaomi MIBOX4'); // the case may differ
+    });
+
+    test('otherwise the maker and the model', () {
+      expect(androidDeviceName('Sony', 'BRAVIA 4K VH21'), 'Sony BRAVIA 4K VH21');
+      expect(androidDeviceName('samsung', 'SM-S918B'), 'samsung SM-S918B');
+      expect(androidDeviceName('LG', 'LGM-V300'), 'LG LGM-V300'); // review: a model that only begins with the same letters keeps the maker
+    });
+
+    test('an empty maker or model leaves the other', () {
+      expect(androidDeviceName('', 'Pixel 8'), 'Pixel 8');
+      expect(androidDeviceName('Google', '  '), 'Google');
+      expect(androidDeviceName(' Google ', ' Pixel 8 '), 'Google Pixel 8');
+    });
+  });
+
   group('device type and name of this phone', () {
     tearDown(() => debugDefaultTargetPlatformOverride = null);
 

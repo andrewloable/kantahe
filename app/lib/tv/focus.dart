@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Marks the box [FocusRing] draws (the tests count the ones with a border).
 const focusRingKey = ValueKey('focus-ring');

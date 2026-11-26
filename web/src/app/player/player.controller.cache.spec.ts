@@ -340,7 +340,7 @@ describe('PlayerController: the song cache', () => {
       expect(asked(t, '21630')).toBe(0);
     });
 
-    it('does nothing when the user asked the browser to save data, or while the page is hidden', async () => {
+    it('does nothing when the user asked the browser to save data', async () => {
       const t = setup();
       answer(t);
       Object.defineProperty(navigator, 'connection', { value: { saveData: true }, configurable: true });
@@ -348,11 +348,16 @@ describe('PlayerController: the song cache', () => {
       await t.flush(100);
       Reflect.deleteProperty(navigator, 'connection');
       expect(asked(t, '21630')).toBe(0);
+    });
+
+    it('REGRESSION (kantahe-cnf.2): keeps songs while the page is hidden (the app plays on in the background)', async () => {
+      const t = setup();
+      answer(t);
       const hidden = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
-      await t.push(withNext({ serverTimeMs: 2000 }));
+      await t.push(withNext());
       await t.flush(100);
       hidden.mockRestore();
-      expect(asked(t, '21630')).toBe(0);
+      expect(asked(t, '21630')).toBe(1);
     });
 
     it('is silent when the server cannot say, and tries the next song that comes', async () => {
@@ -378,6 +383,84 @@ describe('PlayerController: the song cache', () => {
       await t.push(withNext());
       await t.flush(100);
       expect(t.cache.stores.filter((s) => s.number === '21630')).toEqual([]);
+    });
+
+    // kantahe-cnf.2: three songs ahead, from the song that is next and then the queue, so that a spotty connection does not stop the music
+    const B = song('21631', 'Rolling', 'Adele', Format.MP3);
+    const C = song('21632', 'Someone', 'Adele', Format.MP3);
+    const D = song('21633', 'Water', 'Adele', Format.MP3);
+    const item = (id: string, x: typeof MP3) => ({ id, song: x });
+
+    it('REGRESSION (kantahe-cnf.2): keeps the next three songs, the one that is next first and then the queue, one after the other', async () => {
+      const t = setup();
+      answer(t);
+      await t.push(withNext({ queue: [item('q1', NEXT), item('q2', B), item('q3', C), item('q4', D)] }));
+      await t.flush(200);
+      expect(t.cache.stores.map((x) => x.number)).toEqual(['21628', '21630', '21631', '21632']);
+      expect(asked(t, '21633')).toBe(0);
+    });
+
+    it('skips the song that plays, MIDI songs and repeats when it picks the three', async () => {
+      const t = setup();
+      answer(t);
+      await t.push(withNext({ queue: [item('q1', MP3), item('q2', MIDI), item('q3', NEXT), item('q4', B), item('q5', C), item('q6', D)] }));
+      await t.flush(200);
+      expect(t.cache.stores.map((x) => x.number)).toEqual(['21628', '21630', '21631', '21632']);
+      expect(asked(t, '21629')).toBe(0);
+    });
+
+    it('pins the song that plays and the three ahead; a song that leaves the three is no longer pinned', async () => {
+      const t = setup();
+      answer(t);
+      await t.push(withNext({ queue: [item('q2', B), item('q3', C)] }));
+      await t.flush(200);
+      expect(t.cache.pinned.at(-1)).toEqual(['audio/21628', 'vocals/21628', 'audio/21630', 'vocals/21630', 'audio/21631', 'vocals/21631', 'audio/21632', 'vocals/21632']);
+      await t.push(withNext({ queue: [item('q4', D)], serverTimeMs: 2000 }));
+      await t.flush(200);
+      expect(t.cache.pinned.at(-1)).toEqual(['audio/21628', 'vocals/21628', 'audio/21630', 'vocals/21630', 'audio/21633', 'vocals/21633']);
+    });
+
+    it('REGRESSION (kantahe-cnf.2): a kept song whose turn comes while the server cannot be reached starts from what was kept', async () => {
+      const t = setup();
+      answer(t);
+      await t.push(withNext());
+      await t.flush(100);
+      t.cache.kept.set('audio/21630@v1', 'blob:next');
+      t.server.handlers.playback = () => {
+        throw new Error('offline');
+      };
+      await t.push(playing(NEXT));
+      await t.flush(100);
+      expect(t.fake.last().load).toHaveBeenCalledWith(expect.objectContaining({ audioUrl: 'blob:next' }));
+      expect(t.player.error()).toBe('');
+    });
+
+    it('REGRESSION (review of kantahe-cnf.2): what was kept of the songs further ahead survives the change to the next song', async () => {
+      const t = setup();
+      answer(t);
+      await t.push(withNext({ queue: [item('q2', B), item('q3', C)] }));
+      await t.flush(200);
+      await t.push({ ...playing(NEXT), queue: [item('q2', B), item('q3', C)] }); // the next song plays; B and C were kept while MP3 played
+      await t.flush(200);
+      t.cache.kept.set('audio/21631@v1', 'blob:b');
+      t.server.handlers.playback = (req) => {
+        if (req.number === B.number) throw new Error('offline');
+        return audio(req.number);
+      };
+      await t.push({ ...playing(B), queue: [item('q3', C)] });
+      await t.flush(200);
+      expect(t.fake.last().load).toHaveBeenCalledWith(expect.objectContaining({ audioUrl: 'blob:b' }));
+    });
+
+    it('a fresh answer of the server is preferred to what was kept', async () => {
+      const t = setup();
+      answer(t);
+      await t.push(withNext());
+      await t.flush(100);
+      t.server.handlers.playback = (req) => audio(req.number, { audioVersion: 'v2', audioUrl: `/media/song/${req.number}?sig=new` });
+      await t.push(playing(NEXT));
+      await t.flush(100);
+      expect(t.fake.last().load).toHaveBeenCalledWith(expect.objectContaining({ audioVersion: 'v2' }));
     });
 
     it('REGRESSION: when it becomes the current song it plays from the kept file and is not kept again', async () => {

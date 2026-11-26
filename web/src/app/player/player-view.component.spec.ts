@@ -499,6 +499,17 @@ describe('PlayerViewComponent', () => {
       const css = Array.from(document.querySelectorAll('style')).map((st) => st.textContent ?? '').join('\n');
       expect(css).toMatch(/progress[^{]*\{[^}]*align-self:\s*center/);
     });
+
+    it('REGRESSION (kantahe-ie6): draws its own dark track and accent fill, so an old WebView (Chromium 74, no color-scheme) shows no white bar', async () => {
+      const { push } = setup();
+      await push(PLAYING);
+      const css = Array.from(document.querySelectorAll('style')).map((st) => st.textContent ?? '').join('\n');
+      expect(css).toMatch(/progress[^{]*\{[^}]*(-webkit-)?appearance:\s*none/);
+      // without its native look the bar has no height of its own in the flex column: a full screen of lyrics squeezed it to nothing
+      expect(css).toMatch(/progress[^{]*\{[^}]*flex-shrink:\s*0/);
+      expect(css).toMatch(/progress[^{]*::-webkit-progress-bar[^{]*\{[^}]*background/);
+      expect(css).toMatch(/progress[^{]*::-webkit-progress-value[^{]*\{[^}]*background:\s*var\(--fill\)/);
+    });
   });
 
   describe('leaving the player page', () => {

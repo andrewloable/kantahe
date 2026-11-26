@@ -106,7 +106,8 @@ for t in go node npm flutter buf nginx caddy docker python3; do
 done
 have go && case "$(go version)" in *"go$go_want"*) ;; *) echo "WARNING: go.mod wants Go $go_want; CI uses that, this machine has $(go version | awk '{print $3}')" ;; esac
 have node && [ "$(node_major)" != 24 ] && echo "WARNING: CI uses Node 24 (setup-node node-version: 24); this machine has $(node --version)"
-have flutter && echo "   (CI uses the Flutter stable channel, not pinned; this machine: $(flutter --version 2>/dev/null | head -1))"
+flutter_want="$(sed -n 's/^ *flutter-version: *\([0-9][0-9.]*\).*/\1/p' "$wt/.github/workflows/ci.yml" | head -1)"
+have flutter && case "$(tool_version flutter)" in *"Flutter $flutter_want "*) ;; *) echo "WARNING: ci.yml pins Flutter $flutter_want; this machine has $(tool_version flutter | awk '{print $2}')" ;; esac
 
 # --- running ----------------------------------------------------------------------------------------------------------
 # run DIR COMMAND: the command exactly as in ci.yml, in DIR of the clean checkout

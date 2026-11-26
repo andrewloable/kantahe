@@ -164,6 +164,11 @@ test('the whole flow: setup, accounts, upload, search, queue, play, score, rando
   // the second device of the user
   const two = await device(browser, 'Device 2');
   const c = await two.newPage();
+  // kantahe-cnf.1: the device that plays keeps the score fanfares; the fanfare of a score is then played from memory, not fetched
+  const fanfareRequests: string[] = [];
+  c.on('request', (r) => {
+    if (r.url().includes('/media/fanfare/')) fanfareRequests.push(new URL(r.url()).pathname);
+  });
 
   await test.step('a second device takes over in the middle of the song: Playing on swaps, and the song goes on from where it was', async () => {
     await expect(stage(b).locator('.time')).toContainText('0:01');
@@ -178,6 +183,7 @@ test('the whole flow: setup, accounts, upload, search, queue, play, score, rando
     await stage(c).getByRole('button', { name: 'Pause' }).click();
     await expect(stage(c).locator('.time')).toHaveText(/^\s*0:0[1-9]\s+\//);
     await expect(b.getByText('Playing on Device 2')).toBeVisible();
+    await expect.poll(() => [...fanfareRequests].sort(), { message: 'the new player fetched the three fanfares ahead' }).toEqual(['/media/fanfare/1.mp3', '/media/fanfare/2.mp3', '/media/fanfare/3.mp3']);
     await stage(c).getByRole('button', { name: 'Play', exact: true }).click();
   });
 
@@ -185,6 +191,8 @@ test('the whole flow: setup, accounts, upload, search, queue, play, score, rando
     const overlay = c.getByRole('dialog', { name: 'Score' });
     await expect(overlay).toBeVisible();
     await expect(overlay.locator('.number')).toHaveText(/^(5\d|[6-9]\d|100)$/, { timeout: 15_000 });
+    await c.waitForTimeout(500);
+    expect(fanfareRequests, 'a fanfare at score time comes from memory: nothing more was fetched').toHaveLength(3);
   });
 
   await test.step('the MIDI entry plays next, through the synthesizer, with its lyrics', async () => {

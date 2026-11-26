@@ -80,6 +80,8 @@ export function fakePlayerServer() {
     playback: ((): Playback => playbackOf()) as (req: GetPlaybackRequest) => Playback | Promise<Playback>,
     ready: (() => undefined) as (req: ReadyRequest) => void,
     control: (() => undefined) as (req: ControlRequest) => void,
+    /** Throw to make Ended fail (the connection is gone). */
+    ended: (() => undefined) as (req: EndedRequest) => void,
     setMidiMode: (() => undefined) as (req: SetMidiModeRequest) => void,
     /** Throw to make SetVolume fail. */
     setVolume: (() => undefined) as (req: SetVolumeRequest) => void,
@@ -117,6 +119,7 @@ export function fakePlayerServer() {
       },
       ended(req) {
         calls.ended.push(req);
+        handlers.ended(req);
         return create(EndedResponseSchema, {});
       },
       reportDevice(req) {

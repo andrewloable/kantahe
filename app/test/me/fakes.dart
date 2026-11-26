@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:connectrpc/connect.dart';
 import 'package:connectrpc/test.dart';
 import 'package:fixnum/fixnum.dart';
-import 'package:flutter/material.dart' hide State;
+import 'package:material_ui/material_ui.dart' hide State;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kantahe/core/api.dart';
 import 'package:kantahe/core/app_scope.dart';

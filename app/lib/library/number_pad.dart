@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:connectrpc/connect.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:kantahe/core/errors.dart';
 import 'package:kantahe/gen/kantahe/v1/catalog.pb.dart';
 import 'package:kantahe/gen/kantahe/v1/common.pb.dart';

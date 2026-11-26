@@ -14,7 +14,7 @@ Future<String> currentDeviceName({bool tv = false}) async {
     final plugin = DeviceInfoPlugin();
     if (ios) return cleanDeviceName((await plugin.iosInfo).name, fallback);
     final info = await plugin.androidInfo;
-    return cleanDeviceName('${info.manufacturer} ${info.model}', fallback);
+    return cleanDeviceName(androidDeviceName(info.manufacturer, info.model), fallback);
   } catch (_) {
     return fallback; // the name is a convenience: never block signing in on it
   }
