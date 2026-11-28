@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { InstallPrompt } from '../core/install';
+import { keepCurrentEntryInView } from '../shared/sub-nav';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 @Component({
@@ -35,4 +36,8 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 })
 export class MePage {
   protected readonly install = inject(InstallPrompt);
+
+  constructor() {
+    keepCurrentEntryInView();
+  }
 }

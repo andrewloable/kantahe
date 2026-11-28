@@ -482,6 +482,9 @@ exactly as without it.
   player.
 * **Pause** / **Skip** / **Add** / **Remove** / **Move to top** / **Add playlist**: from any of the user's
   devices. Add never interrupts; Skip keeps the status.
+* **No duplicates** (owner decision 2026-11-28, kantahe-du1.3): Add refuses a song that is waiting in the queue or is
+  the current song (not while that song's score shows) with `AlreadyExists`; Add playlist skips such songs and a
+  song listed twice, and `added` counts only what was queued. The random pick up next does not count.
 * **Ended** (from the player, with `loudReadings`): score per section 3, `score` shown for
   `--score-seconds` (6), history entry written, then the next song. Skipped songs: no score, history
   entry without score.

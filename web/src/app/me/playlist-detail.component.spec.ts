@@ -11,8 +11,8 @@ const A = song('1', 'Alpha', 'A', Format.MP3, false, { lyricTiming: LyricTiming.
 const B = song('2', 'Bravo', 'B');
 const C = song('3', 'Charlie', 'C');
 
-async function setup(songs = [A, B, C]) {
-  const server = fakeMe({ playlists: [{ id: 'p1', name: 'Party', songs }] });
+async function setup(songs = [A, B, C], queued: string[] = []) {
+  const server = fakeMe({ playlists: [{ id: 'p1', name: 'Party', songs }], queued });
   TestBed.configureTestingModule({
     providers: [provideRouter([{ path: 'me/playlists/:id', component: PlaylistDetailComponent }]), { provide: TRANSPORT, useValue: server.transport }],
   });
@@ -148,6 +148,13 @@ describe('PlaylistDetailComponent', () => {
     await settle();
     expect(server.calls.toQueue).toEqual(['p1']);
     expect(TestBed.inject(ToastService).toasts()[0].message).toBe('Added 3 songs to the queue');
+  });
+
+  it('regression: when every song is already queued it says so instead of "Added 0 songs"', async () => {
+    const { el, settle } = await setup([A, B, C], [A.number, B.number, C.number]);
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Add all to queue'))!.click();
+    await settle();
+    expect(TestBed.inject(ToastService).toasts()[0].message).toBe('These songs are already in the queue');
   });
 
   it('an empty playlist says so and has nothing to add', async () => {

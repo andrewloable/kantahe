@@ -62,7 +62,12 @@ class LibraryActions extends ChangeNotifier {
       notify('Added ${song.title}');
       return true;
     } catch (e) {
-      notify(problem(e, {Code.notFound: 'That song is no longer in the library.'}), error: true);
+      if (e is ConnectException && e.code == Code.alreadyExists) {
+        // the server refuses a song that is already queued or playing (kantahe-du1.3): an entry error, not a failure
+        notify('${song.title} is already in the queue');
+      } else {
+        notify(problem(e, {Code.notFound: 'That song is no longer in the library.'}), error: true);
+      }
       return false;
     }
   }

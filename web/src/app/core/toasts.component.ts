@@ -5,10 +5,13 @@ import { ToastService } from './toast';
   selector: 'app-toasts',
   template: `
     @if (inShell() === toasts.inShell()) {
-      <div class="toasts" [class.in-page]="inShell()" [class.centered]="centered()" aria-live="polite">
+      <div class="toasts" data-overlay="toast" [class.in-page]="inShell()" [class.centered]="centered()" aria-live="polite">
         @for (t of toasts.toasts(); track t.id) {
           <div class="toast" [class.error]="t.kind === 'error'" [attr.role]="t.kind === 'error' ? 'alert' : 'status'">
-            <span>{{ t.message }}</span>
+            @if (t.kind === 'info') {
+              <span class="mark" aria-hidden="true">✓</span>
+            }
+            <span class="text">{{ t.message }}</span>
             @if (t.action; as a) {
               <button type="button" class="action" (click)="toasts.act(t.id)">{{ a.label }}</button>
             }
@@ -19,59 +22,73 @@ import { ToastService } from './toast';
     }
   `,
   styles: `
+    /* A toast floats above the page and never moves or resizes anything else (owner decision 2026-11-28, kantahe-du1.1): every
+       variant is fixed to the window. It may cover the page for the few seconds it shows. */
     .toasts {
       position: fixed;
+      z-index: 40;
       left: 0;
       right: 0;
-      bottom: 1rem;
+      bottom: calc(1rem + env(safe-area-inset-bottom));
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 0.5rem;
-      padding: 0 1rem;
+      padding: 0 0.75rem;
       pointer-events: none;
     }
-    /* in the page frame: under the top bar, in the flow of the page (it covers nothing there); sticky, so on a scrolled page it stays at the top over it until dismissed */
-    .toasts.in-page {
-      position: sticky;
-      top: 0;
-      left: auto;
-      right: auto;
-      bottom: auto;
-      z-index: 30;
-      align-items: flex-start;
-      margin: 0 1rem 0.5rem;
-      padding: 0;
+    /* a phone shows the tab bar at the bottom (shell.component.css): the toasts sit just above it, near the thumb */
+    @media (max-width: 40rem) {
+      .toasts.in-page {
+        bottom: calc(4rem + env(safe-area-inset-bottom));
+      }
     }
-    /* on the player: centred on the stage, which does not scroll; no room taken while there is nothing to say */
+    /* on the player: at the top of the stage under its top bar, clear of the controls at the bottom; the embedded player moves it below
+       the app's own Close button (--toast-top, player-view.component.ts) */
     .toasts.in-page.centered {
-      position: static;
-      align-items: center;
-      margin: 0 0 0.5rem;
-    }
-    .toasts.in-page.centered:empty {
-      margin: 0;
+      top: var(--toast-top, 4rem);
+      bottom: auto;
     }
     .toast {
       pointer-events: auto;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.5rem;
+      width: max-content;
       max-width: min(28rem, 100%);
-      padding: 0.5rem 0.75rem;
-      border-radius: 0.5rem;
-      background: var(--ink);
-      color: #fff;
-      box-shadow: 0 2px 8px rgb(0 0 0 / 0.4);
+      padding: 0.375rem 0.375rem 0.375rem 0.875rem;
+      border-radius: 0.75rem;
+      background: var(--accent);
+      color: var(--on-accent);
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgb(0 0 0 / 0.35);
+      animation: toast-in 150ms ease-out;
     }
     .toast.error {
       background: #7a1010;
+      color: #fff;
     }
-    .toast span {
+    /* a slide only, no fade: a half-transparent toast is below the contrast it needs (axe caught one mid-entrance) */
+    @keyframes toast-in {
+      from {
+        transform: translateY(0.5rem);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .toast {
+        animation: none;
+      }
+    }
+    .mark {
+      font-size: 1.125rem;
+      line-height: 1;
+    }
+    .text {
       min-width: 0;
       overflow-wrap: anywhere;
     }
     .toast button {
+      flex: none;
       min-width: 2.75rem;
       min-height: 2.75rem;
       padding: 0 0.5rem;

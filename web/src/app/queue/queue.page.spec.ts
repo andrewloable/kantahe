@@ -38,8 +38,19 @@ async function setup(initial?: StateInit) {
   };
   await settle();
   const rows = () => Array.from(el.querySelectorAll<HTMLElement>('.queue li'));
-  const click = (row: HTMLElement, name: string) => Array.from(row.querySelectorAll('button')).find((b) => b.textContent?.trim().startsWith(name))!.click();
-  return { fixture, el, server, settle, rows, click, toastEl: toastsFixture.nativeElement as HTMLElement, toasts: TestBed.inject(ToastService) };
+  // a row's actions are in its More menu (kantahe-du1.7): open it when the action is not on screen yet
+  const find = (row: HTMLElement, name: string) => Array.from(row.querySelectorAll('button')).find((b) => b.textContent?.trim().startsWith(name));
+  const menu = (row: HTMLElement) => {
+    row.querySelector<HTMLButtonElement>('button.more')!.click();
+    fixture.detectChanges();
+    return Array.from(row.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
+  };
+  const click = (row: HTMLElement, name: string) => {
+    if (!find(row, name)) menu(row);
+    find(row, name)!.click();
+    fixture.detectChanges();
+  };
+  return { fixture, el, server, settle, rows, click, menu, toastEl: toastsFixture.nativeElement as HTMLElement, toasts: TestBed.inject(ToastService) };
 }
 
 describe('QueuePage', () => {
@@ -95,11 +106,24 @@ describe('QueuePage', () => {
     expect(rows().length).toBe(1);
   });
 
-  it('regression: Remove is a danger button and Move to top a plain one (all buttons were filled alike)', async () => {
+  it('regression: Remove is a danger item and Move to top a plain one (all buttons were filled alike)', async () => {
+    const { rows, menu } = await setup(BASE);
+    const items = menu(rows()[1]);
+    expect(items.find((b) => b.textContent?.trim() === 'Remove')!.classList.contains('danger')).toBe(true);
+    expect(items.find((b) => b.textContent?.trim() === 'Move to top')!.classList.contains('danger')).toBe(false);
+  });
+
+  // kantahe-du1.7: a queue row is one line: song, badges and one More button (the Library's pattern, kantahe-tlf.3.3)
+  it('regression: a row has one button, More actions for its song, and no Move to top or Remove button in the row', async () => {
     const { rows } = await setup(BASE);
-    const button = (name: string) => Array.from(rows()[1].querySelectorAll('button')).find((b) => b.textContent?.trim().startsWith(name))!;
-    expect(button('Remove').classList.contains('danger')).toBe(true);
-    expect(button('Move to top').className).toBe('');
+    const buttons = Array.from(rows()[1].querySelectorAll('button'));
+    expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual(['More actions for Skyfall']);
+  });
+
+  it('the More menu of the second row has Move to top and Remove; of the first row only Remove', async () => {
+    const { rows, menu } = await setup(BASE);
+    expect(menu(rows()[1]).map((b) => b.textContent?.trim())).toEqual(['Move to top', 'Remove']);
+    expect(menu(rows()[0]).map((b) => b.textContent?.trim())).toEqual(['Remove']);
   });
 
   it('Remove sends RemoveFromQueue with the item id and offers Undo', async () => {
@@ -121,8 +145,9 @@ describe('QueuePage', () => {
   });
 
   it('Move to top sends MoveToTop, and the first row has none', async () => {
-    const { rows, click, server, settle } = await setup(BASE);
-    expect(Array.from(rows()[0].querySelectorAll('button')).some((b) => b.textContent?.includes('Move to top'))).toBe(false);
+    const { rows, click, menu, server, settle } = await setup(BASE);
+    expect(menu(rows()[0]).some((b) => b.textContent?.includes('Move to top'))).toBe(false);
+    menu(rows()[0]); // closes it again
     click(rows()[2], 'Move to top');
     await settle();
     expect(server.calls.top.map((r) => r.itemId)).toEqual(['q3']);
@@ -148,11 +173,11 @@ describe('QueuePage', () => {
     expect(server.calls.top.length).toBe(2);
   });
 
-  it('every row button says which song it is about', async () => {
-    const { rows } = await setup(BASE);
-    const labels = Array.from(rows()[1].querySelectorAll('button')).map((b) => b.getAttribute('aria-label'));
-    expect(labels).toContain('Remove Skyfall from the queue');
-    expect(labels).toContain('Move to top: Skyfall');
+  it('the More button and its menu say which song they are about', async () => {
+    const { rows, menu } = await setup(BASE);
+    expect(rows()[1].querySelector('button.more')!.getAttribute('aria-label')).toBe('More actions for Skyfall');
+    menu(rows()[1]);
+    expect(rows()[1].querySelector('[role="menu"]')!.getAttribute('aria-label')).toBe('More actions for Skyfall');
   });
 
   it('shows the now playing card and the devices', async () => {

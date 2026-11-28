@@ -253,6 +253,13 @@ test.describe('overlap', () => {
   test('a dialog is meant to cover the page', async ({ page }) => {
     expect(of(await run(page, button(100, 50, 10, 600, 'Pay') + footer('role="dialog"')), 'overlap')).toHaveLength(0);
   });
+  // kantahe-du1.1: a toast floats above the page for a few seconds by the owner's decision; only the marked toast layer is exempt
+  test('a toast layer (data-overlay="toast") is meant to cover the page', async ({ page }) => {
+    expect(of(await run(page, button(100, 50, 10, 600, 'Pay') + footer('data-overlay="toast"')), 'overlap')).toHaveLength(0);
+  });
+  test('another value of data-overlay is still reported', async ({ page }) => {
+    expect(of(await run(page, button(100, 50, 10, 600, 'Pay') + footer('data-overlay="banner"')), 'overlap')).toHaveLength(1);
+  });
   test('a button drawn above the fixed footer (a dialog over a tab bar) is not covered by it', async ({ page }) => {
     const above = button(100, 50, 10, 600, 'Save').replace('position:absolute;', 'position:absolute;z-index:50;');
     expect(of(await run(page, above + footer()), 'overlap')).toHaveLength(0);
@@ -268,6 +275,13 @@ test.describe('overlap', () => {
   });
   test('a button half under the fixed footer is still reported', async ({ page }) => {
     expect(of(await run(page, button(100, 50, 10, 575, 'Pay') + footer()), 'overlap').map((r) => r.text)).toEqual(['Pay']);
+  });
+  // kantahe-du1.9: a sideways strip (a sub-menu) far above a fixed footer: the part of an entry that is scrolled out of the strip has a
+  // negative width and the gap to the footer a negative height; their product is positive, which made the check report it as covered
+  test('an entry scrolled out of a sideways strip far above the fixed footer is not covered', async ({ page }) => {
+    const strip =
+      '<nav style="position:absolute;left:16px;top:20px;width:200px;display:flex;overflow-x:auto"><button style="flex:none;width:150px;height:44px">A</button><button style="flex:none;width:150px;height:44px">Beyond</button><button style="flex:none;width:150px;height:44px">Far</button></nav>';
+    expect(of(await run(page, strip + footer()), 'overlap')).toHaveLength(0);
   });
   test('a button inside the fixed footer is not covered by it', async ({ page }) => {
     expect(of(await run(page, '<div style="position:fixed;left:0;right:0;bottom:0;height:100px"><button style="width:60px;height:50px">Go</button></div>'), 'overlap')).toHaveLength(0);

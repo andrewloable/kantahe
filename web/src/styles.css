@@ -304,11 +304,27 @@ button.quiet {
   color: var(--on-accent);
 }
 
-/* on a phone the nine entries of Me are packed tighter (the gap stays 8 px: the layout tests keep controls 8 px apart) */
+/* on a phone the sub-menu is one line that scrolls sideways (Me took four rows, kantahe-du1.9); the current entry is kept in view
+   (shared/sub-nav.ts); the gap stays 8 px (the layout tests keep controls 8 px apart) */
 @media (max-width: 40rem) {
+  .sub-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .sub-nav::-webkit-scrollbar {
+    display: none;
+  }
   .sub-nav a,
   .sub-nav .entry {
+    flex: none;
     padding: 0 0.75rem;
+    white-space: nowrap;
+  }
+  /* the strip clips what sticks out of it: the focus ring is drawn inside the entry */
+  .sub-nav a:focus-visible,
+  .sub-nav .entry:focus-visible {
+    outline-offset: -0.25rem;
   }
 }
 

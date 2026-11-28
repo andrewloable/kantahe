@@ -68,8 +68,11 @@ there on a phone too).
 
 * Choosing a song adds it to **your queue**. The queue is yours alone, kept on the server, and the same on all your
   devices. A song you add while another plays waits its turn.
+* A song is in your queue only once. Adding a song that is already waiting, or that is playing now, adds nothing and says
+  *already in the queue* (a second tap by mistake does no harm). **Play next** on a song that is already waiting moves it up.
+  While the score of a song shows, you can queue that song again. *Add all to queue* of a playlist skips the songs already queued.
 * A slim bar under the top of every other page says what is playing, on which device, and how many songs are coming up; tap it to open *Queue*.
-* *Queue* shows what is now playing and "Coming up". *Move to top* and *Remove* change the order.
+* *Queue* shows what is now playing and "Coming up", one line per song. The **⋯** button of a song has *Move to top* and *Remove* (with *Undo*).
 * When the queue is empty a **random song** plays, and keeps doing so until you add songs. The next one is already
   chosen, so you can see what is coming.
 
@@ -106,7 +109,7 @@ you sing. You change the volume and the vocals on the **Queue** page of any devi
 Queue next to the Player; in the apps it is the same Queue screen). The player keeps its keyboard shortcuts: **+** and **−** for the volume and
 **V** for the vocals work silently.
 
-On the Queue page, under the song that is on and the name of the device that plays it:
+On the Queue page, press **Volume and tempo** (**Volume, tempo and vocals** for a song with a vocals track) next to Play and Skip; under it:
 
 **Volume down** and **Volume up** change how loud that device plays the song that is on: the *MIDI songs* volume for a MIDI song, the *MP3
 songs* volume for an MP3 song, in steps of 5 percent from 0 to 200 (100 is the song's own level). The words beside the buttons say which one

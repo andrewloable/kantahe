@@ -6,6 +6,8 @@ import { AuthStore } from '../core/auth.store';
 import { AuthTokenSchema } from '../../gen/kantahe/v1/common_pb';
 import { ToastService } from '../core/toast';
 import { LibraryActions } from './library-actions';
+import { StateStore } from '../core/state.store';
+import { NowPlayingSchema, QueueItemSchema, StateSchema } from '../../gen/kantahe/v1/session_pb';
 import { fakeLibrary, FakeLibrary, song } from './testing';
 
 function setup(h: FakeLibrary = {}) {
@@ -41,6 +43,17 @@ describe('LibraryActions.add', () => {
     });
     await actions.add(song('1', 'Hello', 'A'));
     expect(toasts.toasts()[0].message).toBe('That song is no longer in the library.');
+  });
+
+  // kantahe-du1.3: the server refuses a song that is already queued or playing; that is an entry error, said plainly
+  it('regression: a song already in the queue is not an error, the toast says it is already there', async () => {
+    const { actions, toasts } = setup({
+      addToQueue: () => {
+        throw new ConnectError('that song is already in the queue', Code.AlreadyExists);
+      },
+    });
+    expect(await actions.add(song('1', 'Hello', 'A'))).toBe(false);
+    expect(toasts.toasts().map((t) => [t.message, t.kind])).toEqual([['Hello is already in the queue', 'info']]);
   });
 
   it('does not queue a song that cannot be played', async () => {
@@ -193,6 +206,30 @@ describe('LibraryActions.playNext', () => {
     expect(await actions.playNext(song('01052', 'Hello', 'Adele'))).toBe(true);
     expect(calls.session).toEqual(['add 01052', 'top q-01052']);
     expect(toasts.toasts().map((t) => [t.message, t.kind])).toEqual([['Added Hello at the end of the queue', 'info']]);
+  });
+
+  it('regression: a song already waiting in the queue is moved to play next instead of being added again', async () => {
+    const { actions, calls, toasts } = setup({
+      addToQueue: () => {
+        throw new ConnectError('already', Code.AlreadyExists);
+      },
+    });
+    TestBed.inject(StateStore).state.set(create(StateSchema, { queue: [create(QueueItemSchema, { id: 'q7', song: song('01052', 'Hello', 'Adele') })] }));
+    expect(await actions.playNext(song('01052', 'Hello', 'Adele'))).toBe(true);
+    expect(calls.session).toEqual(['add 01052', 'top q7']);
+    expect(toasts.toasts().map((t) => [t.message, t.kind, t.action])).toEqual([['Hello plays next', 'info', undefined]]);
+  });
+
+  it('play next of the song playing now says so and changes nothing', async () => {
+    const { actions, calls, toasts } = setup({
+      addToQueue: () => {
+        throw new ConnectError('already', Code.AlreadyExists);
+      },
+    });
+    TestBed.inject(StateStore).state.set(create(StateSchema, { now: create(NowPlayingSchema, { song: song('01052', 'Hello', 'Adele') }) }));
+    expect(await actions.playNext(song('01052', 'Hello', 'Adele'))).toBe(false);
+    expect(calls.session).toEqual(['add 01052']);
+    expect(toasts.toasts().map((t) => [t.message, t.kind])).toEqual([['Hello is playing now', 'info']]);
   });
 
   it('a song that cannot be played is not sent', async () => {

@@ -256,6 +256,8 @@ const IDLE_MS = 3000;
     /* inside the app the native Close sits at the top and the native controls at the bottom, over the page */
     .stage.embedded {
       padding-top: 4.5rem;
+      /* the toasts float below the app's Close button (toasts.component.ts) */
+      --toast-top: 5rem;
       /* one row of the app's buttons needs 6rem; the app says how much more it takes when they wrap to more rows */
       padding-bottom: max(6rem, calc(var(--native-controls, 0px) + 1.5rem));
     }

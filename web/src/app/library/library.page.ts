@@ -1,4 +1,4 @@
-import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, Injector, signal, viewChildren } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, Injector, signal, viewChild, viewChildren } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CatalogService } from '../../gen/kantahe/v1/catalog_pb';
 import { Format, Song } from '../../gen/kantahe/v1/common_pb';
@@ -46,15 +46,28 @@ const TABS: { id: Tab; label: string }[] = [
       <div role="tabpanel" [id]="'panel-' + tab()" [attr.aria-labelledby]="'tab-' + tab()">
         @switch (tab()) {
           @case ('search') {
-            <div class="field">
-              <label for="search">Search songs</label>
-              <input id="search" type="search" autocomplete="off" [value]="query()" (input)="onQuery($event)" />
+            <!-- on a phone the field and the chips stick to the top while the results scroll under them (kantahe-du1.5) -->
+            <div class="search-bar" #searchBar>
+              <div class="field">
+                <label for="search">Search songs</label>
+                <input
+                  id="search"
+                  type="search"
+                  autocomplete="off"
+                  enterkeyhint="search"
+                  [value]="query()"
+                  (input)="onQuery($event)"
+                  (focus)="onSearchFocus()"
+                  (keydown.enter)="onEnter($event)"
+                />
+              </div>
+              <div class="chips" role="group" aria-label="Format">
+                @for (c of chips; track c.label) {
+                  <button type="button" class="toggle" [attr.aria-pressed]="format() === c.format" (click)="setFormat(c.format)">{{ c.label }}</button>
+                }
+              </div>
             </div>
-            <div class="chips" role="group" aria-label="Format">
-              @for (c of chips; track c.label) {
-                <button type="button" class="toggle" [attr.aria-pressed]="format() === c.format" (click)="setFormat(c.format)">{{ c.label }}</button>
-              }
-            </div>
+            <div class="results">
             @if (songs.error()) {
               <p class="error" role="alert">{{ songs.error() }} <button type="button" (click)="songs.retry()">Try again</button></p>
             }
@@ -69,6 +82,7 @@ const TABS: { id: Tab; label: string }[] = [
               </p>
             }
             <app-song-list [songs]="songs.items()" [allowDelete]="true" [emptyText]="emptyLibrary() ? '' : 'No songs found.'" [hasMore]="songs.hasMore()" [loading]="songs.loading()" [autoMore]="!songs.error()" [failed]="!!songs.error()" (more)="songs.more()" />
+            </div>
           }
           @case ('number') {
             <app-number-pad />
@@ -106,6 +120,38 @@ const TABS: { id: Tab; label: string }[] = [
       gap: 0.5rem;
       margin-bottom: 0.75rem;
     }
+    /* A phone: the keyboard takes the lower half of the window. The field and the chips go to the top of the window when the field takes the
+       focus and stay there, so the space between them and the keyboard shows results; the results area is at least a window high, so that the
+       field can always reach the top (kantahe-du1.5) */
+    @media (max-width: 40rem), (max-height: 30rem) {
+      .search-bar {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        margin-top: -0.5rem;
+        padding-top: 0.5rem;
+        background: var(--paper);
+      }
+      .results {
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
+    }
+    /* a phone on its side: the keyboard leaves about 190 px, so the chips sit beside the field and the bar is one row (kantahe-du1.6) */
+    @media (max-height: 30rem) and (min-width: 40.01rem) {
+      .search-bar {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.75rem;
+      }
+      .search-bar .field {
+        flex: 1;
+        margin-bottom: 0.5rem;
+      }
+      .search-bar .chips {
+        flex-wrap: nowrap;
+      }
+    }
     input[type='search'] {
       width: 100%;
       min-height: 2.75rem;
@@ -122,6 +168,7 @@ export class LibraryPage {
   private readonly catalog = injectClient(CatalogService);
   private readonly actions = inject(LibraryActions);
   private readonly tabButtons = viewChildren<ElementRef<HTMLButtonElement>>('tabButton');
+  private readonly searchBar = viewChild<ElementRef<HTMLElement>>('searchBar');
 
   protected readonly tabs = TABS;
   protected readonly tab = signal<Tab>('search');
@@ -160,11 +207,38 @@ export class LibraryPage {
   private timer?: ReturnType<typeof setTimeout>;
 
   constructor() {
+    // the keyboard of a phone opens after the focus (iOS) and changes the visible part of the window: bring the field up again then
+    const vv = typeof window === 'undefined' ? null : window.visualViewport;
+    const onResize = () => {
+      if (document.activeElement?.id === 'search') this.bringSearchUp();
+    };
+    vv?.addEventListener('resize', onResize);
     inject(DestroyRef).onDestroy(() => {
+      vv?.removeEventListener('resize', onResize);
       clearTimeout(this.timer);
       this.songs.cancel();
     });
     void this.songs.reset();
+  }
+
+  /** A phone, upright (the tab bar layout) or on its side (a short window): there the keyboard covers the results. */
+  private phone(): boolean {
+    return typeof matchMedia === 'function' && matchMedia('(max-width: 40rem), (max-height: 30rem)').matches;
+  }
+
+  /** On a phone, the field and the chips go to the top of the window, so that the results fill the space above the keyboard. */
+  private bringSearchUp(): void {
+    if (this.phone()) this.searchBar()?.nativeElement.scrollIntoView({ block: 'start' });
+  }
+
+  protected onSearchFocus(): void {
+    requestAnimationFrame(() => this.bringSearchUp());
+  }
+
+  /** The Search key (Enter): search now, and take the focus off the field so that the phone's keyboard closes. */
+  protected onEnter(e: Event): void {
+    this.searchNow();
+    (e.target as HTMLInputElement).blur();
   }
 
   protected select(t: Tab): void {
@@ -206,6 +280,9 @@ export class LibraryPage {
     this.activeQuery = this.query().trim();
     this.activeFormat = this.format();
     this.askedForEverything.set(this.activeQuery === '' && this.activeFormat === Format.UNSPECIFIED);
+    // a page scrolled down the old results goes back to the first new result (the bar is stuck at the top of it)
+    const bar = this.searchBar()?.nativeElement;
+    if (bar && this.phone() && bar.parentElement && window.scrollY > bar.parentElement.getBoundingClientRect().top + window.scrollY) this.bringSearchUp();
     void this.songs.reset();
   }
 }

@@ -143,6 +143,7 @@ test('guide vocals: uploaded, played when another device asks, remembered for th
   await test.step('another device (the laptop, on its Queue page) switches them on: the voice is fetched, the player reports it, and shows nothing new', async () => {
     const before = await stage(p).innerText();
     await a.goto('/queue');
+    await a.getByRole('button', { name: /^Volume(,| and) tempo/ }).click(); // the controls are folded away (kantahe-du1.7)
     const adjust = a.locator('app-adjust-controls');
     await expect(adjust.getByRole('button', { name: 'Vocals: off' })).toBeVisible();
     await expect(adjust.getByText('MP3 volume 100%')).toBeVisible();
@@ -270,6 +271,7 @@ test('guide vocals: uploaded, played when another device asks, remembered for th
 
   await test.step('switching them off from the Queue page stops the voice, the choice is kept, and the song goes on', async () => {
     await a.goto('/queue');
+    await a.getByRole('button', { name: /^Volume(,| and) tempo/ }).click(); // the controls are folded away (kantahe-du1.7)
     await a.locator('app-adjust-controls').getByRole('button', { name: 'Vocals: on' }).click();
     await playerSays('VOCALS_STATE_OFF');
     expect((await myDevice()).vocalsOn).toBe(false);

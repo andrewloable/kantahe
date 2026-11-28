@@ -307,6 +307,27 @@ func TestAddPlaylistToQueue(t *testing.T) {
 	}
 }
 
+// kantahe-du1.3: a playlist adds only the songs that are not queued yet
+func TestAddPlaylistToQueueSkipsQueuedSongs(t *testing.T) {
+	a := newAdminEnv(t)
+	n1 := a.seed(t, "One.kar", "One", "X", true)
+	n2 := a.seed(t, "Two.kar", "Two", "X", true)
+	a.addToQueue(t, a.admin.Token, n1)
+	p := a.createPlaylist(t, a.admin.Token, "L", n1, n2)
+	res, err := a.sessionClient().AddPlaylistToQueue(context.Background(), with(connect.NewRequest(&kantahev1.AddPlaylistToQueueRequest{PlaylistId: p.Id}), a.admin.Token))
+	if err != nil || res.Msg.Added != 1 {
+		t.Fatalf("only the song that was not queued is added: %v %v", res, err)
+	}
+	st, err := a.sessionClient().GetState(context.Background(), with(connect.NewRequest(&kantahev1.GetStateRequest{}), a.admin.Token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := st.Msg.State.Queue
+	if len(q) != 2 || q[0].Song.Number != n1 || q[1].Song.Number != n2 {
+		t.Fatalf("queue %+v", q)
+	}
+}
+
 func TestUserLibraryRequiresAuth(t *testing.T) {
 	a := newAdminEnv(t)
 	c := a.libClient()

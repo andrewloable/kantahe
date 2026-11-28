@@ -104,6 +104,9 @@ async function seed(request: APIRequestContext): Promise<{ session: Session; pla
       { number: s.number, favourite: true },
       auth.token,
     );
+  // a song is queued once (kantahe-du1.3): start from an empty queue, whatever the specs before left in it
+  const before = await rpc<{ state?: { queue?: { id: string }[] } }>(request, 'SessionService/GetState', {}, auth.token);
+  for (const item of before.state?.queue ?? []) await rpc(request, 'SessionService/RemoveFromQueue', { itemId: item.id }, auth.token);
   for (const s of songs.slice(2, 4))
     await rpc(request, 'SessionService/AddToQueue', { number: s.number }, auth.token);
   const { playlist } = await rpc<{ playlist: { id: string } }>(

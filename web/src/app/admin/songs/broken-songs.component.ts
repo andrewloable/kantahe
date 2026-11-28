@@ -151,7 +151,8 @@ const songs = (n: number) => (n === 1 ? '1 broken song' : `${n} broken songs`);
 export class BrokenSongsComponent {
   private readonly admins = injectClient(AdminService);
 
-  protected readonly total = signal(0);
+  /** How many broken songs the server lists (the Library tools button of a phone says it, songs-admin.page.ts). */
+  readonly total = signal(0);
   protected readonly pager = new Pager<BrokenSong>(
     async (pageToken, signal) => {
       const r = await this.admins.listBrokenSongs({ pageToken, pageSize: PAGE_SIZE }, { signal });

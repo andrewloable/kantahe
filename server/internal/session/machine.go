@@ -13,11 +13,13 @@ import (
 
 // Errors returned by the machine.
 var (
-	ErrNotFound  = errors.New("session: queue item not found")
-	ErrNotPlayer = errors.New("session: only the player device may do that")
-	ErrStale     = errors.New("session: the report is for a different song")
-	ErrNoSong    = errors.New("session: there is no current song")
-	ErrBadTempo  = errors.New("session: the tempo must be 75 to 125 percent in steps of 5")
+	ErrNotFound = errors.New("session: queue item not found")
+	// ErrAlreadyQueued: the song is waiting in the queue or is the current song (kantahe-du1.3).
+	ErrAlreadyQueued = errors.New("session: that song is already in the queue")
+	ErrNotPlayer     = errors.New("session: only the player device may do that")
+	ErrStale         = errors.New("session: the report is for a different song")
+	ErrNoSong        = errors.New("session: there is no current song")
+	ErrBadTempo      = errors.New("session: the tempo must be 75 to 125 percent in steps of 5")
 )
 
 const (
@@ -354,12 +356,22 @@ func (m *Machine) loadNext() []Effect {
 	return append(effects, m.recomputeUpNext()...)
 }
 
-// Add appends a song to the queue. It never interrupts the current song.
-func (m *Machine) Add(song Song) (Item, []Effect) {
+// Add appends a song to the queue. It never interrupts the current song. A song that is waiting in the queue, or is the
+// current song, is refused with ErrAlreadyQueued (a second tap by mistake, two devices of one user); while the score of a
+// finished song shows, that song may be queued again. The random pick up next does not count: the user did not choose it.
+func (m *Machine) Add(song Song) (Item, []Effect, error) {
+	if m.now != nil && m.score == nil && m.now.Song.Number == song.Number {
+		return Item{}, nil, ErrAlreadyQueued
+	}
+	for _, it := range m.queue {
+		if it.Song.Number == song.Number {
+			return Item{}, nil, ErrAlreadyQueued
+		}
+	}
 	m.nextID++
 	it := Item{ID: fmt.Sprintf("q%d", m.nextID), Song: song}
 	m.queue = append(m.queue, it)
-	return it, m.recomputeUpNext()
+	return it, m.recomputeUpNext(), nil
 }
 
 func (m *Machine) indexOf(id string) int {

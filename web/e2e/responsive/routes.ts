@@ -67,8 +67,10 @@ const failing = (...calls: string[]): Pick<RouteState, 'before' | 'ignore'> => (
  */
 export async function resetScratch(a: Account, now: string, queue: string[] = []): Promise<void> {
   const call = <T>(m: string, body: Record<string, unknown> = {}, token = a.token) => rpc<T>('SessionService', m, body, token);
-  const before = await call<{ state?: { queue?: { id: string }[] } }>('GetState');
+  const before = await call<{ state?: { queue?: { id: string }[]; now?: { song?: { number?: string } } } }>('GetState');
   for (const item of before.state?.queue ?? []) await call('RemoveFromQueue', { itemId: item.id });
+  // a song is queued once (kantahe-du1.3): when it is the current song already, Skip first moves it out of the way
+  if (before.state?.now?.song?.number === now) await call('Control', { action: 'CONTROL_ACTION_SKIP' });
   await call('AddToQueue', { number: now });
   await call('Control', { action: 'CONTROL_ACTION_SKIP' }); // loads that song, whatever was playing or scored before
   await call('Control', { action: 'CONTROL_ACTION_PLAY_HERE' }, a.remoteToken);
@@ -92,6 +94,13 @@ const tap = async (target: Locator): Promise<void> => {
 };
 
 const click = (page: Page, name: string | RegExp, exact = false) => tap(page.getByRole('button', { name, exact }).first());
+
+/** On a narrow Admin > Songs page the library check is folded away behind Library tools (kantahe-du1.9); a wide page shows it open. */
+const openLibraryTools = async (page: Page): Promise<void> => {
+  const fold = page.getByRole('button', { name: /^Library tools/ });
+  await expect(page.getByRole('heading', { name: 'Songs', level: 2 })).toBeVisible();
+  if (await fold.isVisible()) await tap(fold);
+};
 
 export function states(selftest = false): RouteState[] {
   const at = (route: string, state: string, role: Role, path: string, extra: Partial<RouteState> = {}): RouteState => ({ route, state, role, path: () => path, ...extra });
@@ -363,6 +372,7 @@ export function states(selftest = false): RouteState[] {
     at('/admin/songs', 'broken-list-question', 'admin', '/admin/songs', {
       ...brokenSongs,
       after: async ({ page }) => {
+        await openLibraryTools(page);
         await expect(page.getByRole('heading', { name: 'Check the library' })).toBeVisible();
         await click(page, /^Remove all \d+ broken songs from the list$/);
         await expect(page.getByText(/off the list\? The files stay/)).toBeVisible();
@@ -371,6 +381,7 @@ export function states(selftest = false): RouteState[] {
     at('/admin/songs', 'broken-files-question', 'admin', '/admin/songs', {
       ...brokenSongs,
       after: async ({ page }) => {
+        await openLibraryTools(page);
         await expect(page.getByRole('heading', { name: 'Check the library' })).toBeVisible();
         await click(page, 'Remove them and delete their files');
         await expect(page.getByText(/deleted for good/)).toBeVisible();

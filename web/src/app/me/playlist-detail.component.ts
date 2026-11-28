@@ -196,7 +196,8 @@ export class PlaylistDetailComponent {
   protected async addAll(): Promise<void> {
     try {
       const res = await this.session.addPlaylistToQueue({ playlistId: this.id() });
-      this.toast.show(`Added ${res.added} ${res.added === 1 ? 'song' : 'songs'} to the queue`);
+      // the server skips songs that are already queued or playing (kantahe-du1.3); the button is off for an empty playlist
+      this.toast.show(res.added === 0 ? 'These songs are already in the queue' : `Added ${res.added} ${res.added === 1 ? 'song' : 'songs'} to the queue`);
     } catch (e) {
       this.toast.show(problem(e, {}), 'error');
     }

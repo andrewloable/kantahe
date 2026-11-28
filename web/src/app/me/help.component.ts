@@ -23,7 +23,7 @@ import { SHORTCUTS } from '../core/shortcuts';
       <h3>The queue and Play here</h3>
       <p>
         The queue is yours alone, and the same on all your devices. Open <a data-inline-link routerLink="/queue">Queue</a> to see what plays now and what
-        comes next, to move a song to the top or to remove it.
+        comes next; the <strong>⋯</strong> button of a song moves it to the top or removes it. A song is in the queue only once.
       </p>
       <p>
         Only one of your devices plays at a time; the others are remotes. To sing on the device in your hand, open Queue and press
@@ -36,7 +36,8 @@ import { SHORTCUTS } from '../core/shortcuts';
       <p>
         <a data-inline-link routerLink="/player">Player</a> shows the lyrics, with Play or Pause and Skip. While a song plays the buttons fade; touch the
         screen or press a key to bring them back. The player has no volume or vocals buttons, so that nothing moves on the screen while you sing: change
-        the volume and the vocals on the <a data-inline-link routerLink="/queue">Queue</a> page of any device, even the one that plays.
+        the volume and the vocals on the <a data-inline-link routerLink="/queue">Queue</a> page of any device, even the one that plays, with
+        <strong>Volume and tempo</strong> next to Play and Skip.
       </p>
       <p>
         Some songs have a separate vocals track. On the Queue page, <strong>Vocals</strong> then plays the singer's voice as a guide, with

@@ -51,6 +51,8 @@ func (s *SessionServer) fail(op string, err error) error {
 		return invalidArgument("the tempo must be 75 to 125 percent in steps of 5")
 	case errors.Is(err, session.ErrNoSong):
 		return newErr(connect.CodeFailedPrecondition, "there is no current song")
+	case errors.Is(err, session.ErrAlreadyQueued):
+		return newErr(connect.CodeAlreadyExists, "that song is already in the queue")
 	case errors.Is(err, session.ErrNotFound), errors.Is(err, library.ErrNotFound):
 		return newErr(connect.CodeNotFound, "not found")
 	case errors.Is(err, catalog.ErrInvalid):
@@ -250,8 +252,9 @@ func (s *SessionServer) AddToQueue(ctx context.Context, req *connect.Request[kan
 	var item session.Item
 	if _, err := s.svc.Do(ctx, id.UserID, func(m *session.Machine) ([]session.Effect, error) {
 		var eff []session.Effect
-		item, eff = m.Add(session.Song{Number: info.Number, Format: int(info.Format), DurationMs: info.DurationMs})
-		return eff, nil
+		var err error
+		item, eff, err = m.Add(session.Song{Number: info.Number, Format: int(info.Format), DurationMs: info.DurationMs})
+		return eff, err
 	}); err != nil {
 		return nil, s.fail("AddToQueue", err)
 	}
@@ -704,10 +707,19 @@ func (s *SessionServer) AddPlaylistToQueue(ctx context.Context, req *connect.Req
 	if err != nil {
 		return nil, userLibErr(s.d.Logger, "AddPlaylistToQueue", err)
 	}
+	added := 0
 	_, err = s.svc.Do(ctx, id.UserID, func(m *session.Machine) ([]session.Effect, error) {
 		var all []session.Effect
 		for _, info := range songs {
-			_, eff := m.Add(session.Song{Number: info.Number, Format: int(info.Format), DurationMs: info.DurationMs})
+			// a song already queued or playing (or listed twice in the playlist) is skipped, not an error (kantahe-du1.3)
+			_, eff, err := m.Add(session.Song{Number: info.Number, Format: int(info.Format), DurationMs: info.DurationMs})
+			if errors.Is(err, session.ErrAlreadyQueued) {
+				continue
+			}
+			if err != nil {
+				return all, err
+			}
+			added++
 			all = append(all, eff...)
 		}
 		return all, nil
@@ -715,5 +727,5 @@ func (s *SessionServer) AddPlaylistToQueue(ctx context.Context, req *connect.Req
 	if err != nil {
 		return nil, s.fail("AddPlaylistToQueue", err)
 	}
-	return connect.NewResponse(&kantahev1.AddPlaylistToQueueResponse{Added: int32(len(songs))}), nil
+	return connect.NewResponse(&kantahev1.AddPlaylistToQueueResponse{Added: int32(added)}), nil
 }

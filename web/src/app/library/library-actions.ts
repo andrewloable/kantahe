@@ -1,11 +1,12 @@
 import { effect, Injectable, inject, signal, untracked } from '@angular/core';
-import { Code } from '@connectrpc/connect';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { Song } from '../../gen/kantahe/v1/common_pb';
 import { SessionService } from '../../gen/kantahe/v1/session_pb';
 import { PlaylistSummary, UserLibraryService } from '../../gen/kantahe/v1/user_library_pb';
 import { injectClient } from '../core/api';
 import { AuthStore } from '../core/auth.store';
 import { problem } from '../core/errors';
+import { StateStore } from '../core/state.store';
 import { ToastService } from '../core/toast';
 
 /** What a tap on a song does: queue it, or star it. The star state is shared by every list. */
@@ -15,6 +16,7 @@ export class LibraryActions {
   private readonly userLibrary = injectClient(UserLibraryService);
   private readonly toast = inject(ToastService);
   private readonly auth = inject(AuthStore);
+  private readonly state = inject(StateStore).state;
   /** The newest known star of each song, by number: what the user set here, or what the server last said. */
   private readonly stars = new Map<string, boolean>();
   private readonly version = signal(0);
@@ -57,7 +59,8 @@ export class LibraryActions {
       this.toast.show(`Added ${song.title}`);
       return true;
     } catch (e) {
-      this.toast.show(problem(e, { [Code.NotFound]: 'That song is no longer in the library.' }), 'error');
+      if (alreadyQueued(e)) this.toast.show(`${song.title} is already in the queue`);
+      else this.toast.show(problem(e, { [Code.NotFound]: 'That song is no longer in the library.' }), 'error');
       return false;
     }
   }
@@ -75,6 +78,7 @@ export class LibraryActions {
     try {
       itemId = (await this.session.addToQueue({ number: song.number })).item?.id ?? '';
     } catch (e) {
+      if (alreadyQueued(e)) return this.moveUp(song);
       this.toast.show(problem(e, { [Code.NotFound]: 'That song is no longer in the library.' }), 'error');
       return false;
     }
@@ -91,6 +95,23 @@ export class LibraryActions {
           .removeFromQueue({ itemId })
           .catch((e) => this.toast.show(problem(e, { [Code.NotFound]: `${song.title} has already started or left the queue.` }), 'error')),
     });
+    return true;
+  }
+
+  /** Play next of a song the server says is already there: the waiting entry moves to the top; the song playing now stays as it is. */
+  private async moveUp(song: Song): Promise<boolean> {
+    const item = this.state()?.queue.find((q) => q.song?.number === song.number);
+    if (!item) {
+      this.toast.show(this.state()?.now?.song?.number === song.number ? `${song.title} is playing now` : `${song.title} is already in the queue`);
+      return false;
+    }
+    try {
+      await this.session.moveToTop({ itemId: item.id });
+    } catch (e) {
+      this.toast.show(problem(e, { [Code.NotFound]: `${song.title} has already started or left the queue.` }), 'error');
+      return false;
+    }
+    this.toast.show(`${song.title} plays next`);
     return true;
   }
 
@@ -139,3 +160,6 @@ export class LibraryActions {
     this.version.update((v) => v + 1);
   }
 }
+
+/** The server refused the song because it is waiting in the queue or playing now (kantahe-du1.3): an entry error, not a failure. */
+const alreadyQueued = (e: unknown) => e instanceof ConnectError && e.code === Code.AlreadyExists;

@@ -236,16 +236,19 @@ test('the whole flow: setup, accounts, upload, search, queue, play, score, rando
     await b.getByRole('button', { name: 'Create' }).click();
     await expect(b.getByRole('link', { name: 'Party' })).toBeVisible();
     await b.goto('/library');
-    await b.getByLabel('Search songs').fill('Title 6');
-    await b.locator('li.row', { hasText: 'Title 6' }).getByRole('button', { name: 'More actions for Title 6' }).click();
-    await b.getByRole('menuitem', { name: 'Add to a playlist' }).click();
-    await b.getByRole('button', { name: 'Party' }).click();
-    await expect(b.getByText('Added Title 6 to Party')).toBeVisible();
+    // two songs: random songs are playing now, and the one playing is not queued again (kantahe-du1.3), so at least one is added
+    for (const title of ['Title 6', 'Title 4']) {
+      await b.getByLabel('Search songs').fill(title);
+      await b.locator('li.row', { hasText: title }).getByRole('button', { name: `More actions for ${title}` }).click();
+      await b.getByRole('menuitem', { name: 'Add to a playlist' }).click();
+      await b.getByRole('button', { name: 'Party' }).click();
+      await expect(b.getByText(`Added ${title} to Party`)).toBeVisible();
+    }
     await b.goto('/me/playlists');
     await b.getByRole('link', { name: 'Party' }).click();
     await expect(b.locator('li.entry', { hasText: 'Title 6' })).toBeVisible();
     await b.getByRole('button', { name: 'Add all to queue' }).click();
-    await expect(b.getByText('Added 1 song to the queue')).toBeVisible();
+    await expect(b.getByText(/^Added [12] songs? to the queue$/)).toBeVisible();
   });
 
   await test.step('an ordinary user has no Upload and cannot open it', async () => {

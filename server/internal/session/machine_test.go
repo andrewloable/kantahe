@@ -121,7 +121,10 @@ func TestAddNeverInterrupts(t *testing.T) {
 	if s := r.m.Snapshot(); nowNumber(s) != "A" {
 		t.Fatalf("now %s", nowNumber(s))
 	}
-	item, eff := r.m.Add(song("B"))
+	item, eff, err := r.m.Add(song("B"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	s := r.m.Snapshot()
 	if nowNumber(s) != "A" || !eq(queueNumbers(s), []string{"B"}) || upNumber(s) != "B" || item.Song.Number != "B" || item.ID == "" {
 		t.Fatalf("now %s queue %v up %s", nowNumber(s), queueNumbers(s), upNumber(s))
@@ -148,10 +151,79 @@ func TestAddWithNothingLoadedOnlyQueues(t *testing.T) {
 
 func TestQueueIDsAreUnique(t *testing.T) {
 	r := newRig(t, "R1")
-	a, _ := r.m.Add(song("A"))
-	b, _ := r.m.Add(song("A"))
+	a, _, _ := r.m.Add(song("A"))
+	b, _, _ := r.m.Add(song("B"))
 	if a.ID == b.ID || a.ID != "q1" || b.ID != "q2" {
 		t.Fatalf("%s %s", a.ID, b.ID)
+	}
+}
+
+// kantahe-du1.3: a song that is waiting in the queue or playing now is refused (owner decision 2026-11-28)
+func TestAddRefusesASongAlreadyQueued(t *testing.T) {
+	r := newRig(t, "R1")
+	a, _, _ := r.m.Add(song("A"))
+	b, _, _ := r.m.Add(song("B"))
+	if _, eff, err := r.m.Add(song("A")); !errors.Is(err, ErrAlreadyQueued) || eff != nil {
+		t.Fatalf("err %v effects %v", err, eff)
+	}
+	s := r.m.Snapshot()
+	if !eq(queueNumbers(s), []string{"A", "B"}) || s.Queue[0].ID != a.ID || s.Queue[1].ID != b.ID {
+		t.Fatalf("queue %+v", s.Queue)
+	}
+}
+
+func TestAddRefusesTheCurrentSong(t *testing.T) {
+	r := newRig(t, "R1")
+	r.m.Add(song("A"))
+	r.m.Control("d1", ActionPlay)
+	if _, _, err := r.m.Add(song("A")); !errors.Is(err, ErrAlreadyQueued) {
+		t.Fatalf("err %v", err)
+	}
+	r.m.Control("d1", ActionPause) // also while paused: it is still the current song
+	if _, _, err := r.m.Add(song("A")); !errors.Is(err, ErrAlreadyQueued) {
+		t.Fatalf("paused: err %v", err)
+	}
+	if s := r.m.Snapshot(); len(s.Queue) != 0 {
+		t.Fatalf("queue %v", queueNumbers(s))
+	}
+}
+
+func TestAddAllowsTheSongWhoseScoreShows(t *testing.T) {
+	r := newRig(t, "R1", "R2")
+	r.m.Add(song("A"))
+	r.m.Add(song("B"))
+	r.m.Control("d1", ActionPlay)
+	r.clock.ms = 10_000
+	if _, err := r.m.Ended("d1", "A", 0); err != nil {
+		t.Fatal(err)
+	}
+	if s := r.m.Snapshot(); s.Score == nil || nowNumber(s) != "A" {
+		t.Fatalf("the score must show: %+v", s)
+	}
+	if _, _, err := r.m.Add(song("A")); err != nil {
+		t.Fatalf("a song may be queued again while its score shows: %v", err)
+	}
+}
+
+func TestAddAllowsTheSongAfterItLeftTheQueue(t *testing.T) {
+	r := newRig(t, "R1")
+	a, _, _ := r.m.Add(song("A"))
+	if _, err := r.m.Remove(a.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := r.m.Add(song("A")); err != nil {
+		t.Fatalf("%v", err)
+	}
+}
+
+func TestAddIgnoresUpNext(t *testing.T) {
+	r := newRig(t, "R1", "R2")
+	r.m.Control("d1", ActionPlay) // random R1 now, random R2 up next
+	if s := r.m.Snapshot(); upNumber(s) != "R2" || s.UpNext.Source != SourceRandom {
+		t.Fatalf("%+v", s)
+	}
+	if _, _, err := r.m.Add(song("R2")); err != nil {
+		t.Fatalf("a random pick is not the user's: %v", err)
 	}
 }
 
@@ -203,7 +275,7 @@ func TestQueueBeatsPrePick(t *testing.T) {
 	if upNumber(s) != "R1" || s.UpNext.Source != SourceRandom {
 		t.Fatalf("pre-pick %+v", s.UpNext)
 	}
-	_, eff := r.m.Add(song("B"))
+	_, eff, _ := r.m.Add(song("B"))
 	s = r.m.Snapshot()
 	if upNumber(s) != "B" || s.UpNext.Source != SourceQueue || !eq(prepares(eff), []string{"B"}) {
 		t.Fatalf("up next %+v effects %v", s.UpNext, eff)
@@ -596,9 +668,9 @@ func TestRemoveAndMoveToTop(t *testing.T) {
 	r := newRig(t, "R1", "R2")
 	r.m.Add(song("A"))
 	r.m.Control("d1", ActionPlay)
-	b, _ := r.m.Add(song("B"))
-	c, _ := r.m.Add(song("C"))
-	d, _ := r.m.Add(song("D"))
+	b, _, _ := r.m.Add(song("B"))
+	c, _, _ := r.m.Add(song("C"))
+	d, _, _ := r.m.Add(song("D"))
 	eff, err := r.m.MoveToTop(d.ID)
 	s := r.m.Snapshot()
 	if err != nil || !eq(queueNumbers(s), []string{"D", "B", "C"}) || upNumber(s) != "D" || !eq(prepares(eff), []string{"D"}) {
@@ -627,7 +699,7 @@ func TestRemoveAndMoveToTop(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 	// moving the head to the top changes nothing
-	e, _ := r.m.Add(song("E"))
+	e, _, _ := r.m.Add(song("E"))
 	eff, err = r.m.MoveToTop(e.ID)
 	if err != nil || len(eff) != 0 {
 		t.Fatalf("%v %v", err, eff)
@@ -636,7 +708,7 @@ func TestRemoveAndMoveToTop(t *testing.T) {
 
 func TestRemoveWithNothingLoaded(t *testing.T) {
 	r := newRig(t, "R1")
-	a, _ := r.m.Add(song("A"))
+	a, _, _ := r.m.Add(song("A"))
 	if _, err := r.m.Remove(a.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -705,6 +777,14 @@ func checkInvariants(t *testing.T, m *Machine, op string) {
 		}
 		seen[it.ID] = true
 	}
+	// kantahe-du1.3: a song is in the queue at most once
+	numbers := map[string]bool{}
+	for _, it := range s.Queue {
+		if numbers[it.Song.Number] {
+			t.Fatalf("%s: song %s is queued twice: %v", op, it.Song.Number, queueNumbers(s))
+		}
+		numbers[it.Song.Number] = true
+	}
 	if s.Status == StatusPlaying && (s.Now == nil || s.PlayerDeviceID == "") {
 		t.Fatalf("%s: playing without a song or a player: %+v", op, s)
 	}
@@ -742,8 +822,11 @@ func TestRandomOperationSequencesKeepTheInvariants(t *testing.T) {
 			switch rng.Intn(14) {
 			case 0, 1:
 				op = "add"
-				it, _ := r.m.Add(song(fmt.Sprintf("Q%d", rng.Intn(20))))
-				ids = append(ids, it.ID)
+				if it, _, err := r.m.Add(song(fmt.Sprintf("Q%d", rng.Intn(20)))); err == nil {
+					ids = append(ids, it.ID)
+				} else if !errors.Is(err, ErrAlreadyQueued) {
+					t.Fatalf("seed %d step %d: add: %v", seed, i, err)
+				}
 			case 2:
 				op = "remove"
 				id := "bogus"
@@ -911,7 +994,7 @@ func TestRestore(t *testing.T) {
 		t.Fatalf("effects %v", eff)
 	}
 	// new queue ids continue after the stored ones
-	it, _ := r.m.Add(song("D"))
+	it, _, _ := r.m.Add(song("D"))
 	if it.ID != "q8" {
 		t.Fatalf("id %s collides with restored ids", it.ID)
 	}

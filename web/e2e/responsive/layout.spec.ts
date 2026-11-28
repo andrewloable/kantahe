@@ -2,7 +2,7 @@ import { Browser, expect, Page, test, TestInfo } from '@playwright/test';
 import { Check, patternOf, Raw } from './checks';
 import { pick, Theme, VIEWPORTS } from './matrix';
 import { contextOptions, openState, rawFindings } from './open-state';
-import { states } from './routes';
+import { RouteState, states } from './routes';
 
 // Layout tests of single bugs. A test opens one state of the audit (web/e2e/responsive/routes.ts) at one viewport and looks at the findings of the
 // audit's checks, so a bug's test is a few lines. Name a test "<route> <state>: <what> at <viewport>"; it must fail on the code that had the bug.
@@ -15,9 +15,12 @@ export async function layout<T>(
   viewportName: string,
   look: (raw: Raw[], page: Page) => Promise<T> | T,
   theme: Theme = 'light',
+  /** Replaces steps of the state, e.g. an "after" that only waits, so that the test does the action itself and measures around it. */
+  override: Partial<RouteState> = {},
 ): Promise<T> {
-  const state = states(true).find((s) => `${s.route}:${s.state}` === id);
-  if (!state) throw new Error(`No route state "${id}"`);
+  const found = states(true).find((s) => `${s.route}:${s.state}` === id);
+  if (!found) throw new Error(`No route state "${id}"`);
+  const state = { ...found, ...override };
   const [viewport] = pick(VIEWPORTS, viewportName);
   const context = await browser.newContext(contextOptions(viewport, theme));
   try {
@@ -329,10 +332,15 @@ test('/queue one-long: the title of the now-playing card is at most two lines hi
   });
 });
 
-test('/queue one-long: Up next is one line high at phone-320x568', async ({ browser }, info) => {
+// kantahe-du1.7: the head of the queue is no longer repeated in an Up next line (the list right below shows it); its long title is clamped there
+test('/queue one-long: the long song at the head of the queue is two lines at most in its row at phone-320x568', async ({ browser }, info) => {
   await layout(browser, info, '/queue:one-long', 'phone-320x568', async (_raw, page) => {
-    const { height, line } = await page.locator('.up-next').evaluate((el) => ({ height: el.getBoundingClientRect().height, line: parseFloat(getComputedStyle(el).lineHeight) || 24 }));
-    expect(height, 'height of the Up next line').toBeLessThanOrEqual(line * 1.5);
+    await expect(page.locator('.up-next')).toHaveCount(0);
+    const { height, line } = await page
+      .locator('.queue li .title')
+      .first()
+      .evaluate((el) => ({ height: el.getBoundingClientRect().height, line: parseFloat(getComputedStyle(el).lineHeight) || 24 }));
+    expect(height, 'height of the title').toBeLessThanOrEqual(line * 2.2);
   });
 });
 
@@ -344,12 +352,13 @@ test('/admin/upload results: the details of a result are at least 200 px wide at
   });
 });
 
-test('/queue many: the buttons of a row are one line below the title at phone-320x568', async ({ browser }, info) => {
+// kantahe-du1.7: one line per queue row, the More button beside the song (it was a line of buttons below the title)
+test('/queue many: the More button is on the line of the title at phone-320x568', async ({ browser }, info) => {
   await layout(browser, info, '/queue:many', 'phone-320x568', async (_raw, page) => {
-    for (const row of await page.locator('.queue li').all()) {
+    for (const row of (await page.locator('.queue li').all()).slice(0, 10)) {
       const text = (await row.locator('.info').boundingBox())!;
-      const actions = (await row.locator('.row-actions').boundingBox())!;
-      expect(actions.y, 'top of the buttons').toBeGreaterThanOrEqual(text.y + text.height - 1);
+      const more = (await row.locator('button.more').boundingBox())!;
+      expect(more.y, 'top of the More button').toBeLessThan(text.y + text.height);
     }
   });
 });
@@ -371,7 +380,7 @@ test('/me/playlists/:id many: the row buttons are inside the window at phone-390
 });
 
 test('/queue many: the row buttons are inside the window at phone-390x844-zoom200', async ({ browser }, info) => {
-  none(await layout(browser, info, '/queue:many', 'phone-390x844-zoom200', (r) => r), 'outsideViewport', 'row-actions');
+  none(await layout(browser, info, '/queue:many', 'phone-390x844-zoom200', (r) => r), 'outsideViewport', 'app-action-menu');
 });
 
 // kantahe-dk8.38: a failed search is not an empty search
@@ -477,18 +486,227 @@ for (const id of ['/library:many', '/queue:many', '/me/favourites:many']) {
   });
 }
 
-// kantahe-dk8.59: toasts in the flow of the page, under the menu
-for (const viewport of ['phone-390x844', 'tablet-768x1024']) {
-  test(`/library toast: the toast does not cover any control of the page at ${viewport}`, async ({ browser }, info) => {
-    await layout(browser, info, '/library:toast', viewport, async (raw, page) => {
-      await expect(page.getByText(/^Added /).first()).toBeVisible();
-      none(raw, 'overlap');
+// kantahe-du1.1: a toast floats above the page and moves nothing (owner decision 2026-11-28; replaces kantahe-dk8.59, toasts in the page flow)
+const rowsOnly: Partial<RouteState> = { after: ({ page }) => expect(page.locator('li.row').nth(12)).toBeVisible() };
+const rowTops = (page: Page, from: number, to: number) =>
+  page.locator('li.row').evaluateAll((rows, [a, b]) => rows.slice(a, b).map((r) => Math.round(r.getBoundingClientRect().top)), [from, to]);
+const pageHeight = (page: Page) => page.evaluate(() => document.documentElement.scrollHeight);
+async function addSong(page: Page, row: number): Promise<void> {
+  await page.locator('li.row').nth(row).locator('button.main').click();
+  await expect(page.getByText(/^Added /).first()).toBeVisible();
+  await page.waitForTimeout(400); // the toast's own entrance has ended
+}
+
+for (const viewport of ['phone-390x844', 'desktop-1280x800']) {
+  test(`/library toast: no row moves when a song is added at the top of the page at ${viewport}`, async ({ browser }, info) => {
+    await layout(
+      browser,
+      info,
+      '/library:toast',
+      viewport,
+      async (_raw, page) => {
+        const before = await rowTops(page, 1, 4);
+        const height = await pageHeight(page);
+        await addSong(page, 0);
+        expect(await rowTops(page, 1, 4), 'tops of rows 2 to 4').toEqual(before);
+        expect(await pageHeight(page), 'height of the page').toBe(height);
+      },
+      'light',
+      rowsOnly,
+    );
+  });
+}
+
+test('/library toast: no row moves on a scrolled page without scroll anchoring (Safari has none) at phone-390x844', async ({ browser }, info) => {
+  await layout(
+    browser,
+    info,
+    '/library:toast',
+    'phone-390x844',
+    async (_raw, page) => {
+      await page.addStyleTag({ content: '* { overflow-anchor: none !important; }' });
+      await page.locator('li.row').nth(6).scrollIntoViewIfNeeded();
+      await page.evaluate(() => window.scrollBy(0, 200));
+      await page.waitForTimeout(200);
+      const before = await rowTops(page, 7, 9);
+      await addSong(page, 6);
+      expect(await rowTops(page, 7, 9), 'tops of rows 8 and 9').toEqual(before);
+    },
+    'light',
+    rowsOnly,
+  );
+});
+
+test('/library toast: the toast floats above the tab bar at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/library:toast', 'phone-390x844', async (_raw, page) => {
+    const toast = page.locator('.toast').first();
+    expect(await toast.evaluate((t) => getComputedStyle(t.parentElement!).position)).toBe('fixed');
+    const t = (await toast.boundingBox())!;
+    const bar = (await page.locator('nav[aria-label="Main"]').boundingBox())!;
+    expect(t.y).toBeGreaterThanOrEqual(0);
+    expect(t.y + t.height, 'bottom of the toast against the top of the tab bar').toBeLessThanOrEqual(bar.y);
+  });
+});
+
+test('/library toast: the toast is at the bottom centre at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/library:toast', 'desktop-1280x800', async (_raw, page) => {
+    const toast = page.locator('.toast').first();
+    expect(await toast.evaluate((t) => getComputedStyle(t.parentElement!).position)).toBe('fixed');
+    const t = (await toast.boundingBox())!;
+    expect(Math.abs(t.x + t.width / 2 - 640), 'distance of the toast centre from the window centre').toBeLessThanOrEqual(2);
+    expect(800 - (t.y + t.height), 'gap under the toast').toBeLessThanOrEqual(24);
+  });
+});
+
+test('/player playing: a toast moves nothing on the stage at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/player:playing', 'phone-390x844', async (_raw, page) => {
+    await page.route('**/kantahe.v1.SessionService/Control', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"code":"internal","message":"no"}' }));
+    await page.mouse.move(10, 10);
+    const tops = () => page.evaluate(() => ['app-lyrics-view', '.controls'].map((s) => Math.round(document.querySelector(s)?.getBoundingClientRect().top ?? -1)));
+    const before = await tops();
+    await page.getByRole('button', { name: 'Skip' }).click(); // a refused command shows a toast
+    await expect(page.locator('.toast').first()).toBeVisible({ timeout: 5_000 });
+    await page.waitForTimeout(400);
+    expect(await tops(), 'tops of the lyrics and the controls').toEqual(before);
+  });
+});
+
+// kantahe-du1.5: while typing a search on a phone, results show above the on-screen keyboard. Chromium has no keyboard: the visible part of the
+// window is its height minus the keyboard's (iPhone 390x844: 336 px with the suggestion bar; Android 360x640: 290; 375x667: 300).
+const keyboardRows = (page: Page, keyboard: number) =>
+  page.evaluate((k) => [...document.querySelectorAll('li.row')].filter((r) => r.getBoundingClientRect().top >= 0 && r.getBoundingClientRect().bottom <= innerHeight - k).length, keyboard);
+async function typeSearch(page: Page, text: string): Promise<void> {
+  await page.locator('#search').click();
+  await page.locator('#search').pressSequentially(text, { delay: 20 });
+  await expect(page.locator('li.row').first()).toBeVisible();
+  await page.waitForTimeout(600); // the search delay (250 ms), the answer, and the scroll
+}
+for (const [viewport, keyboard, rows] of [
+  ['phone-390x844', 336, 4],
+  ['phone-375x667', 300, 2],
+  ['phone-360x640', 290, 2],
+  // kantahe-du1.6 review: a phone on its side is wider than 40rem but the keyboard takes half of its height
+  ['phone-landscape-844x390', 200, 1],
+  ['phone-landscape-667x375', 200, 1],
+] as const) {
+  test(`/library many: search results show above the keyboard at ${viewport}`, async ({ browser }, info) => {
+    await layout(browser, info, '/library:many', viewport, async (_raw, page) => {
+      await typeSearch(page, 'Title 1');
+      expect(await keyboardRows(page, keyboard), `rows above a keyboard of ${keyboard} px`).toBeGreaterThanOrEqual(rows);
     });
   });
 }
 
-test('/me/playlists error: the toast does not cover any control of the page at phone-390x844', async ({ browser }, info) => {
-  none(await layout(browser, info, '/me/playlists:error', 'phone-390x844', (r) => r), 'overlap');
+test('/library many: the search field stays at the top while the results scroll at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/library:many', 'phone-390x844', async (_raw, page) => {
+    await typeSearch(page, 'Title 1');
+    await page.evaluate(() => window.scrollBy(0, 600));
+    await page.waitForTimeout(200);
+    const top = await page.locator('#search').evaluate((e) => e.getBoundingClientRect().top);
+    expect(top).toBeGreaterThanOrEqual(0);
+    expect(top).toBeLessThanOrEqual(60);
+  });
+});
+
+test('/library many: focusing the search does not scroll at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/library:many', 'desktop-1280x800', async (_raw, page) => {
+    await typeSearch(page, 'Title 1');
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  });
+});
+
+// kantahe-du1.7: the Queue page shows queued songs on the first screen (it showed none on a phone, one on a desktop)
+const queueRowsOnFirstScreen = (page: Page) =>
+  page.evaluate(() => {
+    const bar = document.querySelector('nav[aria-label="Main"]');
+    const barTop = bar && getComputedStyle(bar).position === 'fixed' ? bar.getBoundingClientRect().top : innerHeight;
+    return [...document.querySelectorAll('.queue li')].filter((r) => r.getBoundingClientRect().top >= 0 && r.getBoundingClientRect().bottom <= barTop).length;
+  });
+for (const [viewport, rows] of [
+  ['phone-390x844', 3],
+  ['desktop-1280x800', 4],
+] as const) {
+  test(`/queue many: queued songs show on the first screen at ${viewport}`, async ({ browser }, info) => {
+    await layout(browser, info, '/queue:many', viewport, async (_raw, page) => {
+      expect(await queueRowsOnFirstScreen(page), 'queue rows on the first screen').toBeGreaterThanOrEqual(rows);
+    });
+  });
+}
+
+test('/queue many: a queue row is one line at phone-360x640', async ({ browser }, info) => {
+  await layout(browser, info, '/queue:many', 'phone-360x640', async (_raw, page) => {
+    expect((await page.locator('.queue li').first().boundingBox())!.height).toBeLessThanOrEqual(72);
+  });
+});
+
+for (const viewport of ['phone-320x568', 'phone-360x640']) {
+  test(`/queue many: the volume and tempo panel opens and fits at ${viewport}`, async ({ browser }, info) => {
+    await layout(browser, info, '/queue:many', viewport, async (_raw, page) => {
+      const toggle = page.getByRole('button', { name: /^Volume(,| and) tempo/ });
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      await expect(page.getByRole('button', { name: 'Volume up' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Volume down' })).toBeVisible();
+      const raw = await rawFindings(page);
+      none(raw, 'horizontalOverflow');
+      none(raw, 'tightTargets', 'app-adjust-controls');
+    });
+  });
+}
+
+// kantahe-du1.9: on a phone the sub-menus of Me and Administration are one line that scrolls sideways (Me took four rows)
+for (const id of ['/me/devices:list', '/admin/songs:many']) {
+  test(`${id.replace(':', ' ')}: the sub-menu is one line at phone-390x844`, async ({ browser }, info) => {
+    await layout(browser, info, id, 'phone-390x844', async (_raw, page) => {
+      expect((await page.locator('nav.sub-nav').boundingBox())!.height, 'height of the sub-menu').toBeLessThanOrEqual(60);
+    });
+  });
+}
+
+test('/me/help page: the current sub-menu entry is in view at phone-360x640', async ({ browser }, info) => {
+  await layout(browser, info, '/me/help:page', 'phone-360x640', async (_raw, page) => {
+    const nav = (await page.locator('nav.sub-nav').boundingBox())!;
+    const current = (await page.locator('nav.sub-nav a[aria-current="page"]').boundingBox())!;
+    expect(current.x).toBeGreaterThanOrEqual(nav.x - 1);
+    expect(current.x + current.width).toBeLessThanOrEqual(nav.x + nav.width + 1);
+  });
+});
+
+test('/me/devices list: the one-line sub-menu makes no sideways scroll at phone-320x568', async ({ browser }, info) => {
+  none(await layout(browser, info, '/me/devices:list', 'phone-320x568', (r) => r), 'horizontalOverflow');
+});
+
+test('/me/devices list: the sub-menu shows every entry without scrolling at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/me/devices:list', 'desktop-1280x800', async (_raw, page) => {
+    const { scroll, client } = await page.locator('nav.sub-nav').evaluate((n) => ({ scroll: n.scrollWidth, client: n.clientWidth }));
+    expect(scroll).toBeLessThanOrEqual(client);
+  });
+});
+
+// kantahe-du1.9: Admin > Songs on a phone: filters and the library tools fold away, so the songs start on the first screen (the first was at y=841)
+test('/admin/songs many: the first song is on the first screen at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/songs:many', 'phone-390x844', async (_raw, page) => {
+    const first = (await page.locator('tbody tr').first().boundingBox())!;
+    const bar = (await page.locator('nav[aria-label="Main"]').boundingBox())!;
+    expect(first.y, 'top of the first song').toBeLessThan(bar.y);
+  });
+});
+
+test('/admin/songs many: the filters open and fit at phone-320x568', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/songs:many', 'phone-320x568', async (_raw, page) => {
+    await page.getByRole('button', { name: /^Filters/ }).click();
+    await expect(page.locator('#filter-format')).toBeVisible();
+    await expect(page.locator('#sort-by')).toBeVisible();
+    none(await rawFindings(page), 'horizontalOverflow');
+  });
+});
+
+test('/admin/songs many: filters and tools are open, with no fold buttons, at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/songs:many', 'desktop-1280x800', async (_raw, page) => {
+    await expect(page.locator('#filter-format')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Rescan' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Filters/ })).toBeHidden();
+  });
 });
 
 // the WCAG contrast of two colours given as the browser writes them: "rgb(r, g, b)" or "rgba(r, g, b, a)"
@@ -645,15 +863,6 @@ test('/library toast: at the top of the page the toast is 8 px from the controls
   await layout(browser, info, '/library:toast', 'phone-landscape-915x412', async (_raw, page) => {
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
     none(await rawFindings(page), 'tightTargets', 'toast');
-  });
-});
-
-test('/library toast: the toast is fully visible, clear of the tab bar, at phone-390x844', async ({ browser }, info) => {
-  await layout(browser, info, '/library:toast', 'phone-390x844', async (_raw, page) => {
-    const toast = (await page.locator('.toast').first().boundingBox())!;
-    const bar = (await page.locator('nav[aria-label="Main"]').boundingBox())!;
-    expect(toast.y, 'top of the toast').toBeGreaterThanOrEqual(0);
-    expect(toast.y + toast.height, 'bottom of the toast against the top of the tab bar').toBeLessThanOrEqual(bar.y);
   });
 });
 

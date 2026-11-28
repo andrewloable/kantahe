@@ -18,6 +18,9 @@ test('Play next puts the song at the head of Coming up', async ({ page, request 
     : await call<{ auth: { token: string; deviceId: string } }>('AuthService/Login', { email: ADMIN.email, password: ADMIN.password, ...device });
   const { songs } = await call<{ songs: { number: string; title: string }[] }>('CatalogService/SearchSongs', { pageSize: 10 }, auth.token);
   // three songs waiting, so that "next" differs from "last"
+  // a song is queued once (kantahe-du1.3): start from an empty queue, whatever the specs before left in it
+  const before = await call<{ state?: { queue?: { id: string }[] } }>('SessionService/GetState', {}, auth.token);
+  for (const item of before.state?.queue ?? []) await call('SessionService/RemoveFromQueue', { itemId: item.id }, auth.token);
   for (const s of songs.slice(0, 3)) await call('SessionService/AddToQueue', { number: s.number }, auth.token);
   const target = songs[4];
 

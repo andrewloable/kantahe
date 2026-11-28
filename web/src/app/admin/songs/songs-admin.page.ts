@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { AdminService } from '../../../gen/kantahe/v1/admin_pb';
 import { CatalogService, SongSort } from '../../../gen/kantahe/v1/catalog_pb';
@@ -42,6 +42,17 @@ const MAX_SELECTED = 1000;
       <label for="admin-search">Search songs</label>
       <input id="admin-search" type="search" autocomplete="off" [value]="query()" (input)="onQuery($event)" />
     </div>
+    <!-- on a phone the filters and the library tools fold away, so that the songs start on the first screen (kantahe-du1.9); a wide page shows
+         them open and hides these buttons -->
+    <div class="folds">
+      <button type="button" class="fold" aria-controls="song-filters" [attr.aria-expanded]="filtersOpen()" (click)="filtersOpen.set(!filtersOpen())">
+        {{ activeFilters() > 0 ? 'Filters (' + activeFilters() + ')' : 'Filters' }}
+      </button>
+      <button type="button" class="fold" aria-controls="song-tools" [attr.aria-expanded]="toolsOpen()" (click)="toolsOpen.set(!toolsOpen())">
+        {{ (broken()?.total() ?? 0) > 0 ? 'Library tools (' + broken()!.total() + ' broken)' : 'Library tools' }}
+      </button>
+    </div>
+    <div id="song-filters" class="foldable" [class.open]="filtersOpen()">
     <div class="filters" role="group" aria-label="Filter the songs">
       <div class="field">
         <label for="filter-format">Format</label>
@@ -84,6 +95,8 @@ const MAX_SELECTED = 1000;
       </div>
       <button type="button" id="sort-direction" [disabled]="sortKey() === ''" (click)="toggleDirection()">{{ descending() ? 'Descending' : 'Ascending' }}</button>
     </div>
+    </div>
+    <div id="song-tools" class="foldable" [class.open]="toolsOpen()">
     <p>
       <button type="button" (click)="rescan()" [disabled]="scanning()">Rescan</button>
       @if (scanResult()) {
@@ -94,6 +107,7 @@ const MAX_SELECTED = 1000;
       }
     </p>
     <app-broken-songs />
+    </div>
     @if (pager.error()) {
       <p class="error" role="alert">{{ pager.error() }} <button type="button" (click)="pager.retry()">Try again</button></p>
     }
@@ -303,6 +317,16 @@ const MAX_SELECTED = 1000;
       min-width: 1em;
       margin-left: 0.25rem;
     }
+    /* the fold buttons are for the narrow layout (below); a wide page shows the filters and the tools open */
+    .folds {
+      display: none;
+    }
+    .fold::after {
+      content: ' ▾';
+    }
+    .fold[aria-expanded='true']::after {
+      content: ' ▴';
+    }
     /* the sort select is for the narrow layout, where the header row is hidden */
     .sort-phone {
       display: none;
@@ -331,6 +355,15 @@ const MAX_SELECTED = 1000;
     /* on a phone each song is a block: number and title, artist, format, then the buttons; the header row stays for screen readers */
     /* the width of the page's own box, in rem: with a larger text size a table that needs 44rem no longer fits, and the blocks come sooner */
     @container (max-width: 44rem) {
+      .folds {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+      }
+      .foldable:not(.open) {
+        display: none;
+      }
       .sort-phone {
         display: flex;
         flex-wrap: wrap;
@@ -419,6 +452,11 @@ const MAX_SELECTED = 1000;
   `,
 })
 export class SongsAdminPage {
+  protected readonly filtersOpen = signal(false);
+  protected readonly toolsOpen = signal(false);
+  protected readonly broken = viewChild(BrokenSongsComponent);
+  /** The filters that are not at "all" or "any": said on the Filters button of a phone, where the filters are folded away. */
+  protected readonly activeFilters = computed(() => [this.format() !== Format.UNSPECIFIED, this.vocals() !== 'any', this.timing() !== 'any'].filter(Boolean).length);
   private readonly catalog = injectClient(CatalogService);
   private readonly admins = injectClient(AdminService);
   private readonly uploads = injectClient(UploadService);

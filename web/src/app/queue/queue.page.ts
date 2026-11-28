@@ -7,12 +7,13 @@ import { StateStore } from '../core/state.store';
 import { ToastService } from '../core/toast';
 import { FormatBadgeComponent } from '../library/format-badge.component';
 import { LibraryActions } from '../library/library-actions';
+import { ActionMenuComponent, MenuItem } from '../shared/action-menu.component';
 import { DevicesComponent } from './devices.component';
 import { NowPlayingComponent } from './now-playing.component';
 
 @Component({
   selector: 'app-queue-page',
-  imports: [NowPlayingComponent, DevicesComponent, FormatBadgeComponent, RouterLink],
+  imports: [NowPlayingComponent, DevicesComponent, FormatBadgeComponent, RouterLink, ActionMenuComponent],
   template: `
     <div class="queue-page">
       <h1>Queue</h1>
@@ -37,12 +38,8 @@ import { NowPlayingComponent } from './now-playing.component';
                   @if (item.song) {
                     <app-format-badge [format]="item.song.format" [timing]="item.song.lyricTiming" [vocals]="item.song.hasVocals" />
                   }
-                  <span class="row-actions">
-                    @if (!first) {
-                      <button type="button" [attr.aria-label]="'Move to top: ' + item.song?.title" (click)="moveToTop(item)">Move to top</button>
-                    }
-                    <button class="danger" type="button" [attr.aria-label]="'Remove ' + item.song?.title + ' from the queue'" (click)="remove(item)">Remove</button>
-                  </span>
+                  <!-- one line per song: the actions are in its More menu, as in the Library (kantahe-du1.7) -->
+                  <app-action-menu [label]="'More actions for ' + (item.song?.title ?? '')" [items]="first ? firstItems(item) : otherItems(item)" />
                 </li>
               }
             </ol>
@@ -76,14 +73,14 @@ import { NowPlayingComponent } from './now-playing.component';
     }
     li {
       display: flex;
-      flex-wrap: wrap;
       gap: 0.5rem;
       align-items: center;
-      padding: 0.5rem 0;
+      /* as compact as a Library row (kantahe-du1.7); the More button keeps the row 44 px high */
+      padding: 0.25rem 0;
       border-bottom: 1px solid var(--line);
     }
     .info {
-      flex: 1 1 12rem;
+      flex: 1 1 0;
       display: flex;
       flex-direction: column;
       min-width: 0;
@@ -108,20 +105,7 @@ import { NowPlayingComponent } from './now-playing.component';
     .notice {
       color: var(--muted);
     }
-    /* the buttons of a row stay together: on a phone they are one line below the title, equally wide */
-    .row-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-    @media (max-width: 30rem) {
-      .row-actions {
-        flex: 1 0 100%;
-      }
-      .row-actions button {
-        flex: 1;
-      }
-    }
+
   `,
 })
 export class QueuePage {
@@ -166,5 +150,22 @@ export class QueuePage {
 
   protected async moveToTop(item: QueueItem): Promise<void> {
     await this.once(item, () => this.client.moveToTop({ itemId: item.id }));
+  }
+
+  /** The More menu of a row; the same array for the same item, so that an open menu is not rebuilt while it shows. */
+  private readonly menus = new Map<string, MenuItem[]>();
+  protected firstItems(item: QueueItem): MenuItem[] {
+    return this.menuOf(`${item.id}:first`, () => [{ label: 'Remove', danger: true, run: () => void this.remove(item) }]);
+  }
+  protected otherItems(item: QueueItem): MenuItem[] {
+    return this.menuOf(item.id, () => [
+      { label: 'Move to top', run: () => void this.moveToTop(item) },
+      { label: 'Remove', danger: true, run: () => void this.remove(item) },
+    ]);
+  }
+  private menuOf(key: string, make: () => MenuItem[]): MenuItem[] {
+    let items = this.menus.get(key);
+    if (!items) this.menus.set(key, (items = make()));
+    return items;
   }
 }

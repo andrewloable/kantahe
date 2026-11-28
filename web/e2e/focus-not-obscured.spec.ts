@@ -17,21 +17,25 @@ test('tabbing down a long list on a phone never leaves the focus behind the tab 
   const { auth } = info.setupRequired
     ? await call<{ auth: { token: string; deviceId: string } }>('AuthService/Setup', { email: ADMIN.email, password: ADMIN.password, displayName: ADMIN.name, ...device })
     : await call<{ auth: { token: string; deviceId: string } }>('AuthService/Login', { email: ADMIN.email, password: ADMIN.password, ...device });
-  const { songs } = await call<{ songs: { number: string }[] }>('CatalogService/SearchSongs', { pageSize: 1 }, auth.token);
+  // a song is queued once (kantahe-du1.3): every song of this small library once, on a short phone so that the list still scrolls
+  const { songs } = await call<{ songs: { number: string }[] }>('CatalogService/SearchSongs', { pageSize: 12 }, auth.token);
   const queued: string[] = [];
-  for (let i = 0; i < 12; i++) queued.push((await call<{ item: { id: string } }>('SessionService/AddToQueue', { number: songs[0].number }, auth.token)).item.id);
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.addInitScript((s) => {
-    localStorage.setItem('kantahe.token', s.token);
-    localStorage.setItem('kantahe.deviceId', s.deviceId);
-  }, auth);
-  await page.goto('/queue');
-  await expect(page.getByRole('region', { name: 'Coming up' }).getByRole('listitem').nth(9)).toBeVisible();
-
   let belowFirstScreen = 0;
   const behind: string[] = [];
   try {
+    // a song is queued once (kantahe-du1.3): start from an empty queue, whatever the specs before left in it
+    const before = await call<{ state?: { queue?: { id: string }[] } }>('SessionService/GetState', {}, auth.token);
+    for (const item of before.state?.queue ?? []) await call('SessionService/RemoveFromQueue', { itemId: item.id }, auth.token);
+    for (const s of songs) queued.push((await call<{ item: { id: string } }>('SessionService/AddToQueue', { number: s.number }, auth.token)).item.id);
+
+    await page.setViewportSize({ width: 390, height: 600 });
+    await page.addInitScript((s) => {
+      localStorage.setItem('kantahe.token', s.token);
+      localStorage.setItem('kantahe.deviceId', s.deviceId);
+    }, auth);
+    await page.goto('/queue');
+    await expect(page.getByRole('region', { name: 'Coming up' }).getByRole('listitem').nth(queued.length - 1)).toBeVisible();
+
     for (let i = 0; i < 60; i++) {
       await page.keyboard.press('Tab');
       const f = await page.evaluate(() => {

@@ -46,7 +46,9 @@ export function historyEntry(s: Song, over: Partial<{ sungAtUnix: bigint; skippe
 }
 
 /** An in-memory server for the Me pages: playlists really change, every request is recorded. */
-export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; history?: HistoryEntry[]; devices?: Device[]; catalog?: Song[]; pageSize?: number } = {}) {
+export function fakeMe(
+  seed: { playlists?: PlaylistData[]; favourites?: Song[]; history?: HistoryEntry[]; devices?: Device[]; catalog?: Song[]; pageSize?: number; queued?: string[] } = {},
+) {
   const favourites = [...(seed.favourites ?? [])];
   const playlists = new Map((seed.playlists ?? []).map((p) => [p.id, { ...p, songs: [...p.songs] }]));
   const catalog = new Map((seed.catalog ?? []).map((s) => [s.number, s]));
@@ -160,7 +162,9 @@ export function fakeMe(seed: { playlists?: PlaylistData[]; favourites?: Song[]; 
       addPlaylistToQueue(req) {
         maybeFail();
         calls.toQueue.push(req.playlistId);
-        return create(AddPlaylistToQueueResponseSchema, { added: playlists.get(req.playlistId)?.songs.length ?? 0 });
+        // the server skips songs that are already queued (kantahe-du1.3)
+        const fresh = (playlists.get(req.playlistId)?.songs ?? []).filter((s) => !(seed.queued ?? []).includes(s.number));
+        return create(AddPlaylistToQueueResponseSchema, { added: fresh.length });
       },
       setBackgroundMode(req) {
         maybeFail();

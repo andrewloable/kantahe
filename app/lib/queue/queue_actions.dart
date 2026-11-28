@@ -106,6 +106,10 @@ class QueueActions {
       await api.session.addToQueue(AddToQueueRequest(number: song.number));
       notify('Added ${song.title}');
     } catch (e) {
+      if (e is ConnectException && e.code == Code.alreadyExists) {
+        notify('${song.title} is already in the queue'); // another device put it back meanwhile (kantahe-du1.3)
+        return;
+      }
       notify(problem(e, {Code.notFound: 'That song is no longer in the library.'}), error: true);
     }
   }

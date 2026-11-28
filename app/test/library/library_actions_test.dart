@@ -51,6 +51,14 @@ void main() {
       expect(r.messages, ['ERROR: That song is no longer in the library.']);
     });
 
+    // kantahe-du1.3: the server refuses a song that is already queued or playing; that is an entry error, said plainly
+    test('regression: a song already in the queue is not an error', () async {
+      final r = await rig();
+      r.fake.onAdd = (_) => throw ConnectException(Code.alreadyExists, 'that song is already in the queue');
+      expect(await r.actions.add(song('1', 'Yesterday', 'B')), isFalse);
+      expect(r.messages, ['Yesterday is already in the queue']);
+    });
+
     test('does not queue a song that cannot be played', () async {
       final r = await rig();
       expect(await r.actions.add(song('1', 'A', 'B', failed: true)), isFalse);

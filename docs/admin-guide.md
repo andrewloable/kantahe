@@ -70,8 +70,10 @@ the search text):
 by it, press it again to turn the order round; an arrow shows which column sorts and which way. Songs without timed lyrics come first
 when sorting by Lyrics, and songs without vocals come first when sorting by Vocals. With no header chosen, a search lists the best match
 first and a plain list goes by number. On a narrow screen, where the table turns into blocks and the header row is hidden, a **Sort by**
-choice and an Ascending/Descending button above the list do the same. The filters and the sorting are done by the server, so they cover the
-whole library and not only the page on show.
+choice and an Ascending/Descending button above the list do the same. On a phone the filters and the sorting fold away behind a
+**Filters** button (it says how many filters are on, for example *Filters (2)*), and **Rescan** with the library check behind **Library tools**
+(it says how many songs are broken), so that the songs start on the first screen. The filters and the sorting are done by the server, so they
+cover the whole library and not only the page on show.
 
 ## Downloading and replacing song files
 

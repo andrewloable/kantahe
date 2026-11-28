@@ -173,6 +173,30 @@ describe('LibraryPage', () => {
       expect(el.textContent).toContain('Hello');
     });
 
+    // kantahe-du1.5: the Search key of a phone keyboard searches at once and closes the keyboard
+    it('regression: Enter searches at once and takes the focus off the field (the keyboard closes)', async () => {
+      const { el, calls, settle, type } = setup();
+      document.body.appendChild(el);
+      await settle();
+      calls.search.length = 0;
+      const input = el.querySelector<HTMLInputElement>('#search')!;
+      input.focus();
+      await type('het');
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await settle(0);
+      expect(calls.search.map((c) => c.query)).toEqual(['het']);
+      expect(document.activeElement).not.toBe(input);
+      await settle(300);
+      expect(calls.search.length).toBe(1); // the pending delayed search was cancelled
+      el.remove();
+    });
+
+    it('the search field offers a Search key', async () => {
+      const { el, settle } = setup();
+      await settle();
+      expect(el.querySelector('#search')!.getAttribute('enterkeyhint')).toBe('search');
+    });
+
     it('waits 250 ms after the last keystroke and then searches once', async () => {
       const { calls, settle, type } = setup();
       await settle();

@@ -238,6 +238,34 @@ describe('NowPlayingComponent', () => {
     expect(button('Play here')).toBeDefined();
   });
 
+  // kantahe-du1.7: the fine controls fold away so that the queue starts on the first screen
+  it('regression: volume and tempo are folded away until the Volume button opens them', async () => {
+    const { el, fixture } = await setup();
+    expect(el.querySelector('app-adjust-controls')).toBeNull();
+    const toggle = Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim().startsWith('Volume'))!;
+    expect(toggle.textContent?.trim()).toBe('Volume, tempo and vocals'); // the song has a vocals track
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    toggle.click();
+    fixture.detectChanges();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(el.querySelector(`#${toggle.getAttribute('aria-controls')} app-adjust-controls`)).not.toBeNull();
+  });
+
+  it('a song without vocals names the fold Volume and tempo', async () => {
+    const { el } = await setup({ ...PLAYING_AT_41S, now: { ...PLAYING_AT_41S.now!, song: song('01052', 'Hello', 'Adele', Format.MP3, false) } });
+    expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Volume and tempo')).toBe(true);
+  });
+
+  it('with no device playing there is nothing to adjust and no fold', async () => {
+    const { el } = await setup({ ...PLAYING_AT_41S, status: PlayStatus.PAUSED, player: '' });
+    expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.trim().startsWith('Volume'))).toBe(false);
+  });
+
+  it('the Up next line is left out when the next song is the head of the queue (the list below shows it)', async () => {
+    const { el } = await setup({ ...PLAYING_AT_41S, upNext: { song: song('2', 'Skyfall', 'Adele'), source: SongSource.QUEUE } });
+    expect(el.querySelector('.up-next')).toBeNull();
+  });
+
   it('shows the Up next line', async () => {
     const { el } = await setup({ ...PLAYING_AT_41S, upNext: { song: song('2', 'Skyfall', 'Adele'), source: SongSource.RANDOM } });
     expect(el.querySelector('.up-next')?.textContent).toContain('Up next');

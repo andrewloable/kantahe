@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -317,6 +318,7 @@ func TestPersistenceAcrossRestart(t *testing.T) {
 	n1 := a.seed(t, "One.kar", "One", "X", true)
 	n2 := a.seed(t, "Two.kar", "Two", "X", true)
 	n3 := a.seed(t, "Three.kar", "Three", "X", true)
+	n4 := a.seed(t, "Four.kar", "Four", "X", true) // added after the restart: a song is queued once (kantahe-du1.3)
 	for _, n := range []string{n1, n2, n3} {
 		a.addToQueue(t, a.admin.Token, n)
 	}
@@ -354,7 +356,7 @@ func TestPersistenceAcrossRestart(t *testing.T) {
 		t.Fatalf("restored state: %+v", st)
 	}
 	// new queue ids do not collide with the stored ones
-	add, err := kantahev1connect.NewSessionServiceClient(srv.Client(), srv.URL).AddToQueue(context.Background(), with(connect.NewRequest(&kantahev1.AddToQueueRequest{Number: n1}), a.admin.Token))
+	add, err := kantahev1connect.NewSessionServiceClient(srv.Client(), srv.URL).AddToQueue(context.Background(), with(connect.NewRequest(&kantahev1.AddToQueueRequest{Number: n4}), a.admin.Token))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,6 +460,23 @@ func TestSessionErrorsMapping(t *testing.T) {
 	}
 	if _, err = c.GetState(ctx, connect.NewRequest(&kantahev1.GetStateRequest{})); code(err) != connect.CodeUnauthenticated {
 		t.Errorf("no token: %v", err)
+	}
+}
+
+// kantahe-du1.3: the same song twice is an entry error, not a second queue entry
+func TestAddToQueueDuplicateIsAlreadyExists(t *testing.T) {
+	a := newAdminEnv(t)
+	n := a.seed(t, "One.kar", "One", "X", true)
+	a.addToQueue(t, a.admin.Token, n)
+	c := a.sessionClient()
+	ctx := context.Background()
+	_, err := c.AddToQueue(ctx, with(connect.NewRequest(&kantahev1.AddToQueueRequest{Number: n}), a.admin.Token))
+	if code(err) != connect.CodeAlreadyExists {
+		t.Fatalf("second add: %v", err)
+	}
+	st, err := c.GetState(ctx, with(connect.NewRequest(&kantahev1.GetStateRequest{}), a.admin.Token))
+	if err != nil || len(st.Msg.State.Queue) != 1 {
+		t.Fatalf("the song is queued once: %v %v", st, err)
 	}
 }
 
@@ -752,14 +771,18 @@ func TestWatchStateKeepAliveWaitsWhileMessagesKeepComing(t *testing.T) {
 	// not let the keep-alive fire between two changes (it did, with 150 ms against 400 ms: "7 messages for 6 changes").
 	keepAlive = 1500 * time.Millisecond
 	a := newAdminEnv(t)
-	n := a.seed(t, "One.kar", "One", "X", true)
+	// a song is queued once (kantahe-du1.3): one song per change, more than the 11 or so changes the loop makes
+	var songs []string
+	for i := 0; i < 20; i++ {
+		songs = append(songs, a.seed(t, fmt.Sprintf("S%d.kar", i), fmt.Sprintf("S%d", i), "X", true))
+	}
 	w := a.watch(t, a.admin.Token)
 	defer func() { w.stop(); keepAlive = old }()
 	w.next(t, 2*time.Second)
 	// a change every 100 ms for about a second: each one is sent, and no repeat is added between them
 	changes := 0
-	for end := time.Now().Add(1100 * time.Millisecond); time.Now().Before(end); changes++ {
-		a.addToQueue(t, a.admin.Token, n)
+	for end := time.Now().Add(1100 * time.Millisecond); time.Now().Before(end) && changes < len(songs); changes++ {
+		a.addToQueue(t, a.admin.Token, songs[changes])
 		time.Sleep(100 * time.Millisecond)
 	}
 	time.Sleep(100 * time.Millisecond)

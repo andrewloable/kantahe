@@ -90,6 +90,26 @@ describe('ToastsComponent', () => {
     expect((inShell.nativeElement as HTMLElement).textContent).toContain('Added Song');
   });
 
+  // kantahe-du1.1: a toast floats above the page (fixed) in every variant, so it never moves the page (the owner's rule of 2026-11-28)
+  for (const [name, inShell, centered] of [
+    ['root', false, false],
+    ['in the shell', true, false],
+    ['on the player', true, true],
+  ] as const) {
+    it(`regression: the toasts ${name} are fixed to the window, not in the flow of the page`, async () => {
+      const t = TestBed.inject(ToastService);
+      t.inShell.set(inShell);
+      t.show('Added Song');
+      const f = TestBed.createComponent(ToastsComponent);
+      f.componentRef.setInput('inShell', inShell);
+      f.componentRef.setInput('centered', centered);
+      await f.whenStable();
+      const layer = (f.nativeElement as HTMLElement).querySelector<HTMLElement>('.toasts')!;
+      expect(getComputedStyle(layer).position).toBe('fixed');
+      expect(layer.getAttribute('data-overlay')).toBe('toast');
+    });
+  }
+
   it('without the shell the root instance shows the toasts', async () => {
     const t = TestBed.inject(ToastService);
     t.show('Added Song');

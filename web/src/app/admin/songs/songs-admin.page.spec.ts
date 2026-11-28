@@ -563,6 +563,26 @@ describe('SongsAdminPage', () => {
     const header = (el: HTMLElement, name: string) => el.querySelector<HTMLButtonElement>(`th button[aria-label="${name}, sort"]`)!;
     const sortOf = (el: HTMLElement) => Array.from(el.querySelectorAll('thead th')).map((th) => th.getAttribute('aria-sort'));
 
+    // kantahe-du1.9: on a narrow page the filters and the library tools fold away (the container query hides the closed panels)
+    it('the Filters and Library tools buttons open their panels and say how many filters are on', async () => {
+      const { el, fixture, settle } = await setup(MIXED, 10);
+      const fold = (name: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('.folds button')).find((b) => b.textContent?.trim().startsWith(name))!;
+      expect(fold('Filters').getAttribute('aria-expanded')).toBe('false');
+      expect(el.querySelector('#song-filters')!.classList.contains('open')).toBe(false);
+      fold('Filters').click();
+      fixture.detectChanges();
+      expect(fold('Filters').getAttribute('aria-expanded')).toBe('true');
+      expect(el.querySelector('#song-filters')!.classList.contains('open')).toBe(true);
+      expect(el.querySelector('#song-filters #filter-format')).not.toBeNull();
+      await choose(el, 'filter-format', String(Format.MIDI), settle);
+      await choose(el, 'filter-vocals', 'with', settle);
+      expect(fold('Filters').textContent?.trim()).toBe('Filters (2)');
+      fold('Library tools').click();
+      fixture.detectChanges();
+      expect(el.querySelector('#song-tools')!.classList.contains('open')).toBe(true);
+      expect(el.querySelector('#song-tools app-broken-songs')).not.toBeNull();
+    });
+
     it('every filter is sent to the server from the first page', async () => {
       const { el, server, settle } = await setup(MIXED, 10);
       await choose(el, 'filter-format', String(Format.MIDI), settle);

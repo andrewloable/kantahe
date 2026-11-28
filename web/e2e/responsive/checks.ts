@@ -219,11 +219,11 @@ export function pageChecks(options: Options): Raw[] {
   }
 
   // (f) a fixed or sticky element on top of a target that cannot be scrolled out from under it: at the top of the page for what is
-  // anchored in the upper half, at the end of the page for a fixed element in the lower half; dialogs and empty backdrops are meant to cover
+  // anchored in the upper half, at the end of the page for a fixed element in the lower half; dialogs, toasts (data-overlay=toast) and empty backdrops are meant to cover
   const covering = Array.from(document.body.querySelectorAll('*')).filter((el) => {
     const p = getComputedStyle(el).position;
     if (p !== 'fixed' && p !== 'sticky') return false;
-    if (el.closest('[role=dialog], [role=alertdialog], [aria-modal=true]') || !visible(el)) return false;
+    if (el.closest('[role=dialog], [role=alertdialog], [aria-modal=true], [data-overlay=toast]') || !visible(el)) return false;
     return (el.textContent ?? '').trim() !== '' || el.querySelector(NATIVE) !== null;
   });
   // the part of a target that shows: cut by every ancestor that clips or scrolls, up to the first fixed one (a dialog that scrolls inside)
@@ -255,9 +255,11 @@ export function pageChecks(options: Options): Raw[] {
           const h = Math.min(ro.bottom, rt.bottom) - Math.max(ro.top, rt.top);
           const key = `${selectorOf(o)}>${selectorOf(t)}`;
           // what is painted on top in the middle of the shared part: a target drawn above the fixed element (a dialog over a tab bar) is not under it
-          const top = w * h > 4 ? document.elementFromPoint((Math.max(ro.left, rt.left) + Math.min(ro.right, rt.right)) / 2, (Math.max(ro.top, rt.top) + Math.min(ro.bottom, rt.bottom)) / 2) : null;
+          // both sides must be positive: two negatives (a part clipped away, far from the fixed element) multiply to a positive area
+          const shared = w > 0 && h > 0 && w * h > 4;
+          const top = shared ? document.elementFromPoint((Math.max(ro.left, rt.left) + Math.min(ro.right, rt.right)) / 2, (Math.max(ro.top, rt.top) + Math.min(ro.bottom, rt.bottom)) / 2) : null;
           if (top && t.contains(top)) continue;
-          if (w * h > 4 && !seen.has(key)) {
+          if (shared && !seen.has(key)) {
             seen.add(key);
             out.push({ check: 'overlap', selector: selectorOf(t), text: textOf(t), rect: rectOf(t.getBoundingClientRect()), detail: `under ${selectorOf(o)}` });
           }

@@ -5,6 +5,7 @@ import { AuthStore } from '../core/auth.store';
 import { problem } from '../core/errors';
 import { StateStore } from '../core/state.store';
 import { ToastService } from '../core/toast';
+import { Format } from '../../gen/kantahe/v1/common_pb';
 import { FormatBadgeComponent } from '../library/format-badge.component';
 import { AdjustControlsComponent } from './adjust-controls.component';
 
@@ -64,8 +65,19 @@ export function whereText(state: State | undefined, deviceId: string | undefined
         @if (!isHere()) {
           <button class="primary" type="button" (click)="send(Action.PLAY_HERE)">Play here</button>
         }
+        <!-- the fine controls fold away so that the queue starts on the first screen (kantahe-du1.7) -->
+        @if (adjustable()) {
+          <button type="button" class="fold" aria-controls="adjust-panel" [attr.aria-expanded]="adjustOpen()" (click)="adjustOpen.set(!adjustOpen())">
+            {{ adjustLabel() }}
+          </button>
+        }
       </div>
-      <app-adjust-controls />
+      @if (adjustable() && adjustOpen()) {
+        <div id="adjust-panel">
+          <app-adjust-controls />
+        </div>
+      }
+      <!-- the head of the queue is listed right below; a random pick is said here -->
       @if (upNext(); as u) {
         <p class="up-next" [attr.title]="u.song?.title + ' — ' + u.song?.artist">Up next: {{ u.song?.title }} — {{ u.song?.artist }}</p>
       }
@@ -102,6 +114,12 @@ export function whereText(state: State | undefined, deviceId: string | undefined
       flex-wrap: wrap;
       gap: 0.5rem;
     }
+    .fold::after {
+      content: ' ▾';
+    }
+    .fold[aria-expanded='true']::after {
+      content: ' ▴';
+    }
     .up-next {
       color: var(--muted);
       overflow: hidden;
@@ -122,7 +140,21 @@ export class NowPlayingComponent {
 
   protected readonly state = this.store.state;
   protected readonly now = computed(() => this.state()?.now);
-  protected readonly upNext = computed(() => this.state()?.upNext);
+  /** The next song when it is a random pick: the head of the queue is the first row of the list below. */
+  protected readonly upNext = computed(() => {
+    const u = this.state()?.upNext;
+    return u?.source === SongSource.RANDOM ? u : undefined;
+  });
+  /** Volume, tempo and vocals act on the device that plays, while a song is current (AdjustControlsComponent shows nothing otherwise). */
+  protected readonly adjustable = computed(() => {
+    const s = this.state();
+    return !!s?.now && !!s.playerDeviceId && s.devices.some((d) => d.id === s.playerDeviceId);
+  });
+  protected readonly adjustOpen = signal(false);
+  protected readonly adjustLabel = computed(() => {
+    const song = this.now()?.song;
+    return song?.hasVocals && song.format !== Format.MIDI ? 'Volume, tempo and vocals' : 'Volume and tempo';
+  });
   protected readonly playing = computed(() => this.state()?.status === PlayStatus.PLAYING);
   protected readonly duration = computed(() => Number(this.now()?.song?.durationMs ?? 0n));
   protected readonly position = signal(0);

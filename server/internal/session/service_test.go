@@ -70,8 +70,9 @@ func add(t *testing.T, s *Service, user, number string) Item {
 	var it Item
 	if _, err := s.Do(context.Background(), user, func(m *Machine) ([]Effect, error) {
 		var eff []Effect
-		it, eff = m.Add(Song{Number: number, Format: 2})
-		return eff, nil
+		var err error
+		it, eff, err = m.Add(Song{Number: number, Format: 2})
+		return eff, err
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +115,7 @@ func TestSlowSubscriberDoesNotBlock(t *testing.T) {
 	go func() {
 		defer close(step)
 		for i := 0; i < 200; i++ {
-			add(t, e.svc, "u1", "00001")
+			add(t, e.svc, "u1", fmt.Sprintf("%05d", i+1)) // a song is queued once (kantahe-du1.3)
 			step <- struct{}{}
 		}
 	}()
@@ -361,8 +362,8 @@ func TestRegression_CallsRacingWithAnUnloadUseTheCurrentActor(t *testing.T) {
 	go func() {
 		defer close(done)
 		_, _ = e.svc.Do(ctx, "u1", func(m *Machine) ([]Effect, error) {
-			_, eff := m.Add(Song{Number: "00001", Format: 2})
-			return eff, nil
+			_, eff, err := m.Add(Song{Number: "00001", Format: 2})
+			return eff, err
 		})
 	}()
 	time.Sleep(50 * time.Millisecond)
