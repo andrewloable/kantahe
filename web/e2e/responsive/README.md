@@ -83,6 +83,8 @@ All are in `checks.ts` and tested by name in `checks.spec.ts` on small pages, ea
 | overlap | major | a fixed or sticky element on top of a control that cannot be scrolled out from under it (at the top of the page for what is anchored in the upper half, at the end of the page for a fixed element in the lower half); dialogs are meant to cover |
 | consoleErrors, failedRequests, brokenImages | minor | errors in the console, requests that failed (status 400 and up), an image that did not load |
 | unreachable | blocker | the state could not be set up, so it was not checked; the screenshot shows how far it got |
+| layoutShift | blocker on a core flow, else major | the page moves: while it loads (the browser's own layout-shift entries not caused by input, summed until the state's actions start, over 0.02), or, for a state marked `stable`, any row or button that moves more than 2 px during the state's action with the page not scrolled (dynamic.ts) |
+| keyboardCover | major | for a state that names a text field (`keyboard`), on phones: the field is tapped and typed into, and fewer than 3 list rows (1 on a phone on its side, a phone under 600 px high or with 200% text) are fully above the keyboard's top edge, taken at 40% of the window height from the bottom (55% on a phone on its side); a shorter list must show all its rows; the links of a menu or tab bar, popups and toasts are not rows; a state can limit it to upright phones (`keyboardUpright`) (dynamic.ts) |
 
 The **core flows** are sign-in and set-up (`/setup`, `/login`, `/me/approve-tv`), the library, the queue and the player. The window size is told to the
 checks from outside: a phone browser, and Chromium's emulation of one, makes the layout viewport as wide as a page that is too wide, so
@@ -112,8 +114,9 @@ audit; CI runs them too). A test that cannot fail proves nothing: after writing 
 ## What this is not
 
 **Chromium emulates the size, the pixel ratio and touch of a device. It is not Safari and not an Android WebView.** It does not have the
-dynamic toolbar of a phone browser, the safe areas of a notch, the on-screen keyboard that shrinks the window, iOS text-size rules or its
-rubber-band scrolling, and fonts are the machine's. A clean run proves the layout, not the device. The audits therefore end with a real-device
+dynamic toolbar of a phone browser, the safe areas of a notch, the on-screen keyboard (keyboardCover stands in for it with a fixed share of the
+window), iOS text-size rules or its rubber-band scrolling, and its scroll anchoring hides some movement that Safari shows; fonts are the
+machine's. A clean run proves the layout, not the device. The audits therefore end with a real-device
 check that only a person with the devices can do:
 
 * **iPhone, Safari** (a small one and a large one, portrait and landscape): sign in; library with a long search; queue; Play here and the

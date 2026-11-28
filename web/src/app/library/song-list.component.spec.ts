@@ -11,6 +11,8 @@ import { fakeMe } from '../me/testing';
 import { ENVIRONMENT } from '../core/environment';
 import { environment } from '../../environments/environment';
 import { fakeLibrary, FakeLibrary, song } from './testing';
+import { StateStore } from '../core/state.store';
+import { NowPlayingSchema, QueueItemSchema, StateSchema } from '../../gen/kantahe/v1/session_pb';
 
 const many = (n: number) => Array.from({ length: n }, (_, i) => song(String(1000 + i), `Song ${i}`, 'Artist'));
 const rowCount = (el: HTMLElement) => el.querySelectorAll('li.row').length;
@@ -45,6 +47,30 @@ function setup(inputs: Record<string, unknown>, h: FakeLibrary = {}) {
 }
 
 describe('SongListComponent', () => {
+  // kantahe-cqc.1: a row says that its song is already queued or playing, so that nobody taps it again by mistake
+  it('regression: a queued song says In queue, the song playing now says Playing, others say nothing', () => {
+    const { el, fixture } = setup({ songs: [song('00001', 'One', 'A'), song('00002', 'Two', 'B'), song('00003', 'Three', 'C')] });
+    TestBed.inject(StateStore).state.set(
+      create(StateSchema, { now: create(NowPlayingSchema, { song: song('00001', 'One', 'A') }), queue: [create(QueueItemSchema, { id: 'q1', song: song('00002', 'Two', 'B') })] }),
+    );
+    fixture.detectChanges();
+    const rows = Array.from(el.querySelectorAll('li.row'));
+    expect(rows.map((r) => r.querySelector('.queued')?.textContent?.trim() ?? '')).toEqual(['Playing', 'In queue', '']);
+    // the label is part of the row's button, so it is in what a screen reader says for it
+    expect(rows[1].querySelector('button.main')!.textContent).toContain('In queue');
+  });
+
+  it('the label follows the queue as it changes, without reading the list again', () => {
+    const { el, fixture } = setup({ songs: [song('00002', 'Two', 'B')] });
+    const store = TestBed.inject(StateStore);
+    store.state.set(create(StateSchema, {}));
+    fixture.detectChanges();
+    expect(el.querySelector('.queued')).toBeNull();
+    store.state.set(create(StateSchema, { queue: [create(QueueItemSchema, { id: 'q1', song: song('00002', 'Two', 'B') })] }));
+    fixture.detectChanges();
+    expect(el.querySelector('.queued')?.textContent?.trim()).toBe('In queue');
+  });
+
   it('regression: a failed load does not say that no songs were found', () => {
     const { el } = setup({ songs: [], failed: true, emptyText: 'No songs found.' });
     expect(el.textContent).not.toContain('No songs found.');

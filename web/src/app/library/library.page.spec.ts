@@ -106,13 +106,31 @@ describe('LibraryPage', () => {
       expect(el.querySelector('.empty-library a')).toBeNull();
     });
 
-    it('a search with no result is still "No songs found."', async () => {
-      const { el, settle, type } = setup();
+    // kantahe-cqc.9: a search with no result says what was searched and offers a way forward (it ended at "No songs found.")
+    it('regression: a search with no result names the search, gives a hint, and Clear search lists everything again', async () => {
+      const { el, settle, type, calls } = setup({ searchSongs: (req) => ({ items: req.query ? [] : [song('1', 'Hello', 'Adele')] }) });
       await settle();
-      await type('zzz');
+      await type('zzzz');
       await settle(300); // the search starts a moment after typing
       expect(el.querySelector('.empty-library')).toBeNull();
-      expect(el.textContent).toContain('No songs found.');
+      expect(el.querySelector('.no-match')?.textContent).toContain('No songs match "zzzz".');
+      expect(el.querySelector('.no-match')?.textContent).toContain('Try fewer words or the song number.');
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.no-match button')).find((b) => b.textContent?.trim() === 'Clear search')!.click();
+      await settle();
+      expect(el.querySelector<HTMLInputElement>('#search')!.value).toBe('');
+      expect(calls.search.at(-1)?.query).toBe('');
+      expect(el.querySelector('.no-match')).toBeNull();
+    });
+
+    it('with a format chosen and no result, Show all formats chooses All', async () => {
+      const { el, settle, chip } = setup({ searchSongs: (req) => ({ items: req.format === Format.MIDI ? [] : [song('1', 'Hello', 'Adele')] }) });
+      await settle();
+      chip('MIDI').click();
+      await settle();
+      const all = Array.from(el.querySelectorAll<HTMLButtonElement>('.no-match button')).find((b) => b.textContent?.trim() === 'Show all formats')!;
+      all.click();
+      await settle();
+      expect(chip('All').getAttribute('aria-pressed')).toBe('true');
     });
 
     it('a library with songs shows neither', async () => {
@@ -320,12 +338,12 @@ describe('LibraryPage', () => {
       expect(rows[1].textContent).toContain('MIDI');
     });
 
-    it('says when nothing matches', async () => {
+    it('says when nothing matches, naming the search (kantahe-cqc.9)', async () => {
       const { el, settle, type } = setup();
       await settle();
       await type('zzz');
       await settle(300);
-      expect(el.textContent).toContain('No songs found.');
+      expect(el.textContent).toContain('No songs match "zzz".');
     });
 
     it('shows a failed search with a way to try again', async () => {

@@ -259,18 +259,18 @@ test('/admin/users many: nothing is cut off by a sideways scroller at phone-390x
   await layout(browser, info, '/admin/users:many', 'phone-390x844', async (_raw, page) => {
     const host = page.locator('app-users-page');
     expect(await host.evaluate((el) => el.scrollWidth - el.clientWidth), 'the table scrolls inside its box').toBeLessThanOrEqual(0);
-    for (const button of await page.locator('td.actions button').all()) expect((await button.boundingBox())!.x + (await button.boundingBox())!.width).toBeLessThanOrEqual(390);
+    for (const button of await page.locator('.actions button').all()) expect((await button.boundingBox())!.x + (await button.boundingBox())!.width).toBeLessThanOrEqual(390);
   });
 });
 
-test('/admin/users many: the role checkboxes count at least 44 px with their label at phone-390x844', async ({ browser }, info) => {
-  const raw = await layout(browser, info, '/admin/users:many', 'phone-390x844', (r) => r);
-  expect(where(raw, 'smallTargets', 'td').filter((r) => r.selector.includes('input')).map((r) => r.selector), 'small checkboxes in the table').toEqual([]);
+// kantahe-qzr.1: the role checkboxes became the More menu; its button is a 44 px target like every other
+test('/admin/users many: the More buttons are at least 44 px at phone-390x844', async ({ browser }, info) => {
+  none(await layout(browser, info, '/admin/users:many', 'phone-390x844', (r) => r), 'smallTargets', 'tbody');
 });
 
 test('/admin/users delete-question: the question and its buttons are inside the window at phone-320x568', async ({ browser }, info) => {
   await layout(browser, info, '/admin/users:delete-question', 'phone-320x568', async (_raw, page) => {
-    for (const part of await page.locator('td.actions').locator('button, input, label').all()) {
+    for (const part of await page.locator('.actions').locator('button, input, label').all()) {
       const box = await part.boundingBox();
       if (!box) continue;
       expect(box.x, 'left edge').toBeGreaterThanOrEqual(0);
@@ -384,16 +384,19 @@ test('/queue many: the row buttons are inside the window at phone-390x844-zoom20
 });
 
 // kantahe-dk8.38: a failed search is not an empty search
-test('/library error: "No songs found." is not shown next to the error at phone-390x844', async ({ browser }, info) => {
+test('/library error: the no-result message is not shown next to the error at phone-390x844', async ({ browser }, info) => {
   await layout(browser, info, '/library:error', 'phone-390x844', async (_raw, page) => {
     await expect(page.getByRole('alert').first()).toBeVisible();
-    await expect(page.getByText('No songs found.')).toHaveCount(0);
+    await expect(page.locator('.no-match')).toHaveCount(0);
   });
 });
 
-test('/library empty: "No songs found." is shown for a search without result at phone-390x844', async ({ browser }, info) => {
-  await layout(browser, info, '/library:empty', 'phone-390x844', async (_raw, page) => {
-    await expect(page.getByText('No songs found.')).toBeVisible();
+// kantahe-cqc.9: the message names the search and offers Clear search
+test('/library empty: a search without result says so, with Clear search, at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/library:empty', 'phone-390x844', async (raw, page) => {
+    await expect(page.getByText('No songs match "zzzzqqqq".')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Clear search' })).toBeVisible();
+    none(raw, 'tightTargets', '.no-match');
   });
 });
 
@@ -476,8 +479,9 @@ test('/queue many: the now-playing card and the list share the left edge at tabl
   });
 });
 
-// kantahe-dk8.57: the list pages are a reading column (owner decision: option A, 48rem, left aligned in the frame)
-for (const id of ['/library:many', '/queue:many', '/me/favourites:many']) {
+// kantahe-dk8.57: the list pages are a reading column (owner decision: option A, 48rem, left aligned in the frame); the Queue is two columns
+// on a wide window since kantahe-cqc.5 (owner decision 2026-11-28)
+for (const id of ['/library:many', '/me/favourites:many']) {
   test(`${id.replace(':', ' ')}: the page is at most 48rem wide at desktop-1920x1080`, async ({ browser }, info) => {
     await layout(browser, info, id, 'desktop-1920x1080', async (_raw, page) => {
       const main = (await page.locator('main#main').locator('.library, .queue-page, .me').first().boundingBox())!;
@@ -585,9 +589,14 @@ for (const [viewport, keyboard, rows] of [
   ['phone-390x844', 336, 4],
   ['phone-375x667', 300, 2],
   ['phone-360x640', 290, 2],
+  // the smallest phone: two-line rows (the title keeps 120 px), so one result shows above the keyboard (kantahe-du1.19)
+  ['phone-320x568', 227, 1],
   // kantahe-du1.6 review: a phone on its side is wider than 40rem but the keyboard takes half of its height
   ['phone-landscape-844x390', 200, 1],
   ['phone-landscape-667x375', 200, 1],
+  // review kantahe-du1.15: found once the audit stopped counting menu links as results
+  ['phone-landscape-568x320', 176, 1],
+  ['phone-390x844-zoom200', 338, 1],
 ] as const) {
   test(`/library many: search results show above the keyboard at ${viewport}`, async ({ browser }, info) => {
     await layout(browser, info, '/library:many', viewport, async (_raw, page) => {
@@ -709,6 +718,428 @@ test('/admin/songs many: filters and tools are open, with no fold buttons, at de
   });
 });
 
+// kantahe-du1.11: on a TV the player keeps a 5% title-safe margin on every side (a TV that overscans cuts the edges of the picture)
+const outsideSafeArea = (page: Page) =>
+  page.evaluate(() => {
+    const [sx, sy] = [innerWidth * 0.05, innerHeight * 0.05];
+    const items = [...document.querySelectorAll('main.stage button, main.stage header.song h1, app-lyrics-view, .overlay .number, .overlay .comment')];
+    return items
+      .filter((e) => {
+        const r = e.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden';
+      })
+      .filter((e) => {
+        const r = e.getBoundingClientRect();
+        return r.left < sx - 0.5 || r.top < sy - 0.5 || r.right > innerWidth - sx + 0.5 || r.bottom > innerHeight - sy + 0.5;
+      })
+      .map((e) => `${e.tagName.toLowerCase()}.${e.className} "${(e.textContent ?? '').trim().slice(0, 20)}"`);
+  });
+const asTv = (page: Page) => page.evaluate(() => document.documentElement.classList.add('tv', 'tv-safe'));
+for (const id of ['/player:playing', '/player:score']) {
+  test(`${id.replace(':', ' ')}: on a TV everything of the player is inside the 5% safe area at desktop-1920x1080`, async ({ browser }, info) => {
+    await layout(browser, info, id, 'desktop-1920x1080', async (_raw, page) => {
+      await asTv(page);
+      await page.mouse.move(960, 540); // the buttons show
+      await page.waitForTimeout(300);
+      expect(await outsideSafeArea(page)).toEqual([]);
+    });
+  });
+}
+
+test('/player playing: without a TV the top bar keeps its place at desktop-1920x1080', async ({ browser }, info) => {
+  await layout(browser, info, '/player:playing', 'desktop-1920x1080', async (_raw, page) => {
+    expect(await page.locator('.topbar').evaluate((e) => Math.round(e.getBoundingClientRect().left))).toBe(12);
+  });
+});
+
+// kantahe-qzr.1: Admin > Users: one compact row per user, the actions in a More menu (a phone showed one user per screen)
+test('/admin/users many: a user row is at most 80 px high at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/users:many', 'phone-390x844', async (_raw, page) => {
+    const rows = page.locator('tbody tr').filter({ hasText: /^scratch\d@example\.com/ });
+    expect((await rows.first().boundingBox())!.height).toBeLessThanOrEqual(80);
+  });
+});
+
+test('/admin/users many: at least 5 users on the first screen at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/users:many', 'phone-390x844', async (_raw, page) => {
+    const barTop = (await page.locator('nav[aria-label="Main"]').boundingBox())!.y;
+    const shown = await page.locator('tbody tr').evaluateAll((rows, bar) => rows.filter((r) => r.getBoundingClientRect().top >= 0 && r.getBoundingClientRect().bottom <= bar).length, barTop);
+    expect(shown).toBeGreaterThanOrEqual(5);
+  });
+});
+
+test('/admin/users many: the row separators line up at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/users:many', 'desktop-1280x800', async (_raw, page) => {
+    const bottoms = await page.locator('tbody tr').first().locator('td').evaluateAll((tds) => tds.map((td) => Math.round(td.getBoundingClientRect().bottom)));
+    expect(Math.max(...bottoms) - Math.min(...bottoms), `bottoms of the cells ${bottoms.join(', ')}`).toBeLessThanOrEqual(1);
+  });
+});
+
+test('/admin/users many: no red button outside the menus at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/users:many', 'desktop-1280x800', async (_raw, page) => {
+    await expect(page.locator('tbody button.danger')).toHaveCount(0);
+  });
+});
+
+// kantahe-qzr.3: Admin > Songs on a phone: one compact row per song, the selection bar in reach, the broken songs folded
+test('/admin/songs many: a song row is at most 72 px high at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/songs:many', 'phone-390x844', async (_raw, page) => {
+    const row = page.locator('tbody tr').filter({ hasText: /Title \d+/ }).first();
+    expect((await row.boundingBox())!.height).toBeLessThanOrEqual(72);
+  });
+});
+
+for (const where of ['end', 'middle'] as const) {
+  test(`/admin/songs selected: the selection bar is on screen with the page scrolled to the ${where} at phone-390x844`, async ({ browser }, info) => {
+    await layout(browser, info, '/admin/songs:selected', 'phone-390x844', async (_raw, page) => {
+      await page.evaluate((w) => window.scrollTo({ top: w === 'end' ? document.documentElement.scrollHeight : document.documentElement.scrollHeight / 2, behavior: 'instant' }), where);
+      await page.waitForTimeout(200);
+      const button = (await page.getByRole('button', { name: 'Remove from list' }).first().boundingBox())!;
+      const bar = (await page.locator('nav[aria-label="Main"]').boundingBox())!;
+      expect(button.y, 'top of Remove from list').toBeGreaterThanOrEqual(0);
+      expect(button.y + button.height, 'bottom of Remove from list against the tab bar').toBeLessThanOrEqual(bar.y);
+    });
+  });
+}
+
+// with the text at 200% the bar and its question grew to half the screen and covered the search at the top (audit, kantahe-qzr.3)
+test('/admin/songs bulk-question: the selection bar takes at most 30% of the window at phone-390x844-zoom200', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/songs:bulk-question', 'phone-390x844-zoom200', async (raw, page) => {
+    expect((await page.locator('section.selection').boundingBox())!.height).toBeLessThanOrEqual(844 * 0.3 + 1);
+    none(raw, 'overlap');
+  });
+});
+
+test('/admin/songs selected: the selection bar covers no row that cannot be scrolled out from under it at desktop-1280x800', async ({ browser }, info) => {
+  none(await layout(browser, info, '/admin/songs:selected', 'desktop-1280x800', (r) => r), 'overlap');
+});
+
+test('/admin/songs many: the broken songs list is closed at first at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/songs:many', 'desktop-1280x800', async (_raw, page) => {
+    await expect(page.locator('li.broken')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Show', exact: true })).toBeVisible();
+  });
+});
+
+// kantahe-qzr.5: each upload result is one row: the file name and its status badge on one line (they were loose stacked words)
+test('/admin/upload results: each file is one row with its status badge at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/upload:results', 'phone-390x844', async (_raw, page) => {
+    const rows = await page.locator('tbody tr').all();
+    expect(rows.length).toBe(3);
+    for (const row of rows) {
+      const name = (await row.locator('td').first().boundingBox())!;
+      const status = (await row.locator('.status').boundingBox())!;
+      expect(status.y, 'the badge starts above the bottom of the file name').toBeLessThan(name.y + name.height);
+      expect(name.y, 'the file name starts above the bottom of the badge').toBeLessThan(status.y + status.height);
+      // one line under the row, none under each cell
+      expect(await row.locator('td').evaluateAll((tds) => tds.map((td) => getComputedStyle(td).borderBottomWidth))).toEqual(['0px', '0px', '0px']);
+    }
+  });
+});
+
+// kantahe-qzr.7: the Getting started panel on the first page of Administration: it fits a small phone and moves nothing when its answers come
+test('/admin/upload empty: the Getting started panel fits at phone-360x640', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/upload:empty', 'phone-360x640', async (raw, page) => {
+    await expect(page.getByRole('heading', { name: 'Getting started' })).toBeVisible();
+    none(raw, 'horizontalOverflow');
+    none(raw, 'smallTargets', 'app-getting-started');
+  });
+});
+
+test('/admin/upload empty: the page does not move when the Getting started answers come at phone-390x844', async ({ browser }, info) => {
+  await layout(
+    browser,
+    info,
+    '/admin/upload:empty',
+    'phone-390x844',
+    async (_raw, page) => {
+      const top = () => page.locator('section.upload h2').evaluate((e) => Math.round(e.getBoundingClientRect().top));
+      await expect(page.getByText('Checking…').first()).toBeVisible();
+      const before = await top();
+      await expect(page.getByText('Checking…')).toHaveCount(0, { timeout: 5_000 });
+      expect(await top()).toBe(before);
+    },
+    'light',
+    {
+      // the answer about the users comes a second late
+      before: ({ page }) => page.route('**/kantahe.v1.AdminService/ListUsers', async (r) => {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await r.continue();
+      }),
+      ready: ({ page }) => expect(page.getByRole('heading', { name: 'Upload songs' })).toBeVisible(),
+    },
+  );
+});
+
+// kantahe-cqc.1: a row says In queue once its song is added, and keeps its height (the label shares the artist's line)
+test('/library toast: the In queue label keeps the row one line at phone-360x640', async ({ browser }, info) => {
+  await layout(
+    browser,
+    info,
+    '/library:toast',
+    'phone-360x640',
+    async (_raw, page) => {
+      const row = page.locator('li.row').filter({ has: page.locator('.title', { hasText: /^Title \d+$/ }) }).first();
+      const before = (await row.boundingBox())!.height;
+      await row.locator('button.main').click();
+      await expect(row.locator('.queued')).toHaveText('In queue');
+      expect(Math.abs((await row.boundingBox())!.height - before), 'change of the row height').toBeLessThanOrEqual(2);
+    },
+    'light',
+    rowsOnly,
+  );
+});
+
+// kantahe-cqc.3: denser rows (the badges wrapped onto a second line, 65 px rows) and a one-line now-playing bar on phones
+const plainRow = (page: Page) =>
+  page
+    .locator('li.row')
+    .filter({ has: page.locator('.title', { hasText: /^Title \d+$/ }) })
+    .filter({ has: page.locator('.artist', { hasText: /^Artist \d+$/ }) })
+    .first();
+test('/library many: a plain song row is at most 56 px high at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/library:many', 'phone-390x844', async (_raw, page) => {
+    expect((await plainRow(page).boundingBox())!.height).toBeLessThanOrEqual(56);
+  });
+});
+
+test('/library many: the badges of a row are on one line at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/library:many', 'desktop-1280x800', async (_raw, page) => {
+    // badges of different heights are centred on one line: their middles agree (two lines differ by a badge height)
+    const middles = await plainRow(page).locator('app-format-badge .badge').evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect()).map((r) => r.top + r.height / 2));
+    expect(middles.length).toBeGreaterThan(1);
+    expect(Math.max(...middles) - Math.min(...middles), `middles of the badges: ${middles.join(', ')}`).toBeLessThanOrEqual(2);
+  });
+});
+
+test('/library many: the now-playing bar is at most 48 px high at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/library:many', 'phone-390x844', async (_raw, page) => {
+    expect((await page.locator('app-now-bar aside').boundingBox())!.height).toBeLessThanOrEqual(48);
+  });
+});
+
+test('/library many: rows stay at least 44 px high and nothing scrolls sideways at phone-320x568', async ({ browser }, info) => {
+  await layout(browser, info, '/library:many', 'phone-320x568', async (raw, page) => {
+    expect((await plainRow(page).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    none(raw, 'horizontalOverflow');
+  });
+});
+
+test('/library many: the page does not move when the now-playing bar fills in at desktop-1280x800', async ({ browser }, info) => {
+  await layout(
+    browser,
+    info,
+    '/library:many',
+    'desktop-1280x800',
+    async (_raw, page) => {
+      const top = () => page.locator('h1').evaluate((e) => Math.round(e.getBoundingClientRect().top));
+      const before = await top();
+      await expect(page.locator('app-now-bar .song strong')).toBeVisible({ timeout: 10_000 });
+      expect(await top()).toBe(before);
+    },
+    'light',
+    {
+      // the first state comes a second late: the page is drawn before it
+      before: ({ page }) =>
+        page.route('**/kantahe.v1.SessionService/WatchState', async (r) => {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          await r.continue();
+        }),
+      ready: ({ page }) => expect(page.getByRole('heading', { name: 'Library' })).toBeVisible(),
+      after: undefined,
+    },
+  );
+});
+
+// kantahe-cqc.5: on a wide window the Queue shows now playing and the queue side by side (owner decision 2026-11-28)
+test('/queue many: at least 8 queued songs on the first screen at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/queue:many', 'desktop-1280x800', async (_raw, page) => {
+    expect(await queueRowsOnFirstScreen(page)).toBeGreaterThanOrEqual(8);
+  });
+});
+
+test('/queue many: one column at tablet-768x1024', async ({ browser }, info) => {
+  await layout(browser, info, '/queue:many', 'tablet-768x1024', async (_raw, page) => {
+    const card = (await page.locator('app-now-playing section').boundingBox())!;
+    const list = (await page.locator('#queue-title').boundingBox())!;
+    expect(list.y, 'Coming up starts below the card').toBeGreaterThan(card.y + card.height);
+  });
+});
+
+test('/queue many: the now-playing card stays in view while the queue scrolls at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/queue:many', 'desktop-1280x800', async (_raw, page) => {
+    await page.evaluate(() => window.scrollBy({ top: 800, behavior: 'instant' }));
+    await page.waitForTimeout(200);
+    const top = (await page.locator('app-now-playing section').boundingBox())!.y;
+    expect(top).toBeGreaterThanOrEqual(0);
+    expect(top).toBeLessThanOrEqual(40);
+  });
+});
+
+// kantahe-cqc.6 review: the sticky card is never taller than the window, so every control in it can be reached on a short window
+test('/queue many: with Volume and tempo open the whole card fits the window at tablet-landscape-1024x768', async ({ browser }, info) => {
+  await layout(browser, info, '/queue:many', 'tablet-landscape-1024x768', async (_raw, page) => {
+    await page.getByRole('button', { name: /^Volume(,| and) tempo/ }).click();
+    const card = (await page.locator('app-now-playing').boundingBox())!;
+    expect(card.height, 'height of the sticky card').toBeLessThanOrEqual(768);
+    await page.evaluate(() => window.scrollBy({ top: 2000, behavior: 'instant' }));
+    await page.waitForTimeout(200);
+    const faster = page.getByRole('button', { name: 'Faster' });
+    await faster.scrollIntoViewIfNeeded();
+    const b = (await faster.boundingBox())!;
+    expect(b.y + b.height).toBeLessThanOrEqual(768);
+  });
+});
+
+// kantahe-cqc.9: the Help link of a page leads to the section that explains it, its heading in view
+test('/admin/songs many: Help leads to For administrators, in view, at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/songs:many', 'desktop-1280x800', async (_raw, page) => {
+    await page.locator('a.help-link').click();
+    await expect(page).toHaveURL(/\/me\/help#admin$/);
+    const heading = page.getByRole('heading', { name: 'For administrators' });
+    await expect(heading).toBeInViewport();
+    await expect(heading).toBeFocused();
+  });
+});
+
+test('/queue many: Help leads to the section about the queue at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/queue:many', 'phone-390x844', async (_raw, page) => {
+    await page.locator('a.help-link').click();
+    await expect(page.getByRole('heading', { name: 'The queue and Play here' })).toBeInViewport();
+  });
+});
+
+test('/library many: the Help link is a 44 px target at phone-390x844', async ({ browser }, info) => {
+  none(await layout(browser, info, '/library:many', 'phone-390x844', (r) => r), 'smallTargets', 'help-link');
+});
+
+// kantahe-du1.17: nothing pushes the page after the first paint (Lighthouse CLS up to 0.146: the install offer above the page, the footer
+// pushed down when a list arrived). The browser's own layout-shift entries are summed from the start of the page.
+const measureShifts: Partial<RouteState> = {
+  before: ({ page }) =>
+    page.addInitScript(() => {
+      (window as unknown as { __cls: number }).__cls = 0;
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries() as (PerformanceEntry & { value: number; hadRecentInput: boolean })[]) if (!e.hadRecentInput) (window as unknown as { __cls: number }).__cls += e.value;
+      }).observe({ type: 'layout-shift', buffered: true });
+    }),
+};
+for (const [id, viewport] of [
+  ['/queue:many', 'phone-390x844'],
+  ['/admin/users:many', 'phone-390x844'],
+  ['/admin/songs:many', 'desktop-1280x800'],
+  // Lighthouse mobile still saw 0.027 here: the Loading line under the list moved when the rows came
+  ['/admin/songs:many', 'phone-412x915'],
+] as const) {
+  test(`${id.replace(':', ' ')}: nothing moves while the page loads at ${viewport}`, async ({ browser }, info) => {
+    await layout(
+      browser,
+      info,
+      id,
+      viewport,
+      async (_raw, page) => {
+        await page.waitForTimeout(1000);
+        expect(await page.evaluate(() => (window as unknown as { __cls: number }).__cls), 'cumulative layout shift').toBeLessThan(0.02);
+      },
+      'light',
+      {
+        before: async (ctx) => {
+          await measureShifts.before!(ctx);
+          // the list comes a second late, as on a slow network: the page must not grow under what is already drawn
+          await ctx.page.route('**/kantahe.v1.CatalogService/SearchSongs', async (r) => {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await r.continue();
+          });
+        },
+      },
+    );
+  });
+}
+
+// kantahe-du1.23: a playlist's page grew under its first paint (CLS 0.065): the empty heading took its line and the songs came above the
+// legend when the playlist arrived
+test('/me/playlists/:id many: nothing moves while the page loads at desktop-1280x800', async ({ browser }, info) => {
+  await layout(
+    browser,
+    info,
+    '/me/playlists/:id:many',
+    'desktop-1280x800',
+    async (_raw, page) => {
+      await page.waitForTimeout(1000);
+      expect(await page.evaluate(() => (window as unknown as { __cls: number }).__cls), 'cumulative layout shift').toBeLessThan(0.02);
+    },
+    'light',
+    {
+      before: async (ctx) => {
+        await measureShifts.before!(ctx);
+        await ctx.page.route('**/kantahe.v1.UserLibraryService/GetPlaylist', async (r) => {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await r.continue();
+        });
+      },
+    },
+  );
+});
+
+const offerInstall = (page: Page) =>
+  page.evaluate(() => window.dispatchEvent(Object.assign(new Event('beforeinstallprompt', { cancelable: true }), { prompt: () => Promise.resolve() })));
+test('/library many: the install offer appears without moving the page, above the tab bar, at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/library:many', 'phone-390x844', async (_raw, page) => {
+    const top = () => page.locator('h1').evaluate((e) => Math.round(e.getBoundingClientRect().top));
+    const before = await top();
+    await offerInstall(page);
+    const offer = page.locator('aside.install');
+    await expect(offer).toBeVisible();
+    expect(await top(), 'the heading did not move').toBe(before);
+    const o = (await offer.boundingBox())!;
+    const bar = (await page.locator('nav[aria-label="Main"]').boundingBox())!;
+    expect(o.y + o.height).toBeLessThanOrEqual(bar.y);
+  });
+});
+
+// kantahe-du1.21: Admin > Songs on a phone, as the Library (kantahe-du1.5): results above the keyboard while typing a search
+const songRowsAboveKeyboard = (page: Page, keyboard: number) =>
+  page.evaluate((k) => [...document.querySelectorAll('tbody tr')].filter((r) => r.getBoundingClientRect().top >= 0 && r.getBoundingClientRect().bottom <= innerHeight - k).length, keyboard);
+for (const [viewport, keyboard, rows] of [
+  ['phone-390x844', 336, 3],
+  ['phone-360x640', 290, 2],
+] as const) {
+  test(`/admin/songs many: search results show above the keyboard at ${viewport}`, async ({ browser }, info) => {
+    await layout(browser, info, '/admin/songs:many', viewport, async (_raw, page) => {
+      await page.locator('#admin-search').click();
+      await page.locator('#admin-search').pressSequentially('Title 1', { delay: 20 });
+      await expect(page.locator('tbody tr').first()).toBeVisible();
+      await page.waitForTimeout(700);
+      expect(await songRowsAboveKeyboard(page, keyboard)).toBeGreaterThanOrEqual(rows);
+    });
+  });
+}
+
+// a tap on a result takes the focus off the field first: the page must not change then, or the rows jump under the finger (the fold buttons
+// came back above the list on blur). Scroll anchoring is off, as in Safari, where it does not exist (review kantahe-du1.22)
+test('/admin/songs many: leaving the search field moves no row at phone-390x844', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/songs:many', 'phone-390x844', async (_raw, page) => {
+    await page.addStyleTag({ content: 'html, body { overflow-anchor: none !important; }' });
+    await page.locator('#admin-search').click();
+    await page.locator('#admin-search').pressSequentially('Title 1', { delay: 20 });
+    await expect(page.locator('tbody tr').first()).toBeVisible();
+    await page.waitForTimeout(700);
+    const before = (await page.locator('tbody tr').first().boundingBox())!.y;
+    await page.locator('#admin-search').blur();
+    await page.waitForTimeout(300);
+    expect((await page.locator('tbody tr').first().boundingBox())!.y).toBeCloseTo(before, 0);
+  });
+});
+
+test('/admin/songs many: focusing the search does not scroll at desktop-1280x800', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/songs:many', 'desktop-1280x800', async (_raw, page) => {
+    await page.locator('#admin-search').click();
+    await page.locator('#admin-search').pressSequentially('Title 1', { delay: 20 });
+    await page.waitForTimeout(700);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  });
+});
+
 // the WCAG contrast of two colours given as the browser writes them: "rgb(r, g, b)" or "rgba(r, g, b, a)"
 const channels = (css: string) => (css.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
 const luminance = (css: string) => {
@@ -814,6 +1245,17 @@ for (const viewport of ['phone-390x844', 'phone-320x568', 'desktop-1280x800']) {
     none(await layout(browser, info, '/admin/songs:bulk-question', viewport, (r) => r), 'tightTargets', 'section.selection');
   });
 }
+
+// on its side the phone has no tab bar, yet the bar of the chosen songs kept the room for one: it floated 72 px up, over the rows, 4.5 px
+// from a row's checkbox (audit, kantahe-du1.21)
+test('/admin/songs bulk-question: the selection bar rests at the bottom and crowds no row at phone-landscape-667x375', async ({ browser }, info) => {
+  await layout(browser, info, '/admin/songs:bulk-question', 'phone-landscape-667x375', async (raw, page) => {
+    none(raw, 'tightTargets', 'section.selection');
+    const bar = (await page.locator('section.selection').boundingBox())!;
+    const tabs = await page.locator('nav.tabs, nav[aria-label="Main"]').first().isVisible().catch(() => false);
+    if (!tabs) expect(375 - (bar.y + bar.height), 'no tab bar: the bar sits 1rem above the bottom').toBeLessThanOrEqual(17);
+  });
+});
 
 // kantahe-tlf.2.1: the menu is a tab bar at the bottom of a phone
 test('/library many: the page starts within 160 px of the top at phone-390x844', async ({ browser }, info) => {
@@ -939,7 +1381,7 @@ for (const id of ['/admin/songs:many', '/admin/users:many']) {
     test(`${id.replace(':', ' ')}: the action buttons of a row are on one line, each label on one line, at ${viewport}`, async ({ browser }, info) => {
       await layout(browser, info, id, viewport, async (_raw, page) => {
         for (const row of (await page.locator('tbody tr').all()).slice(0, 5)) {
-          const boxes = await row.locator('td.actions button:visible').evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect()).map((r) => ({ top: Math.round(r.top), height: r.height })));
+          const boxes = await row.locator('.actions button:visible').evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect()).map((r) => ({ top: Math.round(r.top), height: r.height })));
           const name = (await row.innerText()).slice(0, 40);
           expect(new Set(boxes.map((b) => b.top)).size, `rows of buttons in ${name}`).toBe(1);
           for (const b of boxes) expect(b.height, `height of a button in ${name} (a label on two lines is taller)`).toBeLessThanOrEqual(46);

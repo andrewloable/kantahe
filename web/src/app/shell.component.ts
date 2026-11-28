@@ -28,7 +28,7 @@ const ADMIN_TAB = { path: '/admin', label: 'Admin', icon: 'M12 3l8 3v6c0 4.5-3.4
   host: { '(document:keydown)': 'onKey($event)' },
   styleUrl: './shell.component.css',
   template: `
-    <div class="frame">
+    <div class="frame" [class.offering]="auth.signedIn() && install.showBanner()">
       <a class="skip" href="#main" (click)="skipToContent($event)">Skip to content</a>
       <header>
         <div class="top">

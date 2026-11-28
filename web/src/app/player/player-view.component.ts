@@ -138,7 +138,8 @@ const IDLE_MS = 3000;
       /* the background video (position: fixed, z-index -1) sits behind everything in here, over this background */
       isolation: isolate;
       min-height: 100vh;
-      padding: 1.5rem 1rem;
+      /* --safe-x and --safe-y: the title-safe margin of a TV, 0 elsewhere (styles.css); calc, not the max function, which Chromium 74 (the legacy build) drops */
+      padding: calc(1.5rem + var(--safe-y)) calc(1rem + var(--safe-x));
       background: #0a0e22;
       color: var(--text);
       text-align: center;
@@ -162,7 +163,7 @@ const IDLE_MS = 3000;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1.5rem;
+      padding: calc(1.5rem + var(--safe-y)) calc(1.5rem + var(--safe-x));
       background: rgba(10, 14, 34, 0.94);
       /* never taller than the stage: a card that overflowed made the stage scroll and moved the top bar under a toast */
       overflow: hidden;
@@ -214,9 +215,9 @@ const IDLE_MS = 3000;
     }
     .topbar {
       position: absolute;
-      top: 0.75rem;
-      left: 0.75rem;
-      right: 0.75rem;
+      top: calc(0.75rem + var(--safe-y));
+      left: calc(0.75rem + var(--safe-x));
+      right: calc(0.75rem + var(--safe-x));
       /* above the score screen (z-index 10): leaving or going full screen works while a score shows */
       z-index: 20;
       display: flex;
@@ -251,14 +252,15 @@ const IDLE_MS = 3000;
       pointer-events: none;
     }
     .stage.fill:not(.embedded) {
-      padding-top: 3.75rem;
+      padding-top: calc(3.75rem + var(--safe-y));
     }
     /* inside the app the native Close sits at the top and the native controls at the bottom, over the page */
     .stage.embedded {
-      padding-top: 4.5rem;
+      padding-top: calc(4.5rem + var(--safe-y));
       /* the toasts float below the app's Close button (toasts.component.ts) */
       --toast-top: 5rem;
       /* one row of the app's buttons needs 6rem; the app says how much more it takes when they wrap to more rows */
+      /* (no TV margin here: the app's buttons keep it themselves and report it in their height, player_screen.dart _tvSafe) */
       padding-bottom: max(6rem, calc(var(--native-controls, 0px) + 1.5rem));
     }
     /* a long title is cut to two lines and a long artist to one: the whole text is in the tooltip */

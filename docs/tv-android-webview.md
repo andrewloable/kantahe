@@ -138,6 +138,8 @@ adb -s $TV uninstall com.android.webview     # removes the update; the built-in 
 
 ## 6. Limits
 
+* On Android TV the app tells the player it is on a TV (the address of the player page ends in `?tv=1`), so the player keeps
+  its text and buttons 5% from every edge of the screen, for TVs that overscan.
 * Only on builds signed with the public test keys; a retail TV needs its maker's firmware or another device.
 * A factory reset brings the old WebView back; repeat step e (the files are the same).
 * It is a change to the system software of one TV. Do it on your own devices only, and not on a TV you do not control.

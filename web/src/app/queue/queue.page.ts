@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { QueueItem, SessionService } from '../../gen/kantahe/v1/session_pb';
 import { injectClient } from '../core/api';
@@ -9,6 +9,7 @@ import { FormatBadgeComponent } from '../library/format-badge.component';
 import { LibraryActions } from '../library/library-actions';
 import { ActionMenuComponent, MenuItem } from '../shared/action-menu.component';
 import { DevicesComponent } from './devices.component';
+import { startsIn } from './eta';
 import { NowPlayingComponent } from './now-playing.component';
 
 @Component({
@@ -16,7 +17,10 @@ import { NowPlayingComponent } from './now-playing.component';
   imports: [NowPlayingComponent, DevicesComponent, FormatBadgeComponent, RouterLink, ActionMenuComponent],
   template: `
     <div class="queue-page">
-      <h1>Queue</h1>
+      <div class="page-head">
+        <h1>Queue</h1>
+        <a class="help-link" routerLink="/me/help" fragment="queue">Help</a>
+      </div>
       @if (state(); as s) {
         @if (!store.connected()) {
           <p class="notice" role="status">Reconnecting… Showing the last known state.</p>
@@ -29,8 +33,16 @@ import { NowPlayingComponent } from './now-playing.component';
             <p><a class="open-library" routerLink="/library">Open the Library</a></p>
           } @else {
             <ol class="queue">
-              @for (item of s.queue; track item.id; let first = $first) {
+              @for (item of s.queue; track item.id; let first = $first, i = $index) {
                 <li>
+                  <!-- its place in the queue and, roughly, when it starts (kantahe-cqc.7) -->
+                  <span class="pos">
+                    <span class="n">{{ i + 1 }}</span>
+                    @if (when(i); as w) {
+                      <span class="when" aria-hidden="true">{{ w.short }}</span>
+                      <span class="sr-only">, {{ w.long }}</span>
+                    }
+                  </span>
                   <span class="info">
                     <span class="title">{{ item.song?.title }}</span>
                     <span class="artist">{{ item.song?.artist }}</span>
@@ -65,6 +77,50 @@ import { NowPlayingComponent } from './now-playing.component';
       /* a reading column: wider, the title and the buttons of a row are too far apart; left aligned in the frame */
       max-width: 48rem;
       padding: 1rem;
+    }
+    /* a wide window: now playing on the left, kept in view; the queue and the devices on the right (owner decision 2026-11-28,
+       kantahe-cqc.5). The order on screen is the order of the page, left then right, so the keyboard goes the same way */
+    @media (min-width: 64rem) {
+      .queue-page {
+        max-width: none;
+        display: grid;
+        grid-template-columns: minmax(20rem, 26rem) minmax(0, 1fr);
+        grid-template-areas:
+          'title title'
+          'notice notice'
+          'now list'
+          'now devices';
+        grid-template-rows: auto auto auto 1fr;
+        column-gap: 2rem;
+      }
+      .queue-page > .page-head {
+        grid-area: title;
+      }
+      .queue-page > .notice {
+        grid-area: notice;
+      }
+      .queue-page > app-now-playing {
+        grid-area: now;
+        align-self: start;
+        position: sticky;
+        top: 1rem;
+        /* never taller than the window: a taller card would keep its lower part out of reach while it sticks (kantahe-cqc.6) */
+        max-height: calc(100vh - 2rem);
+        overflow-y: auto;
+      }
+      .queue-page > section {
+        grid-area: list;
+      }
+      /* the heading of the list starts level with the card beside it */
+      .queue-page > section > h2 {
+        margin-top: 0;
+      }
+      .queue-page > app-devices {
+        grid-area: devices;
+      }
+      .queue-page > p {
+        grid-column: 1 / -1;
+      }
     }
     .queue {
       margin: 0;
@@ -105,6 +161,28 @@ import { NowPlayingComponent } from './now-playing.component';
     .notice {
       color: var(--muted);
     }
+    .pos {
+      flex: none;
+      min-width: 3.5rem;
+      display: flex;
+      flex-direction: column;
+      font-variant-numeric: tabular-nums;
+    }
+    .pos .n {
+      font-weight: 700;
+    }
+    .pos .when {
+      color: var(--muted);
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
 
   `,
 })
@@ -112,9 +190,31 @@ export class QueuePage {
   /** No state has arrived for a few seconds: "Connecting…" alone would say nothing for ever. */
   protected readonly stalled = signal(false);
 
+  /** Moves every 30 s, so that the start times count down between two states. */
+  private readonly tick = signal(0);
+
   constructor() {
     const timer = setTimeout(() => this.stalled.set(true), 6000);
-    inject(DestroyRef).onDestroy(() => clearTimeout(timer));
+    const ticking = setInterval(() => this.tick.update((t) => t + 1), 30_000);
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(timer);
+      clearInterval(ticking);
+    });
+  }
+
+  private readonly starts = computed(() => {
+    this.tick();
+    const s = this.state();
+    return s ? startsIn(s, this.store.positionMs()) : [];
+  });
+
+  /** "next" for the first song, about how many minutes for the others; nothing when it is not known (kantahe-cqc.7). */
+  protected when(i: number): { short: string; long: string } | undefined {
+    if (i === 0) return { short: 'next', long: 'plays next' };
+    const ms = this.starts()[i];
+    if (ms === undefined) return undefined;
+    const minutes = Math.max(1, Math.ceil(ms / 60_000));
+    return { short: `~${minutes} min`, long: `starts in about ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}` };
   }
 
   protected readonly store = inject(StateStore);

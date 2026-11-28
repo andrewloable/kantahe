@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Format, LyricTiming } from '../../gen/kantahe/v1/common_pb';
@@ -168,6 +169,23 @@ describe('PlaylistDetailComponent', () => {
     await open('nope');
     expect(el.textContent).toContain('This playlist no longer exists.');
     expect(el.querySelector('a')?.getAttribute('href')).toBe('/me/playlists');
+  });
+
+  it('regression: a playlist that cannot be loaded says so, not Loading forever (kantahe-du1.23)', async () => {
+    const { el, open, server } = await setup();
+    server.failGetNext(new ConnectError('down', Code.Unavailable));
+    await open('p2');
+    expect(el.textContent).toContain('The playlist could not be loaded.');
+    expect(el.textContent).not.toContain('Loading the playlist');
+  });
+
+  it('draws only a loading line until the playlist is here (kantahe-du1.23)', async () => {
+    const { el, harness } = await setup();
+    await harness.navigateByUrl('/me/playlists/p2');
+    harness.fixture.detectChanges();
+    expect(el.textContent).toContain('Loading the playlist…');
+    expect(el.querySelector('h2')).toBeNull();
+    expect(el.querySelector('app-badge-legend')).toBeNull();
   });
 
   it('has a way back to the list', async () => {

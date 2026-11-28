@@ -25,7 +25,10 @@ const TABS: { id: Tab; label: string }[] = [
   host: { '(document:keydown)': 'onShortcut($event)' },
   template: `
     <div class="library">
-      <h1>Library</h1>
+      <div class="page-head">
+        <h1>Library</h1>
+        <a class="help-link" routerLink="/me/help" fragment="finding-songs">Help</a>
+      </div>
       <div role="tablist" aria-label="Find a song">
         @for (t of tabs; track t.id) {
           <button
@@ -46,7 +49,8 @@ const TABS: { id: Tab; label: string }[] = [
       <div role="tabpanel" [id]="'panel-' + tab()" [attr.aria-labelledby]="'tab-' + tab()">
         @switch (tab()) {
           @case ('search') {
-            <!-- on a phone the field and the chips stick to the top while the results scroll under them (kantahe-du1.5) -->
+            <!-- on a phone the field sticks to the top while the chips and the results scroll under it (kantahe-du1.5; the chips left the bar in
+                 review kantahe-du1.15: with large text or on its side the bar left no room for one result above the keyboard) -->
             <div class="search-bar" #searchBar>
               <div class="field">
                 <label for="search">Search songs</label>
@@ -61,13 +65,13 @@ const TABS: { id: Tab; label: string }[] = [
                   (keydown.enter)="onEnter($event)"
                 />
               </div>
-              <div class="chips" role="group" aria-label="Format">
-                @for (c of chips; track c.label) {
-                  <button type="button" class="toggle" [attr.aria-pressed]="format() === c.format" (click)="setFormat(c.format)">{{ c.label }}</button>
-                }
-              </div>
             </div>
-            <div class="results">
+            <div class="chips" role="group" aria-label="Format">
+              @for (c of chips; track c.label) {
+                <button type="button" class="toggle" [attr.aria-pressed]="format() === c.format" (click)="setFormat(c.format)">{{ c.label }}</button>
+              }
+            </div>
+            <div class="results" #results>
             @if (songs.error()) {
               <p class="error" role="alert">{{ songs.error() }} <button type="button" (click)="songs.retry()">Try again</button></p>
             }
@@ -81,7 +85,22 @@ const TABS: { id: Tab; label: string }[] = [
                 }
               </p>
             }
-            <app-song-list [songs]="songs.items()" [allowDelete]="true" [emptyText]="emptyLibrary() ? '' : 'No songs found.'" [hasMore]="songs.hasMore()" [loading]="songs.loading()" [autoMore]="!songs.error()" [failed]="!!songs.error()" (more)="songs.more()" />
+            @if (noMatch()) {
+              <!-- a search with no result says what was searched and offers a way forward (kantahe-cqc.9) -->
+              <div class="no-match" role="status">
+                <p>{{ activeQueryText() ? 'No songs match "' + activeQueryText() + '".' : 'No songs in this format.' }}</p>
+                <p class="hint">Try fewer words or the song number.</p>
+                <p class="actions">
+                  @if (activeQueryText()) {
+                    <button type="button" (click)="clearSearch()">Clear search</button>
+                  }
+                  @if (format() !== Format.UNSPECIFIED) {
+                    <button type="button" class="quiet" (click)="setFormat(Format.UNSPECIFIED)">Show all formats</button>
+                  }
+                </p>
+              </div>
+            }
+            <app-song-list [songs]="songs.items()" [allowDelete]="true" [emptyText]="''" [hasMore]="songs.hasMore()" [loading]="songs.loading()" [autoMore]="!songs.error()" [failed]="!!songs.error()" (more)="songs.more()" />
             </div>
           }
           @case ('number') {
@@ -137,20 +156,33 @@ const TABS: { id: Tab; label: string }[] = [
         min-height: 100dvh;
       }
     }
-    /* a phone on its side: the keyboard leaves about 190 px, so the chips sit beside the field and the bar is one row (kantahe-du1.6) */
-    @media (max-height: 30rem) and (min-width: 40.01rem) {
-      .search-bar {
-        display: flex;
-        align-items: flex-end;
-        gap: 0.75rem;
-      }
+    /* a phone on its side: the keyboard leaves about 140 to 190 px, so the label sits beside the field and the bar is one row (kantahe-du1.6) */
+    @media (max-height: 30rem) {
       .search-bar .field {
-        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
         margin-bottom: 0.5rem;
       }
-      .search-bar .chips {
-        flex-wrap: nowrap;
+      .search-bar label {
+        margin: 0;
+        white-space: nowrap;
       }
+      .search-bar input {
+        flex: 1;
+        min-width: 0;
+      }
+    }
+    .no-match p {
+      margin: 0 0 0.5rem;
+    }
+    .no-match .hint {
+      color: var(--muted);
+    }
+    .no-match .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
     }
     input[type='search'] {
       width: 100%;
@@ -182,6 +214,11 @@ export class LibraryPage {
   private readonly askedForEverything = signal(true);
   protected readonly emptyLibrary = computed(() => this.askedForEverything() && !this.songs.loading() && !this.songs.error() && this.songs.items().length === 0);
   protected readonly format = signal(Format.UNSPECIFIED);
+  protected readonly Format = Format;
+  /** The words of the search on screen (not what is being typed): the no-result message names them. */
+  protected readonly activeQueryText = signal('');
+  /** A search that asked for something found nothing (an empty library is said by its own message). */
+  protected readonly noMatch = computed(() => !this.askedForEverything() && !this.songs.loading() && !this.songs.error() && this.songs.items().length === 0);
   protected readonly chips = [
     { label: 'All', format: Format.UNSPECIFIED },
     { label: 'MP3', format: Format.MP3 },
@@ -226,9 +263,16 @@ export class LibraryPage {
     return typeof matchMedia === 'function' && matchMedia('(max-width: 40rem), (max-height: 30rem)').matches;
   }
 
-  /** On a phone, the field and the chips go to the top of the window, so that the results fill the space above the keyboard. */
+  private readonly resultsArea = viewChild<ElementRef<HTMLElement>>('results');
+
+  /** On a phone, the results go right under the field stuck at the top (the chips scroll away under it), so that they fill the space above the
+   *  keyboard. Only a scroll: nothing is hidden or shown, so a tap on a result lands where it was aimed. */
   private bringSearchUp(): void {
-    if (this.phone()) this.searchBar()?.nativeElement.scrollIntoView({ block: 'start' });
+    const bar = this.searchBar()?.nativeElement;
+    const results = this.resultsArea()?.nativeElement;
+    if (!this.phone() || !bar || !results) return;
+    if (getComputedStyle(bar).position === 'sticky') window.scrollBy(0, results.getBoundingClientRect().top - bar.getBoundingClientRect().height);
+    else bar.scrollIntoView({ block: 'start' });
   }
 
   protected onSearchFocus(): void {
@@ -269,6 +313,12 @@ export class LibraryPage {
     this.timer = setTimeout(() => this.searchNow(), SEARCH_DELAY_MS);
   }
 
+  /** Empties the search box and lists everything again (the format stays as chosen). */
+  protected clearSearch(): void {
+    this.query.set('');
+    this.searchNow();
+  }
+
   protected setFormat(f: Format): void {
     this.format.set(f);
     this.searchNow();
@@ -278,6 +328,7 @@ export class LibraryPage {
   private searchNow(): void {
     clearTimeout(this.timer);
     this.activeQuery = this.query().trim();
+    this.activeQueryText.set(this.activeQuery);
     this.activeFormat = this.format();
     this.askedForEverything.set(this.activeQuery === '' && this.activeFormat === Format.UNSPECIFIED);
     // a page scrolled down the old results goes back to the first new result (the bar is stuck at the top of it)

@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { SearchSongsRequest, SongSort } from '../../../gen/kantahe/v1/catalog_pb';
@@ -15,6 +16,7 @@ async function setup(songs = SONGS, pageSize?: number) {
   const saved: { url: string; name: string }[] = [];
   TestBed.configureTestingModule({
     providers: [
+      provideRouter([]), // the Help link
       { provide: TRANSPORT, useValue: server.transport },
       { provide: FileDownloader, useValue: { save: (url: string, name: string) => saved.push({ url, name }) } },
     ],
@@ -38,6 +40,46 @@ async function setup(songs = SONGS, pageSize?: number) {
 }
 
 describe('SongsAdminPage', () => {
+  // kantahe-du1.21: the Search key of a phone keyboard searches at once and closes the keyboard
+  it('regression: Enter in the search searches at once and takes the focus off the field', async () => {
+    const { el, server, settle } = await setup();
+    document.body.appendChild(el);
+    const input = el.querySelector<HTMLInputElement>('#admin-search')!;
+    expect(input.getAttribute('enterkeyhint')).toBe('search');
+    input.focus();
+    input.value = 'bravo';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    const before = server.calls.search.length;
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await settle();
+    expect(server.calls.search.length).toBe(before + 1);
+    expect(server.calls.search.at(-1)?.query).toBe('bravo');
+    expect(document.activeElement).not.toBe(input);
+    el.remove();
+  });
+
+  // kantahe-qzr.3: on a phone Edit is the first item of the More menu (the row keeps one button); a wide page keeps the Edit button
+  it('regression: the More menu of a song starts with Edit, which opens the edit dialog', async () => {
+    const { el, fixture } = await setup();
+    const first = el.querySelector<HTMLElement>('tbody tr')!;
+    first.querySelector<HTMLButtonElement>('app-action-menu button.more')!.click();
+    fixture.detectChanges();
+    const items = Array.from(first.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
+    expect(items.map((b) => b.textContent?.trim())).toEqual(['Edit', 'Delete', 'Download', 'Replace file']);
+    items[0].click();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="dialog"]')).not.toBeNull();
+  });
+
+  it('regression: the selection bar comes after the list (it sticks to the bottom of the window while the list scrolls)', async () => {
+    const { el, fixture } = await setup();
+    el.querySelector<HTMLInputElement>('tbody input[type="checkbox"]')!.click();
+    fixture.detectChanges();
+    const bar = el.querySelector('section.selection')!;
+    expect(bar).not.toBeNull();
+    expect(el.querySelector('table')!.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
@@ -163,26 +205,27 @@ describe('SongsAdminPage', () => {
       ['Replace file', 'quiet'],
     ]);
     const edit = Array.from(row('00002').querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Edit')!;
-    expect(edit.className).toBe('');
+    expect(edit.className).toBe('wide-only-button'); // a plain button; hidden in the narrow layout, where Edit is in the More menu
     const css = Array.from(document.querySelectorAll('style')).map((st) => st.textContent ?? '').join('\n');
     const narrowAt = css.indexOf('@container (max-width: 44rem)');
     expect(css.slice(0, narrowAt), 'the menu is hidden at a wide size').toMatch(/\.narrow-only[^{]*\{[^}]*display:\s*none/);
   });
 
-  it('regression: in the narrow layout a row has Edit and a More menu with Delete, Download and Replace file (four filled buttons per song before)', async () => {
+  it('regression: in the narrow layout a row has a More menu with Edit, Delete, Download and Replace file (four filled buttons per song before)', async () => {
     const { row, settle, el, fixture } = await setup();
     const css = Array.from(document.querySelectorAll('style')).map((st) => st.textContent ?? '').join('\n');
     const narrow = css.slice(css.indexOf('@container (max-width: 44rem)'));
     expect(narrow).toMatch(/\.wide-only[^{]*\{[^}]*display:\s*none/);
     expect(narrow).toMatch(/\.narrow-only[^{]*\{[^}]*display:\s*inline-flex/);
+    expect(narrow).toMatch(/\.wide-only-button[^{]*\{[^}]*display:\s*none/);
     const more = row('00002').querySelector<HTMLButtonElement>('app-action-menu.narrow-only button.more')!;
     expect(more.getAttribute('aria-label')).toBe('More actions for Bravo');
     more.click();
     fixture.detectChanges();
     const items = Array.from(row('00002').querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
-    expect(items.map((b) => b.textContent?.trim())).toEqual(['Delete', 'Download', 'Replace file']);
-    expect(items[0].classList.contains('danger')).toBe(true);
-    items[0].click();
+    expect(items.map((b) => b.textContent?.trim())).toEqual(['Edit', 'Delete', 'Download', 'Replace file']);
+    expect(items[1].classList.contains('danger')).toBe(true);
+    items[1].click();
     await settle();
     expect(el.textContent).toContain('Take "Bravo" off the list, or delete its file too?');
   });

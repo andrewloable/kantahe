@@ -98,7 +98,7 @@ test('song cache: the second play is not downloaded, a replaced file is, and the
     await p.goto('/library');
     await p.getByLabel('Search songs').fill(TITLE);
     const row = p.locator('li.row', { hasText: TITLE }).first();
-    number = (await row.locator('.num').innerText()).trim();
+    number = (await row.locator('.num').innerText()).trim().split(/\s/)[0]; // the number; a queued song says In queue under it (kantahe-cqc.1)
     await row.locator('button.main').click();
     await expect(p.getByText(`Added ${TITLE}`).first()).toBeVisible();
     await p.goto('/player');

@@ -5,10 +5,11 @@ import 'package:kantahe/core/auth_store.dart';
 import 'package:kantahe/core/server_url.dart';
 
 /// The address of the player page. The device token is never part of it: it goes in after the page has
-/// said it is ready, through [buildSetTokenScript].
-Uri playerUrl(String serverUrl) {
+/// said it is ready, through [buildSetTokenScript]. On a TV it says `tv=1` (and nothing else), so that the player keeps the
+/// 5% title-safe margin of a TV that overscans (kantahe-du1.11).
+Uri playerUrl(String serverUrl, {bool tv = false}) {
   final base = serverUrl.endsWith('/') ? serverUrl.substring(0, serverUrl.length - 1) : serverUrl;
-  return Uri.parse('$base/embed/player');
+  return Uri.parse('$base/embed/player${tv ? '?tv=1' : ''}');
 }
 
 /// JavaScript that hands the sign-in to the page: one call to window.kantahe.setToken. Every argument is

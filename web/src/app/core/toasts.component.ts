@@ -46,8 +46,9 @@ import { ToastService } from './toast';
     /* on the player: at the top of the stage under its top bar, clear of the controls at the bottom; the embedded player moves it below
        the app's own Close button (--toast-top, player-view.component.ts) */
     .toasts.in-page.centered {
-      top: var(--toast-top, 4rem);
+      top: calc(var(--toast-top, 4rem) + var(--safe-y, 0px));
       bottom: auto;
+      padding: 0 calc(0.75rem + var(--safe-x, 0px));
     }
     .toast {
       pointer-events: auto;

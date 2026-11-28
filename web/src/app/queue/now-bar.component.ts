@@ -15,13 +15,18 @@ import { whereText } from './now-playing.component';
       <aside class="nowbar" aria-label="Now playing">
         <a routerLink="/queue">
           <span class="song">
-            @if (song(); as s) {
+            @if (!state()) {
+              Connecting…
+            } @else if (song(); as s) {
               <strong>{{ s.title }}</strong> — {{ s.artist }}
             } @else {
               Nothing is playing
             }
           </span>
-          <span class="where">{{ where() }} · {{ coming() }} coming up</span>
+          @if (state()) {
+            <!-- on a phone one line: the song and the count; where it plays is said to screen readers (kantahe-cqc.3) -->
+            <span class="meta"><span class="where">{{ where() }} · </span>{{ coming() }} coming up</span>
+          }
         </a>
       </aside>
     }
@@ -34,29 +39,53 @@ import { whereText } from './now-playing.component';
       border: 1px solid var(--line);
       border-radius: 0.5rem;
     }
+    /* drawn from the first paint, at the same height before and after the state arrives, so the page never moves (kantahe-cqc.3) */
     .nowbar a {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      min-height: 2.75rem;
+      /* two lines of text (the song, the meta line) fit: the box keeps its height when the second line arrives */
+      min-height: 3.375rem;
       padding: 0.25rem 0.75rem;
       color: var(--text);
       text-decoration: none;
     }
     .song,
-    .where {
+    .meta {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .where {
+    .meta {
       color: var(--muted);
       font-size: 0.875rem;
+    }
+    @media (max-width: 40rem) {
+      .nowbar a {
+        flex-direction: row;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 2.75rem;
+      }
+      .song {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .meta {
+        flex: none;
+      }
+      .where {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+      }
     }
   `,
 })
 export class NowBarComponent {
-  private readonly state = inject(StateStore).state;
+  protected readonly state = inject(StateStore).state;
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
 
@@ -71,5 +100,6 @@ export class NowBarComponent {
   protected readonly song = computed(() => this.state()?.now?.song);
   protected readonly coming = computed(() => this.state()?.queue.length ?? 0);
   protected readonly where = computed(() => whereText(this.state(), this.auth.deviceId()));
-  protected readonly shown = computed(() => !!this.state() && (!!this.song() || this.coming() > 0) && !this.url().startsWith('/queue'));
+  /** On every page of a signed-in user but the Queue (which shows all of it), from the first paint: Connecting… until the state comes. */
+  protected readonly shown = computed(() => !!this.auth.token() && !this.url().startsWith('/queue'));
 }

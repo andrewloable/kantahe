@@ -72,6 +72,9 @@ Kantahe is then in the TV's app list. To remove it, delete it there, or `tizen u
 
 ## Notes
 
+* **Margins at the edges.** Many TVs cut a few percent off every edge of the picture (overscan). The player keeps its text and
+  buttons inside the inner 90% of the screen (a 5% margin on each side, the broadcast title-safe area); the background video
+  still fills the whole screen.
 * **Why nothing needs HTTPS here.** The app runs from a `file:` address inside the TV, which the web engine treats as
   secure, so the MIDI synthesizer can start; the server it talks to can be plain `http://`. The server answers
   cross-origin requests for the API and the media (decision D10 and PLAN section 8).

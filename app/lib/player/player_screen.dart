@@ -422,7 +422,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                     child: widget.embedBuilder(
                       context,
                       EmbedConfig(
-                        url: playerUrl(server),
+                        url: playerUrl(server, tv: AppScope.isTvOf(context)),
                         onMessage: _bridge.onMessage,
                         onPermission: _permission,
                         onHost: (host) => _bridge.host = host,
@@ -481,7 +481,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                                 child: Align(
                                   alignment: Alignment.topLeft,
                                   child: Padding(
-                                    padding: const EdgeInsets.all(8),
+                                    padding: const EdgeInsets.all(8) + _tvSafe(context, top: true),
                                     child: FocusGrow(
                                       child: OutlinedButton(onPressed: () => Navigator.of(context).maybePop(), child: const Text('Close')),
                                     ),
@@ -493,7 +493,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                                   alignment: Alignment.bottomCenter,
                                   child: Padding(
                                     key: _controlsKey,
-                                    padding: const EdgeInsets.all(16),
+                                    padding: const EdgeInsets.all(16) + _tvSafe(context, top: false),
                                     child: ListenableBuilder(
                                       listenable: _services.state,
                                       builder: (context, _) {
@@ -608,4 +608,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
             ),
     );
   }
+}
+
+/// The title-safe margin of a TV (5% from every edge, kantahe-du1.12): a TV that overscans cuts the edges of the picture. Only the outer
+/// edges of a group get it: Close at the top (left and top), the buttons at the bottom (sides and bottom). The height the bottom buttons
+/// report to the page includes their margin, so the page adds none of its own below them (player-view.component.ts .stage.embedded).
+EdgeInsets _tvSafe(BuildContext context, {required bool top}) {
+  if (!AppScope.isTvOf(context)) return EdgeInsets.zero;
+  final size = MediaQuery.sizeOf(context);
+  final x = size.width * 0.05, y = size.height * 0.05;
+  return EdgeInsets.fromLTRB(x, top ? y : 0, x, top ? 0 : y);
 }

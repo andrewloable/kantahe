@@ -1,4 +1,5 @@
-import { Component, computed, DestroyRef, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { Component, computed, DestroyRef, effect, ElementRef, inject, signal, untracked, viewChild } from '@angular/core';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { AdminService } from '../../../gen/kantahe/v1/admin_pb';
 import { CatalogService, SongSort } from '../../../gen/kantahe/v1/catalog_pb';
@@ -35,12 +36,27 @@ const MAX_SELECTED = 1000;
 
 @Component({
   selector: 'app-songs-admin-page',
-  imports: [BrokenSongsComponent, FormatBadgeComponent, PageBarComponent, ActionMenuComponent],
+  imports: [BrokenSongsComponent, FormatBadgeComponent, PageBarComponent, ActionMenuComponent, RouterLink],
   template: `
-    <h2>Songs</h2>
-    <div class="field">
-      <label for="admin-search">Search songs</label>
-      <input id="admin-search" type="search" autocomplete="off" [value]="query()" (input)="onQuery($event)" />
+    <div class="page-head">
+      <h2>Songs</h2>
+      <a class="help-link" routerLink="/me/help" fragment="admin">Help</a>
+    </div>
+    <!-- on a phone the field sticks to the top and comes up when it takes the focus, so the results show above the keyboard (kantahe-du1.21) -->
+    <div class="search-bar" #searchBar>
+      <div class="field">
+        <label for="admin-search">Search songs</label>
+        <input
+          id="admin-search"
+          type="search"
+          autocomplete="off"
+          enterkeyhint="search"
+          [value]="query()"
+          (input)="onQuery($event)"
+          (focus)="onSearchFocus()"
+          (keydown.enter)="onEnter($event)"
+        />
+      </div>
     </div>
     <!-- on a phone the filters and the library tools fold away, so that the songs start on the first screen (kantahe-du1.9); a wide page shows
          them open and hides these buttons -->
@@ -111,6 +127,72 @@ const MAX_SELECTED = 1000;
     @if (pager.error()) {
       <p class="error" role="alert">{{ pager.error() }} <button type="button" (click)="pager.retry()">Try again</button></p>
     }
+    <!-- always there, above the list, only its words change: a Loading line under the list moved when the rows came (kantahe-du1.17) -->
+    <div class="list-area" #listArea>
+    <p class="loading-line" role="status">{{ pager.loading() ? 'Loading…' : '' }}</p>
+    <!-- drawn when the first page is there: its header and rows come together, so its columns never change under the eye (an empty table
+         drew its header at other widths, then moved it when the rows came: kantahe-du1.17) -->
+    @if (tableShown()) {
+    <table role="table">
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col" role="columnheader" class="pick">
+            <input id="select-page" type="checkbox" [checked]="allOnPage()" [indeterminate]="someOnPage()" (change)="togglePage($event)" />
+            <label for="select-page" class="sr-only">Select all songs on this page</label>
+          </th>
+          @for (k of sortKeys; track k) {
+            <th scope="col" role="columnheader" [class]="'col-' + k" [attr.aria-sort]="ariaSort(k)">
+              <button type="button" class="sort" [attr.aria-label]="sorts[k].label + ', sort'" (click)="sortBy(k)">
+                {{ sorts[k].label }}<span aria-hidden="true" class="arrow">{{ arrow(k) }}</span>
+              </button>
+              <!-- the column's name while the button is hidden (narrow layout), so the header is never empty -->
+              <span class="narrow-label">{{ sorts[k].label }}</span>
+            </th>
+          }
+          <th scope="col" role="columnheader" class="col-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody role="rowgroup">
+        @for (s of win.rows(); track s.number) {
+          <tr role="row">
+            <td role="cell" class="pick">
+              <input type="checkbox" [checked]="selected().has(s.number)" [attr.aria-label]="'Select song ' + s.number" (change)="toggle(s.number, $event)" />
+            </td>
+            <td role="cell" class="number">{{ s.number }}</td>
+            <td role="cell" class="title" [attr.title]="s.title">{{ s.title }}</td>
+            <td role="cell" class="artist" [attr.title]="s.artist">{{ s.artist }}</td>
+            <td role="cell" class="fmt"><app-format-badge [format]="s.format" /></td>
+            <td role="cell" class="timing"><app-format-badge [format]="Format.UNSPECIFIED" [timing]="s.lyricTiming" /></td>
+            <td role="cell" class="vocals"><app-format-badge [format]="Format.UNSPECIFIED" [vocals]="s.hasVocals" /></td>
+            <td role="cell" class="actions" [class.one-line]="deleting() !== s.number && !rowNote()[s.number] && !rowError()[s.number]">
+              @if (deleting() === s.number) {
+                <span>Take "{{ s.title }}" off the list, or delete its file too?</span>
+                <button class="danger" type="button" (click)="remove(s, true)">Remove from list</button>
+                <button class="danger" type="button" (click)="remove(s, false)">Delete file too</button>
+                <button class="quiet" type="button" (click)="deleting.set(undefined)">Cancel</button>
+              } @else {
+                <button type="button" class="wide-only-button" [attr.aria-label]="'Edit ' + s.title" (click)="edit(s)">Edit</button>
+                <!-- wide: the buttons; narrow (a phone): Edit and a More menu, so a song is not four buttons tall -->
+                <span class="wide-only">
+                  <button class="danger" type="button" [attr.aria-label]="'Delete ' + s.title" (click)="deleting.set(s.number)">Delete</button>
+                  <button class="quiet" type="button" [attr.aria-label]="'Download ' + s.title" [disabled]="fileBusy() === s.number" (click)="download(s)">Download</button>
+                  <button class="quiet" type="button" [attr.aria-label]="'Replace file: ' + s.title" [disabled]="fileBusy() === s.number" (click)="pickReplacement(s)">Replace file</button>
+                </span>
+                <app-action-menu class="narrow-only" [label]="'More actions for ' + s.title" [items]="menus().get(s.number) ?? []" />
+              }
+              @if (rowNote()[s.number]) {
+                <span role="status">{{ rowNote()[s.number] }}</span>
+              }
+              @if (rowError()[s.number]) {
+                <span class="error" role="alert">{{ rowError()[s.number] }}</span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    }
+    <!-- after the list, sticky at the bottom of the window: in reach while the list scrolls, in the flow at its end (kantahe-qzr.3) -->
     @if (selectedCount() > 0) {
       <section class="selection" aria-label="Chosen songs">
         <p role="status">{{ selectedCount() }} {{ selectedCount() === 1 ? 'song' : 'songs' }} selected</p>
@@ -143,70 +225,11 @@ const MAX_SELECTED = 1000;
     @if (selResult()) {
       <p class="selection-result" role="status">{{ selResult() }}</p>
     }
-    <table role="table">
-      <thead role="rowgroup">
-        <tr role="row">
-          <th scope="col" role="columnheader" class="pick">
-            <input id="select-page" type="checkbox" [checked]="allOnPage()" [indeterminate]="someOnPage()" (change)="togglePage($event)" />
-            <label for="select-page" class="sr-only">Select all songs on this page</label>
-          </th>
-          @for (k of sortKeys; track k) {
-            <th scope="col" role="columnheader" [attr.aria-sort]="ariaSort(k)">
-              <button type="button" class="sort" [attr.aria-label]="sorts[k].label + ', sort'" (click)="sortBy(k)">
-                {{ sorts[k].label }}<span aria-hidden="true" class="arrow">{{ arrow(k) }}</span>
-              </button>
-              <!-- the column's name while the button is hidden (narrow layout), so the header is never empty -->
-              <span class="narrow-label">{{ sorts[k].label }}</span>
-            </th>
-          }
-          <th scope="col" role="columnheader">Actions</th>
-        </tr>
-      </thead>
-      <tbody role="rowgroup">
-        @for (s of win.rows(); track s.number) {
-          <tr role="row">
-            <td role="cell" class="pick">
-              <input type="checkbox" [checked]="selected().has(s.number)" [attr.aria-label]="'Select song ' + s.number" (change)="toggle(s.number, $event)" />
-            </td>
-            <td role="cell" class="number">{{ s.number }}</td>
-            <td role="cell">{{ s.title }}</td>
-            <td role="cell">{{ s.artist }}</td>
-            <td role="cell"><app-format-badge [format]="s.format" /></td>
-            <td role="cell"><app-format-badge [format]="Format.UNSPECIFIED" [timing]="s.lyricTiming" /></td>
-            <td role="cell"><app-format-badge [format]="Format.UNSPECIFIED" [vocals]="s.hasVocals" /></td>
-            <td role="cell" class="actions" [class.one-line]="deleting() !== s.number && !rowNote()[s.number] && !rowError()[s.number]">
-              @if (deleting() === s.number) {
-                <span>Take "{{ s.title }}" off the list, or delete its file too?</span>
-                <button class="danger" type="button" (click)="remove(s, true)">Remove from list</button>
-                <button class="danger" type="button" (click)="remove(s, false)">Delete file too</button>
-                <button class="quiet" type="button" (click)="deleting.set(undefined)">Cancel</button>
-              } @else {
-                <button type="button" [attr.aria-label]="'Edit ' + s.title" (click)="edit(s)">Edit</button>
-                <!-- wide: the buttons; narrow (a phone): Edit and a More menu, so a song is not four buttons tall -->
-                <span class="wide-only">
-                  <button class="danger" type="button" [attr.aria-label]="'Delete ' + s.title" (click)="deleting.set(s.number)">Delete</button>
-                  <button class="quiet" type="button" [attr.aria-label]="'Download ' + s.title" [disabled]="fileBusy() === s.number" (click)="download(s)">Download</button>
-                  <button class="quiet" type="button" [attr.aria-label]="'Replace file: ' + s.title" [disabled]="fileBusy() === s.number" (click)="pickReplacement(s)">Replace file</button>
-                </span>
-                <app-action-menu class="narrow-only" [label]="'More actions for ' + s.title" [items]="menus().get(s.number) ?? []" />
-              }
-              @if (rowNote()[s.number]) {
-                <span role="status">{{ rowNote()[s.number] }}</span>
-              }
-              @if (rowError()[s.number]) {
-                <span class="error" role="alert">{{ rowError()[s.number] }}</span>
-              }
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
-    @if (pager.loading()) {
-      <p role="status">Loading…</p>
-    } @else if (pager.loaded() && pager.items().length === 0 && !pager.error()) {
+    @if (pager.loaded() && pager.items().length === 0 && !pager.error()) {
       <p>{{ filtered() ? 'No songs match these filters.' : 'No songs found.' }}</p>
     }
     <app-page-bar [win]="win" [hasMore]="pager.hasMore()" />
+    </div>
     <!-- the one file picker that the Replace file buttons open -->
     <input id="replace-file" type="file" accept=".kar,.karmp3" hidden (change)="replacementChosen($event)" />
     @if (editing(); as e) {
@@ -277,8 +300,33 @@ const MAX_SELECTED = 1000;
     .pick {
       width: 1%;
     }
+    /* the bar of the chosen songs sticks to the bottom of the window (above the tab bar of a phone) while the list scrolls, and rests in the
+       flow after the list at its end, so it never hides a row for good (kantahe-qzr.3) */
     .selection {
+      position: sticky;
+      bottom: 1rem;
+      z-index: 5;
+      /* never more than 30% of the window, also with large text: it scrolls inside instead of covering the page */
+      max-height: 30vh;
+      overflow-y: auto;
       margin: 0.75rem 0;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 0.5rem;
+      background: var(--panel);
+      box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+    }
+    /* above the tab bar of a phone: the same window rule as the tab bar (a narrow list on a phone on its side has no tab bar) */
+    @media (max-width: 40rem) {
+      .selection {
+        bottom: calc(4.5rem + env(safe-area-inset-bottom));
+      }
+    }
+    .selection p {
+      margin: 0 0 0.25rem;
+    }
+    .selection .buttons {
+      margin-top: 0;
     }
     .selection .confirm {
       display: flex;
@@ -355,6 +403,19 @@ const MAX_SELECTED = 1000;
     /* on a phone each song is a block: number and title, artist, format, then the buttons; the header row stays for screen readers */
     /* the width of the page's own box, in rem: with a larger text size a table that needs 44rem no longer fits, and the blocks come sooner */
     @container (max-width: 44rem) {
+      .search-bar {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        margin-top: -0.5rem;
+        padding-top: 0.5rem;
+        background: var(--paper);
+      }
+      /* at least a window high: the field can always reach the top of the window */
+      .list-area {
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
       .folds {
         display: flex;
         flex-wrap: wrap;
@@ -388,6 +449,9 @@ const MAX_SELECTED = 1000;
       .narrow-only {
         display: inline-flex;
       }
+      .wide-only-button {
+        display: none;
+      }
       table,
       tbody,
       tr,
@@ -401,14 +465,60 @@ const MAX_SELECTED = 1000;
         overflow: hidden;
         clip-path: inset(50%);
       }
-      tr {
-        padding: 0.5rem 0;
+      /* one compact block per song, two lines: number, title and format; artist, lyrics and vocals; the box on the left and the More
+         button on the right (kantahe-qzr.3) */
+      tbody tr {
+        display: grid;
+        grid-template-columns: 2.75rem auto minmax(0, 1fr) auto auto auto;
+        grid-template-areas:
+          'pick number title fmt fmt actions'
+          'pick . artist timing vocals actions';
+        align-items: center;
+        column-gap: 0.5rem;
+        padding: 0.25rem 0;
         border-bottom: 1px solid var(--line);
       }
-      td {
-        padding: 0.15rem 0;
+      tbody td {
+        padding: 0;
         border-bottom: 0;
-        overflow-wrap: anywhere;
+      }
+      td.pick {
+        grid-area: pick;
+      }
+      td.number {
+        grid-area: number;
+      }
+      td.title {
+        grid-area: title;
+        font-weight: 600;
+      }
+      td.artist {
+        grid-area: artist;
+        color: var(--muted);
+      }
+      td.title,
+      td.artist {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      td.fmt {
+        grid-area: fmt;
+        justify-self: end;
+      }
+      td.timing {
+        grid-area: timing;
+      }
+      td.vocals {
+        grid-area: vocals;
+      }
+      td.actions {
+        grid-area: actions;
+      }
+      /* a question or a message on the row takes the whole width under it */
+      td.actions:not(.one-line) {
+        grid-column: 1 / -1;
+        grid-row: 3;
       }
       td.number {
         color: var(--muted);
@@ -449,9 +559,16 @@ const MAX_SELECTED = 1000;
       color: var(--muted);
       font-size: 0.875rem;
     }
+    .loading-line {
+      min-height: 1.5rem;
+      margin: 0;
+      color: var(--muted);
+    }
   `,
 })
 export class SongsAdminPage {
+  /** The table is drawn from its first loaded page on, and then stays (a new search does not take it away). */
+  protected readonly tableShown = signal(false);
   protected readonly filtersOpen = signal(false);
   protected readonly toolsOpen = signal(false);
   protected readonly broken = viewChild(BrokenSongsComponent);
@@ -522,6 +639,7 @@ export class SongsAdminPage {
       this.win.rows().map((s): [string, MenuItem[]] => [
         s.number,
         [
+          { label: 'Edit', run: () => this.edit(s) },
           { label: 'Delete', danger: true, run: () => this.deleting.set(s.number) },
           { label: 'Download', disabled: busy === s.number, run: () => void this.download(s) },
           { label: 'Replace file', disabled: busy === s.number, run: () => this.pickReplacement(s) },
@@ -550,7 +668,17 @@ export class SongsAdminPage {
   private timer?: ReturnType<typeof setTimeout>;
 
   constructor() {
+    effect(() => {
+      if (this.pager.loaded() || this.pager.items().length > 0) untracked(() => this.tableShown.set(true));
+    });
+    // the keyboard of a phone opens after the focus (iOS) and changes the visible part of the window: bring the field up again then
+    const vv = typeof window === 'undefined' ? null : window.visualViewport;
+    const onResize = () => {
+      if (document.activeElement?.id === 'admin-search') this.bringSearchUp();
+    };
+    vv?.addEventListener('resize', onResize);
     inject(DestroyRef).onDestroy(() => {
+      vv?.removeEventListener('resize', onResize);
       clearTimeout(this.timer);
       this.pager.cancel();
     });
@@ -559,6 +687,36 @@ export class SongsAdminPage {
     effect(() => {
       if (this.editing()) untracked(() => setTimeout(() => document.getElementById('edit-title')?.focus()));
     });
+  }
+
+  private readonly searchBar = viewChild<ElementRef<HTMLElement>>('searchBar');
+
+  /** A phone, upright or on its side: there the keyboard covers the results (the same rule as the Library). */
+  private phone(): boolean {
+    return typeof matchMedia === 'function' && matchMedia('(max-width: 40rem), (max-height: 30rem)').matches;
+  }
+
+  private readonly listArea = viewChild<ElementRef<HTMLElement>>('listArea');
+
+  /** The list right under the field: with the bar stuck to the top, the fold buttons and panels scroll away under it. Only a scroll: the page
+   *  itself never changes on focus or blur, so a tap on a result lands where it was aimed (review kantahe-du1.22). */
+  private bringSearchUp(): void {
+    const bar = this.searchBar()?.nativeElement;
+    const list = this.listArea()?.nativeElement;
+    if (!this.phone() || !bar || !list) return;
+    if (getComputedStyle(bar).position === 'sticky') window.scrollBy(0, list.getBoundingClientRect().top - bar.getBoundingClientRect().height);
+    else bar.scrollIntoView({ block: 'start' });
+  }
+
+  protected onSearchFocus(): void {
+    requestAnimationFrame(() => this.bringSearchUp());
+  }
+
+  /** The Search key (Enter): search now, and take the focus off the field so that the phone's keyboard closes. */
+  protected onEnter(e: Event): void {
+    clearTimeout(this.timer);
+    void this.pager.reset();
+    (e.target as HTMLInputElement).blur();
   }
 
   protected onQuery(e: Event): void {

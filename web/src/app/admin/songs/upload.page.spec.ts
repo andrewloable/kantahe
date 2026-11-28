@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { zipSync } from 'fflate';
@@ -14,7 +15,7 @@ const file = (name: string, content = 'MThd data') => new File([bytes(content) a
 async function setup(opts: { admin?: boolean; maxBytes?: number } = {}) {
   const server = fakeAdminSongs({ maxUploadBytes: opts.maxBytes ?? 1000 });
   localStorage.clear();
-  TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: server.transport }] });
+  TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: TRANSPORT, useValue: server.transport }] }); // the router: the Getting started links
   TestBed.inject(AuthStore).signIn(create(AuthTokenSchema, { token: 't', deviceId: 'd', user: create(UserSchema, { admin: opts.admin ?? true, uploader: true }) }));
   const fixture = TestBed.createComponent(UploadPage);
   const el = fixture.nativeElement as HTMLElement;
@@ -42,6 +43,35 @@ describe('UploadPage', () => {
     expect(input.multiple).toBe(true);
     expect(input.accept).toBe('.kar,.karmp3,.zip');
     expect(el.querySelector(`label[for="${input.id}"]`)).not.toBeNull();
+  });
+
+  // kantahe-qzr.5: a styled Choose files button opens the picker (the browser's own control looked unlike the rest of the app)
+  it('regression: Choose files opens the file picker, and the browser control itself is hidden', async () => {
+    const { el, button } = await setup();
+    const input = el.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const click = vi.spyOn(input, 'click').mockImplementation(() => undefined);
+    button('Choose files')!.click();
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(input.hidden).toBe(true);
+    expect(el.textContent).toContain('No file chosen');
+    // the instruction (which files) and the hint describe the button, now that the input it labels is hidden (kantahe-qzr.6)
+    expect(button('Choose files')!.getAttribute('aria-describedby')).toBe('upload-label upload-help');
+    expect(el.querySelector('#upload-label')?.textContent).toContain('.kar, .karmp3');
+  });
+
+  it('regression: the summary says 1 duplicate, not 1 duplicates', async () => {
+    const { server, pick, el } = await setup();
+    server.handlers.upload = (_r, i) => (i === 0 ? { status: UploadStatus.DUPLICATE, number: '00007' } : { status: UploadStatus.ADDED, number: '00008' });
+    await pick(file('a.kar'), file('b.kar'));
+    expect(el.textContent).toContain('1 added, 1 duplicate, 0 rejected');
+    expect(el.textContent).toContain('2 files chosen');
+  });
+
+  it('every result is a status badge with its kind', async () => {
+    const { server, pick, el } = await setup();
+    server.handlers.upload = () => ({ status: UploadStatus.DUPLICATE, number: '00007' });
+    await pick(file('a.kar'));
+    expect(el.querySelector('tbody .status')?.classList.contains('duplicate')).toBe(true);
   });
 
   it('three files are sent one after the other: the next only starts when the one before is answered', async () => {

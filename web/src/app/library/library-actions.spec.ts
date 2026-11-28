@@ -24,6 +24,41 @@ describe('LibraryActions.add', () => {
     expect(toasts.toasts().map((t) => [t.message, t.kind])).toEqual([['Added Hello', 'info']]);
   });
 
+  // kantahe-cqc.11: a song added by mistake is taken back from the toast, like Play next and Remove
+  it('regression: Added offers Undo, which removes that queue item and says so', async () => {
+    const { actions, calls, toasts } = setup({ addToQueue: () => 'q9' });
+    await actions.add(song('01052', 'Hello', 'Adele'));
+    const toast = toasts.toasts()[0];
+    expect([toast.message, toast.action?.label]).toEqual(['Added Hello', 'Undo']);
+    toasts.act(toast.id);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(calls.session).toEqual(['add 01052', 'remove q9']);
+    expect(toasts.toasts().map((t) => [t.message, t.kind])).toEqual([['Removed Hello', 'info']]);
+  });
+
+  it('Undo after the song started or left the queue says so', async () => {
+    const { actions, toasts } = setup({
+      addToQueue: () => 'q9',
+      removeFromQueue: () => {
+        throw new ConnectError('not found', Code.NotFound);
+      },
+    });
+    await actions.add(song('01052', 'Hello', 'Adele'));
+    toasts.act(toasts.toasts()[0].id);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(toasts.toasts().map((t) => [t.message, t.kind])).toEqual([['Hello has already started or left the queue.', 'error']]);
+  });
+
+  it('a song that was already queued offers no Undo (nothing was added)', async () => {
+    const { actions, toasts } = setup({
+      addToQueue: () => {
+        throw new ConnectError('already', Code.AlreadyExists);
+      },
+    });
+    await actions.add(song('01052', 'Hello', 'Adele'));
+    expect(toasts.toasts()[0].action).toBeUndefined();
+  });
+
   it('shows a failure as an error toast', async () => {
     const { actions, toasts } = setup({
       addToQueue: () => {

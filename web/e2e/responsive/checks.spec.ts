@@ -7,6 +7,7 @@ import { auditPage, Check, fileName, MAX_PER_CHECK, optionsFor, pageChecks, Raw,
 import { pick, THEMES, VIEWPORTS } from './matrix';
 import { auditOutDir } from './out';
 import { buildReport, hasBlocker, loadBaseline, Outcome, toHtml, toMarkdown, verdict } from './report';
+import { boxes, keyboardCover, loadShiftFindings, moves, recordShifts, shiftFindings } from './dynamic';
 
 // The checks of the audit tested on small pages. Each test is a page that must be reported and a page that must not: a check that
 // cannot fail proves nothing.
@@ -174,6 +175,16 @@ test.describe('tightTargets', () => {
   test('a control of the page 2 px under a sticky element that is stuck is not tight with it', async ({ page }) => {
     await page.setContent(BASE + sticky(400));
     await page.evaluate(() => window.scrollTo(0, 300 + 44 + 400 - 46));
+    expect(of(await page.evaluate(pageChecks, optionsFor(page)), 'tightTargets')).toHaveLength(0);
+  });
+  // kantahe-qzr.3: a bar stuck to the bottom of the window (bottom: 0) is a layer of its own while it is stuck, like one stuck at the top
+  test('a control of the page 2 px above a sticky bar stuck at the bottom is not tight with it', async ({ page }) => {
+    await page.setContent(
+      BASE +
+        '<div style="height:1000px"></div><button style="display:block;width:44px;height:44px">Page</button><div style="height:1200px"></div>' +
+        '<div style="position:sticky;bottom:0;height:44px"><button style="width:44px;height:44px">Bar</button></div><div style="height:300px"></div>',
+    );
+    await page.evaluate(() => window.scrollTo({ top: 1000 + 44 + 2 + 44 - innerHeight, behavior: 'instant' })); // the bar stuck at the bottom, 2 px under Page
     expect(of(await page.evaluate(pageChecks, optionsFor(page)), 'tightTargets')).toHaveLength(0);
   });
   test('the same sticky element at rest, 2 px from a control, is reported', async ({ page }) => {
@@ -503,5 +514,88 @@ test.describe('the matrix and the output folder', () => {
       if (was === undefined) delete process.env['KANTAHE_AUDIT_OUT'];
       else process.env['KANTAHE_AUDIT_OUT'] = was;
     }
+  });
+});
+
+// kantahe-du1.14: the checks that need the page to move (dynamic.ts)
+test.describe('layoutShift and keyboardCover (dynamic.ts)', () => {
+  const list = (n: number) => `<ul style="margin:0;padding:0">${Array.from({ length: n }, (_, i) => `<li class="row" style="height:50px"><button style="width:44px;height:44px">${i}</button></li>`).join('')}</ul>`;
+
+  test('the sum of the shifts not caused by input over 0.02 is a finding, naming what moved', () => {
+    const found = shiftFindings([
+      { value: 0.015, input: false, sources: ['main#main'] },
+      { value: 0.01, input: false, sources: ['footer.legal'] },
+      { value: 0.5, input: true, sources: ['ignored'] },
+    ]);
+    expect(found).toHaveLength(1);
+    expect(found[0].check).toBe('layoutShift');
+    expect(found[0].text).toBe('main#main | footer.legal');
+  });
+
+  test('shifts under the limit, or caused by input, are no finding', () => {
+    expect(shiftFindings([{ value: 0.015, input: false, sources: ['a'] }])).toEqual([]);
+    expect(shiftFindings([{ value: 0.9, input: true, sources: ['a'] }])).toEqual([]);
+  });
+
+  test('a page that inserts a block above its content after loading is reported', async ({ page, context }) => {
+    await recordShifts(context);
+    // a new document (setContent does not load one, so the recorder would not run)
+    const html = BASE + '<div id="top"></div>' + list(6) + '<script>setTimeout(() => { const d = document.getElementById("top"); d.style.height = "200px"; }, 100);</script>';
+    await page.goto('data:text/html,' + encodeURIComponent(html));
+    await page.waitForTimeout(400);
+    expect((await loadShiftFindings(page)).map((r) => r.check)).toEqual(['layoutShift']);
+  });
+
+  test('a list that moves 60 px after a click is reported', async ({ page }) => {
+    await page.setContent(BASE + '<div id="slot"></div>' + list(6) + '<script>document.querySelector("li button").onclick = () => { document.getElementById("slot").style.height = "60px"; };</script>');
+    const before = await boxes(page);
+    await page.locator('li button').first().click();
+    const found = moves(before, await boxes(page));
+    expect(found.length).toBeGreaterThan(0);
+    expect(found[0].detail).toContain('60 px down');
+  });
+
+  test('a toast that appears fixed after a click moves nothing and is not reported', async ({ page }) => {
+    await page.setContent(
+      BASE + list(6) + '<script>document.querySelector("li button").onclick = () => { const t = document.createElement("div"); t.style.cssText = "position:fixed;bottom:0;height:60px"; t.textContent = "Added"; document.body.append(t); };</script>',
+    );
+    const before = await boxes(page);
+    await page.locator('li button').first().click();
+    expect(moves(before, await boxes(page))).toEqual([]);
+  });
+
+  test('keyboardCover reports when the first rows are below the keyboard line', async ({ page }) => {
+    await page.setContent(BASE + '<div style="height:500px"></div>' + list(6));
+    expect((await keyboardCover(page, false)).map((r) => r.check)).toEqual(['keyboardCover']);
+  });
+
+  test('keyboardCover is quiet when 3 rows fit above the keyboard line', async ({ page }) => {
+    await page.setContent(BASE + '<div style="height:100px"></div>' + list(6));
+    expect(await keyboardCover(page, false)).toEqual([]);
+  });
+
+  // review kantahe-du1.22/du1.15: the links of a menu at the top are not results, and a short list must still show its rows
+  test('keyboardCover does not count the links of a menu as rows', async ({ page }) => {
+    await page.setContent(BASE + '<nav><ul><li><a href="#">Upload</a></li><li><a href="#">Users</a></li><li><a href="#">Songs</a></li></ul></nav><div style="height:500px"></div>' + list(6));
+    expect((await keyboardCover(page, false)).map((r) => r.check)).toEqual(['keyboardCover']);
+  });
+
+  test('keyboardCover reports a list of two results when neither shows above the keyboard', async ({ page }) => {
+    await page.setContent(BASE + '<div style="height:500px"></div>' + list(2));
+    expect((await keyboardCover(page, false)).map((r) => r.check)).toEqual(['keyboardCover']);
+  });
+
+  test('on a phone on its side one row above the keyboard is enough, none is a finding', async ({ page }) => {
+    await page.setViewportSize({ width: 700, height: 400 });
+    await page.setContent(BASE + '<div style="height:100px"></div>' + list(6)); // line at 180 px: rows at 100-150 fit
+    expect(await keyboardCover(page, true, 1)).toEqual([]);
+    await page.setContent(BASE + '<div style="height:200px"></div>' + list(6));
+    expect((await keyboardCover(page, true, 1)).map((r) => r.check)).toEqual(['keyboardCover']);
+  });
+
+  test('the new checks have their severities: a moving core page is a blocker, the keyboard a major', () => {
+    expect(severityOf('layoutShift', true)).toBe('blocker');
+    expect(severityOf('layoutShift', false)).toBe('major');
+    expect(severityOf('keyboardCover', true)).toBe('major');
   });
 });

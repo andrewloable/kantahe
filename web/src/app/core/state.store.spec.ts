@@ -300,23 +300,24 @@ describe('StateStore', () => {
     const h = setup([fail, fail, hold(st('d1'))]);
     h.store.start();
     await vi.advanceTimersByTimeAsync(3100);
-    expect(h.aborted()).toBe(0);
+    expect(h.aborted(), 'the held stream is still open before stop').toBe(0);
     h.store.stop();
-    expect(h.store.state()).toBeUndefined();
-    expect(h.store.connected()).toBe(false);
-    expect(h.store.polling()).toBe(false);
+    expect(h.store.state(), 'state cleared by stop').toBeUndefined();
+    expect(h.store.connected(), 'connected cleared by stop').toBe(false);
+    expect(h.store.polling(), 'polling cleared by stop').toBe(false);
     await vi.advanceTimersByTimeAsync(0);
-    expect(h.aborted()).toBe(1);
+    expect(h.aborted(), 'the held stream was closed by stop').toBe(1);
     const attempts = h.attempts.length;
     const polls = h.polls.length;
     await vi.advanceTimersByTimeAsync(120_000);
-    expect(h.attempts.length).toBe(attempts);
-    expect(h.polls.length).toBe(polls);
+    expect(h.attempts.length, 'no stream attempt after stop').toBe(attempts);
+    expect(h.polls.length, 'no poll after stop').toBe(polls);
     // 120 s later every finite timer has fired, so any timer left is the store's. One exception: Angular's change detection keeps a setTimeout and a
     // requestAnimationFrame (two fake timers) for a moment after a signal changes, and on a busy machine the last change of stop() can come after the
     // clock has stopped: give those a little time. A timer of the store's own (the poll interval, a retry, the watchdog) never goes away.
     for (let i = 0; i < 5 && vi.getTimerCount() > 0; i++) await vi.advanceTimersByTimeAsync(1000);
-    expect(vi.getTimerCount()).toBe(0);
+    // kantahe-2l9: a failure here once went unrecorded; the message says which assertion and how many timers were left
+    expect(vi.getTimerCount(), 'fake timers left after stop and the grace loop').toBe(0);
   });
 
   it('stop during a back-off wait cancels the retry', async () => {

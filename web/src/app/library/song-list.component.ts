@@ -13,6 +13,7 @@ import { PageBarComponent } from './page-bar.component';
 import { PageWindow } from './page-window';
 import { PlaylistPickerComponent } from './playlist-picker.component';
 import { ENVIRONMENT } from '../core/environment';
+import { StateStore } from '../core/state.store';
 import { ActionMenuComponent, MenuItem } from '../shared/action-menu.component';
 
 @Component({
@@ -24,7 +25,13 @@ import { ActionMenuComponent, MenuItem } from '../shared/action-menu.component';
         <li class="row">
           <!-- named by what it shows, then what it does (WCAG 2.5.3: a speech user says what they see) -->
           <button type="button" class="main" [disabled]="s.failed" (click)="actions.add(s)">
-            <span class="num">{{ s.number }}</span>
+            <!-- under the number: already queued or playing, said in the row and in its name; the row keeps its height (kantahe-cqc.1) -->
+            <span class="num"
+              >{{ s.number }}
+              @if (queueState().get(s.number); as q) {
+                <span class="queued">{{ q }}</span>
+              }
+            </span>
             <span class="info">
               <span class="title" [attr.title]="s.title">{{ s.title }}</span>
               <span class="artist" [attr.title]="s.artist">{{ s.artist }}</span>
@@ -107,7 +114,8 @@ import { ActionMenuComponent, MenuItem } from '../shared/action-menu.component';
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      padding: 0.25rem 0.5rem;
+      /* no padding above and below: the row's own padding keeps rows 8 px apart, and the button is at least 44 px high */
+      padding: 0 0.5rem;
       border: 0;
       border-radius: 0;
       background: transparent;
@@ -115,15 +123,22 @@ import { ActionMenuComponent, MenuItem } from '../shared/action-menu.component';
       text-align: left;
       font-weight: 400;
     }
-    /* the badges of a row wrap inside this width, so that they never squeeze the title */
+    /* the badges of a row on one line (they wrapped into two and made every row 65 px, kantahe-cqc.3) */
     app-format-badge {
-      max-width: 3.5rem;
-      justify-content: flex-end;
+      flex-wrap: nowrap;
+      flex: none;
     }
     .num {
       min-width: 3.5rem;
       font-variant-numeric: tabular-nums;
       color: var(--muted);
+    }
+    /* a phone: a narrower number, so that the title keeps its room beside the badges on one line */
+    @media (max-width: 40rem) {
+      .num {
+        min-width: 3rem;
+        font-size: 0.875rem;
+      }
     }
     .info {
       flex: 1;
@@ -148,6 +163,13 @@ import { ActionMenuComponent, MenuItem } from '../shared/action-menu.component';
       -webkit-box-orient: vertical;
       overflow: hidden;
       overflow-wrap: anywhere;
+    }
+    .queued {
+      display: block;
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 700;
+      white-space: nowrap;
     }
     .star {
       min-width: 2.75rem;
@@ -193,6 +215,15 @@ import { ActionMenuComponent, MenuItem } from '../shared/action-menu.component';
   `,
 })
 export class SongListComponent {
+  private readonly session = inject(StateStore).state;
+  /** The songs of the user's queue and the one playing now, by number: their rows say so (kantahe-cqc.1). */
+  protected readonly queueState = computed(() => {
+    const st = this.session();
+    const m = new Map<string, string>();
+    for (const q of st?.queue ?? []) if (q.song) m.set(q.song.number, 'In queue');
+    if (st?.now?.song) m.set(st.now.song.number, 'Playing');
+    return m;
+  });
   protected readonly actions = inject(LibraryActions);
   /** The song whose playlist picker is open. */
   protected readonly pickerFor = signal<string | undefined>(undefined);

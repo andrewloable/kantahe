@@ -1,5 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { create } from '@bufbuild/protobuf';
+import { AuthTokenSchema, UserSchema } from '../../gen/kantahe/v1/common_pb';
+import { AuthStore } from '../core/auth.store';
 import { HelpComponent } from './help.component';
 
 describe('HelpComponent', () => {
@@ -24,6 +27,27 @@ describe('HelpComponent', () => {
       'Songs kept on this device',
       'Keyboard shortcuts',
     ]);
+  });
+
+  // kantahe-cqc.9: every section can be linked to (the pages link to the section that explains them), and administrators have one of their own
+  it('regression: every section has an id the pages link to', () => {
+    const el = render();
+    expect(Array.from(el.querySelectorAll('section')).map((sec) => sec.id)).toEqual(['finding-songs', 'queue', 'player', 'badges', 'devices', 'install', 'cached', 'shortcuts']);
+  });
+
+  it('regression: an administrator also has the section For administrators, with uploading, the song list and users', () => {
+    TestBed.inject(AuthStore).signIn(create(AuthTokenSchema, { token: 't', deviceId: 'd', user: create(UserSchema, { admin: true }) }));
+    const el = render();
+    const admin = el.querySelector('section#admin')!;
+    expect(admin.querySelector('h3')?.textContent?.trim()).toBe('For administrators');
+    expect(admin.textContent).toContain('ZIP');
+    expect(admin.textContent).toContain('Delete files too');
+    expect(admin.textContent).toContain('temporary password');
+  });
+
+  it('a user who is not an administrator has no such section', () => {
+    TestBed.inject(AuthStore).signIn(create(AuthTokenSchema, { token: 't', deviceId: 'd', user: create(UserSchema, { admin: false }) }));
+    expect(render().querySelector('section#admin')).toBeNull();
   });
 
   it('says that the vocals may start by themselves in amateur singer mode, and that the singer can switch them off', () => {

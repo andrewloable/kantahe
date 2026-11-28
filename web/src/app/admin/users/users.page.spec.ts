@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { TRANSPORT } from '../../core/api';
@@ -15,7 +16,7 @@ async function setup(opts: { revoked?: number } = {}) {
     { devicesRevoked: opts.revoked },
   );
   localStorage.clear();
-  TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: server.transport }] });
+  TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: TRANSPORT, useValue: server.transport }] }); // the router: the Help link
   const fixture = TestBed.createComponent(UsersPage);
   const el = fixture.nativeElement as HTMLElement;
   const settle = async () => {
@@ -27,20 +28,49 @@ async function setup(opts: { revoked?: number } = {}) {
   fixture.detectChanges();
   await settle();
   const row = (email: string) => Array.from(el.querySelectorAll('tbody tr')).find((r) => r.textContent?.includes(email)) as HTMLElement;
-  const box = (email: string, role: 'admin' | 'disabled') => row(email).querySelector<HTMLInputElement>(`input[type="checkbox"][data-role="${role}"]`)!;
-  const button = (within: ParentNode, text: string) => Array.from(within.querySelectorAll('button')).find((b) => b.textContent?.trim().startsWith(text))!;
-  return { fixture, el, server, settle, row, box, button };
+  const find = (within: ParentNode, text: string) => Array.from(within.querySelectorAll('button')).find((b) => b.textContent?.trim().startsWith(text));
+  // a row's actions are in its More menu (kantahe-qzr.1): open it when the action is not on screen
+  const button = (within: ParentNode, text: string) => {
+    const more = (within as HTMLElement).querySelector?.<HTMLButtonElement>('tbody button.more, td button.more');
+    if (!find(within, text) && more && within !== el) {
+      more.click();
+      fixture.detectChanges();
+    }
+    return find(within, text)!;
+  };
+  /** The items of a row's More menu, opened (and closed again when `close`). */
+  const menu = (email: string) => {
+    row(email).querySelector<HTMLButtonElement>('button.more')!.click();
+    fixture.detectChanges();
+    const items = Array.from(row(email).querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
+    return items;
+  };
+  const badges = (email: string) => Array.from(row(email).querySelectorAll('.badge')).map((b) => b.textContent?.trim());
+  return { fixture, el, server, settle, row, button, menu, badges };
 }
 
 describe('UsersPage', () => {
-  it('lists every user with name, roles, disabled and the must-change flag', async () => {
-    const { el, row, box } = await setup();
+  it('lists every user with name and the state as badges: Admin, Disabled, Must change password', async () => {
+    const { el, row, badges } = await setup();
     expect(el.querySelectorAll('tbody tr').length).toBe(3);
     expect(row('ann@example.com').textContent).toContain('Ann');
-    expect(box('ann@example.com', 'admin').checked).toBe(true);
-    expect(box('cy@example.com', 'disabled').checked).toBe(true);
-    expect(row('bob@example.com').textContent).toContain('must change password');
-    expect(row('ann@example.com').textContent).not.toContain('must change password');
+    expect(badges('ann@example.com')).toEqual(['Admin']);
+    expect(badges('bob@example.com')).toEqual(['Must change password']);
+    expect(badges('cy@example.com')).toEqual(['Disabled']);
+  });
+
+  // kantahe-qzr.1: one compact row per user, the actions in a More menu (a phone showed one user per screen, every row with two red buttons)
+  it('regression: a row has one button, More actions for its user, and no checkbox', async () => {
+    const { row } = await setup();
+    expect(Array.from(row('bob@example.com').querySelectorAll('button')).map((b) => b.getAttribute('aria-label'))).toEqual(['More actions for bob@example.com']);
+    expect(row('bob@example.com').querySelector('input[type="checkbox"]')).toBeNull();
+  });
+
+  it('the More menu says what each action does to that user', async () => {
+    const { menu } = await setup();
+    expect(menu('bob@example.com').map((b) => b.textContent?.trim())).toEqual(['Make administrator', 'Disable', 'Reset password', 'Sign out devices', 'Delete']);
+    expect(menu('ann@example.com').map((b) => b.textContent?.trim())).toEqual(['Remove administrator', 'Disable', 'Reset password', 'Sign out devices', 'Delete']);
+    expect(menu('cy@example.com').map((b) => b.textContent?.trim())).toEqual(['Make administrator', 'Enable', 'Reset password', 'Sign out devices', 'Delete']);
   });
 
   it('regression: the column headers are marked as headers of their columns', async () => {
@@ -54,11 +84,9 @@ describe('UsersPage', () => {
     expect(css).toMatch(/\.page\[[^\]]*\]\s*\{[^}]*overflow-x:\s*auto/); // the page box; the dialog is outside it (a scroller would clip it)
   });
 
-  it('is a table with column headers, and every checkbox names its user and role', async () => {
-    const { el, box } = await setup();
-    expect(Array.from(el.querySelectorAll('th')).map((h) => h.textContent?.trim())).toEqual(['Email', 'Name', 'Admin', 'Disabled', 'Account', 'Actions']);
-    expect(box('bob@example.com', 'admin').getAttribute('aria-label')).toBe('Admin: bob@example.com');
-    expect(box('bob@example.com', 'disabled').getAttribute('aria-label')).toBe('Disabled: bob@example.com');
+  it('is a table with column headers Email, Name, State and Actions', async () => {
+    const { el } = await setup();
+    expect(Array.from(el.querySelectorAll('th')).map((h) => h.textContent?.trim())).toEqual(['Email', 'Name', 'State', 'Actions']);
   });
 
   it('has no Uploader column or switch: only administrators upload', async () => {
@@ -67,45 +95,44 @@ describe('UsersPage', () => {
     expect(el.querySelector('input[data-role="uploader"]')).toBeNull();
   });
 
-  it('toggling admin and disabled each send only their own field', async () => {
-    const { box, server, settle } = await setup();
-    box('bob@example.com', 'admin').click();
+  it('Make administrator and Enable each send only their own field', async () => {
+    const { button, row, server, settle } = await setup();
+    button(row('bob@example.com'), 'Make administrator').click();
     await settle();
-    box('cy@example.com', 'disabled').click();
+    button(row('cy@example.com'), 'Enable').click();
     await settle();
     expect([server.calls.update[0].admin, server.calls.update[0].disabled]).toEqual([true, undefined]);
     expect([server.calls.update[1].disabled, server.calls.update[1].admin]).toEqual([false, undefined]);
     expect(server.calls.update.map((u) => u.uploader)).toEqual([undefined, undefined]); // the old role is never sent
   });
 
-  it('the last admin protection of the server is shown on that row and the box goes back', async () => {
-    const { box, server, settle, row } = await setup();
+  it('the last admin protection of the server is shown on that row and the badge stays', async () => {
+    const { button, server, settle, row, badges } = await setup();
     server.failNext(new ConnectError('there must be at least one administrator', Code.FailedPrecondition));
-    box('ann@example.com', 'admin').click();
+    button(row('ann@example.com'), 'Remove administrator').click();
     await settle();
     expect(row('ann@example.com').querySelector('[role="alert"]')?.textContent).toContain('there must be at least one administrator');
-    expect(box('ann@example.com', 'admin').checked).toBe(true);
+    expect(badges('ann@example.com')).toEqual(['Admin']);
   });
 
-  it('regression: a role box is off limits while its change is on its way, so two clicks make one change', async () => {
-    const { box, server, settle, fixture } = await setup();
-    const first = box('bob@example.com', 'disabled');
-    first.click();
-    fixture.detectChanges();
-    expect(first.disabled).toBe(true);
+  it('regression: a role change is off limits while it is on its way, so two clicks make one change', async () => {
+    const { button, row, menu, server, settle } = await setup();
+    button(row('bob@example.com'), 'Disable').click();
+    const items = menu('bob@example.com');
+    expect(items.find((b) => b.textContent?.trim() === 'Disable')!.disabled).toBe(true);
+    menu('bob@example.com'); // closes it
     await settle();
-    expect(first.disabled).toBe(false);
     expect(server.calls.update.length).toBe(1);
-    box('bob@example.com', 'disabled').click();
+    button(row('bob@example.com'), 'Enable').click();
     await settle();
     expect(server.calls.update.length).toBe(2);
     expect(server.calls.update[1].disabled).toBe(false);
   });
 
   it('regression: a user who is gone says so and the list is read again', async () => {
-    const { box, server, settle, row } = await setup();
+    const { button, server, settle, row } = await setup();
     server.failNext(new ConnectError('not found', Code.NotFound));
-    box('bob@example.com', 'disabled').click();
+    button(row('bob@example.com'), 'Disable').click();
     await settle();
     expect(server.calls.list).toBe(2);
     expect(row('bob@example.com')?.textContent ?? '').not.toContain('That user no longer exists.'); // the row is re-read; the message is shown where it can be seen
@@ -159,6 +186,22 @@ it('regression: Reset password and Sign out devices ask first, and Cancel does n
     await settle();
     expect(server.calls.revoke).toEqual([]);
     expect(row('bob@example.com').textContent).not.toContain('Yes, ');
+  });
+
+  // kantahe-qzr.2 review: the More button that had the focus is replaced by the question; the focus goes into the question
+  it('regression: after choosing Reset password or Delete in the menu, the focus is in the question', async () => {
+    const { el, settle, row, button } = await setup();
+    document.body.appendChild(el);
+    button(row('bob@example.com'), 'Reset password').click();
+    await settle();
+    expect(document.activeElement?.textContent?.trim()).toBe('Yes, reset');
+    button(row('bob@example.com'), 'Cancel').click();
+    await settle();
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('More actions for bob@example.com'); // and back after Cancel
+    button(row('cy@example.com'), 'Delete').click();
+    await settle();
+    expect(document.activeElement?.id).toBe('confirm-u3');
+    el.remove();
   });
 
   it('a failed reset shows no password', async () => {
@@ -334,7 +377,7 @@ it('regression: Reset password and Sign out devices ask first, and Cancel does n
     const server = fakeAdminUsers([user('u1', 'ann@example.com')]);
     server.failNext(new ConnectError('down', Code.Unavailable));
     TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: server.transport }] });
+    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: TRANSPORT, useValue: server.transport }] }); // the router: the Help link
     const fixture = TestBed.createComponent(UsersPage);
     fixture.detectChanges();
     await new Promise((r) => setTimeout(r, 0));

@@ -19,12 +19,15 @@ import { ActionMenuComponent, MenuItem } from '../shared/action-menu.component';
     <p><a class="back" routerLink="/me/playlists">← All playlists</a></p>
     @if (missing()) {
       <p>This playlist no longer exists.</p>
+    } @else if (id() && !loaded()) {
+      <!-- the heading, the list and the legend come together once the playlist is here: nothing grows under the first paint (kantahe-du1.23) -->
+      <p role="status">{{ failed() ? 'The playlist could not be loaded.' : 'Loading the playlist…' }}</p>
     } @else if (id()) {
       <h2>{{ name() }}</h2>
       <p>
         <button class="primary" type="button" (click)="addAll()" [disabled]="songs().length === 0 || saving()">Add all to queue</button>
       </p>
-      @if (loaded() && songs().length === 0) {
+      @if (songs().length === 0) {
         <p>This playlist is empty. Add songs from the library.</p>
       }
       <ol class="entries">
@@ -129,6 +132,7 @@ export class PlaylistDetailComponent {
   protected readonly songs = signal<Song[]>([]);
   protected readonly loaded = signal(false);
   protected readonly missing = signal(false);
+  protected readonly failed = signal(false);
   protected readonly saving = signal(false);
 
   constructor() {
@@ -140,6 +144,7 @@ export class PlaylistDetailComponent {
     this.id.set(id);
     this.loaded.set(false);
     this.missing.set(false);
+    this.failed.set(false);
     this.songs.set([]);
     try {
       const p = (await this.user.getPlaylist({ id })).playlist;
@@ -149,7 +154,10 @@ export class PlaylistDetailComponent {
       this.loaded.set(true);
     } catch (e) {
       if (ConnectError.from(e).code === Code.NotFound) this.missing.set(true);
-      else this.toast.show(problem(e, {}), 'error');
+      else {
+        this.failed.set(true);
+        this.toast.show(problem(e, {}), 'error');
+      }
     }
   }
 

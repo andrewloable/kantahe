@@ -73,6 +73,24 @@ describe('QueuePage', () => {
     expect(rows()[2].textContent).toContain('Third');
   });
 
+  // kantahe-cqc.7: each row shows its place and, roughly, when it starts
+  it('regression: rows show their position, next for the first while a song is on, and about when the others start', async () => {
+    const { rows } = await setup({
+      ...BASE,
+      // paused: the position stays at 50 s while the test runs
+      now: { song: Object.assign(song('9', 'Now', 'X', Format.MP3), { durationMs: 200_000n }), positionMs: 50_000, positionAtMs: 1000 },
+      queue: [
+        { id: 'q1', song: Object.assign(song('1', 'One', 'A', Format.MP3), { durationMs: 180_000n }) },
+        { id: 'q2', song: Object.assign(song('2', 'Two', 'B', Format.MP3), { durationMs: 240_000n }) },
+      ],
+    });
+    expect(rows()[0].querySelector('.pos')?.textContent).toContain('1');
+    expect(rows()[0].querySelector('.pos')?.textContent).toContain('next');
+    expect(rows()[1].querySelector('.pos')?.textContent).toContain('2');
+    // 150 s left of the current song + 10 s, then 180 s + 10 s: 350 s, about 6 minutes
+    expect(rows()[1].querySelector('.pos')?.textContent).toContain('starts in about 6 minutes');
+  });
+
   it('says so when the queue is empty', async () => {
     const { el } = await setup({ ...BASE, queue: [] });
     expect(el.textContent).toContain('The queue is empty');

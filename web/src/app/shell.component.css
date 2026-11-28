@@ -107,18 +107,36 @@ nav svg {
   }
 }
 
-/* the offer to install the app: in the page flow under the top bar, never over the content */
+/* the offer to install the app: it floats at the bottom of the window (above the tab bar of a phone) and moves nothing when it comes after
+   the page has been drawn (owner decision 2026-11-28, kantahe-du1.17); while it shows, the end of the page has room for it, so that the last
+   controls can be scrolled out from under it */
 .install {
+  position: fixed;
+  z-index: 30;
+  left: 50%;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(32rem, calc(100vw - 1.5rem));
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem 0.75rem;
-  margin: 0.5rem 1rem 0;
   padding: 0.5rem 0.75rem;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 0.5rem;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+}
+
+.frame.offering {
+  padding-bottom: 6rem;
+}
+
+/* the page is at least a window high, so the footer starts below the first screen and is not pushed down when a list arrives (kantahe-du1.17) */
+main#main {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .install .actions {
@@ -143,6 +161,14 @@ nav a.active {
 
   .frame {
     padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+
+  .install {
+    bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+
+  .frame.offering {
+    padding-bottom: calc(10rem + env(safe-area-inset-bottom));
   }
 
   nav {

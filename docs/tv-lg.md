@@ -45,14 +45,14 @@ bash scripts/build-webos.sh
 
 It builds the `webos` configuration of the web app, assembles `build/webos/` (the build, `tv/webos/appinfo.json` and the
 two icons), checks the `appinfo.json` (`scripts/check-webos-appinfo.py`: the keys webOS needs, the icon files and their
-sizes), and runs `ares-package build/webos -o dist`, which leaves `dist/party.kantahe_1.6.0_all.ipk`. Without
+sizes), and runs `ares-package build/webos -o dist`, which leaves `dist/party.kantahe_1.7.0_all.ipk`. Without
 `ares-package` the script stops at once and says so. `bash scripts/build-webos.sh --stage-only` assembles and checks
 the folder without packaging.
 
 ## 4. Install and start it
 
 ```sh
-ares-install --device tv dist/party.kantahe_1.6.0_all.ipk
+ares-install --device tv dist/party.kantahe_1.7.0_all.ipk
 ares-launch --device tv party.kantahe
 ```
 
@@ -75,6 +75,9 @@ Kantahe is then in the TV's app list. To remove it: `ares-install --device tv --
 
 ## Notes
 
+* **Margins at the edges.** Many TVs cut a few percent off every edge of the picture (overscan). The player keeps its text and
+  buttons inside the inner 90% of the screen (a 5% margin on each side, the broadcast title-safe area); the background video
+  still fills the whole screen.
 * **Why nothing needs HTTPS here.** The app is loaded from the TV itself, which the web engine treats as a secure page,
   so the MIDI synthesizer can start; the server it talks to can be plain `http://`. The server answers cross-origin
   requests for the API and the media (decision D10 and PLAN section 8).

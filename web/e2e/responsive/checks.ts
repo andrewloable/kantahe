@@ -15,7 +15,11 @@ export type Check =
   | 'consoleErrors'
   | 'failedRequests'
   | 'brokenImages'
-  | 'unreachable';
+  | 'unreachable'
+  /** the page moves while it loads, or after an action that must move nothing (dynamic.ts) */
+  | 'layoutShift'
+  /** on a phone the on-screen keyboard hides the results of a search (dynamic.ts) */
+  | 'keyboardCover';
 
 export type Severity = 'blocker' | 'major' | 'minor';
 
@@ -181,6 +185,8 @@ export function pageChecks(options: Options): Raw[] {
       const s = getComputedStyle(e);
       if (s.position === 'fixed' || e.getAttribute('role') === 'menu') return e; // an open menu is a popup over the page
       if (s.position === 'sticky' && window.scrollY > 0 && s.top !== 'auto' && Math.abs(e.getBoundingClientRect().top - parseFloat(s.top)) < 0.5) return e;
+      // stuck at the bottom of the window (a bar of chosen items, kantahe-qzr.3): the page slides under it the same way
+      if (s.position === 'sticky' && s.bottom !== 'auto' && Math.abs(window.innerHeight - parseFloat(s.bottom) - e.getBoundingClientRect().bottom) < 0.5) return e;
     }
     return null;
   };
@@ -319,7 +325,10 @@ export function severityOf(check: Check, core: boolean | undefined): Severity {
       return 'blocker';
     case 'horizontalOverflow':
     case 'outsideViewport':
+    case 'layoutShift':
       return core ? 'blocker' : 'major';
+    case 'keyboardCover':
+      return 'major';
     case 'smallTargets':
     case 'tightTargets':
     case 'clippedText':

@@ -28,7 +28,13 @@ const songs = (n: number) => (n === 1 ? '1 broken song' : `${n} broken songs`);
         <span class="error" role="alert">{{ checkError() }}</span>
       }
       @if (total() > 0) {
-        <h4>{{ label(total()) }}</h4>
+        <!-- the list folds behind its count, so that the songs of the page come first (kantahe-qzr.3); a check opens it -->
+        <div class="summary">
+          <h4>{{ label(total()) }}</h4>
+          <button type="button" class="quiet" aria-controls="broken-list" [attr.aria-expanded]="listOpen()" (click)="listOpen.set(!listOpen())">{{ listOpen() ? 'Hide' : 'Show' }}</button>
+        </div>
+        @if (listOpen()) {
+        <div id="broken-list">
         <ul class="broken-list">
           @for (b of win.rows(); track b.song?.number) {
             <li class="broken">
@@ -76,6 +82,8 @@ const songs = (n: number) => (n === 1 ? '1 broken song' : `${n} broken songs`);
             <button class="danger" type="button" (click)="bulkAsk.set('files')">Remove them and delete their files</button>
           </p>
         }
+        </div>
+        }
       }
       @if (result()) {
         <p role="status">{{ result() }}</p>
@@ -93,6 +101,13 @@ const songs = (n: number) => (n === 1 ? '1 broken song' : `${n} broken songs`);
       margin: 0 0 0.25rem;
     }
     .check h4 {
+      margin: 0;
+    }
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 1rem;
       margin: 1rem 0 0.25rem;
     }
     .check > button {
@@ -170,6 +185,8 @@ export class BrokenSongsComponent {
   });
 
   protected readonly checking = signal(false);
+  /** The list of broken songs is open: closed at first, opened by a check that finds some. */
+  protected readonly listOpen = signal(false);
   protected readonly progress = signal('');
   protected readonly checkError = signal('');
   protected readonly asking = signal<string | undefined>(undefined);
@@ -197,6 +214,7 @@ export class BrokenSongsComponent {
         this.progress.set(m.done ? `Checked ${m.total} songs, ${m.broken} broken.` : `Checked ${m.checked} of ${m.total}, ${m.broken} broken`);
       }
       await this.pager.reset();
+      if (this.total() > 0) this.listOpen.set(true);
     } catch (e) {
       this.progress.set('');
       this.checkError.set(problem(e, { [Code.FailedPrecondition]: fromServer }));

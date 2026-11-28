@@ -275,6 +275,24 @@ button.quiet {
   color: var(--accent);
 }
 
+/* A page heading with its Help link at the right (kantahe-cqc.9) */
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+a.help-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0 0.25rem;
+}
+
 /* The second-level menu of Me and Administration (kantahe-tlf.5.6): tabs like the ones of the Library, the current one filled. */
 .sub-nav {
   display: flex;
@@ -366,6 +384,17 @@ form {
   margin: 0.25rem 0 0;
   color: var(--muted);
   font-size: 0.875rem;
+}
+
+/* The title-safe area of a TV (SMPTE ST 2046-1: the inner 90%): many TVs overscan and cut a few percent off every edge, so the player keeps
+   text and buttons 5% from each edge (kantahe-du1.11). Set on TV builds (provide-tv.ts) and in the Android TV app's player (?tv=1). */
+:root {
+  --safe-x: 0px;
+  --safe-y: 0px;
+}
+html.tv-safe {
+  --safe-x: 5vw;
+  --safe-y: 5vh;
 }
 
 /* A TV is read from a sofa: larger type, and a focus ring that shows from across the room */

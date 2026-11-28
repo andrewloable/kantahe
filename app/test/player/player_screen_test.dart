@@ -847,6 +847,18 @@ void main() {
       now: nowPlaying(song('1', 'A', 'B', hasVocals: hasVocals)),
     );
 
+    // kantahe-du1.12: on a TV the buttons keep 5% from the bottom; the height they report covers that margin and nothing above them
+    testWidgets('REGRESSION: on a TV the reported room is the buttons plus the bottom margin only', (tester) async {
+      final r = await open(tester, state: withVocalsSong(), tv: true);
+      r.config!.onMessage('KantaheReady');
+      await tester.pump();
+      await tester.pump();
+      final skip = tester.getRect(find.ancestor(of: find.text('Skip'), matching: find.byWidgetPredicate((w) => w is ButtonStyleButton)).first);
+      // from the top of the buttons' padding (16 above the row) to the bottom of the screen: no TV margin above the row
+      expect(lastHeight(r), lessThanOrEqualTo((1080 - skip.top + 16 + 2).round()));
+      expect(lastHeight(r), greaterThanOrEqualTo((1080 * 0.05).round()));
+    });
+
     testWidgets('controls_height_is_reported_after_ready: a whole number above zero', (tester) async {
       final r = await open(tester, state: withVocalsSong());
       expect(lastHeight(r), isNull, reason: 'the page is not ready');
@@ -1096,6 +1108,23 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       return r;
     }
+
+    // kantahe-du1.12: a TV that overscans cuts the edges; the page keeps a 5% margin (?tv=1) and so do the native buttons over it
+    testWidgets('REGRESSION: on a TV the page is told so and the native buttons stay 5% from the edges', (tester) async {
+      final r = await open(tester, server: address, tv: true);
+      expect(r.config!.url.toString(), '$address/embed/player?tv=1');
+      final close = tester.getRect(find.text('Close'));
+      expect(close.left, greaterThanOrEqualTo(1920 * 0.05));
+      expect(close.top, greaterThanOrEqualTo(1080 * 0.05));
+      final skip = tester.getRect(find.text('Skip'));
+      expect(skip.bottom, lessThanOrEqualTo(1080 * 0.95));
+    });
+
+    testWidgets('not on a TV the page address has no tv=1 and Close keeps its corner', (tester) async {
+      final r = await open(tester, server: address);
+      expect(r.config!.url.hasQuery, isFalse);
+      expect(tester.getRect(find.text('Close')).left, lessThan(40));
+    });
 
     testWidgets('REGRESSION: on a TV the player has a Connect a phone button the remote can reach', (tester) async {
       await open(tester, server: address, tv: true);

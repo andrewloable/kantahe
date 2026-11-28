@@ -75,9 +75,11 @@ describe('NowBarComponent', () => {
     expect(el.querySelector('.nowbar')?.textContent).toContain('Paused on Living room TV');
   });
 
-  it('with nothing playing and an empty queue there is no bar', async () => {
+  // kantahe-cqc.3: the bar stays (it appearing and going moved the page): with nothing to show it says so
+  it('with nothing playing and an empty queue the bar says Nothing is playing', async () => {
     const { el } = await setup({ status: PlayStatus.PAUSED, devices: [ME] });
-    expect(el.querySelector('.nowbar')).toBeNull();
+    expect(el.querySelector('.nowbar')?.textContent).toContain('Nothing is playing');
+    expect(el.querySelector('.nowbar')?.textContent).toContain('0 coming up');
   });
 
   it('with songs queued and none playing it still shows how many are waiting', async () => {
@@ -87,7 +89,7 @@ describe('NowBarComponent', () => {
     expect(bar.textContent).toContain('2 coming up');
   });
 
-  it('regression: it follows the live state: the next song, a pause, and the bar going away when everything is done', async () => {
+  it('regression: it follows the live state: the next song, a pause, and Nothing is playing when everything is done', async () => {
     const { el, fixture, server } = await setup(PLAYING);
     expect(el.querySelector('.nowbar')?.textContent).toContain('Hello');
     server.push(stateOf({ ...PLAYING, now: { song: song('2', 'Skyfall', 'Adele'), positionMs: 0, positionAtMs: 1000 }, queue: [{ id: 'q2', song: song('3', 'Rolling in the Deep', 'Adele') }] }));
@@ -98,12 +100,12 @@ describe('NowBarComponent', () => {
     server.push(stateOf({ status: PlayStatus.PAUSED, devices: [ME, TV], player: 'tv' }));
     await vi.advanceTimersByTimeAsync(20);
     fixture.detectChanges();
-    expect(el.querySelector('.nowbar')).toBeNull();
+    expect(el.querySelector('.nowbar')?.textContent).toContain('Nothing is playing');
   });
 
-  it('there is no bar before the first state arrives', async () => {
+  it('regression: before the first state the bar is already there, saying Connecting… (it was inserted later and moved the page)', async () => {
     const { el } = await setup(undefined);
-    expect(el.querySelector('.nowbar')).toBeNull();
+    expect(el.querySelector('.nowbar')?.textContent?.trim()).toBe('Connecting…');
   });
 
   it('the bar is a link to the queue', async () => {

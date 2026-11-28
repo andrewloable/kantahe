@@ -50,6 +50,26 @@ describe('EmbedPlayerPage', () => {
     Reflect.deleteProperty(window, 'Kantahe');
   });
 
+  // kantahe-du1.11: the Android TV app adds ?tv=1 to the address; the player then keeps the 5% title-safe margin of a TV
+  describe('on a TV', () => {
+    afterEach(() => {
+      history.replaceState(null, '', '/');
+      document.documentElement.classList.remove('tv-safe');
+    });
+
+    it('regression: ?tv=1 in the address marks the page tv-safe', () => {
+      history.replaceState(null, '', '/embed/player?tv=1');
+      setup();
+      expect(document.documentElement.classList.contains('tv-safe')).toBe(true);
+    });
+
+    it('without it the page is not marked', () => {
+      history.replaceState(null, '', '/embed/player');
+      setup();
+      expect(document.documentElement.classList.contains('tv-safe')).toBe(false);
+    });
+  });
+
   describe('window.kantahe.setFreeDisk', () => {
     it('hands the free space of the device to the song cache, as a whole number of bytes', () => {
       const { cache } = setup();

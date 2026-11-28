@@ -68,6 +68,7 @@ there on a phone too).
 
 * Choosing a song adds it to **your queue**. The queue is yours alone, kept on the server, and the same on all your
   devices. A song you add while another plays waits its turn.
+* Under its number a song says **In queue** when it is waiting in your queue and **Playing** while it is on.
 * A song is in your queue only once. Adding a song that is already waiting, or that is playing now, adds nothing and says
   *already in the queue* (a second tap by mistake does no harm). **Play next** on a song that is already waiting moves it up.
   While the score of a song shows, you can queue that song again. *Add all to queue* of a playlist skips the songs already queued.

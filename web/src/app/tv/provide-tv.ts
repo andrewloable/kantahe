@@ -7,7 +7,7 @@ import { SpatialNav } from './spatial-nav';
 export function provideTv(): EnvironmentProviders {
   return provideAppInitializer(() => {
     if (!inject(ENVIRONMENT).isTv) return;
-    document.documentElement.classList.add('tv');
+    document.documentElement.classList.add('tv', 'tv-safe'); // tv-safe: the player keeps a 5% title-safe margin (styles.css)
     inject(SpatialNav).attach(document);
     inject(BackKeys).attach(document);
     registerMediaKeys(window);

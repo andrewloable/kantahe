@@ -8,9 +8,14 @@ guide](reverse-proxy.md) covers HTTPS. The people who sing have the [user guide]
 Open the server's address. While there is no user, the page asks you to create the **admin** account: email, name and
 password. This works only once. From then on accounts are made by an admin; there is no sign-up.
 
+**Getting started.** On a new server *Admin → Upload* (the first page of the administration) shows three first steps, each with
+a link and its state: add songs, add the singers as users, open the Player on the TV or a laptop and press *Play here*. When
+all three are done it says so, and the next time it is gone; **Hide** puts it away at once.
+
 ## Users
 
-*Admin → Users* lists everyone, with **Admin** and **Disabled** switches:
+*Admin → Users* lists everyone, one line per user with badges for **Admin**, **Disabled** and **Must change password**. The **⋯**
+button of a user (*More actions*) has *Make administrator* or *Remove administrator*, *Disable* or *Enable*, *Reset password*, *Sign out devices* and *Delete*:
 
 * **New user**: the button above the list opens a window for an email, a name and a **temporary password** (8 to 256
   characters; the window can make one). Pass it on; the user must change it at the first sign-in.
@@ -100,12 +105,14 @@ what you want:
 
 **Choosing several songs.** Every row has a checkbox, and the box in the header chooses all the songs of the page on show (it
 looks half-filled when only some are chosen). The choice stays while you turn pages and search, up to 1000 songs. A bar
-above the list says how many are chosen and offers **Remove from list** (the files stay), **Delete files too** (the files are
+at the bottom of the window (it stays in reach while the list scrolls, and rests under the list at its end) says how many are
+chosen and offers **Remove from list** (the files stay), **Delete files too** (the files are
 deleted as well, only inside the data and the watched folders; a file elsewhere is left and counted) and **Clear selection**.
 Both removals ask first, and deleting files cannot be undone.
 
 ### Checking the library for broken songs
 
+The list of broken songs found earlier is folded under its count (*6 broken songs*, **Show**); a new check opens it.
 *Admin → Songs → Check the library → Check for broken songs* looks at **every song file again** and says how far it is while it
 works (a library of 20,000 songs takes about a minute). A song is broken when its file is missing (also for an uploaded song
 whose file was deleted by hand), when it is a MIDI song without any music (only lyric timing, it plays as silence), when the

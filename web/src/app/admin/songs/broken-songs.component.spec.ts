@@ -7,7 +7,7 @@ import { BrokenSongsComponent } from './broken-songs.component';
 
 const broken = (n: number, reason = 'the file is missing') => Array.from({ length: n }, (_, i) => ({ song: song(String(20000 + i), `Broken ${i}`, 'Artist', i % 2 ? Format.MIDI : Format.MP3), reason }));
 
-async function setup(list = broken(3), pageSize = 50) {
+async function setup(list = broken(3), pageSize = 50, open = true) {
   const server = fakeAdminSongs({ broken: list, pageSize });
   TestBed.configureTestingModule({ providers: [{ provide: TRANSPORT, useValue: server.transport }] });
   const fixture = TestBed.createComponent(BrokenSongsComponent);
@@ -20,6 +20,11 @@ async function setup(list = broken(3), pageSize = 50) {
   await settle();
   const rows = () => Array.from(el.querySelectorAll<HTMLElement>('li.broken'));
   const button = (text: string, within: ParentNode = el) => Array.from(within.querySelectorAll('button')).find((b) => b.textContent?.trim().startsWith(text));
+  // the list is folded behind Show (kantahe-qzr.3); most tests look at it open
+  if (open && button('Show')) {
+    button('Show')!.click();
+    fixture.detectChanges();
+  }
   return { fixture, el, server, settle, rows, button };
 }
 
@@ -34,6 +39,19 @@ describe('BrokenSongsComponent', () => {
     expect(rows()[0].textContent).toContain('the file is missing');
     expect(el.textContent).toContain('3 broken songs');
     expect(server.calls.checks).toBe(0);
+  });
+
+  // kantahe-qzr.3: the list folds away behind its count, so that the songs of Admin > Songs come first
+  it('regression: the list is closed at first: the count shows, with Show; Show opens it and becomes Hide', async () => {
+    const { el, rows, button, fixture } = await setup(broken(3), 50, false);
+    expect(el.textContent).toContain('3 broken songs');
+    expect(rows().length).toBe(0);
+    expect(button('Remove all')).toBeUndefined();
+    expect(button('Show')!.getAttribute('aria-expanded')).toBe('false');
+    button('Show')!.click();
+    fixture.detectChanges();
+    expect(rows().length).toBe(3);
+    expect(button('Hide')!.getAttribute('aria-expanded')).toBe('true');
   });
 
   it('shows nothing about broken songs while there are none', async () => {

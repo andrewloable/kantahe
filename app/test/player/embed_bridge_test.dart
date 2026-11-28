@@ -264,6 +264,15 @@ void main() {
     test('a server under a path keeps its path', () {
       expect(playerUrl('https://example.org/kantahe').toString(), 'https://example.org/kantahe/embed/player');
     });
+
+    // kantahe-du1.11: on Android TV the page is told it is a TV, so the player keeps a 5% title-safe margin
+    test('regression: on a TV the address says tv=1 and nothing else', () {
+      expect(playerUrl('http://karaoke.lan:8080', tv: true).toString(), 'http://karaoke.lan:8080/embed/player?tv=1');
+    });
+
+    test('not on a TV: no query', () {
+      expect(playerUrl('http://karaoke.lan:8080', tv: false).hasQuery, isFalse);
+    });
   });
 
   group('sameOrigin', () {

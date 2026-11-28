@@ -22,7 +22,12 @@ function start(env: Environment) {
 }
 
 describe('provideTv', () => {
-  afterEach(() => document.documentElement.classList.remove('tv'));
+  afterEach(() => document.documentElement.classList.remove('tv', 'tv-safe'));
+
+  it('regression: a TV build marks the page tv-safe as well (the player keeps a 5% margin, kantahe-du1.11)', () => {
+    start({ isTv: true, tvDeviceType: DeviceType.WEBOS });
+    expect(document.documentElement.classList.contains('tv-safe')).toBe(true);
+  });
 
   it('on a TV build: marks the page, and the remote keys work', () => {
     const { back } = start({ isTv: true, tvDeviceType: DeviceType.TIZEN });

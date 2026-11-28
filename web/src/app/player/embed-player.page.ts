@@ -57,6 +57,8 @@ export class EmbedPlayerPage {
   private readonly view = viewChild(PlayerViewComponent);
 
   constructor() {
+    // the Android TV app says it is a TV with ?tv=1 (the address carries nothing else): the player keeps a 5% title-safe margin
+    if (new URLSearchParams(window.location.search).get('tv') === '1') document.documentElement.classList.add('tv-safe');
     const host = window as unknown as HostWindow;
     host.kantahe = {
       setToken: (token, deviceId, serverUrl) => this.setToken(token, deviceId, serverUrl),

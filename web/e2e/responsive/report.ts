@@ -44,6 +44,8 @@ const MEANING: Record<Check, string> = {
   failedRequests: 'requests that failed',
   brokenImages: 'an image did not load',
   unreachable: 'the state could not be reached, so it was not checked',
+  layoutShift: 'the page moves while it loads, or after an action that must move nothing',
+  keyboardCover: 'on a phone the keyboard hides the results',
 };
 const CHECKS = Object.keys(MEANING) as Check[];
 

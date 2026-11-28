@@ -33,8 +33,8 @@ for (const viewport of viewports) {
         test(`${state.route} ${state.state}`, async ({ page, context }, info) => {
           const meta = { route: state.route, state: state.state, viewport: viewport.name, theme, core: state.core };
           // a state that cannot be reached is itself a finding; the page is looked at as it is
-          const { seen, unreachable } = await openState(page, context, state, viewport, theme, info.parallelIndex);
-          const { findings, omitted, screenshot } = await auditPage(page, meta, out, seen, undefined, unreachable);
+          const { seen, unreachable, dynamic } = await openState(page, context, state, viewport, theme, info.parallelIndex);
+          const { findings, omitted, screenshot } = await auditPage(page, meta, out, seen, undefined, [...unreachable, ...dynamic]);
           const outcome: Outcome = {
             state: { id: stateId(meta), route: meta.route, state: meta.state, viewport: meta.viewport, theme: meta.theme, screenshot, omitted },
             findings,

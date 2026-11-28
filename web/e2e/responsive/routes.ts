@@ -32,6 +32,12 @@ export interface RouteState {
   after?: (c: Ctx) => Promise<void>;
   /** Console messages and failed requests that this state causes on purpose. */
   ignore?: RegExp[];
+  /** The action of `after` must move nothing on the page (dynamic.ts: layoutShift after an action). */
+  stable?: boolean;
+  /** A text field: on a phone it is tapped and typed into, and the results must show above the keyboard (dynamic.ts: keyboardCover). */
+  keyboard?: string;
+  /** The keyboard check only on upright phones, not on a phone on its side. */
+  keyboardUpright?: boolean;
 }
 
 const LONG_ERROR =
@@ -95,11 +101,21 @@ const tap = async (target: Locator): Promise<void> => {
 
 const click = (page: Page, name: string | RegExp, exact = false) => tap(page.getByRole('button', { name, exact }).first());
 
+/** An action of the user with the long address on Admin > Users: from the More menu of that row (kantahe-qzr.1). */
+const userAction = async (page: Page, action: string): Promise<void> => {
+  await tap(page.getByRole('button', { name: /^More actions for a-very-long-address/ }));
+  await tap(page.getByRole('menuitem', { name: action, exact: true }));
+};
+
 /** On a narrow Admin > Songs page the library check is folded away behind Library tools (kantahe-du1.9); a wide page shows it open. */
 const openLibraryTools = async (page: Page): Promise<void> => {
   const fold = page.getByRole('button', { name: /^Library tools/ });
   await expect(page.getByRole('heading', { name: 'Songs', level: 2 })).toBeVisible();
   if (await fold.isVisible()) await tap(fold);
+  // the list of broken songs is folded behind its count (kantahe-qzr.3)
+  const show = page.getByRole('button', { name: 'Show', exact: true });
+  await expect(show).toBeVisible(); // the states that use this have broken songs: wait for the list to arrive
+  await tap(show);
 };
 
 export function states(selftest = false): RouteState[] {
@@ -203,6 +219,7 @@ export function states(selftest = false): RouteState[] {
     }),
     at('/library', 'toast', 'scratch', '/library', {
       core: true,
+      stable: true,
       after: async ({ page }) => {
         await expect(page.locator('li.row').first()).toBeVisible();
         await tap(page.locator('li.row button.main').first());
@@ -210,6 +227,8 @@ export function states(selftest = false): RouteState[] {
       },
     }),
     at('/library', 'number-pad', 'user', '/library', { core: true, after: ({ page }) => tap(page.getByRole('tab', { name: 'Number' })) }),
+    // the keyboard check (dynamic.ts) types into the field; the page is then looked at as it is, with the search typed
+    at('/library', 'keyboard', 'user', '/library', { core: true, keyboard: '#search', after: ({ page }) => expect(page.locator('li.row').first()).toBeVisible() }),
 
     // Admin > Upload: three files whose answers are made up, so that the library stays the same
     at('/admin/upload', 'empty', 'admin', '/admin/upload'),
@@ -302,11 +321,11 @@ export function states(selftest = false): RouteState[] {
     // the administration
     at('/admin/users', 'many', 'admin', '/admin/users', { after: ({ page }) => expect(page.locator('tbody tr').nth(3)).toBeVisible() }),
     at('/admin/users', 'new-user', 'admin', '/admin/users', { after: ({ page }) => click(page, 'New user') }),
-    at('/admin/users', 'delete-question', 'admin', '/admin/users', { after: ({ page }) => click(page, /^Delete a-very-long-address/) }),
-    at('/admin/users', 'reset-question', 'admin', '/admin/users', { after: ({ page }) => click(page, /^Reset password of a-very-long-address/) }),
+    at('/admin/users', 'delete-question', 'admin', '/admin/users', { after: ({ page }) => userAction(page, 'Delete') }),
+    at('/admin/users', 'reset-question', 'admin', '/admin/users', { after: ({ page }) => userAction(page, 'Reset password') }),
     at('/admin/users', 'temp-password', 'admin', '/admin/users', {
       after: async ({ page }) => {
-        await click(page, /^Reset password of a-very-long-address/);
+        await userAction(page, 'Reset password');
         await click(page, 'Yes, reset');
         await expect(page.getByRole('region', { name: 'Temporary password' })).toBeVisible();
       },
@@ -316,6 +335,8 @@ export function states(selftest = false): RouteState[] {
     at('/admin/videos', 'empty', 'admin', '/admin/videos', { after: ({ page }) => expect(page.getByText('No background videos yet.')).toBeVisible() }),
     at('/admin/videos', 'error', 'admin', '/admin/videos', { ...failing('AdminService/ListVideos') }),
     at('/admin/songs', 'many', 'admin', '/admin/songs', { after: ({ page }) => expect(page.locator('tbody tr').nth(10)).toBeVisible() }),
+    // upright phones only: on its side the wide table (rows of 110 px under its header) leaves no room above a keyboard of 55% (kantahe-du1.21)
+    at('/admin/songs', 'keyboard', 'admin', '/admin/songs', { keyboard: '#admin-search', keyboardUpright: true, after: ({ page }) => expect(page.locator('tbody tr').nth(10)).toBeVisible() }),
     at('/admin/songs', 'empty', 'admin', '/admin/songs', {
       after: async ({ page }) => {
         await page.getByLabel('Search songs').fill('zzzzqqqq');

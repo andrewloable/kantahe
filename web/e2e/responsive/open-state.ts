@@ -4,6 +4,7 @@ import { optionsFor, pageChecks, Raw, watch, Watch } from './checks';
 import { DEVICE_SCALE_FACTOR, isTouch, Theme, Viewport } from './matrix';
 import { Ctx, resetScratch, Role, RouteState } from './routes';
 import { Account, Seed } from './seed';
+import { boxes, keyboardFindings, loadShiftFindings, moves, recordShifts } from './dynamic';
 
 // How a route state is opened: the audit and the layout tests (layout.spec.ts) both go through here, so that a test sees the page the way the
 // audit does.
@@ -29,6 +30,8 @@ export const contextOptions = (viewport: Viewport, theme: Theme): BrowserContext
 });
 
 export interface Opened {
+  /** The findings of the checks that need the page to move (dynamic.ts): layout shifts and the keyboard. */
+  dynamic: Raw[];
   ctx: Ctx;
   account: Account | undefined;
   /** What the browser reported while the state was being reached. */
@@ -70,6 +73,8 @@ export async function openState(page: Page, context: BrowserContext, state: Rout
 
   const seen = watch(page, state.ignore);
   const unreachable: Raw[] = [];
+  const dynamic: Raw[] = [];
+  await recordShifts(context);
   try {
     // a scratch account starts every state the same way: a song loaded, nothing queued
     if (state.role === 'scratch') await resetScratch(account!, all.numbers.longBoth);
@@ -79,14 +84,21 @@ export async function openState(page: Page, context: BrowserContext, state: Rout
       await expect(page.locator('#splash')).toHaveCount(0, { timeout: 20_000 });
       await (state.ready ?? (({ page }) => expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 15_000 })))(ctx);
     }
+    // how far the page moved while it loaded, before anything is done on it
+    dynamic.push(...(await loadShiftFindings(page)));
+    const before = state.stable ? await boxes(page) : undefined;
     await state.after?.(ctx);
     await page.waitForTimeout(300); // transitions and the toast sliding in have ended
+    if (before) dynamic.push(...moves(before, await boxes(page)));
+    if (state.keyboard && (viewport.kind === 'phone' || (viewport.kind === 'phone-landscape' && !state.keyboardUpright))) {
+      dynamic.push(...(await keyboardFindings(page, state.keyboard, viewport.kind === 'phone-landscape', viewport.zoom === true)));
+    }
   } catch (e) {
     // eslint-disable-next-line no-control-regex -- the colours Playwright puts in its messages
     const why = String((e as Error).message).replace(/\u001b\[[0-9;]*m/g, '').split('\n').filter((l) => l.trim() !== '');
     unreachable.push({ check: 'unreachable', selector: 'state', text: why.slice(0, 2).join(' ').slice(0, 200) });
   }
-  return { ctx, account, seen, unreachable };
+  return { ctx, account, seen, unreachable, dynamic };
 }
 
 /** The findings of the checks on the page as it is now. */

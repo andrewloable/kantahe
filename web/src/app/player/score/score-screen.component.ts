@@ -51,6 +51,8 @@ const roll = () => Math.floor(Math.random() * 51) + 50;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      /* the title-safe margin of a TV (styles.css), 0 elsewhere */
+      padding: var(--safe-y) var(--safe-x);
       background: rgb(10 14 34 / 0.94);
       color: #ffffff;
       text-align: center;

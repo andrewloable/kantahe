@@ -55,8 +55,16 @@ export class LibraryActions {
       return false;
     }
     try {
-      await this.session.addToQueue({ number: song.number });
-      this.toast.show(`Added ${song.title}`);
+      const itemId = (await this.session.addToQueue({ number: song.number })).item?.id ?? '';
+      // a song added by mistake is taken back from here (kantahe-cqc.11), as with Play next and Remove
+      this.toast.show(`Added ${song.title}`, 'info', {
+        label: 'Undo',
+        run: () =>
+          void this.session
+            .removeFromQueue({ itemId })
+            .then(() => this.toast.show(`Removed ${song.title}`))
+            .catch((e) => this.toast.show(problem(e, { [Code.NotFound]: `${song.title} has already started or left the queue.` }), 'error')),
+      });
       return true;
     } catch (e) {
       if (alreadyQueued(e)) this.toast.show(`${song.title} is already in the queue`);

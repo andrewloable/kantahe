@@ -73,7 +73,7 @@ export function fakeMe(
     revoke: [] as string[],
     listDevices: 0,
   };
-  const fail: { next?: ConnectError } = {};
+  const fail: { next?: ConnectError; get?: ConnectError } = {};
   const maybeFail = () => {
     const e = fail.next;
     fail.next = undefined;
@@ -113,6 +113,9 @@ export function fakeMe(
       },
       getPlaylist(req) {
         calls.get.push(req.id);
+        const failGet = fail.get;
+        fail.get = undefined;
+        if (failGet) throw failGet;
         const p = playlists.get(req.id);
         if (!p) throw new ConnectError('not found', Code.NotFound);
         return create(GetPlaylistResponseSchema, { playlist: asPlaylist(p) });
@@ -212,6 +215,10 @@ export function fakeMe(
     favourites,
     failNext(e: ConnectError) {
       fail.next = e;
+    },
+    /** The next GetPlaylist fails with this error. */
+    failGetNext(e: ConnectError) {
+      fail.get = e;
     },
   };
 }
