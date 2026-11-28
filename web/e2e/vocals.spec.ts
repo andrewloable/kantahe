@@ -141,6 +141,7 @@ test('guide vocals: uploaded, played when another device asks, remembered for th
   });
 
   await test.step('another device (the laptop, on its Queue page) switches them on: the voice is fetched, the player reports it, and shows nothing new', async () => {
+    await expect(stage(p).locator('.title-card')).toHaveCount(0, { timeout: 15_000 }); // the title card counts down: compare the playing song
     const before = await stage(p).innerText();
     await a.goto('/queue');
     await a.getByRole('button', { name: /^Volume(,| and) tempo/ }).click(); // the controls are folded away (kantahe-du1.7)
